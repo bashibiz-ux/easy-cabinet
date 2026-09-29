@@ -31,11 +31,13 @@ module KitchenCabinetMaster
 
     # Cabinet names are the unit code plus the width: BU600, WU800, TU600 ...
     # A catalog cabinet can set its own "code"; otherwise its category decides.
-    NAME_PREFIXES = { 'base' => 'BU', 'wall' => 'WU', 'tall' => 'TU', 'corner' => 'CR', 'filler' => 'FIL', 'end_panel' => 'EP' }.freeze
+    NAME_PREFIXES = { 'base' => 'BU', 'wall' => 'WU', 'tall' => 'TU', 'corner' => 'CR', 'filler' => 'FIL',
+                      'end_panel' => 'EP', 'toe_kick' => 'TK' }.freeze
 
-    # Standalone parts: not full cabinets, but they still take up their own
-    # footprint in the model (see PartLayout, PartGenerator, PartManager).
-    PART_KINDS = %w[filler end_panel].freeze
+    # Standalone parts: not full cabinets (see PartLayout, PartGenerator, PartManager).
+    # Fillers and end panels take up their own footprint in the model; a toe kick
+    # stands under the cabinets' fronts and never blocks anything.
+    PART_KINDS = %w[filler end_panel toe_kick].freeze
     END_PANEL_SIDES = %w[left right].freeze
 
 
@@ -111,7 +113,7 @@ module KitchenCabinetMaster
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
       'show_opening_direction' => true,
-      'door_symbol'            => 'elevation',
+      'door_symbol'            => 'plan',
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
 
@@ -126,22 +128,30 @@ module KitchenCabinetMaster
       'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true }
     }.freeze
 
-    # A filler: where it sits (base / wall / tall decides base Z and whether it
-    # gets a toe kick), its size, material, and its own toe-kick settings (reusing
-    # the cabinet's field names, so ValidationManager and ToeKick both work on it
-    # unchanged).
+    # A filler: where it sits (base / wall / tall decides its base Z), its size and
+    # material. `toe_kick_height` is how far it is raised off the floor, the same
+    # as a cabinet; it has no toe kick of its own (that is a separate entity).
     FILLER_PARAMS = {
       'cabinet_category'      => 'base',
       'width'                 => 100.0,
       'depth'                 => 560.0,
       'height'                => 780.0,
       'material'              => 'White Melamine',
-      'include_toe_kick'      => true,
+      'toe_kick_height'       => 100.0
+    }.freeze
+
+    # A toe kick: a run of `toe_kick_pieces` pieces, each `toe_kick_piece_length`
+    # long, laid end to end. `toe_kick_recess` is how far its front is set back
+    # from the carcass front.
+    TOE_KICK_PARAMS = {
       'toe_kick_height'       => 100.0,
       'toe_kick_thickness'    => 18.0,
       'toe_kick_material'     => SAME_AS_DOOR,
-      'toe_kick_piece_length' => 600.0
+      'toe_kick_piece_length' => 600.0,
+      'toe_kick_pieces'       => 1,
+      'toe_kick_recess'       => TOE_KICK_RECESS
     }.freeze
+    DEFAULT_TOE_KICK_DEPTH = 560.0 # carcass depth assumed when no cabinet is selected
 
     # An end panel: which side of the currently selected cabinet/filler it goes
     # on, how thick it is, and its material. Its width, height and depth all
@@ -163,6 +173,10 @@ module KitchenCabinetMaster
 
     def self.end_panel_params
       JSON.parse(JSON.generate(END_PANEL_PARAMS))
+    end
+
+    def self.toe_kick_params
+      JSON.parse(JSON.generate(TOE_KICK_PARAMS))
     end
 
     def self.category_ids

@@ -76,8 +76,12 @@ module KitchenCabinetMaster
       show_indicator = [true, 'true', 1, '1'].include?(raw['opening_direction'])
 
       model = Sketchup.active_model
-      cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
-      return Response.ok('No cabinets in the model yet. New cabinets will use these settings.') if cabinets.empty?
+      instances = model.entities.grep(Sketchup::ComponentInstance)
+      cabinets = instances.select { |instance| AttributeManager.cabinet?(instance) }
+      toe_kicks = instances.select { |instance| AttributeManager.part_kind(instance) == 'toe_kick' }
+      if cabinets.empty? && toe_kicks.empty?
+        return Response.ok('No cabinets in the model yet. New cabinets will use these settings.')
+      end
 
       SelectionManager.suspend do
         with_operation(model, 'Change Cabinet Visibility') do
@@ -85,10 +89,13 @@ module KitchenCabinetMaster
             AttributeManager.write(cabinet, 'visibility_settings' => visibility, 'show_opening_direction' => show_indicator)
             CabinetGenerator.apply_visibility(cabinet, visibility, show_indicator)
           end
+          # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
+          toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
         end
       end
 
-      Response.ok("Visibility updated on #{cabinets.length} cabinet#{'s' unless cabinets.length == 1}.")
+      Response.ok("Visibility updated on #{cabinets.length} cabinet#{'s' unless cabinets.length == 1}" \
+                  "#{" and #{toe_kicks.length} toe kick#{'s' unless toe_kicks.length == 1}" unless toe_kicks.empty?}.")
     end
     private_class_method :set_visibility
 
@@ -133,15 +140,22 @@ module KitchenCabinetMaster
     end
     private_class_method :delete
 
-    # Toggle: acts on EVERY cabinet in the model (the top level of the model, like
-    # Visibility). If any door or drawer is open they all close; otherwise they
-    # all open. The animation runs as one undoable step.
+    # Toggle: with a cabinet selected, only THAT cabinet's doors and drawers; with
+    # nothing selected, every cabinet in the model (the top level of the model,
+    # like Visibility). If any of them is open they all close; otherwise they all
+    # open. The animation runs as one undoable step.
     def self.toggle_all
       model = Sketchup.active_model
-      cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+      selected = SelectionManager.selected_cabinet(model)
+      cabinets = if selected
+                   [selected]
+                 else
+                   model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+                 end
       return Response.fail('There are no cabinets in the model yet.') if cabinets.empty?
 
       openables = cabinets.to_h { |cabinet| [cabinet, CabinetGenerator.openables_of(cabinet)] }
+      return Response.fail("#{selected.name} has no doors or drawers.") if selected && openables.values.all?(&:empty?)
       return Response.fail('None of the cabinets has doors or drawers.') if openables.values.all?(&:empty?)
 
       opening = openables.values.flatten.none? { |door| DoorAnimation.open?(door) }
@@ -149,8 +163,8 @@ module KitchenCabinetMaster
       return Response.ok('Nothing to do: the doors and drawers are already in that position.') if moves.empty?
 
       DoorAnimation.run(model, moves, opening ? 'Open Doors' : 'Close Doors')
-      Response.ok("#{opening ? 'Opening' : 'Closing'} #{moves.length} item#{'s' unless moves.length == 1} " \
-                  "in #{cabinets.length} cabinet#{'s' unless cabinets.length == 1}.")
+      scope = selected ? selected.name : "#{cabinets.length} cabinet#{'s' unless cabinets.length == 1}"
+      Response.ok("#{opening ? 'Opening' : 'Closing'} #{moves.length} item#{'s' unless moves.length == 1} in #{scope}.")
     end
     private_class_method :toggle_all
 

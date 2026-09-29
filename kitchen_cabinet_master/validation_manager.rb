@@ -21,9 +21,9 @@ module KitchenCabinetMaster
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
       'door_opening_angle'    => { label: 'Opening angle', min: 1.0, max: 170.0, unit: 'degrees' },
       'placement_gap'         => { label: 'Gap between cabinets', min: 0.0, max: 100.0 },
+      # A cabinet only needs the toe-kick HEIGHT (how far it stands off the floor);
+      # the toe kick itself is a separate entity, see validate_toe_kick.
       'toe_kick_height'       => { label: 'Toe-kick height', min: 0.0, max: 400.0, required: true, toe_kick: true },
-      'toe_kick_thickness'    => { label: 'Toe-kick thickness', min: 3.0, max: 50.0, required: true, toe_kick: true },
-      'toe_kick_piece_length' => { label: 'Toe-kick piece length', min: 100.0, max: 3000.0, toe_kick: true },
       'handle_length'         => { label: 'Handle length', min: 10.0, max: 2000.0 },
       'handle_side_offset'    => { label: 'Handle side offset', min: 0.0, max: 1000.0 },
       'handle_vertical_offset' => { label: 'Handle top/bottom offset', min: 0.0, max: 2000.0 },
@@ -216,24 +216,12 @@ module KitchenCabinetMaster
       end
 
       check_shelves(out, errors, bad)
-      check_toe_kick(out, errors, bad)
       check_corner(out, errors, bad)
 
       check_doors(out, door_count, errors, bad)
       check_drawers(out, drawer_count, errors, bad)
     end
     private_class_method :cross_check
-
-    def self.check_toe_kick(out, errors, bad)
-      return if out['cabinet_category'] == 'wall' || out['toe_kick_height'].to_f <= 0
-      return unless (bad & %w[depth toe_kick_thickness]).empty? && out['depth']
-
-      maximum = [out['depth'] - Defaults::TOE_KICK_RECESS - MIN_INTERIOR, 0].max
-      return unless out['toe_kick_thickness'] > maximum
-
-      errors << error('toe_kick_thickness', "Toe-kick thickness is too large for this depth (maximum #{fmt(maximum)} mm, with the toe kick set back #{fmt(Defaults::TOE_KICK_RECESS)} mm).")
-    end
-    private_class_method :check_toe_kick
 
     def self.check_shelves(out, errors, bad)
       count = out['shelf_count'].to_i
@@ -319,15 +307,15 @@ module KitchenCabinetMaster
 
     # ---- filler -----------------------------------------------------------
 
-    FILLER_FIELDS = %w[width depth height toe_kick_height toe_kick_thickness toe_kick_piece_length].freeze
+    FILLER_FIELDS = %w[width depth height toe_kick_height].freeze
 
     # A filler is a single board, not a cabinet: no catalog, doors, shelves, or
-    # per-category material. It reuses the cabinet's width/depth/height/toe-kick
-    # field rules, and check_toe_kick as-is (it only reads keys a filler also has).
+    # per-category material. It reuses the cabinet's width/depth/height field
+    # rules; its toe-kick height is only how far it is raised off the floor.
     def self.validate_filler(raw)
       raw = stringify_keys(raw)
       errors = []
-      out = { 'part_kind' => 'filler', 'toe_kick_material' => Defaults::SAME_AS_DOOR }
+      out = { 'part_kind' => 'filler' }
 
       category = raw['cabinet_category'].to_s
       if Defaults.category_ids.include?(category)
@@ -336,26 +324,58 @@ module KitchenCabinetMaster
         errors << error('cabinet_category', 'Select where this filler sits (Base, Wall or Tall).')
       end
 
-      out['include_toe_kick'] = raw.key?('include_toe_kick') ? truthy?(raw['include_toe_kick']) : true
       wall = category == 'wall'
 
       FILLER_FIELDS.each do |key|
         spec = NUMERIC_FIELDS[key]
-        next if spec[:toe_kick] && (wall || !out['include_toe_kick'])
+        next if spec[:toe_kick] && wall
 
         value, problem = numeric_field(raw, key, spec)
         out[key] = value unless value.nil?
         errors << problem if problem
       end
-      out['toe_kick_height'] = 0.0 if wall || !out['include_toe_kick']
+      out['toe_kick_height'] = 0.0 if wall
 
       out['material'] = raw['material'].to_s.strip
       errors << error('material', 'Select a material.') if out['material'].empty?
 
-      toe_material = raw['toe_kick_material'].to_s.strip
-      out['toe_kick_material'] = toe_material unless toe_material.empty?
+      Result.new(out, errors)
+    end
 
-      check_toe_kick(out, errors, errors.map { |e| e['field'] }) if out['include_toe_kick']
+    # ---- toe kick -----------------------------------------------------------
+
+    TOE_KICK_FIELDS = {
+      'toe_kick_height'       => { label: 'Toe-kick height', min: 1.0, max: 400.0, required: true },
+      'toe_kick_thickness'    => { label: 'Toe-kick thickness', min: 3.0, max: 50.0, required: true },
+      'toe_kick_piece_length' => { label: 'Piece length', min: 50.0, max: 3000.0, required: true },
+      'toe_kick_recess'       => { label: 'Recess from the carcass', min: 0.0, max: 500.0, required: true }
+    }.freeze
+    MAX_TOE_KICK_PIECES = 200
+
+    # A toe kick is a run of `toe_kick_pieces` pieces of `toe_kick_piece_length`,
+    # laid end to end. What it sits under (target depth, materials) is added by
+    # PartManager once it knows what is selected.
+    def self.validate_toe_kick(raw)
+      raw = stringify_keys(raw)
+      errors = []
+      out = { 'part_kind' => 'toe_kick', 'toe_kick_material' => Defaults::SAME_AS_DOOR }
+
+      TOE_KICK_FIELDS.each do |key, spec|
+        value, problem = numeric_field(raw, key, spec)
+        out[key] = value unless value.nil?
+        errors << problem if problem
+      end
+
+      count = to_float(raw['toe_kick_pieces'])
+      if count.nil? || count != count.round || count < 1 || count > MAX_TOE_KICK_PIECES
+        errors << error('toe_kick_pieces', "Number of pieces must be a whole number from 1 to #{MAX_TOE_KICK_PIECES}.")
+      else
+        out['toe_kick_pieces'] = count.to_i
+      end
+
+      material = raw['toe_kick_material'].to_s.strip
+      out['toe_kick_material'] = material unless material.empty?
+
       Result.new(out, errors)
     end
 

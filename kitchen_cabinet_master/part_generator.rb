@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Builds a filler or end panel and keeps it in step with its parameters.
-  # Much simpler than CabinetGenerator: at most a board and a toe kick, no
-  # doors, handles or indicator. Follows the same rules: Update never deletes
+  # Builds a filler, end panel or toe kick and keeps it in step with its
+  # parameters. Much simpler than CabinetGenerator: a board (or, for a toe kick,
+  # a row of pieces), no doors, handles or indicator. Follows the same rules: Update never deletes
   # and recreates, only the parts that changed are touched.
   module PartGenerator
     TOE_KICK_ROLE = 'toe_kick'
@@ -47,6 +47,9 @@ module KitchenCabinetMaster
       entities = root.definition.entities
       material = params['material'].to_s
       top = index_by_role(entities)
+
+      # A toe kick has no board: its pieces sit directly in the part, end to end.
+      return reconcile(model, entities, layout.toe_kick, material) unless layout.board
 
       place_board(model, entities, top, layout.board, material)
       sync_toe_kick(model, root, top, layout.toe_kick, ToeKick.material_name(params, material, material))
@@ -136,6 +139,15 @@ module KitchenCabinetMaster
       attributes = params.dup
       attributes['base_z'] = layout.base_z
       attributes['top_z'] = layout.top_z
+      unless layout.board
+        # A toe kick: the run's footprint, so a later toe kick can start where it ends.
+        attributes['width'] = ToeKick.total_length(params)
+        attributes['envelope_depth'] = params['toe_kick_thickness'].to_f
+        attributes['envelope_width'] = attributes['width']
+        attributes['envelope_top'] = layout.top_z
+        return attributes
+      end
+
       envelope = layout.board.extent.dup
       envelope[2] = layout.top_z # the board's own Z extent is just its thickness; the envelope needs the full height
       attributes['envelope_depth'] = envelope[0]

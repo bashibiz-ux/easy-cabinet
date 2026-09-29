@@ -34,6 +34,12 @@ module KitchenCabinetMaster
       "#{Defaults::NAME_PREFIXES.fetch('end_panel', 'EP')}#{format('%g', params['thickness'].to_f)}"
     end
 
+    # "TK600x3": a toe kick is named after its piece length and how many pieces.
+    def self.toe_kick_name(params)
+      prefix = Defaults::NAME_PREFIXES.fetch('toe_kick', 'TK')
+      "#{prefix}#{format('%g', params['toe_kick_piece_length'].to_f)}x#{params['toe_kick_pieces'].to_i}"
+    end
+
     # `base` if no cabinet in `entities` has it yet, otherwise the first free
     # "base#1", "base#2" ... `ignore` is a cabinet that is allowed to keep its own name.
     def self.unique_name(entities, base, ignore = nil)

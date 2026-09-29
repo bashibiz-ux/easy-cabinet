@@ -11,7 +11,7 @@ module KitchenCabinetMaster
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility].freeze
-    PART_ACTIONS = %w[insert_filler insert_end_panel update_part delete_part].freeze
+    PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick update_part delete_part].freeze
 
     class << self
       def show
@@ -88,6 +88,7 @@ module KitchenCabinetMaster
           'defaults'        => Defaults.params,
           'filler_defaults' => Defaults.filler_params,
           'end_panel_defaults' => Defaults.end_panel_params,
+          'toe_kick_defaults' => Defaults.toe_kick_params,
           'warnings'        => CatalogManager.warnings
         }
       end

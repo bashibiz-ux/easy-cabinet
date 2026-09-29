@@ -75,11 +75,13 @@ module KitchenCabinetMaster
 
       # Toe-kick rule: the whole carcass sits on top of the toe kick.
       # Cabinet Base Z = Toe Kick Height, Cabinet Top Z = Toe Kick Height + Cabinet Height.
+      # The toe kick itself is a separate entity (see ToeKick / PartLayout.toe_kick),
+      # so the cabinet's layout has none.
       base_z = round2(category == 'wall' ? 0.0 : params['toe_kick_height'].to_f)
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
-                 drawers: drawers, toe_kick: ToeKick.panels(params))
+                 drawers: drawers, toe_kick: [])
     end
 
     # The space a cabinet takes up, closed: [depth, width, top Z] in millimetres,

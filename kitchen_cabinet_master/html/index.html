@@ -31,6 +31,7 @@
             <option value="cabinet">Cabinet</option>
             <option value="filler">Filler</option>
             <option value="end_panel">End Panel</option>
+            <option value="toe_kick">Toe Kick</option>
           </select></div>
         </label>
       </div>
@@ -142,7 +143,7 @@
       </div>
     </section>
 
-    <!-- Cabinet (includes the individual size, material and shelves) -->
+    <!-- Cabinet (includes the individual size and shelves) -->
     <section class="card cabinet-only" id="sec-cabinet">
       <button class="card-head" type="button" aria-expanded="true">Cabinet</button>
       <div class="card-body">
@@ -168,17 +169,10 @@
             <div class="input"><input id="height" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <div class="grid-2 uneven">
-          <label class="field">
-            <span class="label">Cabinet Door Material</span>
-            <div class="input has-chip"><i class="chip" data-chip-for="cabinetMaterial"></i><select id="cabinetMaterial" data-material></select></div>
-          </label>
-          <label class="field">
-            <span class="label">Shelves</span>
-            <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
-          </label>
-        </div>
-        <p class="hint">The cabinet door material overrides the unit door material for this cabinet only.</p>
+        <label class="field narrow">
+          <span class="label">Shelves</span>
+          <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
+        </label>
         <label class="field narrow">
           <span class="label">Gap to next cabinet</span>
           <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
@@ -186,42 +180,42 @@
       </div>
     </section>
 
-    <!-- Toe Kick -->
-    <section class="card cabinet-only" id="sec-toe">
+    <!-- Toe Kick. With Insert Type = Cabinet only the height shows (how far the
+         cabinet stands off the floor); with Insert Type = Toe Kick every field shows. -->
+    <section class="card cabinet-or-toe" id="sec-toe">
       <button class="card-head" type="button" aria-expanded="true">Toe Kick</button>
       <div class="card-body">
         <p class="hint" id="toeNote" hidden>Wall units have no toe kick.</p>
+        <p class="hint" id="toeCabinetHint">The cabinet stands this high off the floor. Insert the toe kick itself with Insert Type = Toe Kick.</p>
         <div class="grid-2">
           <label class="field">
             <span class="label">Height</span>
             <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
-          <label class="field">
+          <label class="field toe-only">
             <span class="label">Thickness</span>
             <div class="input"><input id="toeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field">
+        <label class="field toe-only">
           <span class="label">Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
         </label>
-        <div class="grid-2">
-          <label class="field" for="pieceLength">
+        <div class="grid-2 toe-only">
+          <label class="field">
             <span class="label">Piece Length</span>
-            <div class="input">
-              <select id="pieceLength">
-                <option value="600">600 mm</option>
-                <option value="900">900 mm</option>
-                <option value="1200">1200 mm</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
+            <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
-          <label class="field" for="pieceCustom" id="pieceCustomField" hidden>
-            <span class="label">Custom length</span>
-            <div class="input"><input id="pieceCustom" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          <label class="field">
+            <span class="label">Number of Pieces</span>
+            <div class="input"><input id="pieceCount" type="text" inputmode="numeric" autocomplete="off"></div>
           </label>
         </div>
+        <label class="field narrow toe-only">
+          <span class="label">Recess from Carcass</span>
+          <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <p class="hint toe-only">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end.</p>
       </div>
     </section>
 
@@ -273,21 +267,11 @@
           <span class="label">Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
         </label>
-        <label class="check"><input type="checkbox" id="fillerIncludeToe" checked><span>Include Toe Kick</span></label>
-        <div class="grid-2" id="fillerToeFields">
-          <label class="field">
-            <span class="label">Toe-kick Height</span>
-            <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Toe-kick Thickness</span>
-            <div class="input"><input id="fillerToeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-        </div>
-        <label class="field" id="fillerToeMaterialField">
-          <span class="label">Toe-kick Material</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="fillerToeMaterial"></i><select id="fillerToeMaterial" data-material></select></div>
+        <label class="field narrow" id="fillerToeFields">
+          <span class="label">Toe-kick Height</span>
+          <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <p class="hint">How far the filler stands off the floor. The toe kick itself is inserted separately (Insert Type = Toe Kick).</p>
       </div>
     </section>
 
@@ -334,7 +318,7 @@
       <button class="btn danger" type="button" data-action="delete">Delete</button>
     </div>
     <div class="btn-row one">
-      <button class="btn" type="button" data-action="toggle" title="Open or close every door and drawer in the model">Toggle All Doors</button>
+      <button class="btn" type="button" data-action="toggle" title="Open or close the selected cabinet's doors; with nothing selected, every door in the model">Toggle Doors</button>
     </div>
   </footer>
 

@@ -7,9 +7,9 @@ module KitchenCabinetMaster
   module PartLayout
     Layout = Struct.new(:base_z, :top_z, :board, :toe_kick, keyword_init: true)
 
-    # A FILLER is a single flat board spanning the full configured size, standing
-    # on its own toe kick when one is wanted (reusing ToeKick, exactly as a
-    # cabinet's toe kick works, since a filler's params use the same field names).
+    # A FILLER is a single flat board spanning the full configured size, raised off
+    # the floor by the toe-kick height like a cabinet. It has no toe kick of its
+    # own: the toe kick is a separate entity (see toe_kick below).
     def self.filler(params)
       base_z = filler_base_z(params)
       height = params['height'].to_f
@@ -18,8 +18,13 @@ module KitchenCabinetMaster
         extent: [round2(params['depth'].to_f), round2(params['width'].to_f), round2(height)],
         offset: [0.0, 0.0, round2(base_z)]
       )
-      toe = params['include_toe_kick'] != false ? ToeKick.panels(params) : []
-      Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: toe)
+      Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: [])
+    end
+
+    # A TOE KICK is a run of equal pieces laid end to end along Y, standing on the
+    # floor. It has no board of its own: the pieces ARE the part (see ToeKick).
+    def self.toe_kick(params)
+      Layout.new(base_z: 0.0, top_z: round2(params['toe_kick_height']), board: nil, toe_kick: ToeKick.pieces(params))
     end
 
     def self.filler_base_z(params)

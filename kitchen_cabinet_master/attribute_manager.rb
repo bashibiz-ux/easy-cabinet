@@ -78,8 +78,10 @@ module KitchenCabinetMaster
     # A cabinet OR a part: anything with its own fixed footprint, for collision
     # avoidance (see PlacementManager). Every occupant carries 'envelope_depth',
     # 'envelope_width' and 'envelope_top' (mm, from its own local floor origin).
+    # A toe kick is a part too, but it stands under the cabinets' fronts rather
+    # than in the row, so it never blocks a cabinet and is not an occupant.
     def self.occupant?(entity)
-      cabinet?(entity) || part?(entity)
+      cabinet?(entity) || (part?(entity) && part_kind(entity) != 'toe_kick')
     end
 
     # Every child component of a cabinet (carcass, panels, later doors ...) is

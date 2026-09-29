@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.9.3';
+  const APP_VERSION = '0.10.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -24,8 +24,7 @@
 
   const FILLER_FIELD_TO_ELEMENT = {
     cabinet_category: 'fillerCategory', width: 'fillerWidth', depth: 'fillerDepth', height: 'fillerHeight',
-    material: 'fillerMaterial', toe_kick_height: 'fillerToeHeight', toe_kick_thickness: 'fillerToeThickness',
-    toe_kick_material: 'fillerToeMaterial'
+    material: 'fillerMaterial', toe_kick_height: 'fillerToeHeight'
   };
   const END_PANEL_FIELD_TO_ELEMENT = { side: 'epSide', thickness: 'epThickness', material: 'epMaterial' };
 
@@ -49,13 +48,14 @@
     depth: 'depth',
     height: 'height',
     shelf_count: 'shelves',
-    cabinet_material: 'cabinetMaterial',
     carcass_material: 'carcassMaterial',
     door_symbol: 'doorSymbol',
     toe_kick_height: 'toeHeight',
     toe_kick_thickness: 'toeThickness',
     toe_kick_material: 'toeMaterial',
     toe_kick_piece_length: 'pieceLength',
+    toe_kick_pieces: 'pieceCount',
+    toe_kick_recess: 'toeRecess',
     handle_length: 'handleLength',
     handle_finish: 'handleFinish',
     handle_material: 'handleMaterial',
@@ -80,6 +80,9 @@
     shelf_count: 'shelves',
     toe_kick_height: 'toeHeight',
     toe_kick_thickness: 'toeThickness',
+    toe_kick_piece_length: 'pieceLength',
+    toe_kick_pieces: 'pieceCount',
+    toe_kick_recess: 'toeRecess',
     handle_side_offset: 'handleSide',
     handle_vertical_offset: 'handleVert',
     handle_custom_x: 'handleCustomX',
@@ -91,7 +94,6 @@
     base_material: 'baseMaterial',
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
-    cabinet_material: 'cabinetMaterial',
     carcass_material: 'carcassMaterial',
     door_symbol: 'doorSymbol',
     toe_kick_material: 'toeMaterial',
@@ -102,8 +104,7 @@
     handle_position: 'handlePosition'
   };
 
-  const PIECE_PRESETS = [600, 900, 1200];
-    const REQUEST_TIMEOUT_MS = 20000;
+  const REQUEST_TIMEOUT_MS = 20000;
 
   const state = {
     meta: null,
@@ -157,26 +158,63 @@
       setInsertType('cabinet');
       loadCabinet(data);
     } else if (name === 'part_selected') {
-      setInsertType(data.part_kind === 'end_panel' ? 'end_panel' : 'filler');
+      const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
+      setInsertType(kind);
       setBadge(data.part_name);
-      if (data.part_kind === 'end_panel') applyEndPanelDefaults(data);
+      if (kind === 'end_panel') applyEndPanelDefaults(data);
+      else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
     } else if (name === 'cabinet_cleared') {
       setBadge(null);
     }
   }
 
-  // Shows the section for whichever kind is being worked on (Cabinet, Filler or
-  // End Panel) and hides the actions that only make sense for a full cabinet
-  // (Duplicate). Toggle acts on every cabinet in the model, so it is always shown.
+  // Shows the section for whichever kind is being worked on (Cabinet, Filler,
+  // End Panel or Toe Kick) and hides the actions that only make sense for a full
+  // cabinet (Duplicate). Toggle acts on the cabinets, so it is always shown.
+  // Choosing a kind opens its section so the fields are in view.
   function setInsertType(type) {
+    const changed = state.insertType !== type;
     state.insertType = type;
     $('insertType').value = type;
     document.querySelectorAll('.cabinet-only').forEach((el) => { el.hidden = type !== 'cabinet'; });
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = type !== 'cabinet'; });
+    $('sec-toe').hidden = !['cabinet', 'toe_kick'].includes(type);
+    document.querySelectorAll('.toe-only').forEach((el) => { el.hidden = type !== 'toe_kick'; });
+    $('toeCabinetHint').hidden = type !== 'cabinet';
     $('sec-filler').hidden = type !== 'filler';
     $('sec-end-panel').hidden = type !== 'end_panel';
     document.querySelector('.preview').hidden = type !== 'cabinet';
+    updateCategoryUi();
+
+    const section = { filler: 'sec-filler', end_panel: 'sec-end-panel', toe_kick: 'sec-toe' }[type];
+    if (changed && section) toggleCard($(section), true);
+  }
+
+  function applyToeKickDefaults(d) {
+    setText('toeHeight', d.toe_kick_height);
+    setText('toeThickness', d.toe_kick_thickness);
+    setText('pieceLength', d.toe_kick_piece_length);
+    setText('pieceCount', d.toe_kick_pieces);
+    setText('toeRecess', d.toe_kick_recess);
+    const material = d.toe_kick_material === '__cabinet__' ? '__door__' : d.toe_kick_material;
+    setSelect('toeMaterial', material || '__door__');
+    updateChips();
+  }
+
+  function collectToeKick() {
+    return {
+      toe_kick_height: $('toeHeight').value,
+      toe_kick_thickness: $('toeThickness').value,
+      toe_kick_material: $('toeMaterial').value,
+      toe_kick_piece_length: $('pieceLength').value,
+      toe_kick_pieces: $('pieceCount').value,
+      toe_kick_recess: $('toeRecess').value,
+      // Used only when nothing is selected: the carcass depth the toe kick sits under.
+      depth: $('depth').value,
+      // A new toe kick follows the Toe Kick tick in the Visibility section.
+      visible: $('visToe').checked
+    };
   }
 
   function applyFillerDefaults(d) {
@@ -185,13 +223,8 @@
     setText('fillerDepth', d.depth);
     setText('fillerHeight', d.height);
     setSelect('fillerMaterial', d.material);
-    $('fillerIncludeToe').checked = d.include_toe_kick !== false;
     setText('fillerToeHeight', d.toe_kick_height);
-    setText('fillerToeThickness', d.toe_kick_thickness);
-    const toeMat = d.toe_kick_material === '__cabinet__' ? '__door__' : d.toe_kick_material;
-    setSelect('fillerToeMaterial', toeMat || '__door__');
     updateChips();
-    updateFillerToeUi();
   }
 
   function applyEndPanelDefaults(d) {
@@ -201,16 +234,6 @@
     updateChips();
   }
 
-  // A filler's own toe kick follows the same rule as a cabinet's: none for a
-  // wall filler, otherwise on unless the box is unticked.
-  function updateFillerToeUi() {
-    const wall = $('fillerCategory').value === 'wall';
-    $('fillerIncludeToe').disabled = wall;
-    const show = $('fillerIncludeToe').checked && !wall;
-    $('fillerToeFields').hidden = !show;
-    $('fillerToeMaterialField').hidden = !show;
-  }
-
   function collectFiller() {
     return {
       cabinet_category: $('fillerCategory').value,
@@ -218,10 +241,7 @@
       depth: $('fillerDepth').value,
       height: $('fillerHeight').value,
       material: $('fillerMaterial').value,
-      include_toe_kick: $('fillerIncludeToe').checked,
       toe_kick_height: $('fillerToeHeight').value,
-      toe_kick_thickness: $('fillerToeThickness').value,
-      toe_kick_material: $('fillerToeMaterial').value,
       // Fillers join the same row as cabinets, so they share the Cabinet
       // section's "Gap to next cabinet" field even while that section is hidden.
       placement_gap: $('gap').value
@@ -242,7 +262,7 @@
     if (state.insertType === 'cabinet' || !['insert', 'update', 'delete'].includes(action)) return action;
     if (action === 'update') return 'update_part';
     if (action === 'delete') return 'delete_part';
-    return state.insertType === 'filler' ? 'insert_filler' : 'insert_end_panel';
+    return { filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' }[state.insertType];
   }
 
   /* ---------------------------------------------------------------------- *
@@ -295,12 +315,10 @@
     });
     ['baseMaterial', 'wallMaterial', 'tallMaterial'].forEach((id) => fillSelect($(id), panel));
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
-    fillSelect($('cabinetMaterial'), panel, { placeholder: 'Use unit door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('fillerMaterial'), panel);
     fillSelect($('epMaterial'), panel);
-    fillSelect($('fillerToeMaterial'), [{ id: '__door__', name: 'Same as filler material' }, ...panel]);
     updateChips();
   }
 
@@ -332,36 +350,6 @@
    * Form <-> parameters
    * ---------------------------------------------------------------------- */
 
-  // Pieces of `piece` mm with the leftover as the last piece; a sliver (< 100 mm) is
-  // shared with the previous piece instead. Mirrors ToeKick.segment_widths in Ruby.
-  function toeSegments(width, piece) {
-    if (!(piece > 0) || width <= piece) return [width];
-    const full = Math.floor(width / piece);
-    const rest = width - full * piece;
-    if (rest < 0.01) return Array(full).fill(piece);
-    if (rest >= 100) return [...Array(full).fill(piece), rest];
-    return [...Array(full - 1).fill(piece), (piece + rest) / 2, (piece + rest) / 2];
-  }
-
-  function getPieceLength() {
-    return $('pieceLength').value === 'custom' ? $('pieceCustom').value : $('pieceLength').value;
-  }
-
-  function setPieceLength(value) {
-    const n = num(value);
-    if (PIECE_PRESETS.includes(n)) {
-      $('pieceLength').value = String(n);
-    } else if (Number.isFinite(n)) {
-      $('pieceLength').value = 'custom';
-      $('pieceCustom').value = fmt(n);
-    }
-    syncPieceCustom();
-  }
-
-  function syncPieceCustom() {
-    $('pieceCustomField').hidden = $('pieceLength').value !== 'custom';
-  }
-
   function collect() {
     const withHandle = !!$('handle').value;
     const handleValue = (id) => (withHandle ? $(id).value : '');
@@ -384,13 +372,9 @@
       depth: $('depth').value,
       height: $('height').value,
       shelf_count: $('shelves').value,
-      cabinet_material: $('cabinetMaterial').value,
       carcass_material: $('carcassMaterial').value,
       door_symbol: $('doorSymbol').value,
       toe_kick_height: $('toeHeight').value,
-      toe_kick_thickness: $('toeThickness').value,
-      toe_kick_material: $('toeMaterial').value,
-      toe_kick_piece_length: getPieceLength(),
       handle_length: handleValue('handleLength'),
       handle_finish: handleValue('handleFinish'),
       handle_material: handleValue('handleMaterial'),
@@ -421,7 +405,6 @@
       if (key in p) setSelect(id, p[key]);
     });
     if ('show_opening_direction' in p) $('showDirection').checked = !!p.show_opening_direction;
-    if ('toe_kick_piece_length' in p) setPieceLength(p.toe_kick_piece_length);
     if (p.visibility_settings && typeof p.visibility_settings === 'object') {
       const v = p.visibility_settings;
       if ('carcass' in v) $('visCarcass').checked = !!v.carcass;
@@ -523,12 +506,13 @@
     setText('shelves', cabinet.shelves === undefined ? 0 : cabinet.shelves);
   }
 
+  // A wall unit stands on nothing, so the toe-kick height does not apply to it.
+  // (When inserting a toe kick itself the category does not matter.)
   function updateCategoryUi() {
-    const isWall = $('category').value === 'wall';
+    const isWall = state.insertType === 'cabinet' && $('category').value === 'wall';
     $('sec-toe').classList.toggle('is-disabled', isWall);
     $('sec-toe').querySelectorAll('input, select').forEach((el) => { el.disabled = isWall; });
     $('toeNote').hidden = !isWall;
-    $('visToe').disabled = isWall;
   }
 
   async function loadCabinet(params) {
@@ -594,14 +578,6 @@
       const inset = Math.min(8, bw * 0.05);
       const toeW = bw - 2 * inset;
       out.push(`<rect class="pv-toe" x="${x0 + inset}" y="${bodyBottom}" width="${toeW}" height="${th}"/>`);
-      // Segment joints: pieces of the chosen length, the leftover last (same rule as ToeKick in Ruby).
-      const widths = toeSegments(W, num(getPieceLength())).slice(0, 40);
-      let along = 0;
-      widths.slice(0, -1).forEach((piece) => {
-        along += piece;
-        const x = x0 + inset + (toeW * along) / W;
-        out.push(`<line class="pv-joint" x1="${x}" y1="${bodyBottom}" x2="${x}" y2="${floorY}"/>`);
-      });
     }
     out.push(`<rect class="pv-body" x="${x0}" y="${bodyTop}" width="${bw}" height="${bh}"/>`);
 
@@ -675,8 +651,7 @@
       : state.insertType === 'end_panel' ? END_PANEL_FIELD_TO_ELEMENT : FIELD_TO_ELEMENT;
     let first = null;
     (errors || []).forEach((error) => {
-      let id = map[error.field];
-      if (error.field === 'toe_kick_piece_length' && $('pieceLength').value === 'custom') id = 'pieceCustom';
+      const id = map[error.field];
       const el = id ? $(id) : null;
       if (!el) return;
       const field = el.closest('.field');
@@ -714,8 +689,8 @@
       const usesForm = ['insert', 'update'].includes(action);
       let payload = {};
       if (usesForm) {
-        payload = state.insertType === 'filler' ? collectFiller()
-          : state.insertType === 'end_panel' ? collectEndPanel() : collect();
+        const collectors = { filler: collectFiller, end_panel: collectEndPanel, toe_kick: collectToeKick };
+        payload = (collectors[state.insertType] || collect)();
       }
       const res = await call(mapAction(action), payload);
       if (res.ok) {
@@ -760,7 +735,6 @@
     });
     setSelect('category', d.cabinet_category);
     $('showDirection').checked = !!d.show_opening_direction;
-    setPieceLength(d.toe_kick_piece_length);
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
@@ -778,8 +752,9 @@
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
     m.defaults = m.defaults || {};
-    m.filler_defaults = m.filler_defaults || { cabinet_category: 'base', width: 100, depth: 560, height: 780, material: 'White Melamine', include_toe_kick: true, toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__' };
+    m.filler_defaults = m.filler_defaults || { cabinet_category: 'base', width: 100, depth: 560, height: 780, material: 'White Melamine', toe_kick_height: 100 };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White Melamine' };
+    m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 600, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
 
@@ -798,6 +773,7 @@
     applyDefaults(m.defaults);
     applyFillerDefaults(m.filler_defaults);
     applyEndPanelDefaults(m.end_panel_defaults);
+    applyToeKickDefaults(m.toe_kick_defaults);
     updateCategoryUi();
     setInsertType('cabinet');
     await refreshCabinets();
@@ -823,10 +799,7 @@
       applyCabinetDefaults();
       drawPreview();
     });
-    $('pieceLength').addEventListener('change', syncPieceCustom);
     $('insertType').addEventListener('change', () => setInsertType($('insertType').value));
-    $('fillerIncludeToe').addEventListener('change', updateFillerToeUi);
-    $('fillerCategory').addEventListener('change', updateFillerToeUi);
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);
 
@@ -852,6 +825,11 @@
 
   async function init() {
     wireEvents();
+    setInsertType('cabinet'); // the panel is a cabinet form until told otherwise
+    // Every section starts closed; the user opens the ones they need.
+    document.querySelectorAll('.card').forEach((card) => {
+      if (card.querySelector('.card-head')) toggleCard(card, false);
+    });
     try {
       const res = await call('init');
       if (!res.ok) throw new Error(res.message || 'The panel could not start.');

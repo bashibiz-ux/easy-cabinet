@@ -153,7 +153,7 @@ class CornerDoorTest < Minitest::Test
     refute DoorAnimation.plan_symbol?('elevation')
     assert_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'elevation')
     refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'plan')
-    assert_equal 'elevation', Defaults.params['door_symbol'], 'new cabinets draw the symbol on the door'
+    assert_equal 'plan', Defaults.params['door_symbol'], 'new cabinets draw the opening direction on the floor plan'
   end
 
   def test_ordinary_door_is_unchanged
