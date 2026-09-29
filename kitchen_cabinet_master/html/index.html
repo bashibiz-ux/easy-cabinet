@@ -172,26 +172,22 @@
           <span class="label">Shelves</span>
           <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
         </label>
-        <label class="field narrow">
+        <label class="field narrow cabinet-only">
           <span class="label">Gap to next cabinet</span>
           <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
 
         <!-- Filler: shown when Cabinet Category = Filler. A single board, inserted into the row like a cabinet. -->
         <div class="subblock filler-only" id="sub-filler" hidden>
-          <p class="hint">A single board (no doors), inserted into the row like a cabinet. Use the Insert button below.</p>
-          <label class="field">
-            <span class="label">Position</span>
-            <div class="input"><select id="fillerCategory"></select></div>
-          </label>
+          <p class="hint">Enter the size, select the cabinet, then Insert. The filler goes on the cabinet's wall side with its front flush with the door, at the same height off the floor as the cabinet. Height and material start as the selected cabinet's.</p>
           <div class="grid-3">
             <label class="field">
               <span class="label">Width</span>
               <div class="input"><input id="fillerWidth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field">
-              <span class="label">Depth</span>
-              <div class="input"><input id="fillerDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+              <span class="label">Thickness</span>
+              <div class="input"><input id="fillerThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field">
               <span class="label">Height</span>
@@ -202,15 +198,11 @@
             <span class="label">Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
           </label>
-          <label class="field narrow" id="fillerToeFields">
-            <span class="label">Height off the Floor</span>
-            <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
         </div>
 
         <!-- End Panel: shown when Cabinet Category = End Panel. Covers the exposed side of the selected cabinet or filler. -->
         <div class="subblock end-panel-only" id="sub-end-panel" hidden>
-          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side.</p>
+          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side. Its material starts as that cabinet's door material.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Side</span>

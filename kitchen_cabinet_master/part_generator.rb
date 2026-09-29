@@ -150,7 +150,8 @@ module KitchenCabinetMaster
 
       envelope = layout.board.extent.dup
       envelope[2] = layout.top_z # the board's own Z extent is just its thickness; the envelope needs the full height
-      attributes['envelope_depth'] = envelope[0]
+      # From the part's origin to the board's far (front) face; a filler is set forward of it.
+      attributes['envelope_depth'] = layout.board.offset[0] + envelope[0]
       attributes['envelope_width'] = params['part_kind'] == 'filler' ? params['width'].to_f : envelope[1]
       attributes['envelope_top'] = layout.top_z
       attributes

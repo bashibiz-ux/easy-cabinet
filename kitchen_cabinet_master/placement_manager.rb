@@ -69,6 +69,13 @@ module KitchenCabinetMaster
       rows.each_with_index.max_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
 
+    # The cabinet (not a filler) that was inserted most recently, or nil. What a
+    # filler goes against when no cabinet is selected.
+    def self.last_cabinet(model)
+      cabinets = model.active_entities.grep(Sketchup::ComponentInstance).select { |i| AttributeManager.cabinet?(i) }
+      cabinets.each_with_index.max_by { |i, index| [i.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
+    end
+
     # `slot` moved to the far end of its own width, then turned by `degrees` about
     # the new origin. For -90 the item's back ends up on the far side of its slot.
     def self.turned(slot, degrees, width)

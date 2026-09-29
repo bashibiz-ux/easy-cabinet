@@ -132,10 +132,10 @@ class ToeKickTest < Minitest::Test
   end
 
   def test_a_filler_has_no_toe_kick
-    filler = Defaults.filler_params
+    filler = Defaults.filler_params.merge('target_base_z' => 100.0, 'target_flush_x' => 580.0)
     layout = PartLayout.filler(filler)
     assert_empty layout.toe_kick
-    assert_equal 100.0, layout.base_z
+    assert_equal 100.0, layout.base_z, 'stands as high off the floor as the cabinet it goes beside'
   end
 
   def test_the_toe_kick_layout_is_pieces_only

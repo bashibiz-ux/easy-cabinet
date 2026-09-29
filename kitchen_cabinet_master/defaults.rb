@@ -130,16 +130,17 @@ module KitchenCabinetMaster
       'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true }
     }.freeze
 
-    # A filler: where it sits (base / wall / tall decides its base Z), its size and
-    # material. `toe_kick_height` is how far it is raised off the floor, the same
-    # as a cabinet; it has no toe kick of its own (that is a separate entity).
+    # A filler: a flat board beside a cabinet, on its wall side, with its front face
+    # flush with the door. `width` is how wide the gap it fills is, `thickness` how
+    # thick the board is (front to back). Its height and how far it stands off the
+    # floor follow the cabinet it is inserted against (the height field only
+    # starts out as that cabinet's height); its material starts as that cabinet's
+    # door material.
     FILLER_PARAMS = {
-      'cabinet_category'      => 'base',
-      'width'                 => 100.0,
-      'depth'                 => 560.0,
-      'height'                => 780.0,
-      'material'              => DEFAULT_MATERIAL,
-      'toe_kick_height'       => 100.0
+      'width'     => 100.0,
+      'thickness' => 18.0,
+      'height'    => 780.0,
+      'material'  => DEFAULT_MATERIAL
     }.freeze
 
     # A toe kick: a run of `toe_kick_pieces` pieces, each `toe_kick_piece_length`

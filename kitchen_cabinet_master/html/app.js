@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.11.1';
+  const APP_VERSION = '0.11.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -18,8 +18,7 @@
   };
 
   const FILLER_FIELD_TO_ELEMENT = {
-    cabinet_category: 'fillerCategory', width: 'fillerWidth', depth: 'fillerDepth', height: 'fillerHeight',
-    material: 'fillerMaterial', toe_kick_height: 'fillerToeHeight'
+    width: 'fillerWidth', thickness: 'fillerThickness', height: 'fillerHeight', material: 'fillerMaterial'
   };
   const END_PANEL_FIELD_TO_ELEMENT = { side: 'epSide', thickness: 'epThickness', material: 'epMaterial' };
 
@@ -113,7 +112,9 @@
     busy: false,
     lastMaterialRefresh: 0,
     // What is selected in the model: 'cabinet', 'filler', 'end_panel', 'toe_kick' or null.
-    selectedKind: null
+    selectedKind: null,
+    // Filler / end panel fields the user has set themselves (see followCabinet).
+    touched: new Set()
   };
 
   /* ---------------------------------------------------------------------- *
@@ -204,13 +205,32 @@
   }
 
   function applyFillerDefaults(d) {
-    setSelect('fillerCategory', d.cabinet_category);
     setText('fillerWidth', d.width);
-    setText('fillerDepth', d.depth);
+    setText('fillerThickness', d.thickness);
     setText('fillerHeight', d.height);
     setSelect('fillerMaterial', d.material);
-    setText('fillerToeHeight', d.toe_kick_height);
     updateChips();
+  }
+
+  // A filler's height, and the material of a filler or end panel, START as those
+  // of the cabinet in the model (its height and door material) and follow it as
+  // cabinets are selected, until the user types or picks their own. Then they
+  // stay put, so "enter the data, select the cabinet, Insert" keeps what was entered.
+  const FOLLOWS_CABINET = ['fillerHeight', 'fillerMaterial', 'epMaterial'];
+
+  function followCabinet(cabinet) {
+    const set = (id, apply) => { if (!state.touched.has(id)) apply(); };
+    if (cabinet.height) set('fillerHeight', () => setText('fillerHeight', cabinet.height));
+    if (cabinet.material) {
+      set('fillerMaterial', () => setSelect('fillerMaterial', cabinet.material));
+      set('epMaterial', () => setSelect('epMaterial', cabinet.material));
+    }
+    updateChips();
+  }
+
+  // After a filler or end panel is inserted, the next one starts from the cabinet again.
+  function resetFollowing() {
+    FOLLOWS_CABINET.forEach((id) => state.touched.delete(id));
   }
 
   function applyEndPanelDefaults(d) {
@@ -222,15 +242,10 @@
 
   function collectFiller() {
     return {
-      cabinet_category: $('fillerCategory').value,
       width: $('fillerWidth').value,
-      depth: $('fillerDepth').value,
+      thickness: $('fillerThickness').value,
       height: $('fillerHeight').value,
-      material: $('fillerMaterial').value,
-      toe_kick_height: $('fillerToeHeight').value,
-      // Fillers join the same row as cabinets, so they share the Cabinet
-      // section's "Gap to next cabinet" field even while that section is hidden.
-      placement_gap: $('gap').value
+      material: $('fillerMaterial').value
     };
   }
 
@@ -554,6 +569,7 @@
 
   async function loadCabinet(params) {
     setBadge(params.cabinet_name || params.cabinet_id || null);
+    followCabinet({ height: params.height, material: params.material });
     setSelect('catalog', params.catalog_id);
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
@@ -737,6 +753,7 @@
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
+        if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
         markInvalid(res.errors, kind, { focus: !live });
         setStatus('error', res.message, (res.errors || []).length > 1 ? res.errors.map((e) => e.message) : []);
@@ -844,7 +861,7 @@
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
     m.defaults = m.defaults || {};
-    m.filler_defaults = m.filler_defaults || { cabinet_category: 'base', width: 100, depth: 560, height: 780, material: 'White', toe_kick_height: 100 };
+    m.filler_defaults = m.filler_defaults || { width: 100, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 600, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
@@ -860,7 +877,6 @@
     fillWidthPreset();
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
-    fillSelect($('fillerCategory'), m.categories);
     fillSelect($('epSide'), m.end_panel_sides);
     loadMaterials(m.materials);
     applyDefaults(m.defaults);
@@ -916,6 +932,7 @@
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
         liveEdit(el); // update the selected item with what was just entered
+        if (FOLLOWS_CABINET.includes(el.id)) state.touched.add(el.id); // the user's own value now
       };
       el.addEventListener('input', onEdit);
       el.addEventListener('change', onEdit);

@@ -297,38 +297,30 @@ module KitchenCabinetMaster
 
     # ---- filler -----------------------------------------------------------
 
-    FILLER_FIELDS = %w[width depth height toe_kick_height].freeze
+    # A filler is a single board beside a cabinet: no catalog, doors or shelves.
+    # A filler can be far narrower than a cabinet, so it has its own width limits.
+    FILLER_FIELDS = {
+      'width'     => { label: 'Filler width', min: 5.0, max: 1000.0, required: true },
+      'thickness' => { label: 'Filler thickness', min: 3.0, max: 60.0, required: true },
+      'height'    => { label: 'Filler height', min: 50.0, max: 3000.0, required: true }
+    }.freeze
 
-    # A filler is a single board, not a cabinet: no catalog, doors, shelves, or
-    # per-category material. It reuses the cabinet's width/depth/height field
-    # rules; its toe-kick height is only how far it is raised off the floor.
+    # Only its own size and material are validated here. Where it goes (which
+    # cabinet, which side, how high off the floor) comes from the cabinet it is
+    # inserted against, see PartManager. A blank material is filled in there too,
+    # from that cabinet's door; without one it is the plain white default.
     def self.validate_filler(raw)
       raw = stringify_keys(raw)
       errors = []
       out = { 'part_kind' => 'filler' }
 
-      category = raw['cabinet_category'].to_s
-      if Defaults.category_ids.include?(category)
-        out['cabinet_category'] = category
-      else
-        errors << error('cabinet_category', 'Select where this filler sits (Base, Wall or Tall).')
-      end
-
-      wall = category == 'wall'
-
-      FILLER_FIELDS.each do |key|
-        spec = NUMERIC_FIELDS[key]
-        next if spec[:toe_kick] && wall
-
+      FILLER_FIELDS.each do |key, spec|
         value, problem = numeric_field(raw, key, spec)
         out[key] = value unless value.nil?
         errors << problem if problem
       end
-      out['toe_kick_height'] = 0.0 if wall
 
       out['material'] = raw['material'].to_s.strip
-      out['material'] = Defaults::DEFAULT_MATERIAL if out['material'].empty?
-
       Result.new(out, errors)
     end
 

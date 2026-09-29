@@ -19,26 +19,94 @@ module KitchenCabinetMaster
 
     # ---- filler ---------------------------------------------------------------
 
+    # A filler goes against a cabinet: the selected one (else the last one
+    # inserted), on its wall side, with its front face flush with the door. The
+    # side is the one with nothing against it (the right when both are free, so a
+    # cabinet inserted next carries on after the filler). Its base height comes
+    # from the cabinet, and its material from the cabinet's door unless one is
+    # given. What it needs from the cabinet is copied into its stored parameters,
+    # so a later Update never has to look the cabinet up again.
     def self.insert_filler(raw)
-      params, failure = prepare_filler(raw)
+      model = Sketchup.active_model
+      target = SelectionManager.selected_cabinet(model) || PlacementManager.last_cabinet(model)
+      unless target
+        return Response.fail('Select the cabinet the filler goes beside. It is placed on its wall side, flush with the door.')
+      end
+
+      target_params = AttributeManager.read(target)
+      params, failure = prepare_filler(with_default_material(raw, target_params))
       return failure if failure
 
-      model = Sketchup.active_model
+      params.merge!(filler_target(target, target_params))
+      transformation, side, problem = filler_placement(target, params)
+      return Response.fail(problem) if problem
+
+      params['side'] = side
+      layout = PartLayout.filler(params)
+      entities = target.parent.entities
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Filler') do
           params['part_id'] = AttributeManager.next_part_id(model)
           params['sequence'] = AttributeManager.next_sequence(model)
-          layout = PartLayout.filler(params)
-          entities, transformation = PlacementManager.target_row(model, params, PartLayout.filler_envelope(params))
           params['part_name'] = NamingManager.unique_name(entities, NamingManager.filler_name(params))
           PartGenerator.build(model, entities, params, transformation, layout)
         end
       end
 
       SelectionManager.select(root)
-      Response.ok("#{root.name} inserted.", { 'part_id' => AttributeManager.part_id(root) })
+      Response.ok("#{root.name} inserted on the #{side} of #{target.name}.", { 'part_id' => AttributeManager.part_id(root) })
     end
     private_class_method :insert_filler
+
+    # What a filler needs from the cabinet it goes against. `target_flush_x` is the
+    # door front: the carcass depth plus the door clearance and door thickness (a
+    # corner unit is a square with nothing standing proud of it).
+    def self.filler_target(target, target_params)
+      corner = target_params['cabinet_category'] == 'corner'
+      depth = (corner ? target_params['width'] : target_params['depth']).to_f
+      flush = corner ? depth : depth + Defaults::DOOR_CLEARANCE + target_params['material_thickness'].to_f
+      {
+        'target_id' => AttributeManager.cabinet_id(target),
+        'target_width' => target_params['width'].to_f,
+        'target_depth' => depth,
+        'target_base_z' => target_params['base_z'].to_f,
+        'target_flush_x' => flush
+      }
+    end
+    private_class_method :filler_target
+
+    # Directly against the cabinet's right or left face, in the cabinet's own
+    # frame (so it follows its position and rotation). The first side with room
+    # wins: right, then left.
+    def self.filler_placement(target, params)
+      entities = target.parent.entities
+      size = PartLayout.filler_envelope(params)
+      sides = {
+        'right' => params['target_width'],
+        'left' => -params['width']
+      }
+      sides.each do |side, offset|
+        transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, offset.mm, 0))
+        return [transformation, side, nil] unless PlacementManager.collides?(entities, transformation, size)
+      end
+      [nil, nil, "Both sides of #{target.name} already have something against them, so there is no room for a filler."]
+    end
+    private_class_method :filler_placement
+
+    # A blank material means "the same as the door it goes with".
+    def self.with_default_material(raw, source_params)
+      raw = raw.is_a?(Hash) ? raw.transform_keys(&:to_s) : {}
+      raw['material'] = door_material_of(source_params) if raw['material'].to_s.strip.empty?
+      raw
+    end
+    private_class_method :with_default_material
+
+    # The door colour recorded on a cabinet or filler (never blank).
+    def self.door_material_of(stored)
+      material = stored['material'].to_s
+      material.empty? ? CabinetGenerator.door_material(stored) : material
+    end
+    private_class_method :door_material_of
 
     # ---- end panel --------------------------------------------------------------
 
@@ -51,15 +119,17 @@ module KitchenCabinetMaster
       target = SelectionManager.selected_occupant(model)
       return Response.fail('Select a cabinet or filler first, then choose which side gets the end panel.') unless target
 
-      params, failure = prepare_end_panel(raw)
+      target_params = AttributeManager.read(target)
+      params, failure = prepare_end_panel(with_default_material(raw, target_params))
       return failure if failure
 
-      target_params = AttributeManager.read(target)
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
                              target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
-      params['target_depth'] = target_params['depth'].to_f
-      params['target_top'] = CabinetLayout.envelope(target_params)[2]
+      # A filler stands forward to the door front; a cabinet's end panel covers its carcass.
+      filler = AttributeManager.part_kind(target) == 'filler'
+      params['target_depth'] = (filler ? target_params['target_flush_x'] : target_params['depth']).to_f
+      params['target_top'] = target_params['envelope_top'] || CabinetLayout.envelope(target_params)[2]
 
       layout = PartLayout.end_panel(params)
       transformation, collision = placed_transformation(target, params)
@@ -197,8 +267,10 @@ module KitchenCabinetMaster
       if AttributeManager.part_kind(anchor) == 'toe_kick'
         stored.slice('target_depth', 'target_door_material', 'target_carcass_material')
       elsif AttributeManager.part_kind(anchor) == 'filler'
-        { 'target_depth' => stored['depth'].to_f, 'target_door_material' => stored['material'].to_s,
-          'target_carcass_material' => stored['material'].to_s }
+        # The carcass depth of the cabinet the filler goes beside (recorded when it was inserted).
+        material = door_material_of(stored)
+        { 'target_depth' => stored['target_depth'].to_f, 'target_door_material' => material,
+          'target_carcass_material' => material }
       else
         # The door material the cabinet was actually built with; if it never
         # recorded one (an older cabinet), work it out so this is never blank.
@@ -262,25 +334,39 @@ module KitchenCabinetMaster
     end
     private_class_method :update_part
 
+    # Its size and material can change; where it sits (the cabinet, the side, the
+    # base height, the door front) stays as inserted, copied back from what was
+    # stored then.
     def self.update_filler(model, root, raw)
-      params, failure = prepare_filler(raw)
+      stored = AttributeManager.read(root)
+      params, failure = prepare_filler(with_default_material(raw, stored))
       return failure if failure
 
+      %w[target_id target_width target_depth target_base_z target_flush_x side].each { |key| params[key] = stored[key] }
       params['part_id'] = AttributeManager.part_id(root)
       layout = PartLayout.filler(params)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.filler_name(params))
 
-      SelectionManager.suspend { with_operation(model, 'Update Filler') { PartGenerator.update(model, root, params, layout) } }
+      # A filler on the left keeps its right edge against the cabinet when its width changes.
+      transformation = nil
+      shift = stored['width'].to_f - params['width']
+      if stored['side'] == 'left' && shift.abs > 1e-9
+        transformation = root.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, shift.mm, 0))
+      end
+
+      SelectionManager.suspend do
+        with_operation(model, 'Update Filler') { PartGenerator.update(model, root, params, layout, transformation) }
+      end
       SelectionManager.push_selection(model)
       Response.ok("#{root.name} updated.")
     end
     private_class_method :update_filler
 
     def self.update_end_panel(model, root, raw)
-      params, failure = prepare_end_panel(raw)
+      stored = AttributeManager.read(root)
+      params, failure = prepare_end_panel(with_default_material(raw, stored))
       return failure if failure
 
-      stored = AttributeManager.read(root)
       %w[target_id target_width target_depth target_top].each { |key| params[key] = stored[key] }
 
       layout = PartLayout.end_panel(params)

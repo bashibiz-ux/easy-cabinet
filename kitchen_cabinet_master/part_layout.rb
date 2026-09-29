@@ -7,16 +7,29 @@ module KitchenCabinetMaster
   module PartLayout
     Layout = Struct.new(:base_z, :top_z, :board, :toe_kick, keyword_init: true)
 
-    # A FILLER is a single flat board spanning the full configured size, raised off
-    # the floor by the toe-kick height like a cabinet. It has no toe kick of its
-    # own: the toe kick is a separate entity (see toe_kick below).
+    # A FILLER is a single flat board beside a cabinet, on the cabinet's wall side:
+    #
+    #   plan view                       X (front) ▲
+    #                                             │      door front
+    #        cabinet        filler       ──────────┼───────┬──┬───────────
+    #     ┌──────────┐    ┌──┐                     │       │██│  ◄ thickness
+    #     │          │    │██│  ◄ front face flush  wall    └──┘
+    #     └──────────┘    └──┘    with the door
+    #
+    # It stands at the cabinet's own base Z and its front face is level with the
+    # door front. `params` carries what it was inserted against, copied in once by
+    # PartManager (target_base_z, target_flush_x), so Update never has to look the
+    # cabinet up again. The part's own origin is the cabinet's back edge, so the
+    # board is set forward by `target_flush_x - thickness`; that also keeps a
+    # following cabinet lined up when it is chained after the filler.
     def self.filler(params)
-      base_z = filler_base_z(params)
+      thickness = params['thickness'].to_f
+      base_z = params['target_base_z'].to_f
       height = params['height'].to_f
       board = CabinetLayout::Panel.new(
         role: 'board', name: 'Filler Panel',
-        extent: [round2(params['depth'].to_f), round2(params['width'].to_f), round2(height)],
-        offset: [0.0, 0.0, round2(base_z)]
+        extent: [round2(thickness), round2(params['width'].to_f), round2(height)],
+        offset: [round2(params['target_flush_x'].to_f - thickness), 0.0, round2(base_z)]
       )
       Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: [])
     end
@@ -27,13 +40,11 @@ module KitchenCabinetMaster
       Layout.new(base_z: 0.0, top_z: round2(params['toe_kick_height']), board: nil, toe_kick: ToeKick.pieces(params))
     end
 
-    def self.filler_base_z(params)
-      params['cabinet_category'].to_s == 'wall' ? 0.0 : params['toe_kick_height'].to_f
-    end
-
-    # [depth, width, top] from the filler's own local floor origin.
+    # [depth, width, top] from the filler's own local floor origin: everything from
+    # the cabinet's back edge to the filler's front face, so nothing else is put
+    # in the space between.
     def self.filler_envelope(params)
-      [params['depth'].to_f, params['width'].to_f, filler_base_z(params) + params['height'].to_f]
+      [params['target_flush_x'].to_f, params['width'].to_f, params['target_base_z'].to_f + params['height'].to_f]
     end
 
     # An END PANEL is a single thin board covering the exposed side of another
