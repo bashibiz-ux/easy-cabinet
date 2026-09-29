@@ -297,7 +297,7 @@ h1 {
 .btn-row { display: grid; gap: 6px; }
 .btn-row + .btn-row { margin-top: 6px; }
 .btn-row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.btn-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.btn-row.one { grid-template-columns: minmax(0, 1fr); }
 
 .btn {
   height: 32px;

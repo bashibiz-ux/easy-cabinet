@@ -181,24 +181,16 @@ module KitchenCabinetMaster
 
     ELEVATION_STANDOFF = 1.0 # mm in front of the door face, so the lines never z-fight
 
-    # Line segments [[x, y, z], [x, y, z]] in millimetres, relative to the carcass
-    # base Z (the indicator container sits at base Z). `style` picks the symbol:
-    #
-    #   'plan'      Drawn at FLOOR level so it reads in the plan view. Per door: a
-    #               short vertical mark at the hinge, a line from the hinge to the
-    #               free edge when closed, another when fully open, and the arc
-    #               between them showing the movement.
-    #   'elevation' Two dashed lines on the door face that start at the free-edge
-    #               top and bottom corners and meet at the hinge side, the usual
-    #               "door swing" symbol on an elevation drawing.
-    #   'both'      Both symbols.
+    # The FLOOR-level plan symbol's line segments [[x, y, z], [x, y, z]] in
+    # millimetres, relative to the carcass base Z (the indicator container sits at
+    # base Z). Per door: a short vertical mark at the hinge, a line from the hinge
+    # to the free edge when closed, another when fully open, and the arc between
+    # them showing the movement. Empty when `style` is 'elevation' (the symbol is
+    # then drawn on each door instead, see door_symbol_segments).
     def self.indicator_segments(doors, angle, base_z, style = 'plan')
-      doors.flat_map do |door|
-        segments = []
-        segments.concat(plan_indicator(door, angle, base_z)) unless style == 'elevation'
-        segments.concat(elevation_indicator(door, base_z)) unless style == 'plan'
-        segments
-      end
+      return [] unless plan_symbol?(style)
+
+      doors.flat_map { |door| plan_indicator(door, angle, base_z) }
     end
 
     # A short text that changes whenever the indicator would look different.
@@ -232,23 +224,36 @@ module KitchenCabinetMaster
     end
     private_class_method :plan_indicator
 
-    def self.elevation_indicator(door, base_z)
-      px, py, = door.pivot
-      _thickness, width, height = door.extent
-      radians = door.rotation.to_f * Math::PI / 180.0
-      bottom = door.offset[2] - base_z
-      # In the door's own frame the lines sit just in front of its face and run
-      # towards the free edge; `rotate` puts a corner door's frame in place.
-      standoff = rotate([ELEVATION_STANDOFF, 0.0], radians)
-      along = rotate([0.0, door.hinge == 'left' ? width : -width], radians)
-      ax = px + standoff[0]
-      ay = py + standoff[1]
-      apex = [ax, ay, bottom + (height / 2.0)]
-      free = [ax + along[0], ay + along[1]]
+    # The dashed "door swing" symbol ON the door, in the door's OWN frame (origin
+    # at the door's corner, X out of the face, Y across, Z up): two lines that
+    # start at the hinge, halfway up, and run to the free edge's top and bottom
+    # corners. It lives inside the door, so it swings with it, and because it is
+    # in the door's own frame it is right for a corner unit's diagonal door too.
+    # Returns [[[x, y, z], [x, y, z]], ...] in millimetres.
+    def self.door_symbol_segments(door)
+      thickness, width, height = door.extent
+      x = thickness + ELEVATION_STANDOFF
+      hinge_y = door.hinge == 'left' ? 0.0 : width
+      free_y = width - hinge_y
+      apex = [x, hinge_y, height / 2.0]
 
-      [[apex, [free[0], free[1], bottom + height]], [apex, [free[0], free[1], bottom]]]
+      [[apex, [x, free_y, height]], [apex, [x, free_y, 0.0]]]
     end
-    private_class_method :elevation_indicator
+
+    # Changes whenever the symbol would look different.
+    def self.door_symbol_signature(door)
+      [door.hinge, door.extent].inspect
+    end
+
+    # Does this style draw a symbol on the door itself?
+    def self.door_symbol?(style)
+      %w[elevation both].include?(style.to_s)
+    end
+
+    # Does this style draw the floor-level plan symbol?
+    def self.plan_symbol?(style)
+      style.to_s != 'elevation'
+    end
 
     def self.rotate(vector, radians)
       cos = Math.cos(radians)

@@ -16,8 +16,9 @@ module KitchenCabinetMaster
   #   ├─ Toe Kick                     container on the floor: Toe Kick 1..n (equal segments)
   #   ├─ Door 1..n                    containers, direct children so each can be selected
   #   │  ├─ Panel                     shared panel definition
-  #   │  └─ Handle                    follows the door because it lives inside it
-  #   └─ Opening Indicator            container of dashed guide lines
+  #   │  ├─ Handle                    follows the door because it lives inside it
+  #   │  └─ Opening Symbol            dashed swing lines on the door face, also inside it
+  #   └─ Opening Indicator            floor-level plan symbol (Plan / Both styles only)
   #
   # Updating NEVER deletes and recreates the cabinet. `sync` compares what
   # exists with what the parameters require and only changes the difference:
@@ -32,6 +33,7 @@ module KitchenCabinetMaster
     DRAWER_PREFIX = 'drawer_'
     DOOR_PANEL_ROLE = 'panel'
     HANDLE_ROLE = 'handle'
+    DOOR_SYMBOL_ROLE = 'door_symbol'
     SIGNATURE_KEY = 'signature'
     TOLERANCE = 1e-6
 
@@ -91,7 +93,10 @@ module KitchenCabinetMaster
         if role == CARCASS_ROLE then instance.visible = visibility['carcass'] != false
         elsif role == TOE_KICK_ROLE then instance.visible = visibility['toe_kick'] != false
         elsif role == INDICATOR_ROLE then instance.visible = doors_visible && show_indicator
-        elsif role.start_with?(DOOR_PREFIX) || role.start_with?(DRAWER_PREFIX) then instance.visible = doors_visible
+        elsif role.start_with?(DOOR_PREFIX) || role.start_with?(DRAWER_PREFIX)
+          instance.visible = doors_visible
+          symbol = index_by_role(instance.definition.entities)[DOOR_SYMBOL_ROLE]
+          symbol.visible = show_indicator if symbol
         end
       end
     end
@@ -276,8 +281,48 @@ module KitchenCabinetMaster
         Geom::Transformation.new
       end
       sync_handle(model, entities, door, params, bundle)
+      sync_door_symbol(model, container, door, params)
     end
     private_class_method :sync_door_contents
+
+    # The dashed opening-direction lines ON the door. They are a small container
+    # inside the door, so they swing with it, and are only there when the Opening
+    # Symbol setting asks for them (Elevation / Both) on a hinged door (a drawer
+    # front has no hinge). Their visibility is the "Show Opening Direction" tick.
+    def self.sync_door_symbol(model, container, door, params)
+      entities = container.definition.entities
+      existing = index_by_role(entities)[DOOR_SYMBOL_ROLE]
+
+      unless DoorAnimation.door_symbol?(door_symbol_style(params)) && door.hinge != 'center'
+        discard_instance(model, existing) if existing
+        return
+      end
+
+      unless existing
+        definition = AttributeManager.mark_managed(model.definitions.add("#{container.definition.name} Opening Symbol"))
+        existing = entities.add_instance(definition, Geom::Transformation.new)
+        AttributeManager.set_role(existing, DOOR_SYMBOL_ROLE)
+        existing.name = 'Opening Symbol'
+      end
+
+      signature = DoorAnimation.door_symbol_signature(door)
+      unless existing.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature
+        symbol_entities = existing.definition.entities
+        symbol_entities.clear!
+        DoorAnimation.door_symbol_segments(door).each do |from, to|
+          symbol_entities.add_cline(from.map(&:mm), to.map(&:mm), '-')
+        end
+        existing.set_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY, signature)
+      end
+
+      existing.visible = params['show_opening_direction'] != false
+    end
+    private_class_method :sync_door_symbol
+
+    def self.door_symbol_style(params)
+      params['door_symbol'].to_s.empty? ? Defaults::PARAMS['door_symbol'] : params['door_symbol']
+    end
+    private_class_method :door_symbol_style
 
     def self.sync_handle(model, entities, door, params, bundle)
       existing = index_by_role(entities)[HANDLE_ROLE]
@@ -302,15 +347,19 @@ module KitchenCabinetMaster
     end
     private_class_method :sync_handle
 
+    # The FLOOR-level plan symbol, one container for the whole cabinet. It exists
+    # only for the Plan / Both styles; the Elevation style draws on the doors
+    # instead (see sync_door_symbol).
     def self.sync_indicator(model, root, top, params, layout, doors_visible)
-      if layout.doors.empty?
+      angle = params['door_opening_angle'].to_f
+      style = door_symbol_style(params)
+
+      if layout.doors.empty? || !DoorAnimation.plan_symbol?(style)
         discard_instance(model, top[INDICATOR_ROLE]) if top[INDICATOR_ROLE]
         return
       end
 
       container = ensure_container(model, root, top, INDICATOR_ROLE, 'Opening Indicator', layout.base_z)
-      angle = params['door_opening_angle'].to_f
-      style = params['door_symbol'].to_s.empty? ? 'plan' : params['door_symbol']
       signature = DoorAnimation.indicator_signature(layout.doors, angle, layout.base_z, style)
 
       unless container.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature

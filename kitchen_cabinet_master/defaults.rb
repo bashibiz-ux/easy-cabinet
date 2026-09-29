@@ -111,7 +111,7 @@ module KitchenCabinetMaster
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
       'show_opening_direction' => true,
-      'door_symbol'            => 'plan',
+      'door_symbol'            => 'elevation',
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
 

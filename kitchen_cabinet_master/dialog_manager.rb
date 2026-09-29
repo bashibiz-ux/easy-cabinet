@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   #                  KCM.receive({ event, data })                        (push, no id)
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
-    CABINET_ACTIONS = %w[insert update duplicate delete open close toggle visibility].freeze
+    CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel update_part delete_part].freeze
 
     class << self

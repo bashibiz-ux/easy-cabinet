@@ -168,7 +168,7 @@
 
   // Shows the section for whichever kind is being worked on (Cabinet, Filler or
   // End Panel) and hides the actions that only make sense for a full cabinet
-  // (Duplicate, Open/Close/Toggle).
+  // (Duplicate). Toggle acts on every cabinet in the model, so it is always shown.
   function setInsertType(type) {
     state.insertType = type;
     $('insertType').value = type;

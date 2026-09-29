@@ -117,6 +117,45 @@ class CornerDoorTest < Minitest::Test
     end
   end
 
+  def test_door_symbol_lines_start_at_the_hinge_and_reach_the_free_edge_at_every_opening
+    %w[left right].each do |direction|
+      d = door(direction)
+      thick, length, height = d.extent
+      lines = DoorAnimation.door_symbol_segments(d)
+      assert_equal 2, lines.length
+
+      apex = lines[0][0]
+      assert_equal apex, lines[1][0], 'both lines start at the same point'
+      assert_in_delta height / 2.0, apex[2], 1e-6, 'apex halfway up'
+      assert_operator apex[0], :>, thick, 'lines sit in front of the door face'
+
+      hinge_local = direction == 'left' ? 0.0 : length
+      assert_in_delta hinge_local, apex[1], 1e-6, "#{direction}: apex on the hinge side"
+      assert_equal [0.0, height], lines.map { |l| l[1][2] }.sort, 'ends reach the top and bottom'
+      lines.each { |l| assert_in_delta length - hinge_local, l[1][1], 1e-6, 'ends on the free edge' }
+
+      # In the door's own frame, so the world position follows the swing: at any
+      # opening the hinge-side apex stays over the pivot (within the face standoff).
+      pivot = d.pivot
+      [0.0, 0.5, 1.0].each do |f|
+        x, y = DoorAnimation.transformation(d, 90.0, f).apply(apex[0], apex[1])
+        assert_operator Math.hypot(x - pivot[0], y - pivot[1]), :<, 3.0, "#{direction}: apex stays at the hinge (#{f})"
+      end
+    end
+  end
+
+  def test_symbol_style_decides_where_it_is_drawn
+    assert DoorAnimation.door_symbol?('elevation')
+    assert DoorAnimation.door_symbol?('both')
+    refute DoorAnimation.door_symbol?('plan')
+    assert DoorAnimation.plan_symbol?('plan')
+    assert DoorAnimation.plan_symbol?('both')
+    refute DoorAnimation.plan_symbol?('elevation')
+    assert_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'elevation')
+    refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'plan')
+    assert_equal 'elevation', Defaults.params['door_symbol'], 'new cabinets draw the symbol on the door'
+  end
+
   def test_ordinary_door_is_unchanged
     p = Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0,
                               'height' => 780.0, 'door_count' => 1, 'door_opening_direction' => 'left')

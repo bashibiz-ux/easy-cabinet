@@ -7,10 +7,8 @@ module KitchenCabinetMaster
   # SketchUp operation (one Undo step, rolled back on any error) and replies
   # with a Response.
   #
-  # Actions: insert, update, duplicate, delete, open, close, toggle, visibility.
+  # Actions: insert, update, duplicate, delete, toggle (every cabinet), visibility.
   module CabinetManager
-    DOOR_ACTIONS = %w[open close toggle].freeze
-
     def self.perform(action, raw)
       case action
       when 'insert' then insert(raw)
@@ -18,7 +16,7 @@ module KitchenCabinetMaster
       when 'duplicate' then duplicate
       when 'delete' then delete
       when 'visibility' then set_visibility(raw)
-      when *DOOR_ACTIONS then animate(action)
+      when 'toggle' then toggle_all
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -135,49 +133,47 @@ module KitchenCabinetMaster
     end
     private_class_method :delete
 
-    # Open / Close / Toggle. Acts on the selected door(s), or on every door of
-    # the selected cabinet. The animation runs as one undoable step.
-    def self.animate(action)
+    # Toggle: acts on EVERY cabinet in the model (the top level of the model, like
+    # Visibility). If any door or drawer is open they all close; otherwise they
+    # all open. The animation runs as one undoable step.
+    def self.toggle_all
       model = Sketchup.active_model
-      target = SelectionManager.selected_doors(model)
-      return Response.fail('Select a cabinet, or one of its doors or drawers, first.') unless target
-      return Response.fail('This cabinet has no doors or drawers.') if target[:doors].empty?
+      cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+      return Response.fail('There are no cabinets in the model yet.') if cabinets.empty?
 
-      params = AttributeManager.read(target[:cabinet])
+      openables = cabinets.to_h { |cabinet| [cabinet, CabinetGenerator.openables_of(cabinet)] }
+      return Response.fail('None of the cabinets has doors or drawers.') if openables.values.all?(&:empty?)
+
+      opening = openables.values.flatten.none? { |door| DoorAnimation.open?(door) }
+      moves = openables.flat_map { |cabinet, doors| moves_for(cabinet, doors, opening) }
+      return Response.ok('Nothing to do: the doors and drawers are already in that position.') if moves.empty?
+
+      DoorAnimation.run(model, moves, opening ? 'Open Doors' : 'Close Doors')
+      Response.ok("#{opening ? 'Opening' : 'Closing'} #{moves.length} item#{'s' unless moves.length == 1} " \
+                  "in #{cabinets.length} cabinet#{'s' unless cabinets.length == 1}.")
+    end
+    private_class_method :toggle_all
+
+    # The Moves that take one cabinet's doors and drawers to open (true) or closed (false).
+    def self.moves_for(cabinet, doors, opening)
+      return [] if doors.empty?
+
+      params = AttributeManager.read(cabinet)
       angle = params['door_opening_angle'].to_f
       depth = params['depth'].to_f
       layout = CabinetLayout.compute(params)
       specs = layout.doors.to_h { |door| [door.role, [door, :door]] }
                     .merge(layout.drawers.to_h { |drawer| [drawer.role, [drawer, :drawer]] })
 
-      any_open = target[:doors].any? { |door| DoorAnimation.open?(door) }
-      moves = target[:doors].each_with_object([]) do |door, list|
+      doors.each_with_object([]) do |door, list|
         spec, kind = specs[AttributeManager.role(door)]
-        goal = door_goal(action, door, target[:explicit], any_open)
-        next if spec.nil? || DoorAnimation.open?(door) == goal
+        next if spec.nil? || DoorAnimation.open?(door) == opening
 
         list << DoorAnimation::Move.new(door: door, spec: spec, angle: angle, depth: depth, kind: kind,
-                                         from: goal ? 0.0 : 1.0, to: goal ? 1.0 : 0.0)
-      end
-
-      return Response.ok('Nothing to do: the doors and drawers are already in that position.') if moves.empty?
-
-      DoorAnimation.run(model, moves, "#{action.capitalize} Doors")
-      opening = moves.first.to.positive?
-      Response.ok("#{opening ? 'Opening' : 'Closing'} #{moves.length} item#{'s' unless moves.length == 1}.")
-    end
-    private_class_method :animate
-
-    # true = open, false = closed. Toggle flips a single selected door, but for a
-    # whole cabinet it closes everything if anything is open, otherwise opens everything.
-    def self.door_goal(action, door, explicit, any_open)
-      case action
-      when 'open' then true
-      when 'close' then false
-      else explicit ? !DoorAnimation.open?(door) : !any_open
+                                         from: opening ? 0.0 : 1.0, to: opening ? 1.0 : 0.0)
       end
     end
-    private_class_method :door_goal
+    private_class_method :moves_for
 
     # ---- shared steps --------------------------------------------------------
 
