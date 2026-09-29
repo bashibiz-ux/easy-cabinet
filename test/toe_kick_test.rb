@@ -214,6 +214,48 @@ class ToeKickTest < Minitest::Test
     assert_equal 900.0, target(corner)['target_depth']
   end
 
+  # ---- the "door material \"\" was not found" errors -----------------------------------
+
+  def test_a_corner_unit_gets_the_same_default_white_as_every_other_unit
+    assert_equal 'White', Defaults.params['corner_material']
+
+    corner = Defaults.params.merge('cabinet_category' => 'corner')
+    assert_equal 'White', CabinetGenerator.door_material(corner)
+    assert_equal 'White', CabinetGenerator.door_material(corner.merge('corner_material' => '')), 'blank falls back, never ""'
+    assert_equal 'Oak', CabinetGenerator.door_material(corner.merge('corner_material' => 'Oak')), 'the Material section applies'
+    assert_equal 'Grey', CabinetGenerator.door_material(corner.merge('cabinet_material' => 'Grey')), 'an override still wins'
+  end
+
+  def test_a_corner_can_be_validated_without_choosing_a_material
+    raw = { 'catalog_id' => 'x', 'cabinet_category' => 'corner', 'cabinet_type' => 'y', 'width' => '900', 'depth' => '600',
+            'height' => '720', 'door_opening_direction' => 'left', 'toe_kick_height' => '100', 'corner_material' => '' }
+    result = ValidationManager.validate(raw)
+    assert_empty(result.errors.select { |e| e['field'].to_s.end_with?('material') })
+    assert_equal 'White', result.params['corner_material']
+
+    chosen = ValidationManager.validate(raw.merge('corner_material' => 'Walnut'))
+    assert_equal 'Walnut', chosen.params['corner_material']
+  end
+
+  def test_a_toe_kick_follows_the_door_material_and_never_ends_up_blank
+    assert_equal 'Oak', ToeKick.material_name({ 'toe_kick_material' => '__door__' }, 'Oak', 'Grey')
+    assert_equal 'Grey', ToeKick.material_name({ 'toe_kick_material' => '__carcass__' }, 'Oak', 'Grey')
+    assert_equal 'PVC Black', ToeKick.material_name({ 'toe_kick_material' => 'PVC Black' }, 'Oak', 'Grey')
+    assert_equal 'White', ToeKick.material_name({ 'toe_kick_material' => '__door__' }, '', ''), 'nothing to follow: white'
+    assert_equal 'White', ToeKick.material_name({ 'toe_kick_material' => '__door__' }, nil, nil)
+  end
+
+  def test_a_toe_kick_against_an_old_cabinet_with_no_recorded_material_still_works
+    old_corner = FakeEntity.new('cabinet_id' => 'CABINET_0003', 'cabinet_category' => 'corner', 'depth' => 600.0,
+                                'width' => 900.0, 'material' => '', 'corner_material' => '')
+    t = target(old_corner)
+    assert_equal 'White', t['target_door_material']
+    assert_equal 'White', t['target_carcass_material']
+
+    fits = PartManager.send(:toe_kick_fit_errors, Sketchup.active_model, params.merge(t))
+    assert_empty fits, 'no "door material was not found" error'
+  end
+
   def test_a_second_toe_kick_carries_on_with_the_first_ones_target
     first = FakeEntity.new('part_id' => 'PART_0001', 'part_kind' => 'toe_kick', 'target_depth' => 575.0,
                            'target_door_material' => 'Oak', 'target_carcass_material' => 'Grey')

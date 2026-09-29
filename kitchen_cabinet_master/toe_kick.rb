@@ -61,14 +61,18 @@ module KitchenCabinetMaster
     end
 
     # The material a toe kick is painted with: its own choice, or the colour of the
-    # door / carcass of whatever it was inserted against.
+    # door / carcass of whatever it was inserted against. By default it follows the
+    # door; when there is no door colour to follow (nothing selected, or a cabinet
+    # that never recorded one) it falls back to the plain white default, so the
+    # result is never an empty name.
     def self.material_name(params, door_material, carcass_material)
       chosen = params['toe_kick_material'].to_s
-      case chosen
-      when '', Defaults::SAME_AS_DOOR, Defaults::SAME_AS_CABINET then door_material
-      when Defaults::SAME_AS_CARCASS then carcass_material
-      else chosen
-      end
+      name = case chosen
+             when '', Defaults::SAME_AS_DOOR, Defaults::SAME_AS_CABINET then door_material
+             when Defaults::SAME_AS_CARCASS then carcass_material
+             else chosen
+             end
+      name.to_s.empty? ? Defaults::DEFAULT_MATERIAL : name.to_s
     end
 
     def self.round2(value)

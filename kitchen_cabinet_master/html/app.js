@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.11.0';
+  const APP_VERSION = '0.11.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -31,6 +31,7 @@
     base_material: 'baseMaterial',
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
+    corner_material: 'cornerMaterial',
     material_thickness: 'thickness',
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
@@ -90,6 +91,7 @@
     base_material: 'baseMaterial',
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
+    corner_material: 'cornerMaterial',
     carcass_material: 'carcassMaterial',
     toe_kick_material: 'toeMaterial',
     door_opening_direction: 'direction',
@@ -152,6 +154,10 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an end panel or a toe kick.
   function handleEvent(name, data) {
+    // Our own live update re-selects the item it just changed; do not let that
+    // overwrite what the user is in the middle of typing.
+    if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
+
     if (name === 'cabinet_selected') {
       state.selectedKind = 'cabinet';
       loadCabinet(data);
@@ -162,6 +168,9 @@
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
+      // Fillers and end panels are Cabinet Category choices: show the matching fields.
+      if (kind !== 'toe_kick') setSelect('category', kind);
+      updateCategoryUi();
     } else if (name === 'cabinet_cleared') {
       state.selectedKind = null;
       setBadge(null);
@@ -235,12 +244,6 @@
 
   // Which form an action reads. Each Insert button belongs to its own block;
   // Update follows whatever is selected in the model.
-  const FORM_OF_ACTION = {
-    insert: 'cabinet',
-    insert_filler: 'filler',
-    insert_end_panel: 'end_panel',
-    insert_toe_kick: 'toe_kick'
-  };
   const COLLECTORS = {
     cabinet: () => collect(),
     filler: () => collectFiller(),
@@ -248,17 +251,29 @@
     toe_kick: () => collectToeKick()
   };
 
-  function formKind(action) {
-    if (action === 'update') return state.selectedKind || 'cabinet';
-    return FORM_OF_ACTION[action] || null;
+  // Fillers and end panels are choices in the Cabinet Category list. Every other
+  // category is a real cabinet.
+  function categoryKind() {
+    const value = $('category').value;
+    return value === 'filler' || value === 'end_panel' ? value : 'cabinet';
   }
 
-  // Cabinets have their own Update / Delete; a filler, end panel or toe kick
-  // shares one pair (update_part / delete_part).
+  // Insert follows the Cabinet Category (or is the Toe Kick block's own button);
+  // Update follows whatever is selected in the model.
+  function formKind(action) {
+    if (action === 'insert') return categoryKind();
+    if (action === 'insert_toe_kick') return 'toe_kick';
+    if (action === 'update') return state.selectedKind || categoryKind();
+    return null;
+  }
+
+  // Cabinets have their own Insert / Update / Delete; a filler, end panel or toe
+  // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
   function serverAction(action) {
     const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
     if (isPart && action === 'update') return 'update_part';
     if (isPart && action === 'delete') return 'delete_part';
+    if (action === 'insert') return { filler: 'insert_filler', end_panel: 'insert_end_panel' }[categoryKind()] || 'insert';
     return action;
   }
 
@@ -310,7 +325,7 @@
     [...panel, ...toeKick].forEach((m) => {
       if (m.color) state.colors[m.id] = m.color;
     });
-    ['baseMaterial', 'wallMaterial', 'tallMaterial'].forEach((id) => fillSelect($(id), panel));
+    ['baseMaterial', 'wallMaterial', 'tallMaterial', 'cornerMaterial'].forEach((id) => fillSelect($(id), panel));
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('toeMaterial'), toeKick);
@@ -356,6 +371,7 @@
       base_material: $('baseMaterial').value,
       wall_material: $('wallMaterial').value,
       tall_material: $('tallMaterial').value,
+      corner_material: $('cornerMaterial').value,
       material_thickness: $('thickness').value,
       back_thickness: $('backThickness').value,
       door_gap: $('doorGap').value,
@@ -472,6 +488,7 @@
    * ---------------------------------------------------------------------- */
 
   async function refreshCabinets({ selectId = null, keepValues = false } = {}) {
+    if (categoryKind() !== 'cabinet') return; // a filler or end panel has no catalog cabinets
     const catalogId = $('catalog').value;
     const category = $('category').value;
     state.cabinets = [];
@@ -521,9 +538,17 @@
     setText('shelves', cabinet.shelves === undefined ? 0 : cabinet.shelves);
   }
 
-  // A wall unit hangs at height 0, so the toe-kick height does not raise it. (The
-  // toe kick fields stay usable: a toe kick is inserted on its own.)
+  // The Cabinet Category decides which fields the panel shows: the cabinet form
+  // for every real category, or the Filler / End Panel fields when one of those is
+  // chosen. (The Toe Kick and Visibility sections are always there.) A wall unit
+  // hangs at height 0, so the toe-kick height does not raise it.
   function updateCategoryUi() {
+    const kind = categoryKind();
+    document.querySelectorAll('.cabinet-only').forEach((el) => { el.hidden = kind !== 'cabinet'; });
+    document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
+    $('sub-filler').hidden = kind !== 'filler';
+    $('sub-end-panel').hidden = kind !== 'end_panel';
+    document.querySelector('.preview').hidden = kind !== 'cabinet';
     $('toeNote').hidden = $('category').value !== 'wall';
   }
 
@@ -658,7 +683,9 @@
     document.querySelectorAll('.field.invalid').forEach((f) => f.classList.remove('invalid'));
   }
 
-  function markInvalid(errors, kind) {
+  // `focus: false` (a live update) only marks the fields: it must not scroll the
+  // panel or take the cursor away from what the user is typing.
+  function markInvalid(errors, kind, { focus = true } = {}) {
     const map = kind === 'filler' ? FILLER_FIELD_TO_ELEMENT
       : kind === 'end_panel' ? END_PANEL_FIELD_TO_ELEMENT : FIELD_TO_ELEMENT;
     let first = null;
@@ -669,10 +696,10 @@
       const field = el.closest('.field');
       if (field) field.classList.add('invalid');
       const card = el.closest('.card');
-      if (card && card.classList.contains('collapsed')) toggleCard(card, true);
+      if (focus && card && card.classList.contains('collapsed')) toggleCard(card, true);
       if (!first) first = el;
     });
-    if (first && !first.disabled) {
+    if (focus && first && !first.disabled) {
       first.scrollIntoView({ block: 'center', behavior: 'smooth' });
       first.focus({ preventScroll: true });
     }
@@ -693,10 +720,17 @@
     document.querySelectorAll('[data-action]').forEach((b) => { b.disabled = busy; });
   }
 
-  async function runAction(action) {
+  // `live` is an Update the panel sends by itself while the user edits a field.
+  // It leaves the buttons alone and never steals the cursor.
+  async function runAction(action, { live = false } = {}) {
     if (state.busy) return;
     clearInvalid();
-    setBusy(true);
+    if (live) {
+      state.busy = true;
+      state.liveBusy = true;
+    } else {
+      setBusy(true);
+    }
     try {
       const kind = formKind(action);
       const payload = kind ? COLLECTORS[kind]() : {};
@@ -704,14 +738,61 @@
       if (res.ok) {
         setStatus('ok', res.message);
       } else {
-        markInvalid(res.errors, kind);
+        markInvalid(res.errors, kind, { focus: !live });
         setStatus('error', res.message, (res.errors || []).length > 1 ? res.errors.map((e) => e.message) : []);
       }
     } catch (error) {
       setStatus('error', error.message);
     } finally {
-      setBusy(false);
+      if (live) {
+        state.busy = false;
+        state.liveBusy = false;
+      } else {
+        setBusy(false);
+      }
     }
+  }
+
+  /* ---------------------------------------------------------------------- *
+   * Live update: editing a field changes the selected item straight away
+   * ---------------------------------------------------------------------- */
+
+  const LIVE_TYPING_DELAY_MS = 450; // wait for a pause while typing a number
+  const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
+  // These have their own live behaviour (Visibility ticks) or need the cabinet
+  // list reloaded first (catalog / category / cabinet, see wireEvents).
+  const NO_LIVE_IDS = new Set(['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
+
+  // Which kind of item a field edits, so a change to the Filler fields never
+  // rewrites the cabinet that happens to be selected. The toe-kick height is both:
+  // it raises cabinets and is the height of a toe kick.
+  function fieldKinds(el) {
+    if (el.closest('#sub-filler')) return ['filler'];
+    if (el.closest('#sub-end-panel')) return ['end_panel'];
+    if (el.id === 'toeHeight') return ['cabinet', 'toe_kick'];
+    if (el.closest('#sec-toe')) return ['toe_kick'];
+    return ['cabinet'];
+  }
+
+  function scheduleLive(delay = LIVE_TYPING_DELAY_MS) {
+    clearTimeout(state.liveTimer);
+    state.liveTimer = setTimeout(runLive, delay);
+  }
+
+  async function runLive() {
+    if (!state.selectedKind) return;
+    if (state.busy) {
+      scheduleLive(); // something else is still running; try again shortly
+      return;
+    }
+    await runAction('update', { live: true });
+  }
+
+  // A field was edited: update the selected item if this field belongs to it.
+  function liveEdit(el) {
+    if (NO_LIVE_IDS.has(el.id) || !state.selectedKind) return;
+    if (!fieldKinds(el).includes(state.selectedKind)) return;
+    scheduleLive(el.tagName === 'SELECT' || el.type === 'checkbox' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
   }
 
   // Carcass / Door / Toe Kick tick boxes act immediately on every cabinet in the model.
@@ -763,8 +844,8 @@
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
     m.defaults = m.defaults || {};
-    m.filler_defaults = m.filler_defaults || { cabinet_category: 'base', width: 100, depth: 560, height: 780, material: 'White Melamine', toe_kick_height: 100 };
-    m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White Melamine' };
+    m.filler_defaults = m.filler_defaults || { cabinet_category: 'base', width: 100, depth: 560, height: 780, material: 'White', toe_kick_height: 100 };
+    m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 600, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
@@ -773,7 +854,8 @@
     const m = state.meta;
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? null : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
-    fillSelect($('category'), m.categories);
+    // Fillers and end panels are choices in the same list as the cabinet categories.
+    fillSelect($('category'), [...m.categories, { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }]);
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
     fillSelect($('handleOrientation'), m.handle_orientations);
@@ -800,14 +882,24 @@
       button.addEventListener('click', () => toggleCard(button.closest('.card')));
     });
 
-    $('catalog').addEventListener('change', () => refreshCabinets());
-    $('category').addEventListener('change', () => {
+    // Catalog / category / cabinet reload the cabinet list (and the sizes that
+    // come with a cabinet) first, and only then update the selected cabinet.
+    const liveAfterCabinetChange = () => {
+      if (state.selectedKind === 'cabinet' && categoryKind() === 'cabinet') scheduleLive(LIVE_PICK_DELAY_MS);
+    };
+    $('catalog').addEventListener('change', async () => {
+      await refreshCabinets();
+      liveAfterCabinetChange();
+    });
+    $('category').addEventListener('change', async () => {
       updateCategoryUi();
-      refreshCabinets();
+      await refreshCabinets();
+      liveAfterCabinetChange();
     });
     $('cabinet').addEventListener('change', () => {
       applyCabinetDefaults();
       drawPreview();
+      liveAfterCabinetChange();
     });
     $('widthPreset').addEventListener('change', () => {
       if ($('widthPreset').value !== 'custom') setText('width', Number($('widthPreset').value));
@@ -823,6 +915,7 @@
         if (field) field.classList.remove('invalid');
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
+        liveEdit(el); // update the selected item with what was just entered
       };
       el.addEventListener('input', onEdit);
       el.addEventListener('change', onEdit);

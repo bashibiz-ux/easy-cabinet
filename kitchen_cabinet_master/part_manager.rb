@@ -200,7 +200,10 @@ module KitchenCabinetMaster
         { 'target_depth' => stored['depth'].to_f, 'target_door_material' => stored['material'].to_s,
           'target_carcass_material' => stored['material'].to_s }
       else
+        # The door material the cabinet was actually built with; if it never
+        # recorded one (an older cabinet), work it out so this is never blank.
         door = stored['material'].to_s
+        door = CabinetGenerator.door_material(stored) if door.empty?
         # A corner unit is a square: its carcass reaches Width, not its Depth field.
         depth = stored['cabinet_category'] == 'corner' ? stored['width'] : stored['depth']
         { 'target_depth' => depth.to_f, 'target_door_material' => door,
