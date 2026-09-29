@@ -1,0 +1,13 @@
+{
+  "id": "sample_knobs",
+  "name": "Round knobs",
+  "version": 1,
+  "profile": "knob",
+  "projection": 28,
+  "lengths": [28, 32, 38],
+  "default_length": 32,
+  "finishes": [
+    { "name": "Brushed steel", "material": "Handle Brushed Steel", "color": "#B8BDC2" },
+    { "name": "Matt black",    "material": "Handle Matt Black",    "color": "#1C1C1E" }
+  ]
+}

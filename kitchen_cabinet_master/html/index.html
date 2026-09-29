@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kitchen Cabinet Master</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <h1>Kitchen Cabinet Master</h1>
+      <span class="badge" id="selectionBadge">No cabinet selected</span>
+    </div>
+    <figure class="preview">
+      <svg id="preview" viewBox="0 0 240 176" role="img" aria-label="Front view of the cabinet being configured"></svg>
+      <figcaption id="previewCaption">Front view</figcaption>
+    </figure>
+  </header>
+
+  <main class="scroll" id="scroll">
+
+    <!-- What is being inserted -->
+    <section class="card">
+      <div class="card-body" style="padding-top:10px">
+        <label class="field">
+          <span class="label">Insert Type</span>
+          <div class="input"><select id="insertType">
+            <option value="cabinet">Cabinet</option>
+            <option value="filler">Filler</option>
+            <option value="end_panel">End Panel</option>
+          </select></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Catalog / Configuration -->
+    <section class="card cabinet-only" id="sec-catalog">
+      <button class="card-head" type="button" aria-expanded="true">Catalog</button>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Catalog</span>
+          <div class="input"><select id="catalog"></select></div>
+        </label>
+        <label class="field narrow">
+          <span class="label">Door Gap</span>
+          <div class="input"><input id="doorGap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field narrow">
+          <span class="label">Panel Thickness</span>
+          <div class="input"><input id="thickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field narrow">
+          <span class="label">Back Panel Thickness</span>
+          <div class="input"><input id="backThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Handle -->
+    <section class="card cabinet-only" id="sec-handle">
+      <button class="card-head" type="button" aria-expanded="true">Handle</button>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Handle Bundle</span>
+          <div class="input"><select id="handle"></select></div>
+        </label>
+
+        <div id="handleOptions" hidden>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Length</span>
+              <div class="input"><select id="handleLength"></select></div>
+            </label>
+            <label class="field">
+              <span class="label">Finish</span>
+              <div class="input has-chip"><i class="chip" data-chip-for="handleFinish"></i><select id="handleFinish" data-material></select></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Handle Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="handleMaterial"></i><select id="handleMaterial" data-material></select></div>
+          </label>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Orientation</span>
+              <div class="input"><select id="handleOrientation"></select></div>
+            </label>
+            <label class="field">
+              <span class="label">Position</span>
+              <div class="input"><select id="handlePosition"></select></div>
+            </label>
+          </div>
+          <div class="grid-2" id="handleOffsets">
+            <label class="field">
+              <span class="label">Side offset</span>
+              <div class="input"><input id="handleSide" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field" id="handleVertField">
+              <span class="label">Top / bottom offset</span>
+              <div class="input"><input id="handleVert" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <div class="grid-2" id="handleCustom" hidden>
+            <label class="field">
+              <span class="label">From left edge</span>
+              <div class="input"><input id="handleCustomX" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">From bottom edge</span>
+              <div class="input"><input id="handleCustomZ" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <p class="hint" id="handleHint">Offsets are the clear distance from the door edge to the handle. Top, Center and Bottom sit on the free-edge side of the door.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Material -->
+    <section class="card cabinet-only" id="sec-material">
+      <button class="card-head" type="button" aria-expanded="true">Material</button>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Base Unit Door Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="baseMaterial"></i><select id="baseMaterial" data-material></select></div>
+        </label>
+        <label class="field">
+          <span class="label">Wall Unit Door Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="wallMaterial"></i><select id="wallMaterial" data-material></select></div>
+        </label>
+        <label class="field">
+          <span class="label">Tall Unit Door Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="tallMaterial"></i><select id="tallMaterial" data-material></select></div>
+        </label>
+        <label class="field">
+          <span class="label">Carcass Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
+        </label>
+        <p class="hint">The carcass has its own colour. The toe kick has its own choice (see Toe Kick).</p>
+      </div>
+    </section>
+
+    <!-- Cabinet (includes the individual size, material and shelves) -->
+    <section class="card cabinet-only" id="sec-cabinet">
+      <button class="card-head" type="button" aria-expanded="true">Cabinet</button>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Cabinet Category</span>
+          <div class="input"><select id="category"></select></div>
+        </label>
+        <label class="field">
+          <span class="label">Cabinet</span>
+          <div class="input"><select id="cabinet"></select></div>
+        </label>
+        <div class="grid-3">
+          <label class="field">
+            <span class="label">Width</span>
+            <div class="input"><input id="width" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Depth</span>
+            <div class="input"><input id="depth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Height</span>
+            <div class="input"><input id="height" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+        <div class="grid-2 uneven">
+          <label class="field">
+            <span class="label">Cabinet Door Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="cabinetMaterial"></i><select id="cabinetMaterial" data-material></select></div>
+          </label>
+          <label class="field">
+            <span class="label">Shelves</span>
+            <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
+          </label>
+        </div>
+        <p class="hint">The cabinet door material overrides the unit door material for this cabinet only.</p>
+        <label class="field narrow">
+          <span class="label">Gap to next cabinet</span>
+          <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Toe Kick -->
+    <section class="card cabinet-only" id="sec-toe">
+      <button class="card-head" type="button" aria-expanded="true">Toe Kick</button>
+      <div class="card-body">
+        <p class="hint" id="toeNote" hidden>Wall units have no toe kick.</p>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Height</span>
+            <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Thickness</span>
+            <div class="input"><input id="toeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
+        </label>
+        <div class="grid-2">
+          <label class="field" for="pieceLength">
+            <span class="label">Piece Length</span>
+            <div class="input">
+              <select id="pieceLength">
+                <option value="600">600 mm</option>
+                <option value="900">900 mm</option>
+                <option value="1200">1200 mm</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+          </label>
+          <label class="field" for="pieceCustom" id="pieceCustomField" hidden>
+            <span class="label">Custom length</span>
+            <div class="input"><input id="pieceCustom" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Door Opening -->
+    <section class="card cabinet-only" id="sec-door">
+      <button class="card-head" type="button" aria-expanded="true">Door Opening</button>
+      <div class="card-body">
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Door Opening Direction</span>
+            <div class="input"><select id="direction"></select></div>
+          </label>
+          <label class="field">
+            <span class="label">Opening angle</span>
+            <div class="input"><input id="angle" type="text" inputmode="decimal" autocomplete="off"><em>deg</em></div>
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Opening Symbol</span>
+          <div class="input"><select id="doorSymbol"></select></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Filler -->
+    <section class="card filler-only" id="sec-filler" hidden>
+      <button class="card-head" type="button" aria-expanded="true">Filler</button>
+      <div class="card-body">
+        <p class="hint">A filler is a single board (no doors), inserted into the row like a cabinet.</p>
+        <label class="field">
+          <span class="label">Position</span>
+          <div class="input"><select id="fillerCategory"></select></div>
+        </label>
+        <div class="grid-3">
+          <label class="field">
+            <span class="label">Width</span>
+            <div class="input"><input id="fillerWidth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Depth</span>
+            <div class="input"><input id="fillerDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Height</span>
+            <div class="input"><input id="fillerHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
+        </label>
+        <label class="check"><input type="checkbox" id="fillerIncludeToe" checked><span>Include Toe Kick</span></label>
+        <div class="grid-2" id="fillerToeFields">
+          <label class="field">
+            <span class="label">Toe-kick Height</span>
+            <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Toe-kick Thickness</span>
+            <div class="input"><input id="fillerToeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+        <label class="field" id="fillerToeMaterialField">
+          <span class="label">Toe-kick Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="fillerToeMaterial"></i><select id="fillerToeMaterial" data-material></select></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- End Panel -->
+    <section class="card end_panel-only" id="sec-end-panel" hidden>
+      <button class="card-head" type="button" aria-expanded="true">End Panel</button>
+      <div class="card-body">
+        <p class="hint" id="epTargetHint">Select a cabinet or filler first — the end panel attaches to its exposed side.</p>
+        <label class="field">
+          <span class="label">Side</span>
+          <div class="input"><select id="epSide"></select></div>
+        </label>
+        <label class="field narrow">
+          <span class="label">Thickness</span>
+          <div class="input"><input id="epThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field">
+          <span class="label">Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
+        </label>
+      </div>
+    </section>
+
+    <!-- Visibility -->
+    <section class="card" id="sec-visibility">
+      <button class="card-head" type="button" aria-expanded="true">Visibility</button>
+      <div class="card-body checks">
+        <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
+        <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
+        <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
+        <label class="check"><input type="checkbox" id="showDirection"><span>Show Opening Direction</span></label>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Actions -->
+  <footer class="actions" aria-label="Actions">
+    <div class="status" id="status" role="status" aria-live="polite" hidden></div>
+    <div class="btn-row four">
+      <button class="btn primary" type="button" data-action="insert">Insert</button>
+      <button class="btn" type="button" data-action="update">Update</button>
+      <button class="btn cabinet-only-btn" type="button" data-action="duplicate">Duplicate</button>
+      <button class="btn danger" type="button" data-action="delete">Delete</button>
+    </div>
+    <div class="btn-row three cabinet-only-btn">
+      <button class="btn" type="button" data-action="open">Open</button>
+      <button class="btn" type="button" data-action="close">Close</button>
+      <button class="btn" type="button" data-action="toggle">Toggle</button>
+    </div>
+  </footer>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

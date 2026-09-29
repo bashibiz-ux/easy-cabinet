@@ -1,0 +1,12 @@
+{
+  "materials": [
+    { "name": "White Melamine",  "color": "#F2F2EE", "kinds": ["panel", "toe_kick"] },
+    { "name": "Light Oak",       "color": "#C9A46A", "kinds": ["panel", "toe_kick"] },
+    { "name": "Walnut",          "color": "#6B4A32", "kinds": ["panel", "toe_kick"] },
+    { "name": "Anthracite Grey", "color": "#3A3E42", "kinds": ["panel", "toe_kick"] },
+    { "name": "Matt Black",      "color": "#1C1C1E", "kinds": ["panel", "toe_kick"] },
+    { "name": "PVC Black",       "color": "#141414", "kinds": ["toe_kick"] },
+    { "name": "PVC White",       "color": "#ECECEA", "kinds": ["toe_kick"] },
+    { "name": "Aluminium",       "color": "#B9BEC4", "kinds": ["toe_kick"] }
+  ]
+}

@@ -1,0 +1,159 @@
+# frozen_string_literal: true
+
+require 'json'
+
+module KitchenCabinetMaster
+  # Loads catalogs and handle bundles from JSON files. The cabinet engine never
+  # refers to a specific catalog: it only receives whatever the JSON describes.
+  #
+  # Files are read from:
+  #   1. <plugin>/data/catalogs/*.json and data/handles/*.json  (bundled)
+  #   2. <SketchUp Plugins folder>/KitchenCabinetMaster_Data/catalogs|handles/*.json  (yours)
+  # Files in (2) with the same "id" replace bundled ones.
+  module CatalogManager
+    USER_DIR_NAME = 'KitchenCabinetMaster_Data'
+    REQUIRED_DEFAULTS = %w[width depth height].freeze
+
+    class << self
+      # [{ 'id', 'name' }]
+      def catalogs
+        data[:catalogs].values.map { |c| { 'id' => c['id'], 'name' => c['name'] } }
+      end
+
+      def catalog(id)
+        data[:catalogs][id.to_s]
+      end
+
+      # Cabinets of one category. Each entry carries id, name, doors, shelves, defaults.
+      def cabinets(catalog_id, category)
+        found = catalog(catalog_id)
+        return [] unless found
+
+        list = found.dig('categories', category.to_s)
+        list.is_a?(Array) ? list : []
+      end
+
+      def cabinet(catalog_id, category, cabinet_id)
+        cabinets(catalog_id, category).find { |c| c['id'] == cabinet_id.to_s }
+      end
+
+      # Everything the panel needs to offer a bundle's choices.
+      def handle_bundles
+        data[:handles].values.map { |bundle| bundle_summary(bundle) }
+      end
+
+      def handle_bundle(id)
+        data[:handles][id.to_s]
+      end
+
+      # Human-readable problems found while loading (shown in the panel).
+      def warnings
+        data[:warnings]
+      end
+
+      def reload!
+        @data = nil
+      end
+
+      private
+
+      def data
+        @data ||= load_all
+      end
+
+      def load_all
+        result = { catalogs: {}, handles: {}, warnings: [] }
+        [DATA_DIR, user_root].compact.each do |root|
+          read_dir(File.join(root, 'catalogs'), :catalog, result[:catalogs], result[:warnings])
+          read_dir(File.join(root, 'handles'), :handle, result[:handles], result[:warnings])
+        end
+        result
+      end
+
+      def read_dir(dir, kind, store, warnings)
+        return unless File.directory?(dir)
+
+        Dir.glob(File.join(dir, '*.json')).sort.each do |path|
+          parsed = JSON.parse(File.read(path, encoding: 'UTF-8'))
+          problem = kind == :catalog ? catalog_problem(parsed) : handle_problem(parsed)
+          if problem
+            warnings << "#{File.basename(path)}: #{problem}"
+          else
+            store[parsed['id']] = parsed
+          end
+        rescue JSON::ParserError, SystemCallError => e
+          warnings << "#{File.basename(path)}: #{e.message}"
+        end
+      end
+
+      def catalog_problem(parsed)
+        return 'the file must contain a JSON object' unless parsed.is_a?(Hash)
+        return 'missing "id"' if parsed['id'].to_s.strip.empty?
+        return 'missing "name"' if parsed['name'].to_s.strip.empty?
+        return '"categories" must be an object' unless parsed['categories'].is_a?(Hash)
+
+        parsed['categories'].each do |category, list|
+          return "category \"#{category}\" must be a list" unless list.is_a?(Array)
+
+          list.each do |cabinet|
+            problem = cabinet_problem(category, cabinet)
+            return problem if problem
+          end
+        end
+        nil
+      end
+
+      def cabinet_problem(category, cabinet)
+        unless cabinet.is_a?(Hash) && !cabinet['id'].to_s.empty? && !cabinet['name'].to_s.empty?
+          return "a cabinet in \"#{category}\" is missing \"id\" or \"name\""
+        end
+
+        defaults = cabinet['defaults']
+        numeric = defaults.is_a?(Hash) && REQUIRED_DEFAULTS.all? { |key| defaults[key].is_a?(Numeric) }
+        return nil if numeric
+
+        "cabinet \"#{cabinet['id']}\" needs numeric width, depth and height in \"defaults\""
+      end
+
+      def handle_problem(parsed)
+        return 'the file must contain a JSON object' unless parsed.is_a?(Hash)
+        return 'missing "id"' if parsed['id'].to_s.strip.empty?
+        return 'missing "name"' if parsed['name'].to_s.strip.empty?
+        return "\"profile\" must be one of: #{Defaults::HANDLE_PROFILES.join(', ')}" unless Defaults::HANDLE_PROFILES.include?(parsed['profile'])
+
+        lengths = parsed['lengths']
+        return '"lengths" must be a list of positive numbers' unless lengths.is_a?(Array) && !lengths.empty? &&
+                                                                    lengths.all? { |l| l.is_a?(Numeric) && l.positive? }
+
+        finishes = parsed['finishes']
+        unless finishes.is_a?(Array) && !finishes.empty? && finishes.all? { |f| f.is_a?(Hash) && !f['name'].to_s.empty? }
+          return '"finishes" must be a list of objects, each with a "name" (and optionally "material" and "color")'
+        end
+
+        nil
+      end
+
+      def bundle_summary(bundle)
+        lengths = bundle['lengths']
+        {
+          'id' => bundle['id'],
+          'name' => bundle['name'],
+          'profile' => bundle['profile'],
+          'lengths' => lengths,
+          'default_length' => lengths.include?(bundle['default_length']) ? bundle['default_length'] : lengths.first,
+          'finishes' => bundle['finishes'].map { |f| { 'id' => f['name'], 'name' => f['name'], 'color' => f['color'] } },
+          'defaults' => Defaults::HANDLE_DEFAULTS.merge(bundle['defaults'].is_a?(Hash) ? bundle['defaults'] : {})
+        }
+      end
+
+      def user_root
+        return nil unless defined?(Sketchup) && Sketchup.respond_to?(:find_support_file)
+
+        plugins = Sketchup.find_support_file('Plugins')
+        plugins ? File.join(plugins, USER_DIR_NAME) : nil
+      rescue StandardError
+        nil
+      end
+    end
+  end
+end
