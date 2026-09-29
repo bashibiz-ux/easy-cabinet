@@ -275,10 +275,15 @@ module KitchenCabinetMaster
       a = [dims.return_depth, inner_edge]
       b = [inner_edge, dims.return_depth]
       length = Math.hypot(b[0] - a[0], b[1] - a[1])
-      offset_xy = [a[0] + (outward[0] * clear), a[1] + (outward[1] * clear)]
+      # The door's local +Y (its length) turned by +45 degrees points from B
+      # towards A, so the door's origin corner sits at B and it runs B -> A.
+      offset_xy = [b[0] + (outward[0] * clear), b[1] + (outward[1] * clear)]
 
+      # "Left" is as seen facing the door from outside, which puts the left edge
+      # at B (the low end of the door's local Y), the same as any other door:
+      # left hinge = low local Y, and the free edge is the high end.
       hinge_left = params['door_opening_direction'].to_s != 'right'
-      pivot_far = hinge_left ? a : b
+      pivot_far = hinge_left ? b : a
       pivot_xy = [pivot_far[0] + (outward[0] * (clear + thick)), pivot_far[1] + (outward[1] * (clear + thick))]
 
       [Door.new(

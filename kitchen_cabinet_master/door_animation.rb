@@ -56,18 +56,11 @@ module KitchenCabinetMaster
     end
 
     # Signed rotation in radians. Pure maths, no SketchUp objects.
-    def self.swing_radians(hinge, rotation, angle_degrees, fraction)
-      # An ordinary axis-aligned door: the two hinge choices are true mirror
-      # images, so they need opposite signs. A corner unit's diagonal door
-      # (rotation != 0) is related to its own hinge choice by a coordinate
-      # swap, not a mirror, which -- for this geometry -- needs the SAME sign
-      # for both hinge choices (verified against every opening angle up to the
-      # maximum; the "other" sign swings the door straight through the wall).
-      sign = if rotation.to_f.zero?
-               hinge == 'left' ? -1.0 : 1.0
-             else
-               -1.0
-             end
+    # The diagonal corner door is laid out in its own local frame exactly like an
+    # ordinary door (hinge 'left' = low local Y, free edge at the high end), so
+    # the same signs apply; `rotation` only turns that whole frame in place.
+    def self.swing_radians(hinge, _rotation, angle_degrees, fraction)
+      sign = hinge == 'left' ? -1.0 : 1.0
       sign * angle_degrees.to_f * fraction * Math::PI / 180.0
     end
 
@@ -223,7 +216,8 @@ module KitchenCabinetMaster
       direction = door.hinge == 'left' ? 1.0 : -1.0
 
       # Free-edge point relative to the hinge, halfway through the door thickness.
-      start = [-thickness / 2.0, direction * width]
+      # A corner door's local frame is turned by `rotation`, so turn the vector too.
+      start = rotate([-thickness / 2.0, direction * width], door.rotation.to_f * Math::PI / 180.0)
       steps = [(angle.to_f / ARC_STEP_DEGREES).ceil, 3].max
       arc = (0..steps).map do |i|
         rotated = rotate(start, swing_radians(door.hinge, door.rotation, angle, i.to_f / steps))
@@ -241,12 +235,18 @@ module KitchenCabinetMaster
     def self.elevation_indicator(door, base_z)
       px, py, = door.pivot
       _thickness, width, height = door.extent
-      x = px + ELEVATION_STANDOFF
+      radians = door.rotation.to_f * Math::PI / 180.0
       bottom = door.offset[2] - base_z
-      free_y = py + (door.hinge == 'left' ? width : -width)
-      apex = [x, py, bottom + (height / 2.0)]
+      # In the door's own frame the lines sit just in front of its face and run
+      # towards the free edge; `rotate` puts a corner door's frame in place.
+      standoff = rotate([ELEVATION_STANDOFF, 0.0], radians)
+      along = rotate([0.0, door.hinge == 'left' ? width : -width], radians)
+      ax = px + standoff[0]
+      ay = py + standoff[1]
+      apex = [ax, ay, bottom + (height / 2.0)]
+      free = [ax + along[0], ay + along[1]]
 
-      [[apex, [x, free_y, bottom + height]], [apex, [x, free_y, bottom]]]
+      [[apex, [free[0], free[1], bottom + height]], [apex, [free[0], free[1], bottom]]]
     end
     private_class_method :elevation_indicator
 
