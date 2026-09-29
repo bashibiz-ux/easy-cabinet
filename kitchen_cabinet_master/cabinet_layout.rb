@@ -93,7 +93,10 @@ module KitchenCabinetMaster
       # A corner unit's outer footprint is a square sized by Width in both
       # directions; its own Depth instead controls the internal return panels.
       nominal_depth = category == 'corner' ? params['width'].to_f : params['depth'].to_f
-      [nominal_depth + Defaults::DOOR_CLEARANCE + thick, params['width'].to_f, base_z + params['height'].to_f]
+      # A corner unit's doors sit on a diagonal inside that square, so nothing of
+      # it stands proud of Width; the door clearance only applies to flat fronts.
+      depth = category == 'corner' ? nominal_depth : nominal_depth + Defaults::DOOR_CLEARANCE + thick
+      [depth, params['width'].to_f, base_z + params['height'].to_f]
     end
 
     def self.dimensions(params)

@@ -19,14 +19,27 @@ module KitchenCabinetMaster
   module PlacementManager
     MAX_STEPS = 200
 
+    # A corner unit that follows another item turns the row a quarter turn
+    # clockwise (seen from above), so the row carries on along the next wall.
+    CORNER_TURN_DEGREES = -90.0
+
     # Returns [entities, transformation] for a new CABINET.
     def self.target_for_new(model, params)
-      target_row(model, params, CabinetLayout.envelope(params))
+      corner = params['cabinet_category'].to_s == 'corner'
+      target_row(model, params, CabinetLayout.envelope(params),
+                 turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f)
     end
 
     # Returns [entities, transformation] for a new item of any kind, given its
     # own closed size [depth, width, top] in millimetres.
-    def self.target_row(model, params, size)
+    #
+    # `turn` (degrees about Z) rotates the new item as it joins the row: it takes
+    # the slot after the selected item, then is turned about its own origin so
+    # that its back lies along the far end of that slot and its own Y axis --
+    # which the next item follows -- points along the new wall. That needs the
+    # item's `own_width`, since a quarter turn swings it that far sideways.
+    # Nothing selected: no row to turn, so it goes at the origin unturned.
+    def self.target_row(model, params, size, turn: nil, own_width: nil)
       selected = SelectionManager.selected_occupant(model)
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
@@ -34,13 +47,23 @@ module KitchenCabinetMaster
       transformation =
         if selected
           width = selected.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
-          selected.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, width.mm + gap, 0))
+          slot = selected.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, width.mm + gap, 0))
+          turn ? turned(slot, turn, own_width.to_f.mm) : slot
         else
           Geom::Transformation.new
         end
 
       [entities, clear_of_occupants(entities, transformation, size.map(&:mm), gap)]
     end
+
+    # `slot` moved to the far end of its own width, then turned by `degrees` about
+    # the new origin. For -90 the item's back ends up on the far side of its slot.
+    def self.turned(slot, degrees, width)
+      far_end = slot * Geom::Transformation.translation(Geom::Vector3d.new(0, width, 0))
+      far_end * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1),
+                                              degrees * Math::PI / 180.0)
+    end
+    private_class_method :turned
 
     # Slides `transformation` along its own Y axis until the candidate box no
     # longer overlaps any occupant in `entities`.
