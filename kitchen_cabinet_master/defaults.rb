@@ -17,6 +17,10 @@ module KitchenCabinetMaster
       { 'id' => 'corner', 'name' => 'Corner Unit' }
     ].freeze
 
+    # Cabinet widths offered in the "Standard Width" list (mm). Picking one fills
+    # the Width field, which stays editable for any other size.
+    STANDARD_WIDTHS = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200].freeze
+
     DIRECTIONS = [
       { 'id' => 'left',  'name' => 'Left' },
       { 'id' => 'right', 'name' => 'Right' }

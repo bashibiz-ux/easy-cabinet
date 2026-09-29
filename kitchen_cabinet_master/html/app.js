@@ -412,6 +412,7 @@
       if ('toe_kick' in v) $('visToe').checked = !!v.toe_kick;
     }
     syncHandlePosition();
+    syncWidthPreset();
     updateChips();
     drawPreview();
   }
@@ -496,11 +497,26 @@
     drawPreview();
   }
 
+  // The Standard Width list: a fixed size fills the Width field; Width can still be
+  // typed freely, and the list follows it (Custom when it is not a listed size).
+  function fillWidthPreset() {
+    const sizes = list(state.meta && state.meta.standard_widths);
+    fillSelect($('widthPreset'), [{ id: 'custom', name: 'Custom' }, ...sizes.map((w) => ({ id: String(w), name: `${w} mm` }))]);
+    syncWidthPreset();
+  }
+
+  function syncWidthPreset() {
+    const value = String(num($('width').value));
+    const listed = [...$('widthPreset').options].some((o) => o.value === value);
+    $('widthPreset').value = listed ? value : 'custom';
+  }
+
   function applyCabinetDefaults() {
     const cabinet = currentCabinet();
     if (!cabinet) return;
     const d = cabinet.defaults || {};
     setText('width', d.width);
+    syncWidthPreset();
     setText('depth', d.depth);
     setText('height', d.height);
     setText('shelves', cabinet.shelves === undefined ? 0 : cabinet.shelves);
@@ -749,6 +765,7 @@
       if (!list(m[key]).length) m[key] = FALLBACK_LISTS[key];
     });
     ['catalogs', 'categories', 'directions', 'warnings'].forEach((key) => { m[key] = list(m[key]); });
+    if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
     m.defaults = m.defaults || {};
@@ -764,6 +781,7 @@
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     fillSelect($('category'), m.categories);
     fillSelect($('direction'), m.directions);
+    fillWidthPreset();
     fillSelect($('doorSymbol'), m.door_symbols);
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
@@ -799,6 +817,11 @@
       applyCabinetDefaults();
       drawPreview();
     });
+    $('widthPreset').addEventListener('change', () => {
+      if ($('widthPreset').value !== 'custom') setText('width', Number($('widthPreset').value));
+      drawPreview();
+    });
+    $('width').addEventListener('input', syncWidthPreset);
     $('insertType').addEventListener('change', () => setInsertType($('insertType').value));
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);

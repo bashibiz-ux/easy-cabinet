@@ -78,6 +78,7 @@ module KitchenCabinetMaster
           'version'         => EXTENSION_VERSION,
           'categories'      => Defaults::CATEGORIES,
           'directions'      => Defaults::DIRECTIONS,
+          'standard_widths' => Defaults::STANDARD_WIDTHS,
           'catalogs'        => CatalogManager.catalogs,
           'handle_bundles'  => CatalogManager.handle_bundles,
           'door_symbols'    => Defaults::DOOR_SYMBOLS,
