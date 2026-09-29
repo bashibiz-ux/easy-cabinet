@@ -13,11 +13,6 @@ module Sketchup
 end
 
 module KitchenCabinetMaster
-  module AttributeManager
-    DICTIONARY = 'kcm'
-    def self.occupant?(instance) = instance.respond_to?(:attrs)
-  end
-
   module SelectionManager
     class << self
       attr_accessor :selected
@@ -27,21 +22,25 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults toe_kick cabinet_layout placement_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults toe_kick cabinet_layout attribute_manager placement_manager naming_manager].each do |f|
+  require File.join(plugin, f)
+end
 
 # A placed cabinet: a ComponentInstance with a transformation and attributes.
 class FakeCabinet < Sketchup::ComponentInstance
   attr_reader :transformation, :attrs, :parent
 
-  def initialize(transformation, params, parent)
+  def initialize(transformation, params, parent, sequence = 0)
     super()
     @transformation = transformation
     @parent = parent
     env = KitchenCabinetMaster::CabinetLayout.envelope(params)
-    @attrs = { 'width' => params['width'], 'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2] }
+    @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
+               'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2] }
   end
 
-  def get_attribute(_dict, key) = @attrs[key]
+  def attribute_dictionary(_name, _create = false) = @attrs
+  def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
 end
 
 class FakeEntities
@@ -69,6 +68,7 @@ class PlacementTest < Minitest::Test
     @entities = FakeEntities.new
     @model = FakeModel.new(@entities)
     @parent = FakeParent.new(@entities)
+    @sequence = 0
     SelectionManager.selected = nil
   end
 
@@ -81,11 +81,14 @@ class PlacementTest < Minitest::Test
   def insert(category, width, depth: 560.0)
     p = params(category, width, depth: depth)
     _entities, transformation = PlacementManager.target_for_new(@model, p)
-    cabinet = FakeCabinet.new(transformation, p, @parent)
+    cabinet = FakeCabinet.new(transformation, p, @parent, @sequence += 1)
     @entities.add(cabinet)
     SelectionManager.selected = cabinet
     cabinet
   end
+
+  # The user clicks away, so nothing is selected any more.
+  def deselect = SelectionManager.selected = nil
 
   def at(cabinet, x, y) = cabinet.transformation * Geom::Point3d.new(x, y, 0)
 
@@ -147,6 +150,78 @@ class PlacementTest < Minitest::Test
     _e, turned = PlacementManager.target_for_new(@model, p)
 
     assert_in_delta 1510.0, turned.origin.y, 0.01, 'gap before the corner, then its own width'
+  end
+
+  def test_with_nothing_selected_the_next_cabinet_goes_after_the_last_one
+    insert('base', 600.0)
+    insert('base', 800.0)
+    deselect
+
+    third = insert('base', 400.0)
+    assert_point [0, 1400], third.transformation.origin, 'straight after the second cabinet, not back at the origin'
+  end
+
+  # A cabinet dropped in the model at Y = `y` with the given insertion number.
+  def place(width, y, sequence)
+    p = params('base', width)
+    move = Geom::Transformation.translation(Geom::Vector3d.new(0, y, 0))
+    cabinet = FakeCabinet.new(move, p, @parent, sequence)
+    @entities.add(cabinet)
+    cabinet
+  end
+
+  def test_the_last_cabinet_is_the_most_recently_inserted_not_the_furthest_along
+    far = place(600.0, 3000.0, 1) # inserted first, but sits furthest along
+    near = place(600.0, 0.0, 2)   # inserted last, back near the start
+
+    assert_same near, PlacementManager.last_occupant(@model)
+    _e, transformation = PlacementManager.target_for_new(@model, params('base', 500.0))
+    assert_point [0, 600], transformation.origin, 'after the last INSERTED cabinet'
+    refute_same far, PlacementManager.last_occupant(@model)
+  end
+
+  def test_a_selection_still_wins_over_the_last_cabinet
+    first = place(600.0, 0.0, 1)
+    place(600.0, 3000.0, 2) # the last one inserted
+    SelectionManager.selected = first
+
+    _e, transformation = PlacementManager.target_for_new(@model, params('base', 500.0))
+    assert_point [0, 600], transformation.origin, 'after the selected cabinet, not the last one'
+  end
+
+  def test_an_end_panel_or_toe_kick_is_never_taken_as_the_last_cabinet
+    cabinet = place(600.0, 0.0, 1)
+    panel = FakeCabinet.new(Geom::Transformation.new, params('base', 18.0), @parent, 9)
+    panel.attrs.delete('cabinet_id')
+    panel.attrs['part_id'] = 'PART_0009'
+    panel.attrs['part_kind'] = 'end_panel'
+    @entities.add(panel)
+
+    assert_same cabinet, PlacementManager.last_occupant(@model)
+  end
+
+  def test_a_corner_with_nothing_selected_turns_after_the_last_cabinet
+    insert('base', 600.0)
+    deselect
+    corner = insert('corner', 900.0)
+    assert_point [0, 1500], corner.transformation.origin, 'turned at the end of the row'
+    assert_in_delta(-1.0, corner.transformation.xaxis.y, 1e-9)
+  end
+
+  def test_the_first_cabinet_still_goes_at_the_origin
+    assert_nil PlacementManager.last_occupant(@model)
+    first = insert('base', 600.0)
+    assert_point [0, 0], first.transformation.origin, 'origin'
+  end
+
+  def test_same_sized_cabinets_share_one_name
+    a = NamingManager.unique_name(@entities, NamingManager.base_name(params('base', 600.0).merge('name_code' => '')))
+    b = NamingManager.unique_name(@entities, NamingManager.base_name(params('base', 600.0).merge('name_code' => '')))
+    assert_equal 'BU600', a
+    assert_equal a, b, 'no #2 suffix'
+    assert_equal 'BU800', NamingManager.base_name(params('base', 800.0).merge('name_code' => ''))
+    assert_equal 'WU600', NamingManager.base_name(params('wall', 600.0).merge('name_code' => ''))
+    assert_equal 'BU600', NamingManager.for_update_base(nil, 'BU600')
   end
 
   def test_ordinary_cabinets_still_run_straight_along_y

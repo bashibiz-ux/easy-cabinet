@@ -75,6 +75,17 @@ module KitchenCabinetMaster
       format('%<prefix>s%<number>04d', prefix: PART_ID_PREFIX, number: number)
     end
 
+    # The order things were inserted in: 1, 2, 3 ... across cabinets and fillers.
+    # An insert with nothing selected goes after the one with the highest number
+    # (see PlacementManager.last_occupant). Stored on the item as 'sequence'.
+    SEQUENCE_KEY = 'sequence_counter'
+
+    def self.next_sequence(model)
+      number = model.get_attribute(DICTIONARY, SEQUENCE_KEY, 0).to_i + 1
+      model.set_attribute(DICTIONARY, SEQUENCE_KEY, number)
+      number
+    end
+
     # A cabinet OR a part: anything with its own fixed footprint, for collision
     # avoidance (see PlacementManager). Every occupant carries 'envelope_depth',
     # 'envelope_width' and 'envelope_top' (mm, from its own local floor origin).

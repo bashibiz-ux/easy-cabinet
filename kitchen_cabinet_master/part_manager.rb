@@ -27,6 +27,7 @@ module KitchenCabinetMaster
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Filler') do
           params['part_id'] = AttributeManager.next_part_id(model)
+          params['sequence'] = AttributeManager.next_sequence(model)
           layout = PartLayout.filler(params)
           entities, transformation = PlacementManager.target_row(model, params, PartLayout.filler_envelope(params))
           params['part_name'] = NamingManager.unique_name(entities, NamingManager.filler_name(params))

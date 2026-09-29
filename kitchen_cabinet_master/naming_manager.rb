@@ -7,14 +7,14 @@ module KitchenCabinetMaster
   #                                       WU800   wall unit, 800 wide
   #                                       TU600   tall unit, 600 wide
   #
-  # Cabinets of the same size are copies of each other and are numbered the way
-  # SketchUp numbers component copies:  BU600, BU600#1, BU600#2 ...
+  # Cabinets of the same size and category share ONE name: two 600 mm base units
+  # are both "BU600". (SketchUp itself may still number the component DEFINITION
+  # behind each one, BU600#1, because definitions must have distinct names.)
   #
   # This is only the DISPLAY name (the instance name shown in the Outliner and in
   # the panel). The permanent unique ID (CABINET_0001 ...) is still stored in the
   # attribute dictionary and never changes.
   module NamingManager
-    COPY_SEPARATOR = '#'
 
     # "BU600": the unit code followed by the width.
     def self.base_name(params)
@@ -40,31 +40,21 @@ module KitchenCabinetMaster
       "#{prefix}#{format('%g', params['toe_kick_piece_length'].to_f)}x#{params['toe_kick_pieces'].to_i}"
     end
 
-    # `base` if no cabinet in `entities` has it yet, otherwise the first free
-    # "base#1", "base#2" ... `ignore` is a cabinet that is allowed to keep its own name.
-    def self.unique_name(entities, base, ignore = nil)
-      taken = entities.grep(Sketchup::ComponentInstance).reject { |instance| instance.equal?(ignore) }.map(&:name)
-      return base unless taken.include?(base)
-
-      number = 1
-      number += 1 while taken.include?("#{base}#{COPY_SEPARATOR}#{number}")
-      "#{base}#{COPY_SEPARATOR}#{number}"
+    # Items of the same size deliberately share a name, so the name is just
+    # `base`. (Kept as a method so every caller goes through one place.)
+    def self.unique_name(_entities, base, _ignore = nil)
+      base
     end
 
-    # After an Update the name follows the size: a cabinet that is still the same
-    # size keeps its name (including its copy number); a resized one is renamed.
-    def self.for_update(root, params)
-      base = base_name(params)
-      for_update_base(root, base)
+    # After an Update the name follows the size, so it is simply the new base name.
+    def self.for_update(_root, params)
+      base_name(params)
     end
 
-    # Same rule as `for_update`, given an already-computed base name (a filler or
-    # an end panel, whose base name comes from `filler_name` / `end_panel_name`).
-    def self.for_update_base(root, base)
-      current = root.name.to_s
-      return current if current == base || current.start_with?("#{base}#{COPY_SEPARATOR}")
-
-      unique_name(root.parent.entities, base, root)
+    # Same rule as `for_update`, given an already-computed base name (a filler,
+    # end panel or toe kick, whose base name comes from `filler_name` and friends).
+    def self.for_update_base(_root, base)
+      base
     end
   end
 end

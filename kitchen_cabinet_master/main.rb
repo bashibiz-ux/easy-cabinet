@@ -25,6 +25,7 @@ module KitchenCabinetMaster
   require_relative 'cabinet_generator'
   require_relative 'part_generator'
   require_relative 'selection_manager'
+  require_relative 'snap_manager'
   require_relative 'naming_manager'
   require_relative 'placement_manager'
   require_relative 'cabinet_manager'
@@ -33,6 +34,7 @@ module KitchenCabinetMaster
 
   unless file_loaded?(__FILE__)
     SelectionManager.install
+    SnapManager.install
     menu = UI.menu('Extensions').add_submenu(EXTENSION_NAME)
     menu.add_item('Open Control Panel') { DialogManager.show }
     file_loaded(__FILE__)

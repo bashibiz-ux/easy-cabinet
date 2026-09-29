@@ -31,6 +31,7 @@ module KitchenCabinetMaster
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
           params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
+          params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
           CabinetGenerator.build(model, entities, params, transformation)
@@ -67,13 +68,18 @@ module KitchenCabinetMaster
     end
     private_class_method :update
 
-    # Carcass / Door / Toe Kick / Opening Direction checkboxes: applied straight away to every cabinet
-    # in the model (the top level of the model), as one undoable step. Only the
-    # visible flag of existing containers changes; nothing is rebuilt.
+    # Carcass / Door / Toe Kick / the two opening-direction checkboxes: applied
+    # straight away to every cabinet in the model (the top level of the model), as
+    # one undoable step. Only the visible flag of existing containers changes;
+    # nothing is rebuilt.
+    #   opening_direction  the plan symbol on the floor
+    #   door_symbol        the dashed swing lines on each door
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
-      visibility = %w[carcass door toe_kick].to_h { |key| [key, [true, 'true', 1, '1'].include?(raw[key])] }
-      show_indicator = [true, 'true', 1, '1'].include?(raw['opening_direction'])
+      on = ->(value) { [true, 'true', 1, '1'].include?(value) }
+      visibility = %w[carcass door toe_kick].to_h { |key| [key, on.call(raw[key])] }
+      show_floor_symbol = on.call(raw['opening_direction'])
+      show_door_symbol = on.call(raw['door_symbol'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -86,8 +92,10 @@ module KitchenCabinetMaster
       SelectionManager.suspend do
         with_operation(model, 'Change Cabinet Visibility') do
           cabinets.each do |cabinet|
-            AttributeManager.write(cabinet, 'visibility_settings' => visibility, 'show_opening_direction' => show_indicator)
-            CabinetGenerator.apply_visibility(cabinet, visibility, show_indicator)
+            AttributeManager.write(cabinet, 'visibility_settings' => visibility,
+                                            'show_opening_direction' => show_floor_symbol,
+                                            'show_door_symbol' => show_door_symbol)
+            CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
@@ -114,6 +122,7 @@ module KitchenCabinetMaster
       copy = SelectionManager.suspend do
         with_operation(model, 'Duplicate Cabinet') do
           params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
+          params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
           CabinetGenerator.build(model, entities, params, transformation)

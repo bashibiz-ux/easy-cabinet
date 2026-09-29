@@ -6,16 +6,11 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.10.0';
+  const APP_VERSION = '0.11.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
   const FALLBACK_LISTS = {
-    door_symbols: [
-      { id: 'plan', name: 'Plan (drawn at floor level)' },
-      { id: 'elevation', name: 'Elevation (dashed lines on the door)' },
-      { id: 'both', name: 'Plan and elevation' }
-    ],
     handle_orientations: [{ id: 'vertical', name: 'Vertical' }, { id: 'horizontal', name: 'Horizontal' }],
     handle_positions: ['top', 'center', 'bottom', 'left', 'right', 'custom']
       .map((id) => ({ id, name: id.charAt(0).toUpperCase() + id.slice(1) })),
@@ -49,7 +44,7 @@
     height: 'height',
     shelf_count: 'shelves',
     carcass_material: 'carcassMaterial',
-    door_symbol: 'doorSymbol',
+    door_reveal: 'doorReveal',
     toe_kick_height: 'toeHeight',
     toe_kick_thickness: 'toeThickness',
     toe_kick_material: 'toeMaterial',
@@ -72,6 +67,7 @@
     material_thickness: 'thickness',
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
+    door_reveal: 'doorReveal',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -95,7 +91,6 @@
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
     carcass_material: 'carcassMaterial',
-    door_symbol: 'doorSymbol',
     toe_kick_material: 'toeMaterial',
     door_opening_direction: 'direction',
     handle_length: 'handleLength',
@@ -115,7 +110,8 @@
     seq: 0,
     busy: false,
     lastMaterialRefresh: 0,
-    insertType: 'cabinet'
+    // What is selected in the model: 'cabinet', 'filler', 'end_panel', 'toe_kick' or null.
+    selectedKind: null
   };
 
   /* ---------------------------------------------------------------------- *
@@ -153,42 +149,23 @@
     }
   };
 
+  // What the user has selected in the model decides which form Update reads and
+  // what Update / Delete act on: a cabinet, a filler, an end panel or a toe kick.
   function handleEvent(name, data) {
     if (name === 'cabinet_selected') {
-      setInsertType('cabinet');
+      state.selectedKind = 'cabinet';
       loadCabinet(data);
     } else if (name === 'part_selected') {
       const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
-      setInsertType(kind);
+      state.selectedKind = kind;
       setBadge(data.part_name);
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
     } else if (name === 'cabinet_cleared') {
+      state.selectedKind = null;
       setBadge(null);
     }
-  }
-
-  // Shows the section for whichever kind is being worked on (Cabinet, Filler,
-  // End Panel or Toe Kick) and hides the actions that only make sense for a full
-  // cabinet (Duplicate). Toggle acts on the cabinets, so it is always shown.
-  // Choosing a kind opens its section so the fields are in view.
-  function setInsertType(type) {
-    const changed = state.insertType !== type;
-    state.insertType = type;
-    $('insertType').value = type;
-    document.querySelectorAll('.cabinet-only').forEach((el) => { el.hidden = type !== 'cabinet'; });
-    document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = type !== 'cabinet'; });
-    $('sec-toe').hidden = !['cabinet', 'toe_kick'].includes(type);
-    document.querySelectorAll('.toe-only').forEach((el) => { el.hidden = type !== 'toe_kick'; });
-    $('toeCabinetHint').hidden = type !== 'cabinet';
-    $('sec-filler').hidden = type !== 'filler';
-    $('sec-end-panel').hidden = type !== 'end_panel';
-    document.querySelector('.preview').hidden = type !== 'cabinet';
-    updateCategoryUi();
-
-    const section = { filler: 'sec-filler', end_panel: 'sec-end-panel', toe_kick: 'sec-toe' }[type];
-    if (changed && section) toggleCard($(section), true);
   }
 
   function applyToeKickDefaults(d) {
@@ -256,13 +233,33 @@
     };
   }
 
-  // Cabinet actions map straight through; Filler and End Panel share Update
-  // and Delete but each has its own Insert action.
-  function mapAction(action) {
-    if (state.insertType === 'cabinet' || !['insert', 'update', 'delete'].includes(action)) return action;
-    if (action === 'update') return 'update_part';
-    if (action === 'delete') return 'delete_part';
-    return { filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' }[state.insertType];
+  // Which form an action reads. Each Insert button belongs to its own block;
+  // Update follows whatever is selected in the model.
+  const FORM_OF_ACTION = {
+    insert: 'cabinet',
+    insert_filler: 'filler',
+    insert_end_panel: 'end_panel',
+    insert_toe_kick: 'toe_kick'
+  };
+  const COLLECTORS = {
+    cabinet: () => collect(),
+    filler: () => collectFiller(),
+    end_panel: () => collectEndPanel(),
+    toe_kick: () => collectToeKick()
+  };
+
+  function formKind(action) {
+    if (action === 'update') return state.selectedKind || 'cabinet';
+    return FORM_OF_ACTION[action] || null;
+  }
+
+  // Cabinets have their own Update / Delete; a filler, end panel or toe kick
+  // shares one pair (update_part / delete_part).
+  function serverAction(action) {
+    const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
+    if (isPart && action === 'update') return 'update_part';
+    if (isPart && action === 'delete') return 'delete_part';
+    return action;
   }
 
   /* ---------------------------------------------------------------------- *
@@ -365,6 +362,8 @@
       door_opening_direction: $('direction').value,
       door_opening_angle: $('angle').value,
       show_opening_direction: $('showDirection').checked,
+      show_door_symbol: $('showDoorSymbol').checked,
+      door_reveal: $('doorReveal').value,
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
       placement_gap: $('gap').value,
@@ -373,7 +372,6 @@
       height: $('height').value,
       shelf_count: $('shelves').value,
       carcass_material: $('carcassMaterial').value,
-      door_symbol: $('doorSymbol').value,
       toe_kick_height: $('toeHeight').value,
       handle_length: handleValue('handleLength'),
       handle_finish: handleValue('handleFinish'),
@@ -405,6 +403,7 @@
       if (key in p) setSelect(id, p[key]);
     });
     if ('show_opening_direction' in p) $('showDirection').checked = !!p.show_opening_direction;
+    if ('show_door_symbol' in p) $('showDoorSymbol').checked = !!p.show_door_symbol;
     if (p.visibility_settings && typeof p.visibility_settings === 'object') {
       const v = p.visibility_settings;
       if ('carcass' in v) $('visCarcass').checked = !!v.carcass;
@@ -522,13 +521,10 @@
     setText('shelves', cabinet.shelves === undefined ? 0 : cabinet.shelves);
   }
 
-  // A wall unit stands on nothing, so the toe-kick height does not apply to it.
-  // (When inserting a toe kick itself the category does not matter.)
+  // A wall unit hangs at height 0, so the toe-kick height does not raise it. (The
+  // toe kick fields stay usable: a toe kick is inserted on its own.)
   function updateCategoryUi() {
-    const isWall = state.insertType === 'cabinet' && $('category').value === 'wall';
-    $('sec-toe').classList.toggle('is-disabled', isWall);
-    $('sec-toe').querySelectorAll('input, select').forEach((el) => { el.disabled = isWall; });
-    $('toeNote').hidden = !isWall;
+    $('toeNote').hidden = $('category').value !== 'wall';
   }
 
   async function loadCabinet(params) {
@@ -542,7 +538,7 @@
 
   function setBadge(name) {
     const badge = $('selectionBadge');
-    badge.textContent = name || 'No cabinet selected';
+    badge.textContent = name || 'Nothing selected';
     badge.classList.toggle('active', !!name);
   }
 
@@ -573,7 +569,7 @@
     const doors = cabinet ? (cabinet.doors | 0) : 0;
     const shelves = Math.min(20, Math.max(0, parseInt($('shelves').value, 10) || 0));
     const hingeOnLeft = $('direction').value !== 'right';
-    const showSwing = $('showDirection').checked && $('doorSymbol').value !== 'plan';
+    const showSwing = $('showDoorSymbol').checked;
 
     const padX = 26;
     const top = 12;
@@ -662,9 +658,9 @@
     document.querySelectorAll('.field.invalid').forEach((f) => f.classList.remove('invalid'));
   }
 
-  function markInvalid(errors) {
-    const map = state.insertType === 'filler' ? FILLER_FIELD_TO_ELEMENT
-      : state.insertType === 'end_panel' ? END_PANEL_FIELD_TO_ELEMENT : FIELD_TO_ELEMENT;
+  function markInvalid(errors, kind) {
+    const map = kind === 'filler' ? FILLER_FIELD_TO_ELEMENT
+      : kind === 'end_panel' ? END_PANEL_FIELD_TO_ELEMENT : FIELD_TO_ELEMENT;
     let first = null;
     (errors || []).forEach((error) => {
       const id = map[error.field];
@@ -702,17 +698,13 @@
     clearInvalid();
     setBusy(true);
     try {
-      const usesForm = ['insert', 'update'].includes(action);
-      let payload = {};
-      if (usesForm) {
-        const collectors = { filler: collectFiller, end_panel: collectEndPanel, toe_kick: collectToeKick };
-        payload = (collectors[state.insertType] || collect)();
-      }
-      const res = await call(mapAction(action), payload);
+      const kind = formKind(action);
+      const payload = kind ? COLLECTORS[kind]() : {};
+      const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
       } else {
-        markInvalid(res.errors);
+        markInvalid(res.errors, kind);
         setStatus('error', res.message, (res.errors || []).length > 1 ? res.errors.map((e) => e.message) : []);
       }
     } catch (error) {
@@ -729,7 +721,8 @@
         carcass: $('visCarcass').checked,
         door: $('visDoor').checked,
         toe_kick: $('visToe').checked,
-        opening_direction: $('showDirection').checked
+        opening_direction: $('showDirection').checked, // the plan symbol on the floor
+        door_symbol: $('showDoorSymbol').checked // the dashed lines on each door
       });
       setStatus(res.ok ? 'ok' : 'error', res.message);
     } catch (error) {
@@ -750,7 +743,8 @@
       if (key in d) setSelect(id, d[key]);
     });
     setSelect('category', d.cabinet_category);
-    $('showDirection').checked = !!d.show_opening_direction;
+    $('showDirection').checked = d.show_opening_direction !== false;
+    $('showDoorSymbol').checked = d.show_door_symbol !== false;
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
@@ -782,7 +776,6 @@
     fillSelect($('category'), m.categories);
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
-    fillSelect($('doorSymbol'), m.door_symbols);
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
     fillSelect($('fillerCategory'), m.categories);
@@ -793,7 +786,6 @@
     applyEndPanelDefaults(m.end_panel_defaults);
     applyToeKickDefaults(m.toe_kick_defaults);
     updateCategoryUi();
-    setInsertType('cabinet');
     await refreshCabinets();
 
     if (m.version !== APP_VERSION) {
@@ -822,7 +814,6 @@
       drawPreview();
     });
     $('width').addEventListener('input', syncWidthPreset);
-    $('insertType').addEventListener('change', () => setInsertType($('insertType').value));
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);
 
@@ -841,14 +832,13 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showDirection'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }
 
   async function init() {
     wireEvents();
-    setInsertType('cabinet'); // the panel is a cabinet form until told otherwise
     // Every section starts closed; the user opens the ones they need.
     document.querySelectorAll('.card').forEach((card) => {
       if (card.querySelector('.card-head')) toggleCard(card, false);

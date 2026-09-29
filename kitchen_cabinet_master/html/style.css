@@ -299,6 +299,12 @@ h1 {
 .btn-row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .btn-row.one { grid-template-columns: minmax(0, 1fr); }
 
+/* Filler / End Panel blocks inside the Cabinet section, and the small
+   per-block Insert buttons (Filler, End Panel, Toe Kick). */
+.subblock { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line, #d9dde3); }
+.sub-head { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
+.sub-btn { width: 100%; margin-top: 8px; }
+
 .btn {
   height: 32px;
   padding: 0 8px;

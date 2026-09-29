@@ -61,8 +61,7 @@ module KitchenCabinetMaster
       return if @attached[key]
 
       model.selection.add_observer(@selection_watcher)
-      @attached[key] = true
-    end
+      @attached[key] = true    end
 
     # The single cabinet the user has selected, or nil.
     # Also works while the user is editing inside a cabinet (double-clicked into it).
@@ -149,6 +148,11 @@ module KitchenCabinetMaster
       yield
     ensure
       @suspended = previous
+    end
+
+    # True while one of our own edits is running (see `suspend`).
+    def self.suspended?
+      @suspended ? true : false
     end
 
     def self.selection_changed

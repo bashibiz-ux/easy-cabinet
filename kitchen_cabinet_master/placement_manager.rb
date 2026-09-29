@@ -3,7 +3,8 @@
 module KitchenCabinetMaster
   # Decides where a new cabinet or filler is inserted.
   #
-  #   No occupant selected  -> at the model origin.
+  #   Nothing selected      -> straight after the last cabinet or filler inserted
+  #                            (at the model origin when there is none yet).
   #   An occupant selected  -> Selected End + Configured Gap = New Item Start,
   #                            measured along the selected item's own Y axis, so a
   #                            row keeps its direction, rotation and height. A
@@ -38,9 +39,10 @@ module KitchenCabinetMaster
     # that its back lies along the far end of that slot and its own Y axis --
     # which the next item follows -- points along the new wall. That needs the
     # item's `own_width`, since a quarter turn swings it that far sideways.
-    # Nothing selected: no row to turn, so it goes at the origin unturned.
+    # Nothing selected: it follows the LAST cabinet or filler inserted (see
+    # last_occupant); with none in the model yet, it goes at the origin unturned.
     def self.target_row(model, params, size, turn: nil, own_width: nil)
-      selected = SelectionManager.selected_occupant(model)
+      selected = SelectionManager.selected_occupant(model) || last_occupant(model)
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
 
@@ -54,6 +56,17 @@ module KitchenCabinetMaster
         end
 
       [entities, clear_of_occupants(entities, transformation, size.map(&:mm), gap)]
+    end
+
+    # The cabinet or filler that was inserted most recently (highest 'sequence');
+    # on a tie, the one added to the model last. Items from before sequence numbers
+    # existed count as 0, so they come before anything inserted since. nil when the
+    # model has none. An end panel or toe kick is not part of the row, so is skipped.
+    def self.last_occupant(model)
+      rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
+        AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler'
+      end
+      rows.each_with_index.max_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
 
     # `slot` moved to the far end of its own width, then turned by `degrees` about

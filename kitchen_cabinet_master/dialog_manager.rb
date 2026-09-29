@@ -81,7 +81,6 @@ module KitchenCabinetMaster
           'standard_widths' => Defaults::STANDARD_WIDTHS,
           'catalogs'        => CatalogManager.catalogs,
           'handle_bundles'  => CatalogManager.handle_bundles,
-          'door_symbols'    => Defaults::DOOR_SYMBOLS,
           'handle_positions' => Defaults::HANDLE_POSITIONS,
           'handle_orientations' => Defaults::HANDLE_ORIENTATIONS,
           'end_panel_sides' => Defaults::END_PANEL_SIDES.map { |s| { 'id' => s, 'name' => s.capitalize } },

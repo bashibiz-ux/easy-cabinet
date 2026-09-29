@@ -26,12 +26,9 @@ module KitchenCabinetMaster
       { 'id' => 'right', 'name' => 'Right' }
     ].freeze
 
-    # How the door-opening indicator is drawn (see DoorAnimation).
-    DOOR_SYMBOLS = [
-      { 'id' => 'plan',      'name' => 'Plan (drawn at floor level)' },
-      { 'id' => 'elevation', 'name' => 'Elevation (dashed lines on the door)' },
-      { 'id' => 'both',      'name' => 'Plan and elevation' }
-    ].freeze
+    # The plain white a cabinet, filler, end panel or toe kick gets when no
+    # material has been chosen (a preset in data/materials.json, created on first use).
+    DEFAULT_MATERIAL = 'White'
 
     # Cabinet names are the unit code plus the width: BU600, WU800, TU600 ...
     # A catalog cabinet can set its own "code"; otherwise its category decides.
@@ -106,9 +103,9 @@ module KitchenCabinetMaster
       'handle_orientation'     => '',
       'handle_position'        => '',
 
-      'base_material'          => 'White Melamine',
-      'wall_material'          => 'White Melamine',
-      'tall_material'          => 'White Melamine',
+      'base_material'          => DEFAULT_MATERIAL,
+      'wall_material'          => DEFAULT_MATERIAL,
+      'tall_material'          => DEFAULT_MATERIAL,
       'cabinet_material'       => '',
       'carcass_material'       => '', # blank = the carcass follows the door material
       'material_thickness'     => 18.0,
@@ -116,8 +113,8 @@ module KitchenCabinetMaster
 
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
-      'show_opening_direction' => true,
-      'door_symbol'            => 'plan',
+      'show_opening_direction' => true, # the plan symbol on the floor
+      'show_door_symbol'       => true, # the dashed swing lines on the door
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
 
@@ -140,7 +137,7 @@ module KitchenCabinetMaster
       'width'                 => 100.0,
       'depth'                 => 560.0,
       'height'                => 780.0,
-      'material'              => 'White Melamine',
+      'material'              => DEFAULT_MATERIAL,
       'toe_kick_height'       => 100.0
     }.freeze
 
@@ -163,7 +160,7 @@ module KitchenCabinetMaster
     END_PANEL_PARAMS = {
       'side'      => 'left',
       'thickness' => 18.0,
-      'material'  => 'White Melamine'
+      'material'  => DEFAULT_MATERIAL
     }.freeze
 
     # Returns a deep, mutable copy so callers can modify it freely.
@@ -189,10 +186,6 @@ module KitchenCabinetMaster
 
     def self.direction_ids
       DIRECTIONS.map { |d| d['id'] }
-    end
-
-    def self.door_symbol_ids
-      DOOR_SYMBOLS.map { |s| s['id'] }
     end
 
     def self.handle_orientation_ids

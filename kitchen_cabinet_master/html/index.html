@@ -12,7 +12,7 @@
   <header class="topbar">
     <div class="topbar-row">
       <h1>Kitchen Cabinet Master</h1>
-      <span class="badge" id="selectionBadge">No cabinet selected</span>
+      <span class="badge" id="selectionBadge">Nothing selected</span>
     </div>
     <figure class="preview">
       <svg id="preview" viewBox="0 0 240 176" role="img" aria-label="Front view of the cabinet being configured"></svg>
@@ -22,33 +22,24 @@
 
   <main class="scroll" id="scroll">
 
-    <!-- What is being inserted -->
-    <section class="card">
-      <div class="card-body" style="padding-top:10px">
-        <label class="field">
-          <span class="label">Insert Type</span>
-          <div class="input"><select id="insertType">
-            <option value="cabinet">Cabinet</option>
-            <option value="filler">Filler</option>
-            <option value="end_panel">End Panel</option>
-            <option value="toe_kick">Toe Kick</option>
-          </select></div>
-        </label>
-      </div>
-    </section>
-
     <!-- Catalog / Configuration -->
-    <section class="card cabinet-only" id="sec-catalog">
+    <section class="card" id="sec-catalog">
       <button class="card-head" type="button" aria-expanded="true">Catalog</button>
       <div class="card-body">
         <label class="field">
           <span class="label">Catalog</span>
           <div class="input"><select id="catalog"></select></div>
         </label>
-        <label class="field narrow">
-          <span class="label">Door Gap</span>
-          <div class="input"><input id="doorGap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Door Gap</span>
+            <div class="input"><input id="doorGap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Door Reveal</span>
+            <div class="input"><input id="doorReveal" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
         <label class="field narrow">
           <span class="label">Panel Thickness</span>
           <div class="input"><input id="thickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
@@ -61,7 +52,7 @@
     </section>
 
     <!-- Handle -->
-    <section class="card cabinet-only" id="sec-handle">
+    <section class="card" id="sec-handle">
       <button class="card-head" type="button" aria-expanded="true">Handle</button>
       <div class="card-body">
         <label class="field">
@@ -120,7 +111,7 @@
     </section>
 
     <!-- Material -->
-    <section class="card cabinet-only" id="sec-material">
+    <section class="card" id="sec-material">
       <button class="card-head" type="button" aria-expanded="true">Material</button>
       <div class="card-body">
         <label class="field">
@@ -144,7 +135,7 @@
     </section>
 
     <!-- Cabinet (includes the individual size and shelves) -->
-    <section class="card cabinet-only" id="sec-cabinet">
+    <section class="card" id="sec-cabinet">
       <button class="card-head" type="button" aria-expanded="true">Cabinet</button>
       <div class="card-body">
         <label class="field">
@@ -181,31 +172,83 @@
           <span class="label">Gap to next cabinet</span>
           <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+
+        <!-- Filler: a single board, inserted into the row like a cabinet. -->
+        <div class="subblock" id="sub-filler">
+          <h3 class="sub-head">Filler</h3>
+          <p class="hint">A single board (no doors), inserted into the row like a cabinet.</p>
+          <label class="field">
+            <span class="label">Position</span>
+            <div class="input"><select id="fillerCategory"></select></div>
+          </label>
+          <div class="grid-3">
+            <label class="field">
+              <span class="label">Width</span>
+              <div class="input"><input id="fillerWidth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Depth</span>
+              <div class="input"><input id="fillerDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Height</span>
+              <div class="input"><input id="fillerHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
+          </label>
+          <label class="field narrow" id="fillerToeFields">
+            <span class="label">Height off the Floor</span>
+            <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <button class="btn sub-btn" type="button" data-action="insert_filler">Insert Filler</button>
+        </div>
+
+        <!-- End Panel: covers the exposed side of the selected cabinet or filler. -->
+        <div class="subblock" id="sub-end-panel">
+          <h3 class="sub-head">End Panel</h3>
+          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side.</p>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Side</span>
+              <div class="input"><select id="epSide"></select></div>
+            </label>
+            <label class="field">
+              <span class="label">Thickness</span>
+              <div class="input"><input id="epThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
+          </label>
+          <button class="btn sub-btn" type="button" data-action="insert_end_panel">Insert End Panel</button>
+        </div>
       </div>
     </section>
 
-    <!-- Toe Kick. With Insert Type = Cabinet only the height shows (how far the
-         cabinet stands off the floor); with Insert Type = Toe Kick every field shows. -->
-    <section class="card cabinet-or-toe" id="sec-toe">
+    <!-- Toe Kick: its own entity. Height is also how far cabinets stand off the floor. -->
+    <section class="card" id="sec-toe">
       <button class="card-head" type="button" aria-expanded="true">Toe Kick</button>
       <div class="card-body">
-        <p class="hint" id="toeNote" hidden>Wall units have no toe kick.</p>
-        <p class="hint" id="toeCabinetHint">The cabinet stands this high off the floor. Insert the toe kick itself with Insert Type = Toe Kick.</p>
+        <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
         <div class="grid-2">
           <label class="field">
             <span class="label">Height</span>
             <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
-          <label class="field toe-only">
+          <label class="field">
             <span class="label">Thickness</span>
             <div class="input"><input id="toeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field toe-only">
+        <label class="field">
           <span class="label">Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
         </label>
-        <div class="grid-2 toe-only">
+        <div class="grid-2">
           <label class="field">
             <span class="label">Piece Length</span>
             <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
@@ -215,16 +258,17 @@
             <div class="input"><input id="pieceCount" type="text" inputmode="numeric" autocomplete="off"></div>
           </label>
         </div>
-        <label class="field narrow toe-only">
+        <label class="field narrow">
           <span class="label">Recess from Carcass</span>
           <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <p class="hint toe-only">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end.</p>
+        <p class="hint">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. The Height also sets how far new cabinets stand off the floor.</p>
+        <button class="btn sub-btn" type="button" data-action="insert_toe_kick">Insert Toe Kick</button>
       </div>
     </section>
 
     <!-- Door Opening -->
-    <section class="card cabinet-only" id="sec-door">
+    <section class="card" id="sec-door">
       <button class="card-head" type="button" aria-expanded="true">Door Opening</button>
       <div class="card-body">
         <div class="grid-2">
@@ -237,65 +281,6 @@
             <div class="input"><input id="angle" type="text" inputmode="decimal" autocomplete="off"><em>deg</em></div>
           </label>
         </div>
-        <label class="field">
-          <span class="label">Opening Symbol</span>
-          <div class="input"><select id="doorSymbol"></select></div>
-        </label>
-      </div>
-    </section>
-
-    <!-- Filler -->
-    <section class="card filler-only" id="sec-filler" hidden>
-      <button class="card-head" type="button" aria-expanded="true">Filler</button>
-      <div class="card-body">
-        <p class="hint">A filler is a single board (no doors), inserted into the row like a cabinet.</p>
-        <label class="field">
-          <span class="label">Position</span>
-          <div class="input"><select id="fillerCategory"></select></div>
-        </label>
-        <div class="grid-3">
-          <label class="field">
-            <span class="label">Width</span>
-            <div class="input"><input id="fillerWidth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Depth</span>
-            <div class="input"><input id="fillerDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Height</span>
-            <div class="input"><input id="fillerHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-        </div>
-        <label class="field">
-          <span class="label">Material</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
-        </label>
-        <label class="field narrow" id="fillerToeFields">
-          <span class="label">Toe-kick Height</span>
-          <div class="input"><input id="fillerToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
-        <p class="hint">How far the filler stands off the floor. The toe kick itself is inserted separately (Insert Type = Toe Kick).</p>
-      </div>
-    </section>
-
-    <!-- End Panel -->
-    <section class="card end_panel-only" id="sec-end-panel" hidden>
-      <button class="card-head" type="button" aria-expanded="true">End Panel</button>
-      <div class="card-body">
-        <p class="hint" id="epTargetHint">Select a cabinet or filler first — the end panel attaches to its exposed side.</p>
-        <label class="field">
-          <span class="label">Side</span>
-          <div class="input"><select id="epSide"></select></div>
-        </label>
-        <label class="field narrow">
-          <span class="label">Thickness</span>
-          <div class="input"><input id="epThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
-        <label class="field">
-          <span class="label">Material</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
-        </label>
       </div>
     </section>
 
@@ -306,7 +291,8 @@
         <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
-        <label class="check"><input type="checkbox" id="showDirection"><span>Show Opening Direction</span></label>
+        <label class="check"><input type="checkbox" id="showDirection" checked><span>Door opening direction on the floor</span></label>
+        <label class="check"><input type="checkbox" id="showDoorSymbol" checked><span>Door opening direction on the door</span></label>
       </div>
     </section>
 
@@ -318,7 +304,7 @@
     <div class="btn-row four">
       <button class="btn primary" type="button" data-action="insert">Insert</button>
       <button class="btn" type="button" data-action="update">Update</button>
-      <button class="btn cabinet-only-btn" type="button" data-action="duplicate">Duplicate</button>
+      <button class="btn" type="button" data-action="duplicate">Duplicate</button>
       <button class="btn danger" type="button" data-action="delete">Delete</button>
     </div>
     <div class="btn-row one">

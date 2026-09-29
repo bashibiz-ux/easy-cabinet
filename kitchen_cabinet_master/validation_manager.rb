@@ -123,17 +123,8 @@ module KitchenCabinetMaster
         errors << error('door_opening_direction', 'Select a door opening direction.')
       end
 
-      if raw.key?('show_opening_direction')
-        out['show_opening_direction'] = truthy?(raw['show_opening_direction'])
-      end
-
-      symbol = raw['door_symbol'].to_s.strip
-      if symbol.empty?
-        out['door_symbol'] = Defaults::PARAMS['door_symbol']
-      elsif Defaults.door_symbol_ids.include?(symbol)
-        out['door_symbol'] = symbol
-      else
-        errors << error('door_symbol', 'Select an opening symbol.')
+      %w[show_opening_direction show_door_symbol].each do |key|
+        out[key] = truthy?(raw[key]) if raw.key?(key)
       end
 
       check_handle_choices(raw, out, errors)
@@ -162,14 +153,13 @@ module KitchenCabinetMaster
       out['carcass_material'] = raw['carcass_material'].to_s.strip
       out['handle_material'] = raw['handle_material'].to_s.strip
 
+      # A unit type nobody has chosen a door material for just gets the plain
+      # white default (Defaults::PARAMS already holds it), so the first cabinet
+      # can be inserted without picking anything.
       Defaults.category_ids.each do |category|
         key = "#{category}_material"
         value = raw[key].to_s.strip
-        if !value.empty?
-          out[key] = value
-        elsif category == out['cabinet_category'] && out['cabinet_material'].empty?
-          errors << error(key, 'Select a door material for this unit type.')
-        end
+        out[key] = value unless value.empty?
       end
 
       toe_material = raw['toe_kick_material'].to_s.strip
@@ -337,7 +327,7 @@ module KitchenCabinetMaster
       out['toe_kick_height'] = 0.0 if wall
 
       out['material'] = raw['material'].to_s.strip
-      errors << error('material', 'Select a material.') if out['material'].empty?
+      out['material'] = Defaults::DEFAULT_MATERIAL if out['material'].empty?
 
       Result.new(out, errors)
     end
@@ -407,7 +397,7 @@ module KitchenCabinetMaster
       end
 
       out['material'] = raw['material'].to_s.strip
-      errors << error('material', 'Select a material.') if out['material'].empty?
+      out['material'] = Defaults::DEFAULT_MATERIAL if out['material'].empty?
 
       Result.new(out, errors)
     end

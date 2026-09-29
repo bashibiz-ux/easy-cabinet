@@ -1,5 +1,6 @@
 {
   "materials": [
+    { "name": "White",           "color": "#FFFFFF", "kinds": ["panel", "toe_kick"] },
     { "name": "White Melamine",  "color": "#F2F2EE", "kinds": ["panel", "toe_kick"] },
     { "name": "Light Oak",       "color": "#C9A46A", "kinds": ["panel", "toe_kick"] },
     { "name": "Walnut",          "color": "#6B4A32", "kinds": ["panel", "toe_kick"] },

@@ -185,20 +185,18 @@ module KitchenCabinetMaster
     # millimetres, relative to the carcass base Z (the indicator container sits at
     # base Z). Per door: a short vertical mark at the hinge, a line from the hinge
     # to the free edge when closed, another when fully open, and the arc between
-    # them showing the movement. Empty when `style` is 'elevation' (the symbol is
-    # then drawn on each door instead, see door_symbol_segments).
-    def self.indicator_segments(doors, angle, base_z, style = 'plan')
-      return [] unless plan_symbol?(style)
-
+    # them showing the movement. (The other symbol, on the door itself, is
+    # door_symbol_segments; the two are switched on and off independently.)
+    def self.indicator_segments(doors, angle, base_z)
       doors.flat_map { |door| plan_indicator(door, angle, base_z) }
     end
 
     # A short text that changes whenever the indicator would look different.
     # Base Z is left out on purpose: the indicator container moves with the toe
     # kick, so a change of toe-kick height must not rebuild the lines.
-    def self.indicator_signature(doors, angle, base_z, style = 'plan')
+    def self.indicator_signature(doors, angle, base_z)
       shapes = doors.map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2)] }
-      shapes.push(angle.to_f, style.to_s).inspect
+      shapes.push(angle.to_f).inspect
     end
 
     def self.plan_indicator(door, angle, base_z)
@@ -243,16 +241,6 @@ module KitchenCabinetMaster
     # Changes whenever the symbol would look different.
     def self.door_symbol_signature(door)
       [door.hinge, door.extent].inspect
-    end
-
-    # Does this style draw a symbol on the door itself?
-    def self.door_symbol?(style)
-      %w[elevation both].include?(style.to_s)
-    end
-
-    # Does this style draw the floor-level plan symbol?
-    def self.plan_symbol?(style)
-      style.to_s != 'elevation'
     end
 
     def self.rotate(vector, radians)

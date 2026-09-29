@@ -194,7 +194,7 @@ class ToeKickTest < Minitest::Test
   def test_with_nothing_selected_it_uses_the_panels_depth_and_the_default_material
     t = target(nil, 'depth' => '620')
     assert_equal 620.0, t['target_depth']
-    assert_equal 'White Melamine', t['target_door_material']
+    assert_equal 'White', t['target_door_material'], 'nothing selected: plain white'
 
     assert_equal Defaults::DEFAULT_TOE_KICK_DEPTH, target(nil, 'depth' => '')['target_depth']
   end

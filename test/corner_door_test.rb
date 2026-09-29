@@ -13,7 +13,7 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults toe_kick cabinet_layout door_animation].each { |f| require File.join(plugin, f) }
+%w[response defaults toe_kick cabinet_layout door_animation validation_manager].each { |f| require File.join(plugin, f) }
 
 class CornerDoorTest < Minitest::Test
   include KitchenCabinetMaster
@@ -106,7 +106,7 @@ class CornerDoorTest < Minitest::Test
   def test_plan_indicator_starts_and_ends_on_the_door
     %w[left right].each do |direction|
       d = door(direction)
-      segs = DoorAnimation.indicator_segments([d], 90.0, 100.0, 'plan')
+      segs = DoorAnimation.indicator_segments([d], 90.0, 100.0)
       # second segment: hinge -> closed free edge. Compare with the real door's free-end midpoint.
       closed_free = segs[1][1]
       _t, length, = d.extent
@@ -144,16 +144,44 @@ class CornerDoorTest < Minitest::Test
     end
   end
 
-  def test_symbol_style_decides_where_it_is_drawn
-    assert DoorAnimation.door_symbol?('elevation')
-    assert DoorAnimation.door_symbol?('both')
-    refute DoorAnimation.door_symbol?('plan')
-    assert DoorAnimation.plan_symbol?('plan')
-    assert DoorAnimation.plan_symbol?('both')
-    refute DoorAnimation.plan_symbol?('elevation')
-    assert_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'elevation')
-    refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0, 'plan')
-    assert_equal 'plan', Defaults.params['door_symbol'], 'new cabinets draw the opening direction on the floor plan'
+  def test_both_opening_direction_symbols_are_independent_and_on_by_default
+    defaults = Defaults.params
+    assert_equal true, defaults['show_opening_direction'], 'the symbol on the floor'
+    assert_equal true, defaults['show_door_symbol'], 'the dashed lines on the door'
+    refute defaults.key?('door_symbol'), 'the old symbol-style choice is gone'
+
+    # Both are always built (visibility only flips a flag), so both exist for any door.
+    refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0)
+    refute_empty DoorAnimation.door_symbol_segments(door('left'))
+  end
+
+  def test_the_two_symbols_are_switched_by_their_own_settings
+    checked = ValidationManager.validate(
+      { 'catalog_id' => 'x', 'cabinet_category' => 'base', 'cabinet_type' => 'y', 'width' => '600', 'depth' => '560',
+        'height' => '780', 'door_opening_direction' => 'left', 'toe_kick_height' => '100',
+        'show_opening_direction' => false, 'show_door_symbol' => true }
+    )
+    assert_equal false, checked.params['show_opening_direction']
+    assert_equal true, checked.params['show_door_symbol']
+
+    flipped = ValidationManager.validate(
+      { 'catalog_id' => 'x', 'cabinet_category' => 'base', 'cabinet_type' => 'y', 'width' => '600', 'depth' => '560',
+        'height' => '780', 'door_opening_direction' => 'left', 'toe_kick_height' => '100',
+        'show_opening_direction' => true, 'show_door_symbol' => false }
+    )
+    assert_equal true, flipped.params['show_opening_direction']
+    assert_equal false, flipped.params['show_door_symbol']
+  end
+
+  def test_first_cabinet_needs_no_material_choice_and_defaults_to_plain_white
+    result = ValidationManager.validate(
+      { 'catalog_id' => 'x', 'cabinet_category' => 'base', 'cabinet_type' => 'y', 'width' => '600', 'depth' => '560',
+        'height' => '780', 'door_opening_direction' => 'left', 'toe_kick_height' => '100',
+        'base_material' => '', 'wall_material' => '', 'tall_material' => '' }
+    )
+    assert_empty result.errors.map { |e| e['field'] } & %w[base_material wall_material tall_material]
+    assert_equal 'White', result.params['base_material']
+    assert_equal 'White', result.params['wall_material']
   end
 
   def test_ordinary_door_is_unchanged
