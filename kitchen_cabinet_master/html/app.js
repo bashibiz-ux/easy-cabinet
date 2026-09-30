@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.17.0';
+  const APP_VERSION = '0.18.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -163,6 +163,11 @@
     } else if (name === 'part_selected') {
       const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
       state.selectedKind = kind;
+      // A part is edited with the Cabinet & Extras fields, which need a catalog: use the first if none is chosen.
+      if (!$('catalog').value && list(state.meta.catalogs)[0]) {
+        setSelect('catalog', list(state.meta.catalogs)[0].id);
+        applyCatalogFeatures();
+      }
       setBadge(data.part_name);
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
@@ -348,7 +353,7 @@
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
     'door_gap', 'door_reveal', 'panel_thickness', 'back_thickness',
-    'handle', 'materials', 'door_opening', 'visibility'
+    'cabinet_extras', 'handle', 'materials', 'door_opening', 'visibility'
   ];
 
   function currentCatalog() {
@@ -365,7 +370,8 @@
   // its handle bundles. Everything else stays visible but greyed out and locked.
   function applyCatalogFeatures() {
     const catalog = currentCatalog();
-    const on = new Set(catalog && Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES);
+    // No catalog chosen yet: nothing is active except the catalog selection itself.
+    const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
     const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }, { id: 'toe_kick', name: 'Toe Kick' }];
     fillSelect($('category'), categories.filter((c) => on.has(c.id)));
@@ -389,6 +395,13 @@
     const before = $('handle').value;
     fillSelect($('handle'), list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id)), { placeholder: 'None' });
     if ($('handle').value !== before) onHandleChange(true);
+    lockActions();
+  }
+
+  // Insert needs a catalog: it builds a cabinet from the selected catalog's style.
+  function lockActions() {
+    const insert = document.querySelector('[data-action="insert"]');
+    if (insert) insert.disabled = state.busy || !currentCatalog();
   }
 
   function currentCabinet() {
@@ -984,6 +997,7 @@
   function setBusy(busy) {
     state.busy = busy;
     document.querySelectorAll('[data-action]').forEach((b) => { b.disabled = busy; });
+    lockActions();
   }
 
   // `live` is an Update the panel sends by itself while the user edits a field.
@@ -1121,7 +1135,7 @@
   async function buildUi() {
     const m = state.meta;
     $('appVersion').textContent = 'v' + (m.version || APP_VERSION);
-    fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? null : 'No catalogs found' });
+    fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a catalog...' : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers

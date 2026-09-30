@@ -18,11 +18,12 @@ module KitchenCabinetMaster
     # under eatures; anything not listed stays greyed out while it is selected.
     #   categories : base wall tall corner filler end_panel toe_kick
     #   options    : door_gap door_reveal panel_thickness back_thickness
-    #   sections   : handle materials door_opening visibility
+    #   sections   : cabinet_extras (the Cabinet & Extras section) handle materials
+    #                door_opening visibility
     # A catalog with no eatures list offers all of them.
     FEATURES = %w[base wall tall corner filler end_panel toe_kick
                   door_gap door_reveal panel_thickness back_thickness
-                  handle materials door_opening visibility].freeze
+                  cabinet_extras handle materials door_opening visibility].freeze
 
     class << self
       # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]
