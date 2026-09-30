@@ -116,7 +116,10 @@ module KitchenCabinetMaster
       filler = AttributeManager.part_kind(target) == 'filler'
       door = door_material_of(target_params)
       carcass = filler ? door : CabinetGenerator.carcass_material(target_params, door)
-      params, failure = prepare_end_panel(raw, door, carcass)
+
+      # Depth and height are the panel's own to set. Left blank they start as the
+      # target's: depth flush with its door front, height up to its top.
+      params, failure = prepare_end_panel(end_panel_defaults(raw, target, target_params), door, carcass)
       return failure if failure
 
       # Recorded so the end panel can follow the door colour if that changes (follow_door).
@@ -125,9 +128,6 @@ module KitchenCabinetMaster
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
                             target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
-      # A filler stands forward to the door front; a cabinet's end panel covers its carcass.
-      params['target_depth'] = (filler ? target_params['target_flush_x'] : target_params['depth']).to_f
-      params['target_top'] = target_params['envelope_top'] || CabinetLayout.envelope(target_params)[2]
 
       layout = PartLayout.end_panel(params)
       transformation, collision = placed_transformation(target, params)
@@ -145,6 +145,30 @@ module KitchenCabinetMaster
       Response.ok("#{root.name} inserted on the #{params['side']}.", { 'part_id' => AttributeManager.part_id(root) })
     end
     private_class_method :insert_end_panel
+
+    # The panel's values, with a blank depth and height filled in from the target.
+    def self.end_panel_defaults(raw, target, target_params)
+      raw = stringify(raw)
+      raw['depth'] = door_front_of(target, target_params) if raw['depth'].to_s.strip.empty?
+      raw['height'] = top_of(target_params) if raw['height'].to_s.strip.empty?
+      raw
+    end
+    private_class_method :end_panel_defaults
+
+    # X of the target's door front: what an end panel's depth starts as, so the
+    # panel stands flush with the doors. A filler's front is where it was flush to.
+    def self.door_front_of(target, target_params)
+      return target_params['target_flush_x'].to_f if AttributeManager.part_kind(target) == 'filler'
+
+      filler_target(target, target_params)['target_flush_x']
+    end
+    private_class_method :door_front_of
+
+    # Floor to the top of the target: what an end panel's height starts as.
+    def self.top_of(target_params)
+      (target_params['envelope_top'] || CabinetLayout.envelope(target_params)[2]).to_f
+    end
+    private_class_method :top_of
 
     # Directly against the target's left or right face, in the target's own
     # coordinate frame (so it follows the target's position and rotation).
@@ -371,8 +395,7 @@ module KitchenCabinetMaster
       params, failure = prepare_end_panel(raw, door, carcass)
       return failure if failure
 
-      %w[target_id target_width target_depth target_top target_door_material target_carcass_material]
-        .each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
 
       layout = PartLayout.end_panel(params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']

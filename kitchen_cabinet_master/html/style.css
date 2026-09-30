@@ -134,6 +134,9 @@ h1 {
 .pv-hinge { fill: var(--ink); }
 .pv-handle { fill: var(--accent); stroke: var(--sheet); stroke-width: 0.6; }
 .pv-dim   { fill: var(--muted); font-size: 9.5px; font-family: var(--font); }
+.pv-ghost { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+.pv-part  { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.pv-off   { opacity: 0.3; stroke-dasharray: 3 3; } /* a part switched off in Visibility */
 
 /* ---- scrolling sections --------------------------------------------------- */
 

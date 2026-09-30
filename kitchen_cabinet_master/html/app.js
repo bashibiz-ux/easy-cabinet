@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.12.1';
+  const APP_VERSION = '0.13.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -20,7 +20,7 @@
   const FILLER_FIELD_TO_ELEMENT = {
     width: 'fillerWidth', thickness: 'fillerThickness', height: 'fillerHeight'
   };
-  const END_PANEL_FIELD_TO_ELEMENT = { side: 'epSide', thickness: 'epThickness', material: 'epMaterial' };
+  const END_PANEL_FIELD_TO_ELEMENT = { side: 'epSide', depth: 'epDepth', thickness: 'epThickness', height: 'epHeight', material: 'epMaterial' };
 
   // Server field name -> id of the element that edits it (used to highlight errors).
   const FIELD_TO_ELEMENT = {
@@ -167,6 +167,8 @@
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
+      // A filler is something an end panel can go on: its front and top are what that panel starts from.
+      if (kind === 'filler') followCabinet({ front: data.envelope_depth, top: data.envelope_top });
       // Filler, End Panel and Toe Kick are Cabinet Category choices: show the matching fields.
       setSelect('category', kind);
       updateCategoryUi();
@@ -188,6 +190,7 @@
     const material = d.toe_kick_material === '__cabinet__' ? '__door__' : d.toe_kick_material;
     setSelect('toeMaterial', material || '__door__');
     updateChips();
+    drawPreview();
   }
 
   function collectToeKick() {
@@ -210,16 +213,24 @@
     setText('fillerThickness', d.thickness);
     setText('fillerHeight', d.height);
     updateChips();
+    drawPreview();
   }
 
   // A filler's height STARTS as the height of the cabinet in the model and follows
   // it as cabinets are selected, until the user types their own. Then it stays
   // put, so "enter the data, select the cabinet, Insert" keeps what was entered.
   // (A filler's material is not a field: it always follows the door material.)
-  const FOLLOWS_CABINET = ['fillerHeight'];
+  //
+  // An end panel's depth and height start the same way: depth flush with the door
+  // front (`front`) and height up to the top (`top`) of what is selected.
+  const FOLLOWS_CABINET = ['fillerHeight', 'epDepth', 'epHeight'];
 
   function followCabinet(cabinet) {
-    if (cabinet.height && !state.touched.has('fillerHeight')) setText('fillerHeight', cabinet.height);
+    const set = (id, value) => { if (value && !state.touched.has(id)) setText(id, value); };
+    set('fillerHeight', cabinet.height);
+    set('epDepth', cabinet.front);
+    set('epHeight', cabinet.top);
+    drawPreview();
   }
 
   // After a filler is inserted, the next one starts from the cabinet again.
@@ -229,9 +240,12 @@
 
   function applyEndPanelDefaults(d) {
     setSelect('epSide', d.side);
+    setText('epDepth', d.depth);
     setText('epThickness', d.thickness);
+    setText('epHeight', d.height);
     setSelect('epMaterial', d.material_choice || d.material || '__door__');
     updateChips();
+    drawPreview();
   }
 
   function collectFiller() {
@@ -245,7 +259,9 @@
   function collectEndPanel() {
     return {
       side: $('epSide').value,
+      depth: $('epDepth').value,
       thickness: $('epThickness').value,
+      height: $('epHeight').value,
       material: $('epMaterial').value
     };
   }
@@ -557,14 +573,17 @@
     const kind = categoryKind();
     document.querySelectorAll('.cabinet-only').forEach((el) => { el.hidden = kind !== 'cabinet'; });
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
+    // The toe-kick height is shared: it raises cabinets and is a toe kick's height.
+    document.querySelectorAll('.cabinet-or-toe').forEach((el) => { el.hidden = kind !== 'cabinet' && kind !== 'toe_kick'; });
     $('sub-filler').hidden = kind !== 'filler';
     $('sub-end-panel').hidden = kind !== 'end_panel';
-    $('toeNote').hidden = $('category').value !== 'wall';
+    $('sub-toe-kick').hidden = kind !== 'toe_kick';
+    $('toeNote').hidden = !(kind === 'cabinet' && $('category').value === 'wall');
   }
 
   async function loadCabinet(params) {
     setBadge(params.cabinet_name || params.cabinet_id || null);
-    followCabinet({ height: params.height, material: params.material });
+    followCabinet({ height: params.height, front: params.envelope_depth, top: params.top_z });
     setSelect('catalog', params.catalog_id);
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
@@ -582,11 +601,68 @@
    * Live front-view preview
    * ---------------------------------------------------------------------- */
 
+  const VBW = 240;
+  const VBH = 176;
+
+  // Draws whatever the Cabinet Category is: the cabinet itself, or the filler, end
+  // panel or toe kick (shown against the cabinet). It is redrawn on every change
+  // to any field, so the picture is always what the model is being given.
   function drawPreview() {
+    const kind = categoryKind();
+    if (kind === 'cabinet') drawCabinetPreview();
+    else drawExtraPreview(kind);
+  }
+
+  const numOr = (value, fallback) => (Number.isFinite(num(value)) ? num(value) : fallback);
+
+  // The chosen handle, or null when there is none. Lengths in millimetres.
+  function handleSpec() {
+    const bundle = currentBundle();
+    const length = num($('handleLength').value);
+    if (!bundle || !(length > 0)) return null;
+    const knob = bundle.profile === 'knob';
+    return {
+      knob,
+      length,
+      horizontal: !knob && $('handleOrientation').value === 'horizontal',
+      position: $('handlePosition').value || 'top',
+      side: numOr($('handleSide').value, 0),
+      vertical: numOr($('handleVert').value, 0),
+      customX: numOr($('handleCustomX').value, 50),
+      customZ: numOr($('handleCustomZ').value, 100)
+    };
+  }
+
+  const HANDLE_SECTION_MM = 10; // a bar's cross-section, as in Defaults::HANDLE_SECTION
+
+  // Where the handle's centre goes on a door and how big it is, in millimetres
+  // measured from the door's left edge and bottom (the same rules as
+  // HandleManager.placement). `freeEdgeHigh`: the hinge is on the left.
+  function handleGeometry(spec, doorW, doorH, freeEdgeHigh) {
+    const halfAlong = spec.length / 2;
+    const halfAcross = spec.knob ? halfAlong : HANDLE_SECTION_MM / 2;
+    const [halfU, halfV] = spec.horizontal ? [halfAlong, halfAcross] : [halfAcross, halfAlong];
+    let u;
+    switch (spec.position) {
+      case 'custom': u = spec.customX; break;
+      case 'left': u = spec.side + halfU; break;
+      case 'right': u = doorW - spec.side - halfU; break;
+      case 'center': u = doorW / 2 - halfU; break;
+      default: u = freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
+    }
+    let v;
+    switch (spec.position) {
+      case 'custom': v = spec.customZ; break;
+      case 'top': v = doorH - spec.vertical - halfV; break;
+      case 'bottom': v = spec.vertical + halfV; break;
+      default: v = doorH / 2;
+    }
+    return { u, v, halfU, halfV };
+  }
+
+  function drawCabinetPreview() {
     const svg = $('preview');
     const caption = $('previewCaption');
-    const VBW = 240;
-    const VBH = 176;
 
     const W = num($('width').value);
     const H = num($('height').value);
@@ -606,6 +682,13 @@
     const shelves = Math.min(20, Math.max(0, parseInt($('shelves').value, 10) || 0));
     const hingeOnLeft = $('direction').value !== 'right';
     const showSwing = $('showDoorSymbol').checked;
+    // The Visibility ticks show in the picture too: an unticked part is faded.
+    const showDoors = $('visDoor').checked;
+    const showToe = $('visToe').checked;
+    const carcassClass = $('visCarcass').checked ? 'pv-body' : 'pv-body pv-off';
+    const handle = handleSpec();
+    const revealMm = numOr($('doorReveal').value, 2);
+    const gapMm = numOr($('doorGap').value, 1.5);
 
     const padX = 26;
     const top = 12;
@@ -625,22 +708,25 @@
     if (th > 0) {
       const inset = Math.min(8, bw * 0.05);
       const toeW = bw - 2 * inset;
-      out.push(`<rect class="pv-toe" x="${x0 + inset}" y="${bodyBottom}" width="${toeW}" height="${th}"/>`);
+      out.push(`<rect class="${showToe ? 'pv-toe' : 'pv-toe pv-off'}" x="${x0 + inset}" y="${bodyBottom}" width="${toeW}" height="${th}"/>`);
     }
-    out.push(`<rect class="pv-body" x="${x0}" y="${bodyTop}" width="${bw}" height="${bh}"/>`);
+    out.push(`<rect class="${carcassClass}" x="${x0}" y="${bodyTop}" width="${bw}" height="${bh}"/>`);
 
     for (let i = 1; i <= shelves; i += 1) {
       const y = bodyTop + (bh * i) / (shelves + 1);
       out.push(`<line class="pv-shelf" x1="${x0}" y1="${y}" x2="${x0 + bw}" y2="${y}"/>`);
     }
 
-    if (doors > 0) {
+    if (doors > 0 && showDoors) {
       // Schematic, not to scale: fixed insets keep the door outline readable.
       const reveal = 3.5;
       const gap = 3;
       const doorW = (bw - 2 * reveal - (doors - 1) * gap) / doors;
       const doorTop = bodyTop + reveal;
       const doorH = bh - 2 * reveal;
+      // The real door size, for placing the handle at true scale on the drawn door.
+      const doorWMm = (W - 2 * revealMm - (doors - 1) * gapMm) / doors;
+      const doorHMm = H - 2 * revealMm;
 
       for (let i = 0; i < doors; i += 1) {
         const dx = x0 + reveal + i * (doorW + gap);
@@ -656,6 +742,20 @@
         }
         out.push(`<circle class="pv-hinge" cx="${hingeX}" cy="${doorTop + doorH * 0.14}" r="1.5"/>`);
         out.push(`<circle class="pv-hinge" cx="${hingeX}" cy="${doorTop + doorH * 0.86}" r="1.5"/>`);
+
+        if (handle) {
+          // Hinge on the left means the free edge (where the handle goes) is the high one.
+          const g = handleGeometry(handle, doorWMm, doorHMm, left);
+          const cx = dx + g.u * s;
+          const cy = doorTop + doorH - g.v * s;
+          if (handle.knob) {
+            out.push(`<circle class="pv-handle" cx="${cx}" cy="${cy}" r="${Math.max(1.6, g.halfU * s)}"/>`);
+          } else {
+            const hw = Math.max(1.6, g.halfU * 2 * s);
+            const hh = Math.max(1.6, g.halfV * 2 * s);
+            out.push(`<rect class="pv-handle" x="${cx - hw / 2}" y="${cy - hh / 2}" width="${hw}" height="${hh}" rx="0.8"/>`);
+          }
+        }
       }
     }
 
@@ -665,6 +765,100 @@
 
     const depthText = Number.isFinite(D) ? `, D ${fmt(D)}` : '';
     caption.textContent = `W ${fmt(W)}${depthText}, H ${fmt(H)} mm. Base Z ${fmt(toe)} mm, top Z ${fmt(toe + H)} mm.`;
+  }
+
+  // ---- filler / end panel / toe kick ------------------------------------------------
+  // Front view, in millimetres: x along the row, z up from the floor. Each is drawn
+  // as a solid part next to a dashed outline of the cabinet, so you can see how it
+  // sits (the cabinet's own width, height and toe-kick height come from its fields).
+
+  // Draws `parts` ({ x, z, w, h, cls, label?, joints? }) scaled to fit, on the floor.
+  function drawScene(parts, captionText) {
+    const svg = $('preview');
+    const minX = Math.min(...parts.map((p) => p.x));
+    const maxX = Math.max(...parts.map((p) => p.x + p.w));
+    const maxZ = Math.max(...parts.map((p) => p.z + p.h));
+    const padX = 26;
+    const top = 12;
+    const bottom = 24;
+    const s = Math.min((VBW - 2 * padX) / (maxX - minX), (VBH - top - bottom) / maxZ);
+    const x0 = (VBW - (maxX - minX) * s) / 2;
+    const floorY = VBH - bottom;
+    const px = (x) => x0 + (x - minX) * s;
+    const py = (z) => floorY - z * s;
+
+    const out = [`<line class="pv-floor" x1="${x0 - 14}" y1="${floorY}" x2="${x0 + (maxX - minX) * s + 14}" y2="${floorY}"/>`];
+    parts.forEach((p) => {
+      out.push(`<rect class="${p.cls}" x="${px(p.x)}" y="${py(p.z + p.h)}" width="${Math.max(p.w * s, 1.2)}" height="${Math.max(p.h * s, 1.2)}"/>`);
+      (p.joints || []).forEach((jx) => {
+        out.push(`<line class="pv-joint" x1="${px(jx)}" y1="${py(p.z + p.h)}" x2="${px(jx)}" y2="${py(p.z)}"/>`);
+      });
+      if (p.label) {
+        out.push(`<text class="pv-dim" x="${px(p.x + p.w / 2)}" y="${floorY + 14}" text-anchor="middle">${p.label}</text>`);
+      }
+      if (p.heightLabel) {
+        out.push(`<text class="pv-dim" transform="translate(${px(p.x + p.w) + 9} ${py(p.z + p.h / 2)}) rotate(-90)" text-anchor="middle">${p.heightLabel}</text>`);
+      }
+    });
+    svg.innerHTML = out.join('');
+    $('previewCaption').textContent = captionText;
+  }
+
+  // The cabinet the part goes with, as a dashed outline.
+  function ghostCabinet(lift) {
+    const w = numOr($('width').value, 600);
+    const h = numOr($('height').value, 780);
+    return { x: 0, z: lift, w, h, cls: 'pv-ghost' };
+  }
+
+  function drawExtraPreview(kind) {
+    const svg = $('preview');
+    const lift = Math.max(0, numOr($('toeHeight').value, 100));
+    const cabinet = ghostCabinet(lift);
+
+    if (kind === 'filler') {
+      const w = num($('fillerWidth').value);
+      const t = num($('fillerThickness').value);
+      const h = num($('fillerHeight').value);
+      if (!(w > 0 && h > 0)) {
+        svg.innerHTML = '';
+        $('previewCaption').textContent = 'Enter the filler width and height to see it.';
+        return;
+      }
+      // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
+      const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmt(w), heightLabel: fmt(h) };
+      drawScene([cabinet, filler], `Filler ${fmt(w)} × ${fmt(h)} mm${Number.isFinite(t) ? `, ${fmt(t)} thick` : ''}, flush with the door, base Z ${fmt(lift)} mm.`);
+    } else if (kind === 'end_panel') {
+      const d = num($('epDepth').value);
+      const t = num($('epThickness').value);
+      const h = num($('epHeight').value);
+      if (!(t > 0 && h > 0)) {
+        svg.innerHTML = '';
+        $('previewCaption').textContent = 'Enter the end panel thickness and height to see it.';
+        return;
+      }
+      const left = $('epSide').value !== 'right';
+      const panel = { x: left ? -t : cabinet.w, z: 0, w: t, h, cls: 'pv-part', label: fmt(t), heightLabel: fmt(h) };
+      drawScene([cabinet, panel], `End panel on the ${left ? 'left' : 'right'}: depth ${Number.isFinite(d) ? fmt(d) : '?'}, thickness ${fmt(t)}, height ${fmt(h)} mm.`);
+    } else {
+      const len = num($('pieceLength').value);
+      const count = Math.floor(num($('pieceCount').value));
+      const h = num($('toeHeight').value);
+      const t = num($('toeThickness').value);
+      const recess = num($('toeRecess').value);
+      if (!(len > 0 && count > 0 && h > 0)) {
+        svg.innerHTML = '';
+        $('previewCaption').textContent = 'Enter the piece length, number of pieces and height to see the toe kick.';
+        return;
+      }
+      const total = len * count;
+      const joints = [];
+      for (let i = 1; i < Math.min(count, 60); i += 1) joints.push(len * i);
+      const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmt(total), heightLabel: fmt(h) };
+      // The cabinet stands on it.
+      drawScene([{ ...cabinet, z: h }, kick],
+        `Toe kick: ${count} × ${fmt(len)} = ${fmt(total)} mm long, ${fmt(h)} high${Number.isFinite(t) ? `, ${fmt(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmt(recess)} mm` : ''}.`);
+    }
   }
 
   /* ---------------------------------------------------------------------- *
@@ -788,7 +982,7 @@
     if (el.closest('#sub-filler')) return ['filler'];
     if (el.closest('#sub-end-panel')) return ['end_panel'];
     if (el.id === 'toeHeight') return ['cabinet', 'toe_kick'];
-    if (el.closest('#sec-toe')) return ['toe_kick'];
+    if (el.closest('#sub-toe-kick')) return ['toe_kick'];
     return ['cabinet'];
   }
 

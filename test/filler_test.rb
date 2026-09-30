@@ -214,18 +214,18 @@ class FillerTest < Minitest::Test
   def test_an_end_panel_starts_as_same_as_door_material_and_uses_the_door_colour
     assert_equal '__door__', Defaults.end_panel_params['material']
 
-    params, failure = PartManager.send(:prepare_end_panel, { 'side' => 'left', 'thickness' => '18', 'material' => '__door__' }, 'Oak', 'Grey')
+    params, failure = PartManager.send(:prepare_end_panel, ep('material' => '__door__'), 'Oak', 'Grey')
     assert_nil failure
     assert_equal 'Oak', params['material'], 'resolved to the door colour'
     assert_equal '__door__', params['material_choice'], 'but remembered as "follow the door"'
 
-    blank, = PartManager.send(:prepare_end_panel, { 'side' => 'left', 'thickness' => '18', 'material' => '' }, 'Oak', 'Grey')
+    blank, = PartManager.send(:prepare_end_panel, ep('material' => ''), 'Oak', 'Grey')
     assert_equal '__door__', blank['material_choice'], 'blank means same as door'
     assert_equal 'Oak', blank['material']
   end
 
   def test_an_end_panel_with_a_material_picked_by_hand_keeps_it
-    params, = PartManager.send(:prepare_end_panel, { 'side' => 'right', 'thickness' => '18', 'material' => 'Walnut' }, 'Oak', 'Grey')
+    params, = PartManager.send(:prepare_end_panel, ep('side' => 'right', 'material' => 'Walnut'), 'Oak', 'Grey')
     assert_equal 'Walnut', params['material']
     assert_equal 'Walnut', params['material_choice']
   end
@@ -336,16 +336,67 @@ class FillerTest < Minitest::Test
     assert_equal %w[height thickness width], d.keys.sort, 'no position, gap, height-off-floor or material'
   end
 
-  # ---- end panel target ----------------------------------------------------------------------
+  # ---- end panel: its own depth, thickness and height ------------------------------------------------
 
-  def test_an_end_panel_against_a_filler_reaches_the_door_front
-    target = cabinet
-    params = filler_params(target)
-    filler = FakeThing.new(params.merge('part_id' => 'PART_1', 'part_kind' => 'filler', 'material' => 'Oak',
-                                        'envelope_top' => 880.0), Geom::Transformation.new, @parent)
-    stored = AttributeManager.read(filler)
-    depth = stored['target_flush_x'].to_f
-    assert_in_delta 580.0, depth, 1e-9
-    assert_equal 880.0, stored['envelope_top']
+  def ep(overrides = {})
+    { 'side' => 'left', 'depth' => '580', 'thickness' => '18', 'height' => '880', 'material' => '__door__' }.merge(overrides)
+  end
+
+  def test_the_end_panel_has_its_own_depth_thickness_and_height
+    params, failure = PartManager.send(:prepare_end_panel, ep('depth' => '450', 'thickness' => '25', 'height' => '900'), 'Oak', 'Grey')
+    assert_nil failure
+    board = PartLayout.end_panel(params).board
+    assert_equal [450.0, 25.0, 900.0], board.extent, 'depth x thickness x height'
+    assert_equal [0.0, 0.0, 0.0], board.offset, 'from the cabinet\'s back edge, on the floor'
+    assert_equal [450.0, 25.0, 900.0], PartLayout.end_panel_envelope(params)
+  end
+
+  def test_each_end_panel_value_is_validated
+    fields = ->(over) { ValidationManager.validate_end_panel(ep(over)).errors.map { |e| e['field'] } }
+    assert_empty fields.call({})
+    assert_includes fields.call('depth' => ''), 'depth'
+    assert_includes fields.call('depth' => '5'), 'depth'
+    assert_includes fields.call('thickness' => '2'), 'thickness'
+    assert_includes fields.call('height' => 'tall'), 'height'
+    assert_includes fields.call('height' => '10'), 'height'
+  end
+
+  def test_a_blank_depth_starts_flush_with_the_door_front_and_a_blank_height_at_the_top
+    target = cabinet # 560 deep, 18 mm panels, 100 mm off the floor, 780 high
+    stored = AttributeManager.read(target)
+
+    filled = PartManager.send(:end_panel_defaults, { 'side' => 'left', 'thickness' => '18', 'depth' => '', 'height' => '' }, target, stored)
+    assert_in_delta 580.0, filled['depth'], 1e-9, 'door front = 560 + 2 clearance + 18 door'
+    assert_in_delta 880.0, filled['height'], 1e-9, 'floor to the top of the cabinet'
+
+    kept = PartManager.send(:end_panel_defaults, { 'depth' => '400', 'height' => '700' }, target, stored)
+    assert_equal '400', kept['depth'], 'a value that was entered is kept'
+    assert_equal '700', kept['height']
+  end
+
+  def test_the_door_front_of_each_kind_of_target
+    cab = cabinet
+    assert_in_delta 580.0, PartManager.send(:door_front_of, cab, AttributeManager.read(cab)), 1e-9
+
+    corner = cabinet(cabinet_category: 'corner', width: 900.0, depth: 600.0)
+    assert_equal 900.0, PartManager.send(:door_front_of, corner, AttributeManager.read(corner)), 'a corner is a square'
+
+    filler = FakeThing.new(filler_params(cab).merge('part_id' => 'PART_1', 'part_kind' => 'filler'), Geom::Transformation.new, @parent)
+    assert_in_delta 580.0, PartManager.send(:door_front_of, filler, AttributeManager.read(filler)), 1e-9, 'a filler is flush with it'
+  end
+
+  def test_the_top_of_a_target
+    cab = cabinet
+    assert_equal 880.0, PartManager.send(:top_of, AttributeManager.read(cab))
+    wall = cabinet(cabinet_category: 'wall', base_z: 0.0, envelope_top: 720.0)
+    assert_equal 720.0, PartManager.send(:top_of, AttributeManager.read(wall))
+  end
+
+  def test_the_end_panel_defaults_start_flush_and_full_height
+    d = Defaults.end_panel_params
+    assert_equal 580.0, d['depth']
+    assert_equal 880.0, d['height']
+    assert_equal 18.0, d['thickness']
+    assert_equal '__door__', d['material']
   end
 end

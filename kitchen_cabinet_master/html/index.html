@@ -134,9 +134,9 @@
       </div>
     </section>
 
-    <!-- Cabinet (includes the individual size and shelves) -->
+    <!-- Cabinet & Extras: the cabinet itself, or, chosen in Cabinet Category, a filler, an end panel or a toe kick. -->
     <section class="card" id="sec-cabinet">
-      <button class="card-head" type="button" aria-expanded="true">Cabinet</button>
+      <button class="card-head" type="button" aria-expanded="true">Cabinet &amp; Extras</button>
       <div class="card-body">
         <label class="field">
           <span class="label">Cabinet Category</span>
@@ -168,12 +168,20 @@
           <span class="label">Shelves</span>
           <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
         </label>
+
+        <!-- One field, two jobs: how far cabinets stand off the floor, and the height of a toe kick. -->
+        <label class="field narrow cabinet-or-toe">
+          <span class="label">Toe-kick Height</span>
+          <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
+
         <label class="field narrow cabinet-only">
           <span class="label">Gap to next cabinet</span>
           <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
 
-        <!-- Filler: shown when Cabinet Category = Filler. A single board, inserted into the row like a cabinet. -->
+        <!-- Filler: shown when Cabinet Category = Filler. A single board beside a cabinet. -->
         <div class="subblock filler-only" id="sub-filler" hidden>
           <p class="hint">Enter the size, select the cabinet, then Insert. The filler goes on the cabinet's wall side with its front flush with the door, at the same height off the floor as the cabinet. The height starts as the selected cabinet's, and the filler takes that cabinet's door material (see Material).</p>
           <div class="grid-3">
@@ -194,15 +202,23 @@
 
         <!-- End Panel: shown when Cabinet Category = End Panel. Covers the exposed side of the selected cabinet or filler. -->
         <div class="subblock end-panel-only" id="sub-end-panel" hidden>
-          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side. Its material starts as that cabinet's door material.</p>
-          <div class="grid-2">
+          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side. Depth starts flush with the door front and height at the top of what you selected; both can be changed.</p>
+          <label class="field">
+            <span class="label">Side</span>
+            <div class="input"><select id="epSide"></select></div>
+          </label>
+          <div class="grid-3">
             <label class="field">
-              <span class="label">Side</span>
-              <div class="input"><select id="epSide"></select></div>
+              <span class="label">Depth</span>
+              <div class="input"><input id="epDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field">
               <span class="label">Thickness</span>
               <div class="input"><input id="epThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Height</span>
+              <div class="input"><input id="epHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
           <label class="field">
@@ -210,46 +226,37 @@
             <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
           </label>
         </div>
-      </div>
-    </section>
 
-    <!-- Toe Kick: its own entity. Height is also how far cabinets stand off the floor. -->
-    <section class="card" id="sec-toe">
-      <button class="card-head" type="button" aria-expanded="true">Toe Kick</button>
-      <div class="card-body">
-        <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
-        <div class="grid-2">
+        <!-- Toe Kick: shown when Cabinet Category = Toe Kick. Its own entity, a run of pieces laid end to end. -->
+        <div class="subblock toe-only" id="sub-toe-kick" hidden>
+          <p class="hint">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. Its height is the Toe-kick Height above, which also sets how far new cabinets stand off the floor.</p>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Thickness</span>
+              <div class="input"><input id="toeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Recess from Carcass</span>
+              <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Piece Length</span>
+              <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Number of Pieces</span>
+              <div class="input"><input id="pieceCount" type="text" inputmode="numeric" autocomplete="off"></div>
+            </label>
+          </div>
           <label class="field">
-            <span class="label">Height</span>
-            <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Thickness</span>
-            <div class="input"><input id="toeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            <span class="label">Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
           </label>
         </div>
-        <label class="field">
-          <span class="label">Material</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
-        </label>
-        <div class="grid-2">
-          <label class="field">
-            <span class="label">Piece Length</span>
-            <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Number of Pieces</span>
-            <div class="input"><input id="pieceCount" type="text" inputmode="numeric" autocomplete="off"></div>
-          </label>
-        </div>
-        <label class="field narrow">
-          <span class="label">Recess from Carcass</span>
-          <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
-        <p class="hint">Choose Toe Kick as the Cabinet Category and press Insert. The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. The Height also sets how far new cabinets stand off the floor.</p>
       </div>
     </section>
-
     <!-- Door Opening -->
     <section class="card" id="sec-door">
       <button class="card-head" type="button" aria-expanded="true">Door Opening</button>

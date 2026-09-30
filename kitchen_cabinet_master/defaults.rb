@@ -155,12 +155,17 @@ module KitchenCabinetMaster
     DEFAULT_TOE_KICK_DEPTH = 560.0 # carcass depth assumed when no cabinet is selected
 
     # An end panel: which side of the currently selected cabinet/filler it goes
-    # on, how thick it is, and its material. Its width, height and depth all
-    # follow the target (see PartLayout.end_panel). The material starts as "same
-    # as door material" and follows the door until one is picked by hand.
+    # on, and its own depth (front to back), thickness (its width in the front
+    # view) and height (floor to top). Depth starts as the target's door front, so
+    # the panel is flush with the doors, and height as the target's top; the
+    # numbers here are only what the panel shows before anything is selected. The
+    # material starts as "same as door material" and follows the door until one is
+    # picked by hand.
     END_PANEL_PARAMS = {
       'side'      => 'left',
+      'depth'     => 580.0,
       'thickness' => 18.0,
+      'height'    => 880.0,
       'material'  => SAME_AS_DOOR
     }.freeze
 

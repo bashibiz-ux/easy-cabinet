@@ -364,12 +364,14 @@ module KitchenCabinetMaster
     # ---- end panel ----------------------------------------------------------
 
     END_PANEL_FIELDS = {
-      'thickness' => { label: 'End panel thickness', min: 6.0, max: 60.0, required: true }
+      'depth'     => { label: 'End panel depth', min: 10.0, max: 1500.0, required: true },
+      'thickness' => { label: 'End panel thickness', min: 6.0, max: 60.0, required: true },
+      'height'    => { label: 'End panel height', min: 50.0, max: 3500.0, required: true }
     }.freeze
 
-    # An end panel just needs which side it sits on, how thick it is, and its
-    # material; its width, height and depth all come from whatever it is
-    # attached to (see PartLayout.end_panel).
+    # An end panel is which side it sits on, its own depth, thickness and height,
+    # and its material. (PartManager fills a blank depth and height in from what
+    # it is attached to: the door front and the top.)
     def self.validate_end_panel(raw)
       raw = stringify_keys(raw)
       errors = []

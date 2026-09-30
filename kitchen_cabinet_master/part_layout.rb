@@ -47,29 +47,27 @@ module KitchenCabinetMaster
       [params['target_flush_x'].to_f, params['width'].to_f, params['target_base_z'].to_f + params['height'].to_f]
     end
 
-    # An END PANEL is a single thin board covering the exposed side of another
-    # cabinet or filler: the same depth and total height (floor to top) as its
-    # target, `thickness` wide. `params` carries the target's envelope, copied in
-    # once by PartManager when the end panel is inserted (see PartManager,
-    # PartGenerator.attributes_for), so no SketchUp lookup of the target is ever
-    # needed again, including on every later Update. The board sits at the part's
-    # own local origin; PartManager places the part's root against the target's
-    # actual face.
+    # An END PANEL is a single thin board covering the exposed side of a cabinet or
+    # filler, with its own size: `depth` (back to front), `thickness` (its width
+    # along the row) and `height` (floor to top). Depth starts as the target's door
+    # front, so it stands flush with the doors, and height as the target's top,
+    # but both are the user's to change. The board sits at the part's own local
+    # origin (the cabinet's back edge, on the floor); PartManager places the part's
+    # root against the target's actual face.
     def self.end_panel(params)
-      depth = params['target_depth'].to_f
-      top = params['target_top'].to_f
-      thickness = params['thickness'].to_f
+      depth = params['depth'].to_f
+      height = params['height'].to_f
       board = CabinetLayout::Panel.new(
         role: 'board', name: 'End Panel',
-        extent: [round2(depth), round2(thickness), round2(top)],
+        extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
         offset: [0.0, 0.0, 0.0]
       )
-      Layout.new(base_z: 0.0, top_z: round2(top), board: board, toe_kick: [])
+      Layout.new(base_z: 0.0, top_z: round2(height), board: board, toe_kick: [])
     end
 
     # [depth, thickness, top] from the end panel's own local floor origin.
     def self.end_panel_envelope(params)
-      [params['target_depth'].to_f, params['thickness'].to_f, params['target_top'].to_f]
+      [params['depth'].to_f, params['thickness'].to_f, params['height'].to_f]
     end
 
     def self.round2(value)
