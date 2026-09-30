@@ -36,7 +36,7 @@ module KitchenCabinetMaster
     # right-side panel and front-return panel extend (see corner geometry
     # methods below); for every other category it is unused.
     Dims   = Struct.new(:width, :depth, :height, :thick, :back, :inner_w, :interior_start, :interior_d,
-                        :shelf_setback, :return_depth, :recess, keyword_init: true)
+                        :shelf_setback, :return_depth, :recess, :groove, keyword_init: true)
 
     # params - validated parameter Hash (millimetres)
     def self.compute(params)
@@ -51,15 +51,14 @@ module KitchenCabinetMaster
                   [0, dims.width - dims.thick, 0]),
             panel('front_return', 'Front Return Panel', [dims.thick, dims.return_depth, dims.height],
                   [dims.width - dims.thick, 0, 0]),
-            panel('back', 'Back Panel', [dims.back, dims.inner_w, dims.height], [dims.recess, dims.thick, 0]),
+            back_panel(dims),
             corner_bottom_panel(dims)
           ]
         else
           [
             panel('left_side',  'Left Side Panel',  [dims.depth, dims.thick, dims.height], [0, 0, 0]),
             panel('right_side', 'Right Side Panel', [dims.depth, dims.thick, dims.height], [0, dims.width - dims.thick, 0]),
-            panel('back',       'Back Panel',       [dims.back, dims.inner_w, dims.height],
-                  [dims.recess, dims.thick, 0]),
+            back_panel(dims),
             panel('bottom',     'Bottom Panel',     [dims.interior_d, dims.inner_w, dims.thick],
                   [dims.interior_start, dims.thick, 0])
           ]
@@ -101,6 +100,23 @@ module KitchenCabinetMaster
       [depth, params['width'].to_f, base_z + params['height'].to_f]
     end
 
+    # The back panel. A back set in from the rear edge (thinner than 18 mm) sits in a
+    # groove in each side panel, so it is wider than the space between them by
+    # groove on both sides. A flush 18 mm back just fits between the sides.
+    def self.back_panel(dims)
+      panel('back', 'Back Panel', [dims.back, dims.inner_w + (2 * dims.groove), dims.height],
+            [dims.recess, dims.thick - dims.groove, 0])
+    end
+    private_class_method :back_panel
+
+    # 9 mm into each side (never more than half its thickness), or none for a flush back.
+    def self.groove_for(back, thick)
+      return 0.0 if Defaults.back_recess(back).zero?
+
+      [Defaults::BACK_GROOVE, thick / 2.0].min
+    end
+    private_class_method :groove_for
+
     def self.dimensions(params)
       width = params['width'].to_f
       depth = params['depth'].to_f
@@ -129,7 +145,7 @@ module KitchenCabinetMaster
       Dims.new(width: width, depth: depth, height: params['height'].to_f, thick: thick, back: back,
                inner_w: width - (2 * thick), interior_start: start, interior_d: depth - start,
                shelf_setback: open_unit ? 0.0 : Defaults::SHELF_FRONT_SETBACK, return_depth: return_depth,
-               recess: recess)
+               recess: recess, groove: groove_for(back, thick))
     end
     private_class_method :dimensions
 

@@ -85,6 +85,7 @@ module KitchenCabinetMaster
     # Carcass construction rules (mm). Not user parameters; a future catalog
     # could override them per cabinet type.
     BACK_RECESS          = 10.0  # back panel is set this far in from the rear edge of the sides
+    BACK_GROOVE          = 9.0   # a set-in back panel reaches this far into a groove in each side panel
     FLUSH_BACK_FROM      = 18.0  # ...unless it is this thick or more: then it sits flush with the sides' rear edge
 
     # How far in from the rear edge of the side panels the back panel sits: BACK_RECESS,
@@ -120,8 +121,8 @@ module KitchenCabinetMaster
 
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
-      'show_opening_direction' => true, # the plan symbol on the floor
-      'show_door_symbol'       => true, # the dashed swing lines on the door
+      'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
+      'show_door_symbol'       => false, # the dashed swing lines on the door (ticked by the user when wanted)
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
 

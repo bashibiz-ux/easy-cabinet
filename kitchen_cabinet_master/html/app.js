@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.19.0';
+  const APP_VERSION = '0.20.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -278,6 +278,7 @@
   // Which form an action reads. Each Insert button belongs to its own block;
   // Update follows whatever is selected in the model.
   const COLLECTORS = {
+    rotate: () => ({ degrees: $('rotateDegrees').value }),
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
@@ -298,6 +299,7 @@
   function formKind(action) {
     if (action === 'insert') return categoryKind();
     if (action === 'update') return state.selectedKind || categoryKind();
+    if (action === 'rotate') return 'rotate';
     return null;
   }
 
@@ -353,7 +355,7 @@
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
     'door_gap', 'door_reveal', 'panel_thickness', 'back_thickness',
-    'cabinet_extras', 'handle', 'materials', 'door_opening', 'visibility'
+    'cabinet_extras', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
   ];
 
   function currentCatalog() {
@@ -1064,7 +1066,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1127,8 +1129,9 @@
       if (key in d) setSelect(id, d[key]);
     });
     setSelect('category', d.cabinet_category);
-    $('showDirection').checked = d.show_opening_direction !== false;
-    $('showDoorSymbol').checked = d.show_door_symbol !== false;
+    // Both start unticked; the user ticks them when wanted.
+    $('showDirection').checked = d.show_opening_direction === true;
+    $('showDoorSymbol').checked = d.show_door_symbol === true;
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;

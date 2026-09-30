@@ -144,10 +144,10 @@ class CornerDoorTest < Minitest::Test
     end
   end
 
-  def test_both_opening_direction_symbols_are_independent_and_on_by_default
+  def test_both_opening_direction_symbols_are_independent_and_start_unticked
     defaults = Defaults.params
-    assert_equal true, defaults['show_opening_direction'], 'the symbol on the floor'
-    assert_equal true, defaults['show_door_symbol'], 'the dashed lines on the door'
+    assert_equal false, defaults['show_opening_direction'], 'the symbol on the floor starts off'
+    assert_equal false, defaults['show_door_symbol'], 'the dashed lines on the door start off'
     refute defaults.key?('door_symbol'), 'the old symbol-style choice is gone'
 
     # Both are always built (visibility only flips a flag), so both exist for any door.

@@ -17,6 +17,7 @@ module KitchenCabinetMaster
       when 'delete' then delete
       when 'visibility' then set_visibility(raw)
       when 'toggle' then toggle_all
+      when 'rotate' then rotate(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -75,6 +76,42 @@ module KitchenCabinetMaster
       Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.")
     end
     private_class_method :update
+
+    # Turns the selected cabinet (or filler, end panel or toe kick) about a vertical
+    # axis through the middle of its footprint, by the number of degrees typed in the
+    # panel. Positive turns anticlockwise seen from above, negative clockwise. One
+    # Undo step. Its own doors, handles and the rest turn with it; other items are
+    # left where they are.
+    def self.rotate(raw)
+      raw = {} unless raw.is_a?(Hash)
+      degrees = ValidationManager.to_float(raw['degrees'])
+      return Response.fail('Enter the rotation in degrees, for example 90 or -45.') if degrees.nil?
+      if degrees.abs < 1e-9 || degrees.abs > 360
+        return Response.fail('The rotation must be between -360 and 360 degrees, and not 0.')
+      end
+
+      model = Sketchup.active_model
+      target = SelectionManager.selected_cabinet(model) || SelectionManager.selected_part(model)
+      return Response.fail('Select a cabinet in the model to rotate.') unless target
+
+      SelectionManager.suspend do
+        with_operation(model, 'Rotate Cabinet') { target.transformation = target.transformation * rotation_of(target, degrees) }
+      end
+      SelectionManager.push_selection(model)
+      Response.ok("#{target.name} rotated #{fmt(degrees)} degrees.")
+    end
+    private_class_method :rotate
+
+    # The turn, in the item's own frame, about the middle of its footprint (from its
+    # stored envelope: depth is X, width is Y).
+    def self.rotation_of(entity, degrees)
+      dictionary = AttributeManager::DICTIONARY
+      depth = entity.get_attribute(dictionary, 'envelope_depth').to_f
+      width = entity.get_attribute(dictionary, 'envelope_width').to_f
+      centre = Geom::Point3d.new(depth.mm / 2.0, width.mm / 2.0, 0)
+      Geom::Transformation.rotation(centre, Geom::Vector3d.new(0, 0, 1), degrees * Math::PI / 180.0)
+    end
+    private_class_method :rotation_of
 
     # Carcass / Door / Toe Kick / the two opening-direction checkboxes: applied
     # straight away to every cabinet in the model (the top level of the model), as

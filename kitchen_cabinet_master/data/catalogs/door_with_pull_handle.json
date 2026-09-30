@@ -7,7 +7,7 @@
   "features": [
     "base", "wall", "tall", "corner", "filler", "end_panel", "toe_kick",
     "door_gap", "door_reveal", "panel_thickness", "back_thickness",
-    "cabinet_extras", "handle", "materials", "door_opening", "visibility"
+    "cabinet_extras", "handle", "materials", "door_opening", "visibility", "rotate"
   ],
   "categories": {
     "base": [

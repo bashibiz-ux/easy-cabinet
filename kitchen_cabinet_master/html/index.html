@@ -288,8 +288,23 @@
         <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
-        <label class="check"><input type="checkbox" id="showDirection" checked><span>Door opening direction on the floor</span></label>
-        <label class="check"><input type="checkbox" id="showDoorSymbol" checked><span>Door opening direction on the door</span></label>
+        <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
+        <label class="check"><input type="checkbox" id="showDoorSymbol"><span>Door opening direction on the door</span></label>
+      </div>
+    </section>
+
+    <!-- Rotate the selected cabinet -->
+    <section class="card" id="sec-rotate" data-feature="rotate">
+      <button class="card-head" type="button" aria-expanded="true">Rotate</button>
+      <div class="card-body">
+        <p class="hint">Select a cabinet in the model, enter the angle and press Rotate. It turns about the middle of its footprint; positive is anticlockwise seen from above.</p>
+        <div class="rotate-row">
+          <label class="field">
+            <span class="label">Rotation angle</span>
+            <div class="input"><input id="rotateDegrees" type="text" inputmode="decimal" autocomplete="off" value="90"><em>deg</em></div>
+          </label>
+          <button class="btn" type="button" data-action="rotate">Rotate</button>
+        </div>
       </div>
     </section>
 
