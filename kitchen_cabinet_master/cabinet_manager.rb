@@ -59,6 +59,8 @@ module KitchenCabinetMaster
         with_operation(model, 'Update Cabinet') do
           params['cabinet_name'] = NamingManager.for_update(root, params)
           CabinetGenerator.update(model, root, params)
+          # Its filler, end panels and toe kicks follow its door material.
+          PartManager.follow_door(model, root)
         end
       end
 

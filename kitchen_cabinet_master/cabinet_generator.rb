@@ -69,13 +69,17 @@ module KitchenCabinetMaster
 
     # The DOOR material: the individual cabinet override wins over the unit
     # (base / wall / tall) door material.
-    # A unit type with no material of its own (or a cabinet stored before it had
-    # one) gets the plain white default rather than an empty, unusable name.
+    # A corner unit has no door material of its own: it uses the Base Unit one, so
+    # whatever is chosen there applies to its door too. A unit type with no
+    # material (or a cabinet stored before it had one) gets the plain white
+    # default rather than an empty, unusable name.
     def self.door_material(params)
       override = params['cabinet_material'].to_s
       return override unless override.empty?
 
-      own = params["#{params['cabinet_category']}_material"].to_s
+      category = params['cabinet_category'].to_s
+      category = 'base' if category == 'corner'
+      own = params["#{category}_material"].to_s
       own.empty? ? Defaults::DEFAULT_MATERIAL : own
     end
 

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.11.2';
+  const APP_VERSION = '0.12.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -18,7 +18,7 @@
   };
 
   const FILLER_FIELD_TO_ELEMENT = {
-    width: 'fillerWidth', thickness: 'fillerThickness', height: 'fillerHeight', material: 'fillerMaterial'
+    width: 'fillerWidth', thickness: 'fillerThickness', height: 'fillerHeight'
   };
   const END_PANEL_FIELD_TO_ELEMENT = { side: 'epSide', thickness: 'epThickness', material: 'epMaterial' };
 
@@ -30,7 +30,6 @@
     base_material: 'baseMaterial',
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
-    corner_material: 'cornerMaterial',
     material_thickness: 'thickness',
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
@@ -90,7 +89,6 @@
     base_material: 'baseMaterial',
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
-    corner_material: 'cornerMaterial',
     carcass_material: 'carcassMaterial',
     toe_kick_material: 'toeMaterial',
     door_opening_direction: 'direction',
@@ -169,8 +167,8 @@
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
-      // Fillers and end panels are Cabinet Category choices: show the matching fields.
-      if (kind !== 'toe_kick') setSelect('category', kind);
+      // Filler, End Panel and Toe Kick are Cabinet Category choices: show the matching fields.
+      setSelect('category', kind);
       updateCategoryUi();
     } else if (name === 'cabinet_cleared') {
       state.selectedKind = null;
@@ -208,27 +206,20 @@
     setText('fillerWidth', d.width);
     setText('fillerThickness', d.thickness);
     setText('fillerHeight', d.height);
-    setSelect('fillerMaterial', d.material);
     updateChips();
   }
 
-  // A filler's height, and the material of a filler or end panel, START as those
-  // of the cabinet in the model (its height and door material) and follow it as
-  // cabinets are selected, until the user types or picks their own. Then they
-  // stay put, so "enter the data, select the cabinet, Insert" keeps what was entered.
-  const FOLLOWS_CABINET = ['fillerHeight', 'fillerMaterial', 'epMaterial'];
+  // A filler's height STARTS as the height of the cabinet in the model and follows
+  // it as cabinets are selected, until the user types their own. Then it stays
+  // put, so "enter the data, select the cabinet, Insert" keeps what was entered.
+  // (A filler's material is not a field: it always follows the door material.)
+  const FOLLOWS_CABINET = ['fillerHeight'];
 
   function followCabinet(cabinet) {
-    const set = (id, apply) => { if (!state.touched.has(id)) apply(); };
-    if (cabinet.height) set('fillerHeight', () => setText('fillerHeight', cabinet.height));
-    if (cabinet.material) {
-      set('fillerMaterial', () => setSelect('fillerMaterial', cabinet.material));
-      set('epMaterial', () => setSelect('epMaterial', cabinet.material));
-    }
-    updateChips();
+    if (cabinet.height && !state.touched.has('fillerHeight')) setText('fillerHeight', cabinet.height);
   }
 
-  // After a filler or end panel is inserted, the next one starts from the cabinet again.
+  // After a filler is inserted, the next one starts from the cabinet again.
   function resetFollowing() {
     FOLLOWS_CABINET.forEach((id) => state.touched.delete(id));
   }
@@ -236,7 +227,7 @@
   function applyEndPanelDefaults(d) {
     setSelect('epSide', d.side);
     setText('epThickness', d.thickness);
-    setSelect('epMaterial', d.material);
+    setSelect('epMaterial', d.material_choice || d.material || '__door__');
     updateChips();
   }
 
@@ -244,8 +235,7 @@
     return {
       width: $('fillerWidth').value,
       thickness: $('fillerThickness').value,
-      height: $('fillerHeight').value,
-      material: $('fillerMaterial').value
+      height: $('fillerHeight').value
     };
   }
 
@@ -266,29 +256,32 @@
     toe_kick: () => collectToeKick()
   };
 
-  // Fillers and end panels are choices in the Cabinet Category list. Every other
-  // category is a real cabinet.
+  // Filler, End Panel and Toe Kick are choices in the Cabinet Category list, next
+  // to the real cabinet categories.
+  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick'];
+
   function categoryKind() {
     const value = $('category').value;
-    return value === 'filler' || value === 'end_panel' ? value : 'cabinet';
+    return PART_CATEGORIES.includes(value) ? value : 'cabinet';
   }
 
-  // Insert follows the Cabinet Category (or is the Toe Kick block's own button);
-  // Update follows whatever is selected in the model.
+  // The main Insert button inserts whatever the Cabinet Category says; Update
+  // follows whatever is selected in the model.
   function formKind(action) {
     if (action === 'insert') return categoryKind();
-    if (action === 'insert_toe_kick') return 'toe_kick';
     if (action === 'update') return state.selectedKind || categoryKind();
     return null;
   }
 
   // Cabinets have their own Insert / Update / Delete; a filler, end panel or toe
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
+  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' };
+
   function serverAction(action) {
     const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
     if (isPart && action === 'update') return 'update_part';
     if (isPart && action === 'delete') return 'delete_part';
-    if (action === 'insert') return { filler: 'insert_filler', end_panel: 'insert_end_panel' }[categoryKind()] || 'insert';
+    if (action === 'insert') return INSERT_ACTION[categoryKind()];
     return action;
   }
 
@@ -340,12 +333,11 @@
     [...panel, ...toeKick].forEach((m) => {
       if (m.color) state.colors[m.id] = m.color;
     });
-    ['baseMaterial', 'wallMaterial', 'tallMaterial', 'cornerMaterial'].forEach((id) => fillSelect($(id), panel));
+    ['baseMaterial', 'wallMaterial', 'tallMaterial'].forEach((id) => fillSelect($(id), panel));
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('toeMaterial'), toeKick);
-    fillSelect($('fillerMaterial'), panel);
-    fillSelect($('epMaterial'), panel);
+    fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     updateChips();
   }
 
@@ -386,7 +378,6 @@
       base_material: $('baseMaterial').value,
       wall_material: $('wallMaterial').value,
       tall_material: $('tallMaterial').value,
-      corner_material: $('cornerMaterial').value,
       material_thickness: $('thickness').value,
       back_thickness: $('backThickness').value,
       door_gap: $('doorGap').value,
@@ -503,7 +494,7 @@
    * ---------------------------------------------------------------------- */
 
   async function refreshCabinets({ selectId = null, keepValues = false } = {}) {
-    if (categoryKind() !== 'cabinet') return; // a filler or end panel has no catalog cabinets
+    if (categoryKind() !== 'cabinet') return; // a filler, end panel or toe kick has no catalog cabinets
     const catalogId = $('catalog').value;
     const category = $('category').value;
     state.cabinets = [];
@@ -553,9 +544,11 @@
     setText('shelves', cabinet.shelves === undefined ? 0 : cabinet.shelves);
   }
 
-  // The Cabinet Category decides which fields the panel shows: the cabinet form
-  // for every real category, or the Filler / End Panel fields when one of those is
-  // chosen. (The Toe Kick and Visibility sections are always there.) A wall unit
+  // The Cabinet Category decides which fields the Cabinet section shows: the
+  // cabinet's own (cabinet type, size, shelves, gap) for every real category, or
+  // the Filler / End Panel fields when one of those is chosen. Every section (and
+  // the front-view picture above) always stays where it is: Catalog, Handle,
+  // Material, Toe Kick, Door Opening and Visibility never disappear. A wall unit
   // hangs at height 0, so the toe-kick height does not raise it.
   function updateCategoryUi() {
     const kind = categoryKind();
@@ -563,7 +556,6 @@
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
     $('sub-filler').hidden = kind !== 'filler';
     $('sub-end-panel').hidden = kind !== 'end_panel';
-    document.querySelector('.preview').hidden = kind !== 'cabinet';
     $('toeNote').hidden = $('category').value !== 'wall';
   }
 
@@ -721,8 +713,14 @@
     }
   }
 
+  // Like an accordion: opening a section closes whichever other one is open.
   function toggleCard(card, open) {
     const collapsed = open === undefined ? !card.classList.contains('collapsed') : !open;
+    if (!collapsed) {
+      document.querySelectorAll('.card').forEach((other) => {
+        if (other !== card && other.querySelector('.card-head') && !other.classList.contains('collapsed')) toggleCard(other, false);
+      });
+    }
     card.classList.toggle('collapsed', collapsed);
     card.querySelector('.card-head').setAttribute('aria-expanded', String(!collapsed));
   }
@@ -871,8 +869,8 @@
     const m = state.meta;
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? null : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
-    // Fillers and end panels are choices in the same list as the cabinet categories.
-    fillSelect($('category'), [...m.categories, { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }]);
+    // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
+    fillSelect($('category'), [...m.categories, { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }, { id: 'toe_kick', name: 'Toe Kick' }]);
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
     fillSelect($('handleOrientation'), m.handle_orientations);

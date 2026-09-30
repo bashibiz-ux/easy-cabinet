@@ -41,6 +41,7 @@ class FakeThing < Sketchup::ComponentInstance
 
   def attribute_dictionary(_name, _create = false) = @attrs
   def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
+  def set_attribute(_dict, key, value) = @attrs[key] = value
 end
 
 class FakeEntities
@@ -194,16 +195,123 @@ class FillerTest < Minitest::Test
     refute_same first, found
   end
 
-  def test_a_blank_material_follows_the_cabinets_door
-    stored = AttributeManager.read(cabinet)
-    filled = PartManager.send(:with_default_material, { 'material' => '', 'width' => '50' }, stored)
-    assert_equal 'Oak', filled['material']
+  def test_a_filler_takes_the_cabinets_door_material_and_has_none_of_its_own
+    stored = AttributeManager.read(cabinet) # door material 'Oak'
+    door = PartManager.send(:door_material_of, stored)
+    assert_equal 'Oak', door
 
-    chosen = PartManager.send(:with_default_material, { 'material' => 'Walnut' }, stored)
-    assert_equal 'Walnut', chosen['material'], 'an entered material is kept'
+    params, failure = PartManager.send(:prepare_filler, { 'width' => '50', 'thickness' => '18', 'height' => '780', 'material' => 'Walnut' }, door)
+    assert_nil failure
+    assert_equal 'Oak', params['material'], 'a material sent from the panel is ignored: it follows the door'
 
-    assert_equal 'White', PartManager.send(:with_default_material, {}, { 'cabinet_category' => 'base' })['material'],
-                 'nothing to follow: plain white'
+    assert_equal 'White', PartManager.send(:door_material_of, { 'cabinet_category' => 'base' }), 'nothing recorded: plain white'
+    corner = { 'cabinet_category' => 'corner', 'base_material' => 'Walnut', 'material' => '' }
+    assert_equal 'Walnut', PartManager.send(:door_material_of, corner), 'a corner uses the Base Unit door material'
+  end
+
+  # ---- end panel material: "same as door", following unless changed by hand ---------------------
+
+  def test_an_end_panel_starts_as_same_as_door_material_and_uses_the_door_colour
+    assert_equal '__door__', Defaults.end_panel_params['material']
+
+    params, failure = PartManager.send(:prepare_end_panel, { 'side' => 'left', 'thickness' => '18', 'material' => '__door__' }, 'Oak', 'Grey')
+    assert_nil failure
+    assert_equal 'Oak', params['material'], 'resolved to the door colour'
+    assert_equal '__door__', params['material_choice'], 'but remembered as "follow the door"'
+
+    blank, = PartManager.send(:prepare_end_panel, { 'side' => 'left', 'thickness' => '18', 'material' => '' }, 'Oak', 'Grey')
+    assert_equal '__door__', blank['material_choice'], 'blank means same as door'
+    assert_equal 'Oak', blank['material']
+  end
+
+  def test_an_end_panel_with_a_material_picked_by_hand_keeps_it
+    params, = PartManager.send(:prepare_end_panel, { 'side' => 'right', 'thickness' => '18', 'material' => 'Walnut' }, 'Oak', 'Grey')
+    assert_equal 'Walnut', params['material']
+    assert_equal 'Walnut', params['material_choice']
+  end
+
+  # ---- following the cabinet's door material after it changes ---------------------------------------
+
+  # A part standing in the model, with a definition whose instances can be recoloured.
+  class FakePiece < Sketchup::ComponentInstance
+    attr_accessor :painted
+  end
+
+  class FakeDefinition
+    attr_reader :pieces
+
+    def initialize(count) = @pieces = Array.new(count) { FakePiece.new }
+    def entities = self
+    def grep(_klass) = @pieces
+  end
+
+  class FakePart < FakeThing
+    attr_reader :definition
+
+    def initialize(attrs, parent, pieces = 1)
+      super(attrs, Geom::Transformation.new, parent)
+      @definition = FakeDefinition.new(pieces)
+    end
+  end
+
+  def part(kind, attrs, pieces = 1)
+    p = FakePart.new({ 'part_id' => "PART_#{@entities.grep(FakeThing).length}", 'part_kind' => kind }.merge(attrs), @parent, pieces)
+    @entities.add(p)
+    p
+  end
+
+  # MaterialManager.apply records the colour on the piece so the test can read it back.
+  module ::KitchenCabinetMaster::MaterialManager
+    def self.apply(entity, name, _model = nil, _color = nil)
+      entity.painted = name
+      true
+    end
+
+    def self.follows_another_part?(name) = ['__door__', '__carcass__', '__cabinet__'].include?(name)
+  end
+
+  def repaint(cabinet_stored)
+    cab = cabinet
+    cab.attrs.merge!(cabinet_stored)
+    cab
+  end
+
+  def test_when_the_door_material_changes_the_filler_and_followers_change_with_it
+    cab = cabinet(base_material: 'Walnut', material: 'Walnut') # the cabinet was just updated to Walnut
+    id = cab.attrs['cabinet_id']
+    filler = part('filler', 'target_id' => id, 'material' => 'Oak')
+    following_panel = part('end_panel', 'target_id' => id, 'material' => 'Oak', 'material_choice' => '__door__')
+    own_panel = part('end_panel', 'target_id' => id, 'material' => 'Grey', 'material_choice' => 'Grey')
+    following_kick = part('toe_kick', 'target_id' => id, 'material' => 'Oak', 'toe_kick_material' => '__door__', 'target_door_material' => 'Oak', 'width' => 600.0)
+    own_kick = part('toe_kick', 'target_id' => id, 'material' => 'PVC Black', 'toe_kick_material' => 'PVC Black')
+    stranger = part('filler', 'target_id' => 'CABINET_9999', 'material' => 'Oak')
+
+    PartManager.follow_door(Sketchup.active_model, cab)
+
+    assert_equal 'Walnut', filler.attrs['material']
+    assert_equal ['Walnut'], filler.definition.pieces.map(&:painted).uniq, 'the filler board is recoloured'
+    assert_equal 'Walnut', following_panel.attrs['material']
+    assert_equal 'Walnut', following_kick.attrs['material']
+    assert_equal 'Grey', own_panel.attrs['material'], 'a hand-picked end panel material stays'
+    assert_nil own_panel.definition.pieces.first.painted
+    assert_equal 'PVC Black', own_kick.attrs['material'], 'a hand-picked toe kick material stays'
+    assert_equal 'Oak', stranger.attrs['material'], 'other cabinets\' parts are left alone'
+    assert_equal 'Walnut', following_kick.attrs['target_door_material'], 'and a later Update keeps following'
+  end
+
+  def test_things_attached_to_a_filler_follow_the_cabinet_too
+    cab = cabinet(base_material: 'Walnut', material: 'Walnut')
+    filler = part('filler', 'target_id' => cab.attrs['cabinet_id'], 'material' => 'Oak')
+    beside_filler = part('end_panel', 'target_id' => filler.attrs['part_id'], 'material' => 'Oak', 'material_choice' => '__door__')
+
+    PartManager.follow_door(Sketchup.active_model, cab)
+    assert_equal 'Walnut', beside_filler.attrs['material']
+  end
+
+  def test_a_toe_kick_records_the_cabinet_it_goes_with
+    cab = cabinet
+    t = PartManager.send(:toe_kick_target, { 'depth' => '560' }, cab)
+    assert_equal cab.attrs['cabinet_id'], t['target_id']
   end
 
   # ---- validation ---------------------------------------------------------------------------
@@ -225,7 +333,7 @@ class FillerTest < Minitest::Test
   def test_filler_defaults_match_the_request
     d = Defaults.filler_params
     assert_equal 18.0, d['thickness'], 'initial thickness 18 mm'
-    assert_equal %w[height material thickness width], d.keys.sort, 'no position, gap or height-off-floor'
+    assert_equal %w[height thickness width], d.keys.sort, 'no position, gap, height-off-floor or material'
   end
 
   # ---- end panel target ----------------------------------------------------------------------

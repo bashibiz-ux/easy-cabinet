@@ -23,7 +23,7 @@
   <main class="scroll" id="scroll">
 
     <!-- Catalog / Configuration -->
-    <section class="card cabinet-only" id="sec-catalog">
+    <section class="card" id="sec-catalog">
       <button class="card-head" type="button" aria-expanded="true">Catalog</button>
       <div class="card-body">
         <label class="field">
@@ -52,7 +52,7 @@
     </section>
 
     <!-- Handle -->
-    <section class="card cabinet-only" id="sec-handle">
+    <section class="card" id="sec-handle">
       <button class="card-head" type="button" aria-expanded="true">Handle</button>
       <div class="card-body">
         <label class="field">
@@ -111,7 +111,7 @@
     </section>
 
     <!-- Material -->
-    <section class="card cabinet-only" id="sec-material">
+    <section class="card" id="sec-material">
       <button class="card-head" type="button" aria-expanded="true">Material</button>
       <div class="card-body">
         <label class="field">
@@ -127,14 +127,10 @@
           <div class="input has-chip"><i class="chip" data-chip-for="tallMaterial"></i><select id="tallMaterial" data-material></select></div>
         </label>
         <label class="field">
-          <span class="label">Corner Unit Door Material</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="cornerMaterial"></i><select id="cornerMaterial" data-material></select></div>
-        </label>
-        <label class="field">
           <span class="label">Carcass Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
         </label>
-        <p class="hint">The carcass has its own colour. The toe kick has its own choice (see Toe Kick).</p>
+        <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; end panels and toe kicks do too unless you pick their own.</p>
       </div>
     </section>
 
@@ -179,7 +175,7 @@
 
         <!-- Filler: shown when Cabinet Category = Filler. A single board, inserted into the row like a cabinet. -->
         <div class="subblock filler-only" id="sub-filler" hidden>
-          <p class="hint">Enter the size, select the cabinet, then Insert. The filler goes on the cabinet's wall side with its front flush with the door, at the same height off the floor as the cabinet. Height and material start as the selected cabinet's.</p>
+          <p class="hint">Enter the size, select the cabinet, then Insert. The filler goes on the cabinet's wall side with its front flush with the door, at the same height off the floor as the cabinet. The height starts as the selected cabinet's, and the filler takes that cabinet's door material (see Material).</p>
           <div class="grid-3">
             <label class="field">
               <span class="label">Width</span>
@@ -194,10 +190,6 @@
               <div class="input"><input id="fillerHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
-          <label class="field">
-            <span class="label">Material</span>
-            <div class="input has-chip"><i class="chip" data-chip-for="fillerMaterial"></i><select id="fillerMaterial" data-material></select></div>
-          </label>
         </div>
 
         <!-- End Panel: shown when Cabinet Category = End Panel. Covers the exposed side of the selected cabinet or filler. -->
@@ -254,13 +246,12 @@
           <span class="label">Recess from Carcass</span>
           <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <p class="hint">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. The Height also sets how far new cabinets stand off the floor.</p>
-        <button class="btn sub-btn" type="button" data-action="insert_toe_kick">Insert Toe Kick</button>
+        <p class="hint">Choose Toe Kick as the Cabinet Category and press Insert. The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. The Height also sets how far new cabinets stand off the floor.</p>
       </div>
     </section>
 
     <!-- Door Opening -->
-    <section class="card cabinet-only" id="sec-door">
+    <section class="card" id="sec-door">
       <button class="card-head" type="button" aria-expanded="true">Door Opening</button>
       <div class="card-body">
         <div class="grid-2">

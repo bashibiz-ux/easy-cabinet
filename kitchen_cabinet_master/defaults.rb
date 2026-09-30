@@ -106,7 +106,6 @@ module KitchenCabinetMaster
       'base_material'          => DEFAULT_MATERIAL,
       'wall_material'          => DEFAULT_MATERIAL,
       'tall_material'          => DEFAULT_MATERIAL,
-      'corner_material'        => DEFAULT_MATERIAL,
       'cabinet_material'       => '',
       'carcass_material'       => '', # blank = the carcass follows the door material
       'material_thickness'     => 18.0,
@@ -134,13 +133,12 @@ module KitchenCabinetMaster
     # flush with the door. `width` is how wide the gap it fills is, `thickness` how
     # thick the board is (front to back). Its height and how far it stands off the
     # floor follow the cabinet it is inserted against (the height field only
-    # starts out as that cabinet's height); its material starts as that cabinet's
-    # door material.
+    # starts out as that cabinet's height). It has no material of its own: it
+    # always takes the door material of that cabinet.
     FILLER_PARAMS = {
       'width'     => 100.0,
       'thickness' => 18.0,
-      'height'    => 780.0,
-      'material'  => DEFAULT_MATERIAL
+      'height'    => 780.0
     }.freeze
 
     # A toe kick: a run of `toe_kick_pieces` pieces, each `toe_kick_piece_length`
@@ -158,11 +156,12 @@ module KitchenCabinetMaster
 
     # An end panel: which side of the currently selected cabinet/filler it goes
     # on, how thick it is, and its material. Its width, height and depth all
-    # follow the target (see PartLayout.end_panel).
+    # follow the target (see PartLayout.end_panel). The material starts as "same
+    # as door material" and follows the door until one is picked by hand.
     END_PANEL_PARAMS = {
       'side'      => 'left',
       'thickness' => 18.0,
-      'material'  => DEFAULT_MATERIAL
+      'material'  => SAME_AS_DOOR
     }.freeze
 
     # Returns a deep, mutable copy so callers can modify it freely.

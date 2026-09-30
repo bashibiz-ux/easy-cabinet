@@ -23,9 +23,10 @@ module KitchenCabinetMaster
     # inserted), on its wall side, with its front face flush with the door. The
     # side is the one with nothing against it (the right when both are free, so a
     # cabinet inserted next carries on after the filler). Its base height comes
-    # from the cabinet, and its material from the cabinet's door unless one is
-    # given. What it needs from the cabinet is copied into its stored parameters,
-    # so a later Update never has to look the cabinet up again.
+    # from the cabinet, and it always takes the cabinet's door material (it has no
+    # material of its own, and follows the cabinet when that changes, see
+    # follow_door). What it needs from the cabinet is copied into its stored
+    # parameters, so a later Update never has to look the cabinet up again.
     def self.insert_filler(raw)
       model = Sketchup.active_model
       target = SelectionManager.selected_cabinet(model) || PlacementManager.last_cabinet(model)
@@ -34,7 +35,7 @@ module KitchenCabinetMaster
       end
 
       target_params = AttributeManager.read(target)
-      params, failure = prepare_filler(with_default_material(raw, target_params))
+      params, failure = prepare_filler(raw, door_material_of(target_params))
       return failure if failure
 
       params.merge!(filler_target(target, target_params))
@@ -93,14 +94,6 @@ module KitchenCabinetMaster
     end
     private_class_method :filler_placement
 
-    # A blank material means "the same as the door it goes with".
-    def self.with_default_material(raw, source_params)
-      raw = raw.is_a?(Hash) ? raw.transform_keys(&:to_s) : {}
-      raw['material'] = door_material_of(source_params) if raw['material'].to_s.strip.empty?
-      raw
-    end
-    private_class_method :with_default_material
-
     # The door colour recorded on a cabinet or filler (never blank).
     def self.door_material_of(stored)
       material = stored['material'].to_s
@@ -120,14 +113,19 @@ module KitchenCabinetMaster
       return Response.fail('Select a cabinet or filler first, then choose which side gets the end panel.') unless target
 
       target_params = AttributeManager.read(target)
-      params, failure = prepare_end_panel(with_default_material(raw, target_params))
+      filler = AttributeManager.part_kind(target) == 'filler'
+      door = door_material_of(target_params)
+      carcass = filler ? door : CabinetGenerator.carcass_material(target_params, door)
+      params, failure = prepare_end_panel(raw, door, carcass)
       return failure if failure
 
+      # Recorded so the end panel can follow the door colour if that changes (follow_door).
+      params['target_door_material'] = door
+      params['target_carcass_material'] = carcass
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
-                             target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
+                            target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
       # A filler stands forward to the door front; a cabinet's end panel covers its carcass.
-      filler = AttributeManager.part_kind(target) == 'filler'
       params['target_depth'] = (filler ? target_params['target_flush_x'] : target_params['depth']).to_f
       params['target_top'] = target_params['envelope_top'] || CabinetLayout.envelope(target_params)[2]
 
@@ -264,13 +262,15 @@ module KitchenCabinetMaster
       stored = anchor ? AttributeManager.read(anchor) : nil
       return fallback_target(raw) unless stored
 
+      # `target_id` is the cabinet the toe kick goes with, so it can follow that
+      # cabinet's door colour (see follow_door).
       if AttributeManager.part_kind(anchor) == 'toe_kick'
-        stored.slice('target_depth', 'target_door_material', 'target_carcass_material')
+        stored.slice('target_id', 'target_depth', 'target_door_material', 'target_carcass_material')
       elsif AttributeManager.part_kind(anchor) == 'filler'
         # The carcass depth of the cabinet the filler goes beside (recorded when it was inserted).
         material = door_material_of(stored)
-        { 'target_depth' => stored['target_depth'].to_f, 'target_door_material' => material,
-          'target_carcass_material' => material }
+        { 'target_id' => stored['target_id'], 'target_depth' => stored['target_depth'].to_f,
+          'target_door_material' => material, 'target_carcass_material' => material }
       else
         # The door material the cabinet was actually built with; if it never
         # recorded one (an older cabinet), work it out so this is never blank.
@@ -278,8 +278,8 @@ module KitchenCabinetMaster
         door = CabinetGenerator.door_material(stored) if door.empty?
         # A corner unit is a square: its carcass reaches Width, not its Depth field.
         depth = stored['cabinet_category'] == 'corner' ? stored['width'] : stored['depth']
-        { 'target_depth' => depth.to_f, 'target_door_material' => door,
-          'target_carcass_material' => CabinetGenerator.carcass_material(stored, door) }
+        { 'target_id' => AttributeManager.cabinet_id(anchor), 'target_depth' => depth.to_f,
+          'target_door_material' => door, 'target_carcass_material' => CabinetGenerator.carcass_material(stored, door) }
       end
     end
     private_class_method :toe_kick_target
@@ -303,7 +303,7 @@ module KitchenCabinetMaster
       errors = result.errors.dup
 
       stored = AttributeManager.read(root)
-      %w[target_depth target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
+      %w[target_id target_depth target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
       errors.concat(toe_kick_fit_errors(model, params)) if errors.empty?
       return Response.fail(summary(errors), errors) unless errors.empty?
 
@@ -334,12 +334,12 @@ module KitchenCabinetMaster
     end
     private_class_method :update_part
 
-    # Its size and material can change; where it sits (the cabinet, the side, the
-    # base height, the door front) stays as inserted, copied back from what was
-    # stored then.
+    # Its size can change; where it sits (the cabinet, the side, the base height,
+    # the door front) stays as inserted, copied back from what was stored then.
+    # Its material is the cabinet's door colour, kept up to date by follow_door.
     def self.update_filler(model, root, raw)
       stored = AttributeManager.read(root)
-      params, failure = prepare_filler(with_default_material(raw, stored))
+      params, failure = prepare_filler(raw, door_material_of(stored))
       return failure if failure
 
       %w[target_id target_width target_depth target_base_z target_flush_x side].each { |key| params[key] = stored[key] }
@@ -364,10 +364,15 @@ module KitchenCabinetMaster
 
     def self.update_end_panel(model, root, raw)
       stored = AttributeManager.read(root)
-      params, failure = prepare_end_panel(with_default_material(raw, stored))
+      door = stored['target_door_material'].to_s
+      door = Defaults::DEFAULT_MATERIAL if door.empty?
+      carcass = stored['target_carcass_material'].to_s
+      carcass = door if carcass.empty?
+      params, failure = prepare_end_panel(raw, door, carcass)
       return failure if failure
 
-      %w[target_id target_width target_depth target_top].each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_depth target_top target_door_material target_carcass_material]
+        .each { |key| params[key] = stored[key] }
 
       layout = PartLayout.end_panel(params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']
@@ -406,7 +411,7 @@ module KitchenCabinetMaster
     def self.delete_part
       model = Sketchup.active_model
       root = SelectionManager.selected_part(model)
-      return Response.fail('Select a filler or end panel to delete.') unless root
+      return Response.fail('Select a filler, end panel or toe kick to delete.') unless root
 
       name = root.name
       SelectionManager.suspend { with_operation(model, 'Delete Part') { PartGenerator.remove(model, root) } }
@@ -417,29 +422,91 @@ module KitchenCabinetMaster
 
     # ---- shared -----------------------------------------------------------------
 
-    def self.prepare_filler(raw)
+    # `material` is the cabinet's door material: a filler has no material of its own.
+    def self.prepare_filler(raw, material)
       result = ValidationManager.validate_filler(raw)
       return [nil, Response.fail(summary(result.errors), result.errors)] unless result.errors.empty?
 
-      model = Sketchup.active_model
-      errors = material_errors(model, result.params, %w[material])
+      result.params['material'] = material
+      errors = material_errors(Sketchup.active_model, result.params, %w[material])
       return [nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
       [result.params, nil]
     end
     private_class_method :prepare_filler
 
-    def self.prepare_end_panel(raw)
+    # An end panel's material is "same as door material" (following what it is
+    # attached to) unless a material was picked by hand; `door` and `carcass` are
+    # what it would follow.
+    def self.prepare_end_panel(raw, door, carcass)
       result = ValidationManager.validate_end_panel(raw)
       return [nil, Response.fail(summary(result.errors), result.errors)] unless result.errors.empty?
 
-      model = Sketchup.active_model
-      errors = material_errors(model, result.params, %w[material])
+      params = result.params
+      params['material'] = ToeKick.material_name({ 'toe_kick_material' => params['material_choice'] }, door, carcass)
+      errors = material_errors(Sketchup.active_model, params, %w[material])
       return [nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
-      [result.params, nil]
+      [params, nil]
     end
     private_class_method :prepare_end_panel
+
+    # ---- following the door material ----------------------------------------------
+
+    # Called after a cabinet is updated. Everything that goes with it and has no
+    # colour of its own follows the cabinet's door material:
+    #
+    #   filler                    always
+    #   end panel, toe kick       unless a material was picked for it by hand
+    #                             ("same as door / carcass material" follows)
+    #
+    # Only the colour changes; nothing is rebuilt. Call inside an operation.
+    def self.follow_door(model, cabinet)
+      cabinet_id = AttributeManager.cabinet_id(cabinet)
+      return unless cabinet_id
+
+      params = AttributeManager.read(cabinet)
+      door = door_material_of(params)
+      carcass = CabinetGenerator.carcass_material(params, door)
+      parts = cabinet.parent.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.part?(instance) }
+
+      # Things attached to a filler beside this cabinet belong with it too.
+      fillers = parts.select do |part|
+        AttributeManager.part_kind(part) == 'filler' && part.get_attribute(AttributeManager::DICTIONARY, 'target_id') == cabinet_id
+      end
+      owners = [cabinet_id] + fillers.map { |filler| AttributeManager.part_id(filler) }
+
+      parts.each do |part|
+        stored = AttributeManager.read(part)
+        next unless fillers.include?(part) || owners.include?(stored['target_id'])
+
+        name = followed_material(part, stored, door, carcass)
+        recolour(model, part, stored, name, door, carcass) if name
+      end
+    end
+
+    # The colour a part should now have, or nil if it keeps its own.
+    def self.followed_material(part, stored, door, carcass)
+      case AttributeManager.part_kind(part)
+      when 'filler' then door
+      when 'end_panel' then follows?(stored['material_choice']) ? ToeKick.material_name({ 'toe_kick_material' => stored['material_choice'] }, door, carcass) : nil
+      when 'toe_kick' then follows?(stored['toe_kick_material']) ? ToeKick.material_name(stored, door, carcass) : nil
+      end
+    end
+    private_class_method :followed_material
+
+    def self.follows?(choice)
+      choice.to_s.empty? || MaterialManager.follows_another_part?(choice.to_s)
+    end
+    private_class_method :follows?
+
+    def self.recolour(model, part, stored, name, door, carcass)
+      return if stored['material'].to_s == name && stored['target_door_material'].to_s == door
+
+      AttributeManager.write(part, 'material' => name, 'target_door_material' => door, 'target_carcass_material' => carcass)
+      part.definition.entities.grep(Sketchup::ComponentInstance).each { |piece| MaterialManager.apply(piece, name, model) }
+    end
+    private_class_method :recolour
 
     def self.material_errors(model, params, fields)
       fields.each_with_object([]) do |field, errors|

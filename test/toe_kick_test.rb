@@ -216,25 +216,32 @@ class ToeKickTest < Minitest::Test
 
   # ---- the "door material \"\" was not found" errors -----------------------------------
 
-  def test_a_corner_unit_gets_the_same_default_white_as_every_other_unit
-    assert_equal 'White', Defaults.params['corner_material']
+  def test_a_corner_unit_uses_whatever_the_base_unit_door_material_is
+    refute Defaults.params.key?('corner_material'), 'a corner has no material setting of its own'
 
     corner = Defaults.params.merge('cabinet_category' => 'corner')
-    assert_equal 'White', CabinetGenerator.door_material(corner)
-    assert_equal 'White', CabinetGenerator.door_material(corner.merge('corner_material' => '')), 'blank falls back, never ""'
-    assert_equal 'Oak', CabinetGenerator.door_material(corner.merge('corner_material' => 'Oak')), 'the Material section applies'
+    assert_equal 'White', CabinetGenerator.door_material(corner), 'the initial colour is the same plain white'
+    assert_equal 'Oak', CabinetGenerator.door_material(corner.merge('base_material' => 'Oak')), 'the Base Unit choice applies'
+    assert_equal 'Oak', CabinetGenerator.door_material(corner.merge('base_material' => 'Oak', 'wall_material' => 'Walnut')),
+                 'not the wall or tall choice'
+    assert_equal 'Oak', CabinetGenerator.door_material(corner.merge('base_material' => 'Oak', 'corner_material' => 'Walnut')),
+                 'a leftover corner setting from an older cabinet is ignored'
+    assert_equal 'White', CabinetGenerator.door_material(corner.merge('base_material' => '')), 'blank falls back, never ""'
     assert_equal 'Grey', CabinetGenerator.door_material(corner.merge('cabinet_material' => 'Grey')), 'an override still wins'
+
+    tall = Defaults.params.merge('cabinet_category' => 'tall', 'base_material' => 'Oak', 'tall_material' => 'Walnut')
+    assert_equal 'Walnut', CabinetGenerator.door_material(tall), 'other categories keep their own'
   end
 
   def test_a_corner_can_be_validated_without_choosing_a_material
     raw = { 'catalog_id' => 'x', 'cabinet_category' => 'corner', 'cabinet_type' => 'y', 'width' => '900', 'depth' => '600',
-            'height' => '720', 'door_opening_direction' => 'left', 'toe_kick_height' => '100', 'corner_material' => '' }
+            'height' => '720', 'door_opening_direction' => 'left', 'toe_kick_height' => '100', 'base_material' => '' }
     result = ValidationManager.validate(raw)
     assert_empty(result.errors.select { |e| e['field'].to_s.end_with?('material') })
-    assert_equal 'White', result.params['corner_material']
+    assert_equal 'White', CabinetGenerator.door_material(result.params)
 
-    chosen = ValidationManager.validate(raw.merge('corner_material' => 'Walnut'))
-    assert_equal 'Walnut', chosen.params['corner_material']
+    chosen = ValidationManager.validate(raw.merge('base_material' => 'Walnut'))
+    assert_equal 'Walnut', CabinetGenerator.door_material(chosen.params), 'the corner door follows the Base Unit choice'
   end
 
   def test_a_toe_kick_follows_the_door_material_and_never_ends_up_blank

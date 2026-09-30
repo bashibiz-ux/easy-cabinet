@@ -156,7 +156,8 @@ module KitchenCabinetMaster
       # A unit type nobody has chosen a door material for just gets the plain
       # white default (Defaults::PARAMS already holds it), so the first cabinet
       # can be inserted without picking anything.
-      Defaults.category_ids.each do |category|
+      # (A corner unit takes the Base Unit door material, see CabinetGenerator.door_material.)
+      %w[base wall tall].each do |category|
         key = "#{category}_material"
         value = raw[key].to_s.strip
         out[key] = value unless value.empty?
@@ -297,7 +298,8 @@ module KitchenCabinetMaster
 
     # ---- filler -----------------------------------------------------------
 
-    # A filler is a single board beside a cabinet: no catalog, doors or shelves.
+    # A filler is a single board beside a cabinet: no catalog, doors, shelves or
+    # material of its own (it follows the cabinet's door material, see PartManager).
     # A filler can be far narrower than a cabinet, so it has its own width limits.
     FILLER_FIELDS = {
       'width'     => { label: 'Filler width', min: 5.0, max: 1000.0, required: true },
@@ -305,10 +307,9 @@ module KitchenCabinetMaster
       'height'    => { label: 'Filler height', min: 50.0, max: 3000.0, required: true }
     }.freeze
 
-    # Only its own size and material are validated here. Where it goes (which
-    # cabinet, which side, how high off the floor) comes from the cabinet it is
-    # inserted against, see PartManager. A blank material is filled in there too,
-    # from that cabinet's door; without one it is the plain white default.
+    # Only its own size is validated here. Where it goes (which cabinet, which
+    # side, how high off the floor) and its material come from the cabinet it is
+    # inserted against, see PartManager.
     def self.validate_filler(raw)
       raw = stringify_keys(raw)
       errors = []
@@ -320,7 +321,6 @@ module KitchenCabinetMaster
         errors << problem if problem
       end
 
-      out['material'] = raw['material'].to_s.strip
       Result.new(out, errors)
     end
 
@@ -388,8 +388,10 @@ module KitchenCabinetMaster
         errors << problem if problem
       end
 
-      out['material'] = raw['material'].to_s.strip
-      out['material'] = Defaults::DEFAULT_MATERIAL if out['material'].empty?
+      # "Same as door material" (the default) follows the door of what it is
+      # attached to; a named material is the user's own choice and stays.
+      choice = raw['material'].to_s.strip
+      out['material_choice'] = choice.empty? ? Defaults::SAME_AS_DOOR : choice
 
       Result.new(out, errors)
     end
