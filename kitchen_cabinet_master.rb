@@ -5,7 +5,7 @@ require 'extensions.rb'
 
 module KitchenCabinetMaster
   EXTENSION_NAME    = 'Kitchen Cabinet Master'
-  EXTENSION_VERSION = '0.12.0'
+  EXTENSION_VERSION = '0.12.1'
 
   unless file_loaded?(__FILE__)
     extension = SketchupExtension.new(EXTENSION_NAME, 'kitchen_cabinet_master/main')

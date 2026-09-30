@@ -13,7 +13,12 @@ module Geom
   Point3d = Struct.new(:x, :y, :z) do
     def initialize(x = 0, y = 0, z = 0) = super
   end
-  Vector3d = Struct.new(:x, :y, :z)
+  Vector3d = Struct.new(:x, :y, :z) do
+    # Rotated by the transformation (a direction, so no translation), like the real Vector3d#transform.
+    def transform(transformation)
+      Vector3d.new((transformation.a * x) + (transformation.b * y), (transformation.c * x) + (transformation.d * y), z)
+    end
+  end
 
   class Transformation
     attr_reader :a, :b, :c, :d, :tx, :ty, :tz
@@ -55,6 +60,9 @@ module Geom
     end
 
     def apply(x, y) = [(a * x) + (b * y) + tx, (c * x) + (d * y) + ty]
+
+    # Like the real Transformation#to_a: 16 numbers, column by column.
+    def to_a = [a, c, 0.0, 0.0, b, d, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, tx, ty, tz, 1.0]
     def origin = Point3d.new(tx, ty, tz)
     def xaxis = Vector3d.new(a, c, 0.0)
     def yaxis = Vector3d.new(b, d, 0.0)

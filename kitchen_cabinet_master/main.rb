@@ -37,6 +37,8 @@ module KitchenCabinetMaster
     SnapManager.install
     menu = UI.menu('Extensions').add_submenu(EXTENSION_NAME)
     menu.add_item('Open Control Panel') { DialogManager.show }
+    snap_item = menu.add_item('Snap Moved Cabinets to Neighbours and Walls') { SnapManager.enabled = !SnapManager.enabled? }
+    menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
     file_loaded(__FILE__)
   end
 end
