@@ -39,6 +39,15 @@ module KitchenCabinetMaster
     menu.add_item('Open Control Panel') { DialogManager.show }
     snap_item = menu.add_item('Snap Moved Cabinets to Neighbours and Walls') { SnapManager.enabled = !SnapManager.enabled? }
     menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
+    icons = File.join(PLUGIN_DIR, 'icons')
+    open_cmd = UI::Command.new('Kitchen Cabinet Master') { DialogManager.show }
+    open_cmd.tooltip = 'Kitchen Cabinet Master'
+    open_cmd.status_bar_text = 'Open the Kitchen Cabinet Master control panel'
+    open_cmd.small_icon = File.join(icons, 'icon_24.png')
+    open_cmd.large_icon = File.join(icons, 'icon_32.png')
+    toolbar = UI::Toolbar.new(EXTENSION_NAME)
+    toolbar.add_item(open_cmd)
+    toolbar.show
     file_loaded(__FILE__)
   end
 end
