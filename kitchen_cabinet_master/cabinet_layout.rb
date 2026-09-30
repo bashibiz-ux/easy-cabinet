@@ -23,7 +23,7 @@ module KitchenCabinetMaster
     # outline `points` (a flat polygon in the X-Y plane, millimetres, going
     # around in order) pushed up by extent[2] (its thickness), and `offset` is
     # then just [0, 0, z] since the outline's own coordinates are already absolute.
-    Panel  = Struct.new(:role, :name, :extent, :offset, :points, keyword_init: true)
+    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, keyword_init: true)
     # A door is a panel plus a hinge. `pivot` is the vertical hinge axis in cabinet
     # coordinates (on the door's FRONT face edge, so the door never swings back
     # into the carcass, even at wide opening angles).

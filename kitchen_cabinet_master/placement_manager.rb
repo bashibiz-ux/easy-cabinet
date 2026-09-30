@@ -69,6 +69,15 @@ module KitchenCabinetMaster
       rows.each_with_index.max_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
 
+    # The cabinet or filler that was inserted FIRST (lowest 'sequence'), or nil: the
+    # start of the row. What a toe kick starts at when nothing is selected.
+    def self.first_occupant(model)
+      rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
+        AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler'
+      end
+      rows.each_with_index.min_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
+    end
+
     # The cabinet (not a filler) that was inserted most recently, or nil. What a
     # filler goes against when no cabinet is selected.
     def self.last_cabinet(model)

@@ -62,7 +62,8 @@ module KitchenCabinetMaster
 
         case action
         when 'init'          then Response.ok('', init_payload)
-        when 'get_cabinets'  then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
+        when 'undo'          then undo_last
+        when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
@@ -71,6 +72,13 @@ module KitchenCabinetMaster
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
         Response.fail("Something went wrong: #{e.message}")
+      end
+
+      # Same as Edit > Undo: steps the model back one operation (an Insert, Update,
+      # live edit or snap is each one step).
+      def undo_last
+        Sketchup.undo
+        Response.ok('Undone.')
       end
 
       def init_payload

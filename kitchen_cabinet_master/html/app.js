@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.14.0';
+  const APP_VERSION = '0.15.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -935,6 +935,7 @@
   // It leaves the buttons alone and never steals the cursor.
   async function runAction(action, { live = false } = {}) {
     if (state.busy) return;
+    if (action === 'undo') clearTimeout(state.liveTimer); // a pending live edit would redo what is being undone
     clearInvalid();
     if (live) {
       state.busy = true;

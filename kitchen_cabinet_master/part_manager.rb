@@ -230,7 +230,7 @@ module KitchenCabinetMaster
       part = SelectionManager.selected_part(model)
       return part if part && AttributeManager.part_kind(part) == 'toe_kick'
 
-      SelectionManager.selected_occupant(model)
+      SelectionManager.selected_occupant(model) || PlacementManager.first_occupant(model)
     end
     private_class_method :toe_kick_anchor
 
@@ -258,6 +258,7 @@ module KitchenCabinetMaster
       return [nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
       params['width'] = ToeKick.total_length(params)
+      record_toe_kick_path(Sketchup.active_model, params, anchor)
       [params, nil]
     end
     private_class_method :prepare_toe_kick
@@ -280,6 +281,56 @@ module KitchenCabinetMaster
       errors
     end
     private_class_method :toe_kick_fit_errors
+
+    # A toe kick that starts at a cabinet or filler follows the row from there: where
+    # the row turns a corner (the cabinets after it are turned), so does the toe
+    # kick. `toe_kick_from` remembers which item it started at, so an Update (a new
+    # recess, say) can work the path out again.
+    def self.record_toe_kick_path(model, params, anchor)
+      params['toe_kick_turns'] = ''
+      return unless anchor && AttributeManager.part_kind(anchor) != 'toe_kick'
+
+      params['toe_kick_from'] = AttributeManager.cabinet_id(anchor) || AttributeManager.part_id(anchor)
+      params['toe_kick_turns'] = ToeKick.turns_from(*toe_kick_row(anchor), params['toe_kick_recess'].to_f)
+    end
+    private_class_method :record_toe_kick_path
+
+    # The anchor and the cabinets / fillers inserted after it, as plain numbers in
+    # the anchor's own frame (see ToeKick.turns_from).
+    def self.toe_kick_row(anchor)
+      to_frame = anchor.transformation.inverse
+      dictionary = AttributeManager::DICTIONARY
+      order = ->(item) { item.get_attribute(dictionary, 'sequence').to_i }
+      following = anchor.parent.entities.grep(Sketchup::ComponentInstance).select do |item|
+        !item.equal?(anchor) && order.call(item) > order.call(anchor) &&
+          (AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler')
+      end.sort_by(&order)
+
+      describe = lambda do |item|
+        relative = to_frame * item.transformation
+        heading = relative.yaxis
+        stored = AttributeManager.read(item) || {}
+        corner = stored['cabinet_category'] == 'corner'
+        width = stored['width'].to_f
+        { x: relative.origin.x.to_mm, y: relative.origin.y.to_mm,
+          angle: Math.atan2(-heading.x, heading.y) * 180.0 / Math::PI,
+          width: width, corner: corner,
+          depth: if AttributeManager.part_kind(item) == 'filler' then stored['target_depth'].to_f
+                 else corner ? width : stored['depth'].to_f end }
+      end
+
+      [describe.call(anchor).merge(x: 0.0, y: 0.0, angle: 0.0), following.map { |item| describe.call(item) }]
+    end
+    private_class_method :toe_kick_row
+
+    def self.find_toe_kick_anchor(model, id)
+      return nil if id.to_s.empty?
+
+      model.active_entities.grep(Sketchup::ComponentInstance).find do |item|
+        AttributeManager.cabinet_id(item) == id || AttributeManager.part_id(item) == id
+      end
+    end
+    private_class_method :find_toe_kick_anchor
 
     # target_depth, target_door_material, target_carcass_material for `anchor`.
     def self.toe_kick_target(raw, anchor)
@@ -327,10 +378,11 @@ module KitchenCabinetMaster
       errors = result.errors.dup
 
       stored = AttributeManager.read(root)
-      %w[target_id target_depth target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
+      %w[target_id target_depth target_door_material target_carcass_material toe_kick_from].each { |key| params[key] = stored[key] }
       errors.concat(toe_kick_fit_errors(model, params)) if errors.empty?
       return Response.fail(summary(errors), errors) unless errors.empty?
 
+      record_toe_kick_path(model, params, find_toe_kick_anchor(model, stored['toe_kick_from']))
       params['width'] = ToeKick.total_length(params)
       params['part_id'] = AttributeManager.part_id(root)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.toe_kick_name(params))

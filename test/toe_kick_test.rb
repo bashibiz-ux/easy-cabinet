@@ -311,4 +311,49 @@ class ToeKickTest < Minitest::Test
 
     assert_empty PartManager.send(:toe_kick_fit_errors, Sketchup.active_model, params('target_door_material' => 'Oak'))
   end
+
+  # ---- following a row round a corner -------------------------------------
+
+  # A (600 wide, 560 deep) -> corner (900 square, turned -90) -> B (600 wide, 560 deep)
+  def row
+    anchor = { x: 0.0, y: 0.0, angle: 0.0, width: 600.0, depth: 560.0, corner: false }
+    items = [
+      { x: 0.0, y: 1500.0, angle: -90.0, width: 900.0, depth: 900.0, corner: true },
+      { x: 900.0, y: 1500.0, angle: -90.0, width: 600.0, depth: 560.0, corner: false }
+    ]
+    [anchor, items]
+  end
+
+  def test_turns_are_found_where_the_row_turns_a_corner
+    turns = ToeKick.turns_from(*row, 50.0)
+    assert_equal [[990.0, -90.0]], turns
+  end
+
+  def test_a_straight_row_has_no_turns
+    anchor = { x: 0.0, y: 0.0, angle: 0.0, width: 600.0, depth: 560.0, corner: false }
+    next_one = { x: 0.0, y: 600.0, angle: 0.0, width: 800.0, depth: 560.0, corner: false }
+    assert_empty ToeKick.turns_from(anchor, [next_one], 50.0)
+  end
+
+  def test_a_cabinet_that_does_not_join_on_stops_the_path
+    anchor, items = row
+    items[0][:y] = 5000.0
+    assert_empty ToeKick.turns_from(anchor, items, 50.0)
+  end
+
+  def test_pieces_turn_the_corner_with_the_row
+    pieces = ToeKick.pieces(params('toe_kick_pieces' => 4, 'toe_kick_turns' => [[990.0, -90.0]]))
+    assert_equal 4, pieces.length
+    assert_equal [600.0, 390.0, 600.0, 600.0], pieces.map { |p| p.extent[1] }
+    assert_equal [0.0, 0.0, -90.0, -90.0], pieces.map { |p| p.rotation.to_f }
+    assert_equal [492.0, 600.0], pieces[1].offset.first(2)
+    assert_equal [492.0, 1008.0], pieces[2].offset.first(2)
+    assert_equal [1092.0, 1008.0], pieces[3].offset.first(2)
+  end
+
+  def test_turns_can_be_stored_as_json_text
+    text = JSON.generate([[990.0, -90.0]])
+    assert_equal [[990.0, -90.0]], ToeKick.turns_of('toe_kick_turns' => text)
+    assert_empty ToeKick.turns_of('toe_kick_turns' => '')
+  end
 end

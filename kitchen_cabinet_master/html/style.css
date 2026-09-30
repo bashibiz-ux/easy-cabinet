@@ -300,6 +300,8 @@ h1 {
 .btn-row { display: grid; gap: 6px; }
 .btn-row + .btn-row { margin-top: 6px; }
 .btn-row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.btn-row.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.btn-row.five .btn { padding: 0 4px; }
 .btn-row.one { grid-template-columns: minmax(0, 1fr); }
 
 /* Filler / End Panel blocks inside the Cabinet section, and the small

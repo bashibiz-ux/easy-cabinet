@@ -100,6 +100,11 @@ module KitchenCabinetMaster
         existing = leftovers.delete(item.role)
         definition = PanelGenerator.definition(model, item.extent)
         transformation = Geom::Transformation.new(item.offset.map(&:mm))
+        # A piece on a turned leg is rotated about its own origin before it is moved.
+        if item.rotation.to_f.abs > TOLERANCE
+          transformation *= Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1),
+                                                          item.rotation * Math::PI / 180.0)
+        end
         instance = place_instance(model, entities, existing, item.role, definition, transformation)
         instance.name = item.name
         MaterialManager.apply(instance, material_name, model)
