@@ -14,14 +14,34 @@ module KitchenCabinetMaster
     USER_DIR_NAME = 'KitchenCabinetMaster_Data'
     REQUIRED_DEFAULTS = %w[width depth height].freeze
 
+    # What a catalog can switch on in the panel. A catalog lists the ones it offers
+    # under eatures; anything not listed stays greyed out while it is selected.
+    #   categories : base wall tall corner filler end_panel toe_kick
+    #   options    : door_gap door_reveal panel_thickness back_thickness
+    #   sections   : handle materials door_opening visibility
+    # A catalog with no eatures list offers all of them.
+    FEATURES = %w[base wall tall corner filler end_panel toe_kick
+                  door_gap door_reveal panel_thickness back_thickness
+                  handle materials door_opening visibility].freeze
+
     class << self
-      # [{ 'id', 'name' }]
+      # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]
       def catalogs
-        data[:catalogs].values.map { |c| { 'id' => c['id'], 'name' => c['name'] } }
+        data[:catalogs].values.map do |c|
+          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']),
+            'features' => features_of(c), 'handle_bundles' => c['handle_bundles'].is_a?(Array) ? c['handle_bundles'] : nil }
+        end
       end
 
+      # By id, or by an old id the catalog used to have (cabinets drawn with an
+      # earlier version keep working under the catalog's new name).
       def catalog(id)
-        data[:catalogs][id.to_s]
+        data[:catalogs][id.to_s] || data[:catalogs].values.find { |c| Array(c['aliases']).include?(id.to_s) }
+      end
+
+      def features_of(catalog)
+        listed = catalog['features']
+        listed.is_a?(Array) ? listed.map(&:to_s) & FEATURES : FEATURES.dup
       end
 
       # Cabinets of one category. Each entry carries id, name, doors, shelves, defaults.
@@ -91,6 +111,7 @@ module KitchenCabinetMaster
         return 'missing "id"' if parsed['id'].to_s.strip.empty?
         return 'missing "name"' if parsed['name'].to_s.strip.empty?
         return '"categories" must be an object' unless parsed['categories'].is_a?(Hash)
+        return '"features" must be a list' if parsed.key?('features') && !parsed['features'].is_a?(Array)
 
         parsed['categories'].each do |category, list|
           return "category \"#{category}\" must be a list" unless list.is_a?(Array)

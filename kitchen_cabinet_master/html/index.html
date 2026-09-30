@@ -31,20 +31,20 @@
           <div class="input"><select id="catalog"></select></div>
         </label>
         <div class="grid-2">
-          <label class="field">
+          <label class="field" data-feature="door_gap">
             <span class="label">Door Gap</span>
             <div class="input"><input id="doorGap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
-          <label class="field">
+          <label class="field" data-feature="door_reveal">
             <span class="label">Door Reveal</span>
             <div class="input"><input id="doorReveal" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field narrow">
+        <label class="field narrow" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
           <div class="input"><input id="thickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <label class="field narrow">
+        <label class="field narrow" data-feature="back_thickness">
           <span class="label">Back Panel Thickness</span>
           <div class="input"><input id="backThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
@@ -52,7 +52,7 @@
     </section>
 
     <!-- Handle -->
-    <section class="card" id="sec-handle">
+    <section class="card" id="sec-handle" data-feature="handle">
       <button class="card-head" type="button" aria-expanded="true">Handle</button>
       <div class="card-body">
         <label class="field">
@@ -111,7 +111,7 @@
     </section>
 
     <!-- Material -->
-    <section class="card" id="sec-material">
+    <section class="card" id="sec-material" data-feature="materials">
       <button class="card-head" type="button" aria-expanded="true">Material</button>
       <div class="card-body">
         <label class="field">
@@ -258,7 +258,7 @@
       </div>
     </section>
     <!-- Door Opening -->
-    <section class="card" id="sec-door">
+    <section class="card" id="sec-door" data-feature="door_opening">
       <button class="card-head" type="button" aria-expanded="true">Door Opening</button>
       <div class="card-body">
         <div class="grid-2">
@@ -275,7 +275,7 @@
     </section>
 
     <!-- Visibility -->
-    <section class="card" id="sec-visibility">
+    <section class="card" id="sec-visibility" data-feature="visibility">
       <button class="card-head" type="button" aria-expanded="true">Visibility</button>
       <div class="card-body checks">
         <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>

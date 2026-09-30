@@ -4,10 +4,17 @@ require 'sketchup.rb'
 require 'extensions.rb'
 
 module KitchenCabinetMaster
-  EXTENSION_NAME    = 'Kitchen Cabinet Master'
-  EXTENSION_VERSION = '0.16.1'
+  EXTENSION_NAME = 'Kitchen Cabinet Master' unless const_defined?(:EXTENSION_NAME)
 
-  unless file_loaded?(__FILE__)
+  # Set again on every load, so installing a newer version over a running one is
+  # noticed (see KitchenCabinetMaster.reload_if_updated in main.rb).
+  remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
+  EXTENSION_VERSION = '0.17.0'
+
+  if file_loaded?(__FILE__)
+    # Loaded again after an install or update: swap in the new code, no restart needed.
+    KitchenCabinetMaster.reload_if_updated if KitchenCabinetMaster.respond_to?(:reload_if_updated)
+  else
     extension = SketchupExtension.new(EXTENSION_NAME, 'kitchen_cabinet_master/main')
     extension.description = 'Parametric kitchen cabinet generator with a control panel, ' \
                             'animated doors, handles and toe kicks.'

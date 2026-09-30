@@ -1,7 +1,14 @@
 {
-  "id": "sample_catalog",
-  "name": "Sample Catalog",
-  "version": 1,
+  "id": "door_with_pull_handle",
+  "name": "Door with pull handle",
+  "version": 2,
+  "aliases": ["sample_catalog"],
+  "handle_bundles": ["sample_bar_handles", "sample_knobs"],
+  "features": [
+    "base", "wall", "tall", "corner", "filler", "end_panel", "toe_kick",
+    "door_gap", "door_reveal", "panel_thickness", "back_thickness",
+    "handle", "materials", "door_opening", "visibility"
+  ],
   "categories": {
     "base": [
       {

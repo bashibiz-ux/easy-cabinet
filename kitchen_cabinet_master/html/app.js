@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.16.1';
+  const APP_VERSION = '0.17.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -341,6 +341,56 @@
     $(id).value = typeof value === 'number' ? fmt(value) : String(value);
   }
 
+  /* ---------------------------------------------------------------------- *
+   * Catalog features: what the selected catalog switches on
+   * ---------------------------------------------------------------------- */
+
+  const ALL_FEATURES = [
+    'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
+    'door_gap', 'door_reveal', 'panel_thickness', 'back_thickness',
+    'handle', 'materials', 'door_opening', 'visibility'
+  ];
+
+  function currentCatalog() {
+    return list(state.meta && state.meta.catalogs).find((c) => c.id === $('catalog').value) || null;
+  }
+
+  // A catalog's old id (see "aliases" in its file) means the same catalog.
+  function resolveCatalogId(id) {
+    const found = list(state.meta && state.meta.catalogs).find((c) => c.id === id || list(c.aliases).includes(id));
+    return found ? found.id : id;
+  }
+
+  // Only what the selected catalog offers is active: its categories and options,
+  // its handle bundles. Everything else stays visible but greyed out and locked.
+  function applyCatalogFeatures() {
+    const catalog = currentCatalog();
+    const on = new Set(catalog && Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES);
+
+    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }, { id: 'toe_kick', name: 'Toe Kick' }];
+    fillSelect($('category'), categories.filter((c) => on.has(c.id)));
+
+    document.querySelectorAll('[data-feature]').forEach((el) => {
+      const off = !on.has(el.dataset.feature);
+      el.classList.toggle('feature-off', off);
+      el.querySelectorAll('input, select, button:not(.card-head)').forEach((control) => {
+        if (off && !control.disabled) {
+          control.disabled = true;
+          control.dataset.featureLocked = '1';
+        } else if (!off && control.dataset.featureLocked) {
+          control.disabled = false;
+          delete control.dataset.featureLocked;
+        }
+      });
+      if (off && el.classList.contains('card')) toggleCard(el, false);
+    });
+
+    const allowed = catalog && Array.isArray(catalog.handle_bundles) ? catalog.handle_bundles : null;
+    const before = $('handle').value;
+    fillSelect($('handle'), list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id)), { placeholder: 'None' });
+    if ($('handle').value !== before) onHandleChange(true);
+  }
+
   function currentCabinet() {
     return state.cabinets.find((c) => c.id === $('cabinet').value) || null;
   }
@@ -588,7 +638,8 @@
   async function loadCabinet(params) {
     setBadge(params.cabinet_name || params.cabinet_id || null);
     followCabinet({ height: params.height, front: params.envelope_depth, top: params.cabinet_category === 'wall' ? params.top_z - params.base_z : params.top_z });
-    setSelect('catalog', params.catalog_id);
+    setSelect('catalog', resolveCatalogId(params.catalog_id));
+    applyCatalogFeatures();
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
     await refreshCabinets({ selectId: params.cabinet_type, keepValues: true });
@@ -1073,7 +1124,7 @@
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? null : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
-    fillSelect($('category'), [...m.categories, { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }, { id: 'toe_kick', name: 'Toe Kick' }]);
+    applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
     fillSelect($('handleOrientation'), m.handle_orientations);
@@ -1105,6 +1156,8 @@
       if (state.selectedKind === 'cabinet' && categoryKind() === 'cabinet') scheduleLive(LIVE_PICK_DELAY_MS);
     };
     $('catalog').addEventListener('change', async () => {
+      applyCatalogFeatures();
+      updateCategoryUi();
       await refreshCabinets();
       liveAfterCabinetChange();
     });

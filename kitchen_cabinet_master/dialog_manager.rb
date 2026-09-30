@@ -24,6 +24,16 @@ module KitchenCabinetMaster
         @dialog
       end
 
+      def open?
+        !@dialog.nil? && @dialog.visible?
+      end
+
+      def close
+        dialog = @dialog
+        @dialog = nil
+        dialog&.close
+      end
+
       # Sends an unsolicited message to the panel (used for selection changes).
       def push(event, data = {})
         deliver('event' => event, 'data' => data)
