@@ -12,12 +12,13 @@ module KitchenCabinetMaster
   # Load order matters: Response/Defaults first, UI layer last. Loaded with `load`
   # (not `require`) so that installing a newer version over a running one can pick
   # the new code up without restarting SketchUp (see reload_if_updated).
+  remove_const(:CODE_FILES) if const_defined?(:CODE_FILES)
   CODE_FILES = %w[
     response defaults attribute_manager validation_manager material_manager catalog_manager
     cabinet_layout toe_kick part_layout door_animation drawer_animation handle_manager
     panel_generator cabinet_generator part_generator selection_manager snap_manager
     naming_manager placement_manager cabinet_manager part_manager dialog_manager
-  ].freeze unless const_defined?(:CODE_FILES)
+  ].freeze
 
   def self.load_code
     saved = $VERBOSE
@@ -52,7 +53,15 @@ module KitchenCabinetMaster
       DialogManager.close
       remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
       const_set(:EXTENSION_VERSION, version)
-      load_code
+      # Loading main.rb again reloads every code file it lists (a new version may list
+      # more files than the old one did) and records the new version.
+      saved = $VERBOSE
+      begin
+        $VERBOSE = nil
+        load File.join(PLUGIN_DIR, 'main.rb')
+      ensure
+        $VERBOSE = saved
+      end
       @code_version = version
       DialogManager.show if reopen
       true

@@ -62,6 +62,11 @@ module Geom
 
     def apply(x, y) = [(a * x) + (b * y) + tx, (c * x) + (d * y) + ty]
 
+    # Rotation plus translation, so the inverse is the transposed rotation and the turned-back offset.
+    def inverse
+      Transformation.new(nil, a: a, b: c, c: b, d: d, tx: -((a * tx) + (c * ty)), ty: -((b * tx) + (d * ty)), tz: -tz)
+    end
+
     # Like the real Transformation#to_a: 16 numbers, column by column.
     def to_a = [a, c, 0.0, 0.0, b, d, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, tx, ty, tz, 1.0]
     def origin = Point3d.new(tx, ty, tz)

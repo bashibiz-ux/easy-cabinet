@@ -18,6 +18,7 @@ module KitchenCabinetMaster
       when 'visibility' then set_visibility(raw)
       when 'toggle' then toggle_all
       when 'rotate' then rotate(raw)
+      when 'apply_all' then apply_all(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -56,9 +57,18 @@ module KitchenCabinetMaster
       params, failure = prepare(raw)
       return failure if failure
 
-      # A bigger cabinet must not grow into the one (or the filler / end panel) beside it.
+      # A wider cabinet takes its space from the one next to it in the row, which
+      # gets narrower (see RowResizer). Anything else it would run into refuses the edit.
+      growth = params['width'] - root.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
+      squeeze = nil
+      if growth > 0.01
+        squeeze, problem = RowResizer.plan(model, root, growth)
+        return Response.fail(problem) if problem
+      end
+
       old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(AttributeManager::DICTIONARY, key).to_f }
-      if PlacementManager.crowds?(root.parent.entities, root, root.transformation, CabinetLayout.envelope(params), old_size)
+      if PlacementManager.crowds?(root.parent.entities, root, root.transformation, CabinetLayout.envelope(params), old_size,
+                                  also: squeeze && squeeze[:neighbour])
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
       end
 
@@ -66,6 +76,7 @@ module KitchenCabinetMaster
         with_operation(model, 'Update Cabinet') do
           params['cabinet_name'] = NamingManager.for_update(root, params)
           CabinetGenerator.update(model, root, params)
+          RowResizer.apply(model, squeeze) if squeeze
           # Its filler, end panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
         end
@@ -73,13 +84,107 @@ module KitchenCabinetMaster
 
       SelectionManager.push_selection(model)
       stored = AttributeManager.read(root)
-      Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.")
+      note = squeeze ? " #{squeeze[:neighbour].name} was made #{fmt(squeeze[:need])} mm narrower to make room." : ''
+      Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.#{note}")
     end
     private_class_method :update
 
+    # ---- settings that belong to every cabinet -------------------------------------
+
+    GLOBAL_NUMBERS = %w[door_gap door_reveal material_thickness back_thickness].freeze
+    GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material].freeze
+
+    # Door gap, door reveal, panel thickness, back panel thickness and the materials
+    # of the Material section are settings for the whole job: changing one changes
+    # every cabinet in the model, live, as one Undo step. A cabinet's own size,
+    # handle and other choices are left exactly as they are. A cabinet that cannot
+    # take a value (a door that would become too small, say) is left as it was and
+    # the reply says so.
+    def self.apply_all(raw)
+      raw = {} unless raw.is_a?(Hash)
+      overrides = {}
+      GLOBAL_NUMBERS.each do |key|
+        text = raw[key].to_s.strip
+        overrides[key] = text unless text.empty? # blank: keep what each cabinet has
+      end
+      GLOBAL_MATERIALS.each { |key| overrides[key] = raw[key].to_s.strip if raw.key?(key) }
+
+      model = Sketchup.active_model
+      cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+      return Response.ok('No cabinets in the model yet. New cabinets will use these settings.') if cabinets.empty?
+
+      plans = []
+      problems = []
+      cabinets.each do |cabinet|
+        stored = AttributeManager.read(cabinet)
+        next unless differs?(stored, overrides)
+
+        params, errors = restyle_params(model, stored, overrides)
+        if errors.empty?
+          plans << [cabinet, params]
+        else
+          problems << [cabinet, errors]
+        end
+      end
+
+      if plans.empty? && problems.any?
+        errors = problems.first[1]
+        message = problems.length == 1 ? errors.first['message'] : "#{problems.first[0].name}: #{errors.first['message']}"
+        return Response.fail(message, errors)
+      end
+      return Response.ok('Every cabinet already has these settings.') if plans.empty?
+
+      SelectionManager.suspend do
+        with_operation(model, 'Apply Settings To All Cabinets') do
+          plans.each do |cabinet, params|
+            params['cabinet_name'] = NamingManager.for_update(cabinet, params)
+            CabinetGenerator.update(model, cabinet, params)
+            PartManager.follow_door(model, cabinet)
+          end
+        end
+      end
+      SelectionManager.push_selection(model)
+
+      done = "#{plans.length} cabinet#{'s' unless plans.length == 1} updated."
+      return Response.ok(done) if problems.empty?
+
+      skipped = problems.map { |cabinet, errors| "#{cabinet.name}: #{errors.first['message']}" }
+      Response.ok("#{done} #{problems.length} could not take the new value and #{problems.length == 1 ? 'was' : 'were'} " \
+                  "left as #{problems.length == 1 ? 'it was' : 'they were'} (#{skipped.first(2).join('; ')}).")
+    end
+    private_class_method :apply_all
+
+    # Does any override change what this cabinet already has?
+    def self.differs?(stored, overrides)
+      overrides.any? do |key, value|
+        if GLOBAL_NUMBERS.include?(key)
+          ValidationManager.to_float(stored[key]) != ValidationManager.to_float(value)
+        else
+          stored[key].to_s != value.to_s
+        end
+      end
+    end
+    private_class_method :differs?
+
+    # A stored cabinet's parameters with `overrides` put in, checked by the same rules
+    # as an Update. Returns [params, []] or [nil, errors].
+    def self.restyle_params(model, stored, overrides)
+      result = ValidationManager.validate(stored.merge(overrides), door_count: stored['door_count'].to_i,
+                                                                    drawer_count: stored['drawer_count'].to_i)
+      params = result.params
+      params['door_count'] = stored['door_count'].to_i
+      params['drawer_count'] = stored['drawer_count'].to_i
+      params['name_code'] = stored['name_code'].to_s
+      errors = result.errors
+      errors += handle_errors(params) if errors.empty?
+      errors += material_errors(model, params) if errors.empty?
+      errors.empty? ? [params, []] : [nil, errors]
+    end
+    private_class_method :restyle_params
+
     # Turns the selected cabinet (or filler, end panel or toe kick) about a vertical
     # axis through the middle of its footprint, by the number of degrees typed in the
-    # panel. Positive turns anticlockwise seen from above, negative clockwise. One
+    # panel. Positive turns CLOCKWISE seen from above, negative anticlockwise. One
     # Undo step. Its own doors, handles and the rest turn with it; other items are
     # left where they are.
     def self.rotate(raw)
@@ -109,7 +214,9 @@ module KitchenCabinetMaster
       depth = entity.get_attribute(dictionary, 'envelope_depth').to_f
       width = entity.get_attribute(dictionary, 'envelope_width').to_f
       centre = Geom::Point3d.new(depth.mm / 2.0, width.mm / 2.0, 0)
-      Geom::Transformation.rotation(centre, Geom::Vector3d.new(0, 0, 1), degrees * Math::PI / 180.0)
+      # SketchUp turns anticlockwise for a positive angle about +Z, so the sign is
+      # flipped here: a positive angle in the panel is clockwise.
+      Geom::Transformation.rotation(centre, Geom::Vector3d.new(0, 0, 1), -degrees * Math::PI / 180.0)
     end
     private_class_method :rotation_of
 
@@ -359,5 +466,93 @@ module KitchenCabinetMaster
       format('%g', number.to_f)
     end
     private_class_method :fmt
+  end
+end
+
+module KitchenCabinetMaster
+  # Makes room in a row when a cabinet is made wider. The cabinet grows towards the
+  # NEXT item in its row (the cabinet or filler that follows it along its own Y
+  # axis, on the same wall and at the same height). Free space between the two is
+  # used first; whatever is still needed comes out of that neighbour's width: it
+  # gets narrower, and its start moves along so its far end stays where it was.
+  # A corner unit cannot be narrowed, and nothing goes below the smallest width.
+  module RowResizer
+    SAME_LINE_MM = 5.0   # how closely the next item must line up (back and height)
+    MAX_GAP_MM = 3000.0  # further than this, it is not the next item
+    MIN_FILLER_MM = 5.0
+
+    # Returns [plan, nil] (the neighbour to narrow), [nil, nil] (no neighbour that
+    # needs to give way) or [nil, problem message].
+    def self.plan(model, root, growth)
+      neighbour, gap = next_in_row(root)
+      return [nil, nil] unless neighbour
+
+      need = growth - gap
+      return [nil, nil] if need <= 0.01
+
+      stored = AttributeManager.read(neighbour)
+      width = stored['width'].to_f
+      new_width = width - need
+      if AttributeManager.part_kind(neighbour) == 'filler'
+        return too_narrow(neighbour, new_width, MIN_FILLER_MM) if new_width < MIN_FILLER_MM
+
+        return [{ neighbour: neighbour, need: need, width: new_width, filler: true }, nil]
+      end
+
+      if stored['cabinet_category'] == 'corner'
+        return [nil, "#{neighbour.name} is a corner unit and cannot be made narrower, so there is no room for that width."]
+      end
+
+      minimum = ValidationManager::NUMERIC_FIELDS['width'][:min]
+      return too_narrow(neighbour, new_width, minimum) if new_width < minimum
+
+      params, errors = CabinetManager.send(:restyle_params, model, stored, 'width' => new_width)
+      unless errors.empty?
+        return [nil, "#{neighbour.name} cannot be made #{format('%g', new_width)} mm wide: #{errors.first['message']}"]
+      end
+
+      [{ neighbour: neighbour, need: need, width: new_width, params: params }, nil]
+    end
+
+    # Narrows the neighbour and moves its start along by `need`. Call inside an operation.
+    def self.apply(model, plan)
+      neighbour = plan[:neighbour]
+      moved = neighbour.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, plan[:need].mm, 0))
+      if plan[:filler]
+        PartManager.resize_filler(model, neighbour, plan[:width], moved)
+      else
+        params = plan[:params]
+        params['cabinet_name'] = NamingManager.for_update(neighbour, params)
+        CabinetGenerator.update(model, neighbour, params)
+        neighbour.transformation = moved
+        PartManager.follow_door(model, neighbour)
+      end
+    end
+
+    # The item that follows `root` along its own Y axis, and the free gap (mm)
+    # between them; nil when there is none.
+    def self.next_in_row(root)
+      dictionary = AttributeManager::DICTIONARY
+      width = root.get_attribute(dictionary, 'width').to_f
+      to_local = root.transformation.inverse
+
+      found = root.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |item|
+        next if item.equal?(root)
+        next unless AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler'
+
+        relative = to_local * item.transformation
+        along = relative.origin.y.to_mm
+        aligned = relative.yaxis.y > 0.999 && relative.origin.x.to_mm.abs <= SAME_LINE_MM && relative.origin.z.to_mm.abs <= SAME_LINE_MM
+        next unless aligned && along >= width - 1.0 && along - width <= MAX_GAP_MM
+
+        [item, along - width]
+      end
+      found.min_by { |_item, gap| gap }
+    end
+
+    def self.too_narrow(neighbour, new_width, minimum)
+      [nil, "#{neighbour.name} would have to be #{format('%g', [new_width, 0].max)} mm wide (the smallest is #{format('%g', minimum)} mm), so there is no room for that width."]
+    end
+    private_class_method :too_narrow
   end
 end

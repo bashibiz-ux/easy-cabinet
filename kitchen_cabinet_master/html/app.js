@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.20.0';
+  const APP_VERSION = '0.21.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1093,8 +1093,65 @@
     await runAction('update', { live: true });
   }
 
+  // Door gap, door reveal, panel and back panel thickness and the Material section
+  // are settings for the whole job: editing one changes EVERY cabinet in the model,
+  // whether or not one is selected.
+  // Only the setting that was edited is sent, so changing the door gap never
+  // touches the materials of cabinets, and the other way round.
+  const GLOBAL_FIELDS = {
+    doorGap: ['door_gap', 'doorGap'],
+    doorReveal: ['door_reveal', 'doorReveal'],
+    thickness: ['material_thickness', 'thickness'],
+    thicknessPreset: ['material_thickness', 'thickness'],
+    backThickness: ['back_thickness', 'backThickness'],
+    backThicknessPreset: ['back_thickness', 'backThickness'],
+    baseMaterial: ['base_material', 'baseMaterial'],
+    wallMaterial: ['wall_material', 'wallMaterial'],
+    tallMaterial: ['tall_material', 'tallMaterial'],
+    carcassMaterial: ['carcass_material', 'carcassMaterial']
+  };
+  const globalDirty = new Map();
+
+  function scheduleGlobal(delay = LIVE_TYPING_DELAY_MS) {
+    clearTimeout(state.globalTimer);
+    state.globalTimer = setTimeout(runGlobal, delay);
+  }
+
+  async function runGlobal() {
+    if (state.busy) {
+      scheduleGlobal(); // something else is still running; try again shortly
+      return;
+    }
+    state.busy = true;
+    state.liveBusy = true; // the model events this causes must not overwrite what is being typed
+    clearInvalid();
+    try {
+      const payload = {};
+      globalDirty.forEach((elementId, key) => { payload[key] = $(elementId).value; });
+      globalDirty.clear();
+      const res = await call('apply_all', payload);
+      if (res.ok) {
+        setStatus('ok', res.message);
+      } else {
+        markInvalid(res.errors, 'cabinet', { focus: false });
+        setStatus('error', res.message, (res.errors || []).length > 1 ? res.errors.map((e) => e.message) : []);
+      }
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
   function liveEdit(el) {
+    if (GLOBAL_FIELDS[el.id]) {
+      const [key, elementId] = GLOBAL_FIELDS[el.id];
+      globalDirty.set(key, elementId);
+      scheduleGlobal(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      return;
+    }
     if (NO_LIVE_IDS.has(el.id) || !state.selectedKind) return;
     if (!fieldKinds(el).includes(state.selectedKind)) return;
     scheduleLive(el.tagName === 'SELECT' || el.type === 'checkbox' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);

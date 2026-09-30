@@ -115,9 +115,10 @@ module KitchenCabinetMaster
     # neighbour? True only when the NEW size collides and the size it has now does not,
     # so an edit is never blocked by an overlap that was already there (say, from a
     # cabinet the user moved by hand). Sizes are [depth, width, top] in mm.
-    def self.crowds?(entities, root, transformation, new_size, old_size)
-      collides?(entities, transformation, new_size, exclude: root) &&
-        !collides?(entities, transformation, old_size, exclude: root)
+    # lso is a neighbour that is being made room for (shrunk), so it is not in the way.
+    def self.crowds?(entities, root, transformation, new_size, old_size, also: nil)
+      collides?(entities, transformation, new_size, exclude: [root, also]) &&
+        !collides?(entities, transformation, old_size, exclude: [root, also])
     end
 
     # The axis-aligned box of every cabinet, filler and end panel in `entities`,
@@ -126,7 +127,8 @@ module KitchenCabinetMaster
     # everything ELSE while updating that same part).
     def self.existing_boxes(entities, exclude: nil)
       occupants = entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.occupant?(instance) }
-      occupants = occupants.reject { |instance| instance.equal?(exclude) } if exclude
+      left_out = [exclude].flatten.compact
+      occupants = occupants.reject { |instance| left_out.any? { |other| other.equal?(instance) } } unless left_out.empty?
 
       occupants.map do |instance|
         size = %w[envelope_depth envelope_width envelope_top].map do |key|

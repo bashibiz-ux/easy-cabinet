@@ -505,6 +505,16 @@ module KitchenCabinetMaster
     end
     private_class_method :update_filler
 
+    # Makes a filler `width` mm wide and puts it at `transformation` (RowResizer:
+    # the filler is the neighbour that gives way when a cabinet is made wider).
+    # Call inside an operation.
+    def self.resize_filler(model, root, width, transformation)
+      stored = AttributeManager.read(root)
+      params = stored.merge('width' => width)
+      params['part_id'] = AttributeManager.part_id(root)
+      params['part_name'] = NamingManager.for_update_base(root, NamingManager.filler_name(params))
+      PartGenerator.update(model, root, params, PartLayout.filler(params), transformation)
+    end
     def self.update_end_panel(model, root, raw)
       stored = AttributeManager.read(root)
       door = stored['target_door_material'].to_s

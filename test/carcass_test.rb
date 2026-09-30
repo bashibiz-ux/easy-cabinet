@@ -91,7 +91,7 @@ class CarcassTest < Minitest::Test
     def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
   end
 
-  def test_a_quarter_turn_swings_the_cabinet_about_the_middle_of_its_footprint
+  def test_a_positive_turn_is_clockwise_about_the_middle_of_its_footprint
     cabinet = Spun.new(Geom::Transformation.new, 'envelope_depth' => 580.0, 'envelope_width' => 600.0)
     turn = CabinetManager.send(:rotation_of, cabinet, 90)
     middle = Geom::Point3d.new(290.0, 300.0, 0)
@@ -99,8 +99,8 @@ class CarcassTest < Minitest::Test
     assert_in_delta 290.0, moved.x, 1e-6, 'the middle stays where it is'
     assert_in_delta 300.0, moved.y, 1e-6
     corner = turn * Geom::Point3d.new(0, 0, 0)
-    assert_in_delta 590.0, corner.x, 1e-6, 'the rear-left corner swings to the front-left, anticlockwise'
-    assert_in_delta 10.0, corner.y, 1e-6
+    assert_in_delta(-10.0, corner.x, 1e-6, 'the rear-left corner swings clockwise, to the rear-right')
+    assert_in_delta 590.0, corner.y, 1e-6
   end
 
   def test_turning_back_undoes_it
@@ -110,5 +110,32 @@ class CarcassTest < Minitest::Test
     point = (there * back) * Geom::Point3d.new(100, 200, 0)
     assert_in_delta 100.0, point.x, 1e-6
     assert_in_delta 200.0, point.y, 1e-6
+  end
+
+  # ---- door gap ------------------------------------------------------------------
+
+  def doors_of(overrides)
+    CabinetLayout.compute(params(overrides)).doors
+  end
+
+  def test_the_door_gap_is_the_space_between_the_doors_of_one_cabinet
+    narrow = doors_of('width' => 900.0, 'door_count' => 2, 'door_gap' => 1.5, 'door_reveal' => 2.0)
+    wide = doors_of('width' => 900.0, 'door_count' => 2, 'door_gap' => 6.0, 'door_reveal' => 2.0)
+    assert_equal 2, narrow.length
+    assert_in_delta 896.0 - 1.5, narrow.sum { |d| d.extent[1] }, 0.05
+    assert_in_delta 896.0 - 6.0, wide.sum { |d| d.extent[1] }, 0.05
+    assert_in_delta 6.0, wide[1].offset[1] - (wide[0].offset[1] + wide[0].extent[1]), 0.05
+  end
+
+  def test_a_one_door_cabinet_has_no_second_door_to_leave_a_gap_to
+    one = doors_of('door_count' => 1, 'door_gap' => 1.5)
+    other = doors_of('door_count' => 1, 'door_gap' => 8.0)
+    assert_equal one.first.extent, other.first.extent
+  end
+
+  def test_the_reveal_changes_every_door
+    small = doors_of('door_count' => 1, 'door_reveal' => 2.0).first
+    big = doors_of('door_count' => 1, 'door_reveal' => 5.0).first
+    assert_in_delta 6.0, small.extent[1] - big.extent[1], 0.05
   end
 end
