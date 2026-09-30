@@ -13,6 +13,7 @@ module KitchenCabinetMaster
   module CatalogManager
     USER_DIR_NAME = 'KitchenCabinetMaster_Data'
     REQUIRED_DEFAULTS = %w[width depth height].freeze
+    LEGACY_FILES = ['catalogs/sample_catalog.json'].freeze
 
     # What a catalog can switch on in the panel. A catalog lists the ones it offers
     # under eatures; anything not listed stays greyed out while it is selected.
@@ -83,12 +84,32 @@ module KitchenCabinetMaster
       end
 
       def load_all
+        remove_legacy_files
         result = { catalogs: {}, handles: {}, warnings: [] }
         [DATA_DIR, user_root].compact.each do |root|
           read_dir(File.join(root, 'catalogs'), :catalog, result[:catalogs], result[:warnings])
           read_dir(File.join(root, 'handles'), :handle, result[:handles], result[:warnings])
         end
+        drop_superseded(result[:catalogs])
         result
+      end
+
+      # Installing a newer version over an older one leaves files the old version had
+      # (the package cannot delete them). The sample catalog was replaced by
+      # "Door with pull handle", so it is removed.
+      def remove_legacy_files
+        LEGACY_FILES.each do |relative|
+          path = File.join(DATA_DIR, relative)
+          File.delete(path) if File.file?(path)
+        rescue SystemCallError => e
+          warn "[Kitchen Cabinet Master] Could not remove #{path}: #{e.message}"
+        end
+      end
+
+      # A catalog that took over an old id (see "aliases") replaces the catalog that
+      # still has that id, so a leftover copy never shows up as a second catalog.
+      def drop_superseded(store)
+        store.values.flat_map { |c| Array(c['aliases']) }.each { |old| store.delete(old) }
       end
 
       def read_dir(dir, kind, store, warnings)

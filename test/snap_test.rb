@@ -88,4 +88,38 @@ class SnapTest < Minitest::Test
   def test_no_neighbours_means_no_snap
     assert_nil snap(box(0, 0, 560, 600), [])
   end
+
+  # ---- three axes ---------------------------------------------------------
+
+  def box3(x, y, z, depth, width, height) = { min: [x, y, z], max: [x + depth, y + width, z + height] }
+
+  def test_a_cabinet_lowered_onto_another_snaps_onto_its_top
+    below = box3(0, 0, 0, 560, 600, 880)
+    moved = box3(0, 0, 1000, 560, 600, 720) # 120 mm above its top
+    result = Snap.delta(moved, [below], 300.0)
+    assert_equal [0.0, 0.0, -120.0], result
+  end
+
+  def test_a_cabinet_beside_another_lines_up_its_height_too
+    fixed3 = box3(0, 0, 0, 560, 600, 880)
+    moved = box3(0, 640, 60, 560, 600, 880) # 40 mm clear on Y, 60 mm too high
+    result = Snap.delta(moved, [fixed3], 300.0)
+    assert_equal [0.0, -40.0, -60.0], result
+  end
+
+  def test_the_height_snap_reaches_300_mm
+    fixed3 = box3(0, 0, 0, 560, 600, 880)
+    near = box3(0, 640, 280, 560, 600, 880)
+    far = box3(0, 640, 320, 560, 600, 880)
+    assert_in_delta(-280.0, Snap.delta(near, [fixed3], 300.0)[2], 1e-9)
+    assert_in_delta 0.0, Snap.delta(far, [fixed3], 300.0)[2], 1e-9, 'beyond 300 mm the height is left'
+  end
+
+  def test_the_floor_snap
+    assert_equal(-120.0, Snap.floor_delta(120.0, 0.0, false, 300.0))
+    assert_nil Snap.floor_delta(0.0, 0.0, false, 300.0), 'already on it'
+    assert_nil Snap.floor_delta(120.0, 0.0, true, 300.0), 'a wall unit hangs'
+    assert_nil Snap.floor_delta(120.0, -30.0, false, 300.0), 'a neighbour already set the height'
+    assert_nil Snap.floor_delta(500.0, 0.0, false, 300.0), 'too far'
+  end
 end

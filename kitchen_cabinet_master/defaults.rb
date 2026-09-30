@@ -85,6 +85,13 @@ module KitchenCabinetMaster
     # Carcass construction rules (mm). Not user parameters; a future catalog
     # could override them per cabinet type.
     BACK_RECESS          = 10.0  # back panel is set this far in from the rear edge of the sides
+    FLUSH_BACK_FROM      = 18.0  # ...unless it is this thick or more: then it sits flush with the sides' rear edge
+
+    # How far in from the rear edge of the side panels the back panel sits: BACK_RECESS,
+    # or nothing for a thick (18 mm) back, whose rear face is then level with the sides.
+    def self.back_recess(back_thickness)
+      back_thickness.to_f >= FLUSH_BACK_FROM ? 0.0 : BACK_RECESS
+    end
     RAIL_DEPTH           = 100.0 # depth of the two structural rails that top a base unit
     SHELF_FRONT_SETBACK  = 20.0  # shelves stop this far short of the carcass front
     SHELF_SIDE_CLEARANCE = 1.0   # gap each side of a shelf so it can be removed

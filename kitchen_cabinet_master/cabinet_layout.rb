@@ -36,7 +36,7 @@ module KitchenCabinetMaster
     # right-side panel and front-return panel extend (see corner geometry
     # methods below); for every other category it is unused.
     Dims   = Struct.new(:width, :depth, :height, :thick, :back, :inner_w, :interior_start, :interior_d,
-                        :shelf_setback, :return_depth, keyword_init: true)
+                        :shelf_setback, :return_depth, :recess, keyword_init: true)
 
     # params - validated parameter Hash (millimetres)
     def self.compute(params)
@@ -51,7 +51,7 @@ module KitchenCabinetMaster
                   [0, dims.width - dims.thick, 0]),
             panel('front_return', 'Front Return Panel', [dims.thick, dims.return_depth, dims.height],
                   [dims.width - dims.thick, 0, 0]),
-            panel('back', 'Back Panel', [dims.back, dims.inner_w, dims.height], [Defaults::BACK_RECESS, dims.thick, 0]),
+            panel('back', 'Back Panel', [dims.back, dims.inner_w, dims.height], [dims.recess, dims.thick, 0]),
             corner_bottom_panel(dims)
           ]
         else
@@ -59,7 +59,7 @@ module KitchenCabinetMaster
             panel('left_side',  'Left Side Panel',  [dims.depth, dims.thick, dims.height], [0, 0, 0]),
             panel('right_side', 'Right Side Panel', [dims.depth, dims.thick, dims.height], [0, dims.width - dims.thick, 0]),
             panel('back',       'Back Panel',       [dims.back, dims.inner_w, dims.height],
-                  [Defaults::BACK_RECESS, dims.thick, 0]),
+                  [dims.recess, dims.thick, 0]),
             panel('bottom',     'Bottom Panel',     [dims.interior_d, dims.inner_w, dims.thick],
                   [dims.interior_start, dims.thick, 0])
           ]
@@ -106,7 +106,8 @@ module KitchenCabinetMaster
       depth = params['depth'].to_f
       thick = params['material_thickness'].to_f
       back = params['back_thickness'].to_f
-      start = Defaults::BACK_RECESS + back
+      recess = Defaults.back_recess(back)
+      start = recess + back
 
       # An OPEN unit (no doors) has nothing standing in front of it, so its panels
       # reach forward to the front face of the neighbours' doors (door clearance
@@ -127,7 +128,8 @@ module KitchenCabinetMaster
 
       Dims.new(width: width, depth: depth, height: params['height'].to_f, thick: thick, back: back,
                inner_w: width - (2 * thick), interior_start: start, interior_d: depth - start,
-               shelf_setback: open_unit ? 0.0 : Defaults::SHELF_FRONT_SETBACK, return_depth: return_depth)
+               shelf_setback: open_unit ? 0.0 : Defaults::SHELF_FRONT_SETBACK, return_depth: return_depth,
+               recess: recess)
     end
     private_class_method :dimensions
 

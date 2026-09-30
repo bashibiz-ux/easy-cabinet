@@ -40,13 +40,20 @@
             <div class="input"><input id="doorReveal" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field narrow" data-feature="panel_thickness">
+        <label class="field" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
-          <div class="input"><input id="thickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          <div class="thick-row">
+            <div class="input"><select id="thicknessPreset" aria-label="Panel thickness, standard sizes"></select></div>
+            <div class="input"><input id="thickness" type="text" inputmode="decimal" autocomplete="off" aria-label="Panel thickness, custom"><em>mm</em></div>
+          </div>
         </label>
-        <label class="field narrow" data-feature="back_thickness">
+        <label class="field" data-feature="back_thickness">
           <span class="label">Back Panel Thickness</span>
-          <div class="input"><input id="backThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          <div class="thick-row">
+            <div class="input"><select id="backThicknessPreset" aria-label="Back panel thickness, standard sizes"></select></div>
+            <div class="input"><input id="backThickness" type="text" inputmode="decimal" autocomplete="off" aria-label="Back panel thickness, custom"><em>mm</em></div>
+          </div>
+          <span class="hint">At 18 mm or more the back panel sits flush with the back edge of the sides.</span>
         </label>
       </div>
     </section>

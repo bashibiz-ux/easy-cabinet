@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.18.0';
+  const APP_VERSION = '0.19.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -520,6 +520,7 @@
     }
     syncHandlePosition();
     syncWidthPreset();
+    syncThicknessPresets();
     updateChips();
     drawPreview();
   }
@@ -611,6 +612,26 @@
     const sizes = list(state.meta && state.meta.standard_widths);
     fillSelect($('widthPreset'), [{ id: 'custom', name: 'Custom' }, ...sizes.map((w) => ({ id: String(w), name: `${w} mm` }))]);
     syncWidthPreset();
+  }
+
+  // Panel and back-panel thickness: a list of the usual boards, and the field beside
+  // it for any other thickness. The list follows the field (Custom when it is not a listed size).
+  const THICKNESS_SIZES = [6, 9, 12, 18];
+  const THICKNESS_PAIRS = [['thicknessPreset', 'thickness'], ['backThicknessPreset', 'backThickness']];
+
+  function fillThicknessPresets() {
+    THICKNESS_PAIRS.forEach(([presetId]) => {
+      fillSelect($(presetId), [{ id: 'custom', name: 'Custom' }, ...THICKNESS_SIZES.map((t) => ({ id: String(t), name: `${t} mm` }))]);
+    });
+    syncThicknessPresets();
+  }
+
+  function syncThicknessPresets() {
+    THICKNESS_PAIRS.forEach(([presetId, inputId]) => {
+      const value = String(num($(inputId).value));
+      const listed = [...$(presetId).options].some((o) => o.value === value);
+      $(presetId).value = listed ? value : 'custom';
+    });
   }
 
   function syncWidthPreset() {
@@ -1141,6 +1162,7 @@
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
+    fillThicknessPresets();
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
     fillSelect($('epSide'), m.end_panel_sides);
@@ -1190,6 +1212,13 @@
       drawPreview();
     });
     $('width').addEventListener('input', syncWidthPreset);
+    THICKNESS_PAIRS.forEach(([presetId, inputId]) => {
+      $(presetId).addEventListener('change', () => {
+        if ($(presetId).value !== 'custom') setText(inputId, Number($(presetId).value));
+        drawPreview();
+      });
+      $(inputId).addEventListener('input', syncThicknessPresets);
+    });
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);
 

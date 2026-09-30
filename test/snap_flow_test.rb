@@ -98,18 +98,18 @@ class FakeCabinet < Sketchup::ComponentInstance
 
   @@next_id = 0
 
-  def initialize(model, entities, y:, x: 0.0, width: 600.0, name: 'BU600')
+  def initialize(model, entities, y:, x: 0.0, z: 0.0, width: 600.0, name: 'BU600', category: 'base')
     super()
     @persistent_id = (@@next_id += 1)
     @model = model
     @parent = Struct.new(:entities).new(entities)
     @name = name
-    @transformation = Geom::Transformation.translation(Geom::Vector3d.new(x, y, 0))
+    @transformation = Geom::Transformation.translation(Geom::Vector3d.new(x, y, z))
     env = KitchenCabinetMaster::CabinetLayout.envelope(
       KitchenCabinetMaster::Defaults.params.merge('cabinet_category' => 'base', 'width' => width, 'depth' => 560.0,
                                                   'height' => 780.0, 'toe_kick_height' => 100.0)
     )
-    @attrs = { 'cabinet_id' => "CABINET_#{@persistent_id}", 'width' => width, 'envelope_depth' => env[0],
+    @attrs = { 'cabinet_id' => "CABINET_#{@persistent_id}", 'cabinet_category' => category, 'width' => width, 'envelope_depth' => env[0],
                'envelope_width' => env[1], 'envelope_top' => env[2] }
   end
 
@@ -256,5 +256,42 @@ class SnapFlowTest < Minitest::Test
     UI.fire_all
     assert_match(/Could not snap BU600: boom/, KitchenCabinetMaster::DialogManager.messages.last[1]['message'])
     assert_includes @model.operations, [:abort]
+  end
+
+  # ---- height (Z) -----------------------------------------------------------
+
+  def z_of(cabinet) = cabinet.transformation.origin.z
+
+  def settle(cabinet)
+    Snap.remember(cabinet)
+    yield
+    Snap.modified(cabinet)
+    UI.fire_all
+  end
+
+  def test_a_snap_distance_is_300_mm_on_every_axis
+    assert_equal 300.0, Snap::SNAP_DISTANCE_MM
+  end
+
+  def test_a_cabinet_on_the_floor_that_was_lifted_drops_back
+    a = cabinet(y: 0.0)
+    b = cabinet(y: 1200.0)
+    settle(b) { b.transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 1200, 120)) }
+    assert_in_delta 0.0, z_of(b), 1e-6, 'back on the floor'
+    assert a
+  end
+
+  def test_a_wall_unit_keeps_its_own_height
+    cabinet(y: 0.0)
+    wall = cabinet(y: 1200.0, category: 'wall', z: 1400.0)
+    settle(wall) { wall.transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 1200, 1500)) }
+    assert_in_delta 1500.0, z_of(wall), 1e-6
+  end
+
+  def test_a_cabinet_moved_over_the_floor_but_too_high_is_left_alone
+    cabinet(y: 0.0)
+    high = cabinet(y: 3000.0)
+    settle(high) { high.transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 3000, 500)) }
+    assert_in_delta 500.0, z_of(high), 1e-6, 'more than 300 mm off the floor'
   end
 end

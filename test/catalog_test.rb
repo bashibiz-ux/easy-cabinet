@@ -15,6 +15,7 @@ require_relative '../kitchen_cabinet_master/catalog_manager'
 
 class CatalogTest < Minitest::Test
   include KitchenCabinetMaster
+  DATA_DIR_FOR_TEST = KitchenCabinetMaster::DATA_DIR
 
   def test_there_is_one_catalog_named_door_with_pull_handle
     catalogs = CatalogManager.catalogs
@@ -41,5 +42,19 @@ class CatalogTest < Minitest::Test
   def test_a_catalog_without_a_features_list_offers_everything
     assert_equal CatalogManager::FEATURES, CatalogManager.features_of({})
     assert_equal %w[base filler], CatalogManager.features_of('features' => %w[base filler nonsense])
+  end
+
+  def test_a_leftover_sample_catalog_never_shows_as_a_second_catalog
+    store = {
+      'sample_catalog' => { 'id' => 'sample_catalog', 'name' => 'Sample Catalog' },
+      'door_with_pull_handle' => { 'id' => 'door_with_pull_handle', 'aliases' => ['sample_catalog'] }
+    }
+    CatalogManager.send(:drop_superseded, store)
+    assert_equal ['door_with_pull_handle'], store.keys
+  end
+
+  def test_the_sample_catalog_file_is_not_shipped
+    refute File.exist?(File.join(DATA_DIR_FOR_TEST, 'catalogs', 'sample_catalog.json'))
+    assert_includes CatalogManager::LEGACY_FILES, 'catalogs/sample_catalog.json'
   end
 end

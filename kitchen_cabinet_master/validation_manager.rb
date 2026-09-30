@@ -200,7 +200,7 @@ module KitchenCabinetMaster
       end
 
       if usable.call('depth', 'back_thickness')
-        minimum = Defaults::BACK_RECESS + out['back_thickness'] + Defaults::SHELF_FRONT_SETBACK + MIN_INTERIOR
+        minimum = Defaults.back_recess(out['back_thickness']) + out['back_thickness'] + Defaults::SHELF_FRONT_SETBACK + MIN_INTERIOR
         if out['depth'] && out['depth'] < minimum
           errors << error('depth', "Depth is too small for the back panel and shelf setback (minimum #{fmt(minimum)} mm).")
         end

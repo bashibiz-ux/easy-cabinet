@@ -3,12 +3,15 @@
 module KitchenCabinetMaster
   # Snaps a cabinet (or filler) that the user has moved with the Move tool, so a
   # hand-placed cabinet ends up exactly where it belongs instead of a few
-  # millimetres off. Two things snap, both only on the floor plan (height never
-  # changes), and both only when the item ends up within SNAP_DISTANCE:
+  # millimetres off. Snapping works on all three axes (X, Y and Z), and only when
+  # the item ends up within SNAP_DISTANCE:
   #
-  #   1. SIDES  to the nearest cabinet's side, so the two touch. When it is also
-  #             close, its back and front line up with that neighbour's.
-  #   2. BACK   to a wall behind it: a tall vertical face in the model whose
+  #   1. FACES  to the nearest cabinet's face, on whichever axis is closest: beside
+  #             it, in front of or behind it, or stacked above or below it, so the
+  #             two touch. The other two directions line up with that neighbour's
+  #             too (back to back, front to front, bottom to bottom, top to top).
+  #   2. FLOOR  a cabinet that stands on the floor (not a wall unit) drops to it.
+  #   3. BACK   to a wall behind it: a tall vertical face in the model whose
   #             surface runs parallel to the cabinet's back.
   #
   #   before                            after
@@ -23,7 +26,7 @@ module KitchenCabinetMaster
   # callback: it is always handed to a short timer, which is the safe moment to
   # start an operation. It can be switched off from the extension's menu.
   module SnapManager
-    SNAP_DISTANCE_MM = 200.0
+    SNAP_DISTANCE_MM = 300.0 # the same on every axis
     MOVE_TOOL_ID = 21_048
 
     SETTLE_DELAY_S = 0.15 # after the Move tool lets go
@@ -42,16 +45,22 @@ module KitchenCabinetMaster
 
     # ---- the maths -----------------------------------------------------------
 
-    # `moved` and each of `others`: { min: [x, y], max: [x, y] } (any one unit).
-    # `threshold` is in that same unit. Returns [dx, dy] to add to `moved`, or nil
-    # when nothing is close enough.
+    # `moved` and each of `others`: { min: [x, y, z], max: [x, y, z] } (any one
+    # unit; two numbers, x and y only, also work). `threshold` is in that same
+    # unit. Returns how far to move `moved` on each axis, or nil when nothing is
+    # close enough.
+    #
+    # The closest face of any neighbour, on any axis, is the one it snaps to (the
+    # boxes must sit next to each other, or overlap, in the other directions). The
+    # other directions then line up with that neighbour's edges when they are close.
     def self.delta(moved, others, threshold)
+      dims = moved[:min].length
+      axes = (0...dims).to_a
       best = nil
 
       others.each do |other|
-        [0, 1].each do |axis|
-          across = 1 - axis
-          next unless near_or_overlapping?(moved, other, across, threshold)
+        axes.each do |axis|
+          next unless (axes - [axis]).all? { |across| near_or_overlapping?(moved, other, across, threshold) }
 
           gap = [other[:max][axis] - moved[:min][axis], other[:min][axis] - moved[:max][axis]].min_by(&:abs)
           next if gap.abs > threshold
@@ -61,17 +70,28 @@ module KitchenCabinetMaster
       end
       return nil unless best
 
-      result = [0.0, 0.0]
+      result = Array.new(dims, 0.0)
       result[best[:axis]] = best[:gap]
 
-      # Line up along the other direction too (back to back, front to front).
-      across = 1 - best[:axis]
+      # Line up along the other directions too.
       other = best[:other]
-      align = [other[:min][across] - moved[:min][across], other[:max][across] - moved[:max][across]].min_by(&:abs)
-      result[across] = align if align.abs <= threshold
+      (axes - [best[:axis]]).each do |across|
+        align = [other[:min][across] - moved[:min][across], other[:max][across] - moved[:max][across]].min_by(&:abs)
+        result[across] = align if align.abs <= threshold
+      end
       result
     end
 
+    # How far a cabinet that stands on the floor has to drop or rise to stand on
+    # it (Z 0), or nil when it is a wall unit, already there, or too far off.
+    # `bottom` is where its bottom is now, `shifted` what the neighbour already
+    # moved it by on Z.
+    def self.floor_delta(bottom, shifted, hangs, threshold)
+      return nil if hangs || shifted.abs > 1e-6
+
+      gap = -bottom
+      gap.abs <= threshold && gap.abs > 1e-6 ? gap : nil
+    end
     # Do the two boxes overlap along `axis`, or come within `threshold` of it?
     # (Sides only snap together when the items actually sit next to each other,
     # not when one is merely in the same column of the room.)
@@ -282,15 +302,19 @@ module KitchenCabinetMaster
       return unless right_angled?(entity.transformation)
 
       threshold = SNAP_DISTANCE_MM.mm
-      others = PlacementManager.existing_boxes(entity.parent.entities, exclude: entity).map { |box| plan(box) }
+      others = PlacementManager.existing_boxes(entity.parent.entities, exclude: entity).map { |other| extent(other) }
       box = own_box(entity)
-      side = delta(plan(box), others, threshold)
+      side = delta(extent(box), others, threshold)
 
-      # The wall is measured from where the sides have already put the cabinet.
-      shift = side || [0.0, 0.0]
+      # The wall is measured from where the neighbour has already put the cabinet.
+      shift = side || [0.0, 0.0, 0.0]
       mover = mover_info(entity, box, shift)
       wall = wall_delta(mover, collect_walls(entity.model, entity), threshold)
-      shift = [shift[0] + wall[0], shift[1] + wall[1]] if wall
+      shift = [shift[0] + wall[0], shift[1] + wall[1], shift[2]] if wall
+
+      # Nothing set its height: a cabinet that stands on the floor drops to it.
+      floor = floor_delta(box[:min][2], shift[2], hangs?(entity), threshold)
+      shift[2] = floor if floor
 
       if shift.all? { |v| v.abs < 1e-6 }
         remember(entity)
@@ -300,7 +324,7 @@ module KitchenCabinetMaster
       apply(entity, shift)
       # Only say what actually moved it: a back already on the wall did not "snap".
       to_wall = wall&.any? { |v| v.abs > 1e-6 }
-      what = [('the next cabinet' if side), ('the wall' if to_wall)].compact.join(' and ')
+      what = [('the next cabinet' if side), ('the wall' if to_wall), ('the floor' if floor)].compact.join(' and ')
       notify("#{entity.name} snapped to #{what}.")
     end
     private_class_method :snap
@@ -312,7 +336,7 @@ module KitchenCabinetMaster
       @busy = true
       model.start_operation('Snap Cabinet', true, false, true)
       begin
-        entity.transform!(Geom::Transformation.translation(Geom::Vector3d.new(shift[0], shift[1], 0)))
+        entity.transform!(Geom::Transformation.translation(Geom::Vector3d.new(shift[0], shift[1], shift[2].to_f)))
         model.commit_operation
       rescue StandardError
         model.abort_operation
@@ -332,10 +356,19 @@ module KitchenCabinetMaster
     end
     private_class_method :own_box
 
-    def self.plan(box)
-      { min: [box[:min][0], box[:min][1]], max: [box[:max][0], box[:max][1]] }
+    def self.extent(box)
+      { min: box[:min].first(3), max: box[:max].first(3) }
     end
-    private_class_method :plan
+    private_class_method :extent
+
+    # A wall unit hangs in the air (its own height is the user's to choose), so it
+    # never drops to the floor. A filler is a wall filler when its unit was.
+    def self.hangs?(entity)
+      dictionary = AttributeManager::DICTIONARY
+      category = entity.get_attribute(dictionary, 'cabinet_category') || entity.get_attribute(dictionary, 'target_category')
+      category.to_s == 'wall'
+    end
+    private_class_method :hangs?
 
     # What wall_delta needs to know about the cabinet, as it will be after `shift`.
     def self.mover_info(entity, box, shift)

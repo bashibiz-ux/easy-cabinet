@@ -355,3 +355,4 @@ h1 {
 /* An option the selected catalog does not offer: shown, but greyed out and locked. */
 .feature-off { opacity: 0.45; pointer-events: none; }
 .card.feature-off .card-head { cursor: default; }
+.thick-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
