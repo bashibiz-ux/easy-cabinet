@@ -55,6 +55,12 @@ module KitchenCabinetMaster
       params, failure = prepare(raw)
       return failure if failure
 
+      # A bigger cabinet must not grow into the one (or the filler / end panel) beside it.
+      old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(AttributeManager::DICTIONARY, key).to_f }
+      if PlacementManager.crowds?(root.parent.entities, root, root.transformation, CabinetLayout.envelope(params), old_size)
+        return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
+      end
+
       SelectionManager.suspend do
         with_operation(model, 'Update Cabinet') do
           params['cabinet_name'] = NamingManager.for_update(root, params)

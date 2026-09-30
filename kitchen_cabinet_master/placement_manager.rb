@@ -111,6 +111,15 @@ module KitchenCabinetMaster
     end
     private_class_method :clear_of_occupants
 
+    # Would resizing `root` (an item already in the model) make it run into a
+    # neighbour? True only when the NEW size collides and the size it has now does not,
+    # so an edit is never blocked by an overlap that was already there (say, from a
+    # cabinet the user moved by hand). Sizes are [depth, width, top] in mm.
+    def self.crowds?(entities, root, transformation, new_size, old_size)
+      collides?(entities, transformation, new_size, exclude: root) &&
+        !collides?(entities, transformation, old_size, exclude: root)
+    end
+
     # The axis-aligned box of every cabinet, filler and end panel in `entities`,
     # read straight from their stored envelope attributes (no recomputation).
     # `exclude`, when given, is left out (used when checking a part against

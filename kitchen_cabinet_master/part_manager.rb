@@ -492,6 +492,11 @@ module KitchenCabinetMaster
         transformation = root.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, shift.mm, 0))
       end
 
+      old_size = %w[envelope_depth envelope_width envelope_top].map { |key| stored[key].to_f }
+      if PlacementManager.crowds?(root.parent.entities, root, transformation || root.transformation, PartLayout.filler_envelope(params), old_size)
+        return Response.fail('That size would make the filler overlap the item next to it.')
+      end
+
       SelectionManager.suspend do
         with_operation(model, 'Update Filler') { PartGenerator.update(model, root, params, layout, transformation) }
       end

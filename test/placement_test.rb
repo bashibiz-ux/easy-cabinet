@@ -235,4 +235,40 @@ class PlacementTest < Minitest::Test
   def test_corner_footprint_is_the_square_with_no_door_overhang
     assert_equal [900.0, 900.0, 820.0], CabinetLayout.envelope(params('corner', 900.0))
   end
+
+  # ---- resizing in place ---------------------------------------------------
+
+  def size_of(width) = CabinetLayout.envelope(params('base', width))
+
+  def test_a_cabinet_may_grow_into_free_space
+    first = insert('base', 600.0)
+    insert('base', 600.0)
+    entities = @entities
+    # widen the LAST one: nothing after it
+    last = entities.grep(FakeCabinet).last
+    refute PlacementManager.crowds?(entities, last, last.transformation, size_of(900.0), size_of(600.0))
+    assert first
+  end
+
+  def test_a_cabinet_may_not_grow_into_its_neighbour
+    first = insert('base', 600.0)
+    insert('base', 600.0)
+    assert PlacementManager.crowds?(@entities, first, first.transformation, size_of(800.0), size_of(600.0))
+  end
+
+  def test_shrinking_is_always_allowed
+    first = insert('base', 600.0)
+    insert('base', 600.0)
+    refute PlacementManager.crowds?(@entities, first, first.transformation, size_of(400.0), size_of(600.0))
+  end
+
+  def test_an_overlap_that_was_already_there_does_not_block_other_edits
+    first = insert('base', 600.0)
+    insert('base', 600.0)
+    # the user dragged the second one back onto the first
+    overlapping = size_of(800.0)
+    assert PlacementManager.crowds?(@entities, first, first.transformation, overlapping, size_of(600.0))
+    refute PlacementManager.crowds?(@entities, first, first.transformation, overlapping, overlapping),
+           'when the old size already collided, the edit is not refused for it'
+  end
 end
