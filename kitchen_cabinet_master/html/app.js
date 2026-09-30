@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.15.0';
+  const APP_VERSION = '0.16.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -168,7 +168,7 @@
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
       // A filler is something an end panel can go on: its front and top are what that panel starts from.
-      if (kind === 'filler') followCabinet({ front: data.envelope_depth, top: data.envelope_top });
+      if (kind === 'filler') followCabinet({ front: data.envelope_depth, top: data.target_category === 'wall' ? data.envelope_top - data.target_base_z : data.envelope_top });
       // Filler, End Panel and Toe Kick are Cabinet Category choices: show the matching fields.
       setSelect('category', kind);
       updateCategoryUi();
@@ -252,7 +252,9 @@
     return {
       width: $('fillerWidth').value,
       thickness: $('fillerThickness').value,
-      height: $('fillerHeight').value
+      height: $('fillerHeight').value,
+      // Untouched, the height is the selected unit's own (a tall, base or wall filler).
+      height_auto: !state.touched.has('fillerHeight')
     };
   }
 
@@ -260,8 +262,10 @@
     return {
       side: $('epSide').value,
       depth: $('epDepth').value,
+      depth_auto: !state.touched.has('epDepth'),
       thickness: $('epThickness').value,
       height: $('epHeight').value,
+      height_auto: !state.touched.has('epHeight'),
       material: $('epMaterial').value
     };
   }
@@ -583,7 +587,7 @@
 
   async function loadCabinet(params) {
     setBadge(params.cabinet_name || params.cabinet_id || null);
-    followCabinet({ height: params.height, front: params.envelope_depth, top: params.top_z });
+    followCabinet({ height: params.height, front: params.envelope_depth, top: params.cabinet_category === 'wall' ? params.top_z - params.base_z : params.top_z });
     setSelect('catalog', params.catalog_id);
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
@@ -1059,12 +1063,13 @@
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 100, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White' };
-    m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 600, toe_kick_pieces: 1, toe_kick_recess: 50 };
+    m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
 
   async function buildUi() {
     const m = state.meta;
+    $('appVersion').textContent = 'v' + (m.version || APP_VERSION);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? null : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.

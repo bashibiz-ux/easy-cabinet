@@ -399,4 +399,58 @@ class FillerTest < Minitest::Test
     assert_equal 18.0, d['thickness']
     assert_equal '__door__', d['material']
   end
+
+  # ---- same size as the unit; nothing on top of anything ---------------------
+
+  def test_an_end_panel_beside_a_wall_unit_hangs_at_the_units_own_height
+    wall = cabinet(cabinet_category: 'wall', base_z: 1400.0, envelope_top: 2120.0)
+    stored = AttributeManager.read(wall)
+    filled = PartManager.send(:end_panel_defaults, { 'depth' => '300', 'height' => '999', 'height_auto' => true }, wall, stored)
+    assert_in_delta 720.0, filled['height'], 1e-9, 'the wall unit is 720 high, hung 1400 up'
+    assert_equal '300', filled['depth']
+    assert_equal 1400.0, PartManager.send(:start_z_of, wall, stored)
+  end
+
+  def test_an_end_panel_beside_a_base_or_tall_unit_stands_on_the_floor
+    base = cabinet
+    assert_equal 0.0, PartManager.send(:start_z_of, base, AttributeManager.read(base))
+    tall = cabinet(cabinet_category: 'tall', envelope_top: 2200.0)
+    filled = PartManager.send(:end_panel_defaults, { 'height_auto' => true, 'depth_auto' => true, 'height' => '5', 'depth' => '5' }, tall, AttributeManager.read(tall))
+    assert_equal 2200.0, filled['height']
+    assert_in_delta 580.0, filled['depth'], 1e-9
+  end
+
+  def test_an_end_panel_on_a_wall_unit_is_laid_out_at_that_height
+    layout = PartLayout.end_panel('depth' => 300.0, 'thickness' => 18.0, 'height' => 720.0, 'target_base_z' => 1400.0)
+    assert_equal 1400.0, layout.base_z
+    assert_equal 2120.0, layout.top_z
+    assert_equal 1400.0, layout.board.offset[2]
+  end
+
+  def toe_kick_attrs
+    { 'part_id' => 'PART_TK', 'part_kind' => 'toe_kick', 'toe_kick_height' => 100.0, 'toe_kick_thickness' => 18.0,
+      'toe_kick_piece_length' => 2000.0, 'toe_kick_pieces' => 1, 'toe_kick_recess' => 50.0, 'target_depth' => 560.0 }
+  end
+
+  def test_a_toe_kick_is_refused_where_another_toe_kick_already_is
+    @entities.add(FakeThing.new(toe_kick_attrs, Geom::Transformation.new, @parent))
+    at = ->(y) { Geom::Transformation.translation(Geom::Vector3d.new(0, y, 0)) }
+    overlaps = ->(y) { PartManager.send(:toe_kick_overlaps?, @entities, at.call(y), toe_kick_attrs) }
+
+    assert overlaps.call(0.0), 'the very same spot'
+    assert overlaps.call(1500.0), 'half on top of it'
+    refute overlaps.call(2000.0), 'end to end is fine'
+    refute overlaps.call(2500.0), 'clear of it'
+  end
+
+  def test_a_toe_kick_being_updated_does_not_collide_with_itself
+    existing = FakeThing.new(toe_kick_attrs, Geom::Transformation.new, @parent)
+    @entities.add(existing)
+    refute PartManager.send(:toe_kick_overlaps?, @entities, existing.transformation, toe_kick_attrs, exclude: existing)
+  end
+
+  def test_toe_kicks_start_at_two_metres
+    assert_equal 2000.0, Defaults.toe_kick_params['toe_kick_piece_length']
+    assert_equal 1, Defaults.toe_kick_params['toe_kick_pieces']
+  end
 end

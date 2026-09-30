@@ -124,7 +124,7 @@ module KitchenCabinetMaster
       'toe_kick_height'        => 100.0,
       'toe_kick_thickness'     => 18.0,
       'toe_kick_material'      => SAME_AS_DOOR,
-      'toe_kick_piece_length'  => 600.0,
+      'toe_kick_piece_length'  => 2000.0,
 
       'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true }
     }.freeze
@@ -148,7 +148,7 @@ module KitchenCabinetMaster
       'toe_kick_height'       => 100.0,
       'toe_kick_thickness'    => 18.0,
       'toe_kick_material'     => SAME_AS_DOOR,
-      'toe_kick_piece_length' => 600.0,
+      'toe_kick_piece_length' => 2000.0,
       'toe_kick_pieces'       => 1,
       'toe_kick_recess'       => TOE_KICK_RECESS
     }.freeze

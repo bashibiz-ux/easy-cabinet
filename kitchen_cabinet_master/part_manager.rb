@@ -35,6 +35,11 @@ module KitchenCabinetMaster
       end
 
       target_params = AttributeManager.read(target)
+      # A filler is as tall as the unit it stands beside (a tall filler for a tall
+      # unit, a base one for a base unit, a wall one for a wall unit) unless the
+      # user typed a height of their own.
+      raw = stringify(raw)
+      raw['height'] = target_params['height'] if truthy?(raw['height_auto']) || raw['height'].to_s.strip.empty?
       params, failure = prepare_filler(raw, door_material_of(target_params))
       return failure if failure
 
@@ -71,6 +76,7 @@ module KitchenCabinetMaster
         'target_width' => target_params['width'].to_f,
         'target_depth' => depth,
         'target_base_z' => target_params['base_z'].to_f,
+        'target_category' => target_params['cabinet_category'],
         'target_flush_x' => flush
       }
     end
@@ -128,6 +134,7 @@ module KitchenCabinetMaster
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
                             target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
+      params['target_base_z'] = start_z_of(target, target_params)
 
       layout = PartLayout.end_panel(params)
       transformation, collision = placed_transformation(target, params)
@@ -149,10 +156,26 @@ module KitchenCabinetMaster
     # The panel's values, with a blank depth and height filled in from the target.
     def self.end_panel_defaults(raw, target, target_params)
       raw = stringify(raw)
-      raw['depth'] = door_front_of(target, target_params) if raw['depth'].to_s.strip.empty?
-      raw['height'] = top_of(target_params) if raw['height'].to_s.strip.empty?
+      raw['depth'] = door_front_of(target, target_params) if truthy?(raw['depth_auto']) || raw['depth'].to_s.strip.empty?
+      raw['height'] = top_of(target_params) - start_z_of(target, target_params) if truthy?(raw['height_auto']) || raw['height'].to_s.strip.empty?
       raw
     end
+
+    # Where an end panel starts: on the floor, except beside a wall unit (or a filler
+    # for one), where it hangs at the unit's own base height, so it is the same size
+    # as the unit.
+    def self.start_z_of(target, target_params)
+      filler = AttributeManager.part_kind(target) == 'filler'
+      category = filler ? target_params['target_category'] : target_params['cabinet_category']
+      base = filler ? target_params['target_base_z'] : target_params['base_z']
+      category == 'wall' ? base.to_f : 0.0
+    end
+    private_class_method :start_z_of
+
+    def self.truthy?(value)
+      [true, 'true', 1, '1'].include?(value)
+    end
+    private_class_method :truthy?
     private_class_method :end_panel_defaults
 
     # X of the target's door front: what an end panel's depth starts as, so the
@@ -208,6 +231,10 @@ module KitchenCabinetMaster
 
       layout = PartLayout.toe_kick(params)
       entities, transformation = toe_kick_placement(model, anchor)
+      if toe_kick_overlaps?(entities, transformation, params)
+        return Response.fail('There is already a toe kick there. Select a different cabinet, or delete or change the existing toe kick first.')
+      end
+
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Toe Kick') do
           params['part_id'] = AttributeManager.next_part_id(model)
@@ -245,6 +272,38 @@ module KitchenCabinetMaster
       [anchor.parent.entities, transformation]
     end
     private_class_method :toe_kick_placement
+
+    # Would a toe kick built from params at 	ransformation stand on top of another
+    # toe kick in entities? Compares the plan-view outlines of the pieces (and their
+    # floor level); touching ends do not count. exclude is the toe kick being updated.
+    def self.toe_kick_overlaps?(entities, transformation, params, exclude: nil)
+      mine = toe_kick_boxes(transformation, params)
+      entities.grep(Sketchup::ComponentInstance).any? do |other|
+        next false unless AttributeManager.part_kind(other) == 'toe_kick' && !other.equal?(exclude)
+
+        theirs = toe_kick_boxes(other.transformation, AttributeManager.read(other) || {})
+        mine.any? { |a| theirs.any? { |b| boxes_overlap?(a, b) } }
+      end
+    end
+    private_class_method :toe_kick_overlaps?
+
+    # [min_x, min_y, min_z, max_x, max_y, max_z] of each piece, in the parent's frame (mm).
+    def self.toe_kick_boxes(transformation, params)
+      floor = transformation.origin.z.to_mm
+      top = floor + params['toe_kick_height'].to_f
+      ToeKick.footprints(params).map do |corners|
+        points = corners.map { |x, y| transformation * Geom::Point3d.new(x.mm, y.mm, 0) }
+        xs = points.map { |p| p.x.to_mm }
+        ys = points.map { |p| p.y.to_mm }
+        [xs.min, ys.min, floor, xs.max, ys.max, top]
+      end
+    end
+    private_class_method :toe_kick_boxes
+
+    def self.boxes_overlap?(first, second)
+      (0..2).all? { |axis| first[axis] < second[axis + 3] - 1.0 && first[axis + 3] > second[axis] + 1.0 }
+    end
+    private_class_method :boxes_overlap?
 
     # Validates the panel values, adds what the selection supplies (see
     # insert_toe_kick) and checks the plinth actually fits under the carcass.
@@ -383,6 +442,9 @@ module KitchenCabinetMaster
       return Response.fail(summary(errors), errors) unless errors.empty?
 
       record_toe_kick_path(model, params, find_toe_kick_anchor(model, stored['toe_kick_from']))
+      if toe_kick_overlaps?(root.parent.entities, root.transformation, params, exclude: root)
+        return Response.fail('That would put this toe kick on top of another toe kick.')
+      end
       params['width'] = ToeKick.total_length(params)
       params['part_id'] = AttributeManager.part_id(root)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.toe_kick_name(params))
@@ -418,7 +480,7 @@ module KitchenCabinetMaster
       params, failure = prepare_filler(raw, door_material_of(stored))
       return failure if failure
 
-      %w[target_id target_width target_depth target_base_z target_flush_x side].each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_depth target_base_z target_category target_flush_x side].each { |key| params[key] = stored[key] }
       params['part_id'] = AttributeManager.part_id(root)
       layout = PartLayout.filler(params)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.filler_name(params))
@@ -447,7 +509,7 @@ module KitchenCabinetMaster
       params, failure = prepare_end_panel(raw, door, carcass)
       return failure if failure
 
-      %w[target_id target_width target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_base_z target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
 
       layout = PartLayout.end_panel(params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']

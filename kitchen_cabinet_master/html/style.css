@@ -350,3 +350,4 @@ h1 {
 @media (prefers-reduced-motion: reduce) {
   .card-head::after { transition: none; }
 }
+.version { margin-left: 4px; font-size: 11.5px; font-weight: 500; color: var(--muted); }

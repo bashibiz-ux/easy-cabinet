@@ -7,6 +7,7 @@
 
 class Numeric
   def mm = self
+  def to_mm = self
 end
 
 module Geom

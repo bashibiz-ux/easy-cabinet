@@ -132,6 +132,19 @@ module KitchenCabinetMaster
     end
     private_class_method :distance
 
+    # The plan-view outline of every piece, as four [x, y] corners in mm in the toe
+    # kick's own frame (turned legs included). Used to keep two toe kicks from
+    # being put on top of one another.
+    def self.footprints(params)
+      pieces(params).map do |piece|
+        radians = piece.rotation.to_f * Math::PI / 180.0
+        cos = Math.cos(radians)
+        sin = Math.sin(radians)
+        [[0.0, 0.0], [piece.extent[0], 0.0], [piece.extent[0], piece.extent[1]], [0.0, piece.extent[1]]].map do |x, y|
+          [(x * cos) - (y * sin) + piece.offset[0], (x * sin) + (y * cos) + piece.offset[1]]
+        end
+      end
+    end
     def self.straight_pieces(count, length, thick, height, front)
       (0...count).map do |index|
         CabinetLayout::Panel.new(

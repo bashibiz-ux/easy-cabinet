@@ -57,17 +57,18 @@ module KitchenCabinetMaster
     def self.end_panel(params)
       depth = params['depth'].to_f
       height = params['height'].to_f
+      base_z = params['target_base_z'].to_f
       board = CabinetLayout::Panel.new(
         role: 'board', name: 'End Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
-        offset: [0.0, 0.0, 0.0]
+        offset: [0.0, 0.0, round2(base_z)]
       )
-      Layout.new(base_z: 0.0, top_z: round2(height), board: board, toe_kick: [])
+      Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: [])
     end
 
     # [depth, thickness, top] from the end panel's own local floor origin.
     def self.end_panel_envelope(params)
-      [params['depth'].to_f, params['thickness'].to_f, params['height'].to_f]
+      [params['depth'].to_f, params['thickness'].to_f, params['target_base_z'].to_f + params['height'].to_f]
     end
 
     def self.round2(value)
