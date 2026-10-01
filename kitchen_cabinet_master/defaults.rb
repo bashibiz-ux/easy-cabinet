@@ -74,7 +74,7 @@ module KitchenCabinetMaster
     # Used when a bundle does not say otherwise. Offsets are the clear distance (mm)
     # from the door edge to the nearest edge of the handle.
     HANDLE_DEFAULTS = {
-      'orientation'     => 'vertical',
+      'orientation'     => 'horizontal',
       'position'        => 'auto', # base: top, wall: bottom, tall: at hand height
       'horizontal_place' => 'middle',
       'side_offset'     => 25.0,
