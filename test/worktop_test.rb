@@ -22,12 +22,16 @@ plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
 class WorktopTest < Minitest::Test
   include KitchenCabinetMaster
 
-  def item(y:, width: 600.0, depth: 580.0, top: 880.0, x: 0.0, hx: 0.0, hy: 1.0, corner: false)
-    { x: x, y: y, hx: hx, hy: hy, width: width, depth: depth, top: top, corner: corner }
+  def item(y:, width: 600.0, depth: 580.0, top: 880.0, x: 0.0, hx: 0.0, hy: 1.0, corner: false, return_depth: nil)
+    { x: x, y: y, hx: hx, hy: hy, width: width, depth: depth, top: top, corner: corner, return_depth: return_depth }
   end
 
   def settings(overrides = {})
     Worktop::DEFAULTS.merge(overrides)
+  end
+
+  def run_of(count = 3, width: 600.0, **opts)
+    Worktop.runs(Array.new(count) { |i| item(y: i * width, width: width, **opts) }).first
   end
 
   # ---- runs -------------------------------------------------------------------
@@ -99,9 +103,20 @@ class WorktopTest < Minitest::Test
     assert_equal(-10.0, slab[:offset][1], 'it starts before the first unit')
   end
 
-  def test_a_corner_slab_is_exactly_its_square
-    run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true)]).first
-    assert_equal [900.0, 900.0, 38.0], Worktop.slab(run, settings)[:extent]
+  def test_a_corner_slab_is_the_shape_of_the_corner_cut_across_the_diagonal
+    run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true, return_depth: 600.0)]).first
+    slab = Worktop.slab(run, settings('worktop_front' => 0.0))
+    assert_equal [900.0, 900.0, 38.0], slab[:extent]
+    assert_equal [[0.0, 0.0], [0.0, 900.0], [600.0, 900.0], [900.0, 600.0], [900.0, 0.0]], slab[:points], 'a pentagon: the front corner is cut'
+  end
+
+  def test_the_front_overhang_pushes_the_diagonal_out
+    run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true, return_depth: 600.0)]).first
+    plain = Worktop.slab(run, settings('worktop_front' => 0.0))[:points]
+    out = Worktop.slab(run, settings('worktop_front' => 20.0))[:points]
+    assert_in_delta plain[2][0] + (20.0 * Math.sqrt(2)), out[2][0], 1e-9
+    assert_in_delta plain[3][1] + (20.0 * Math.sqrt(2)), out[3][1], 1e-9
+    assert_equal plain[0], out[0], 'the wall corners stay square'
   end
 
   def test_the_slab_layout_is_one_board_of_that_size
@@ -137,27 +152,99 @@ class WorktopTest < Minitest::Test
     assert_equal ['Base Unit', 'Worktop', 'Wall Unit', 'Tall Unit', 'Toe Kick'], TagManager::ALL
   end
 
-  # ---- the scene ------------------------------------------------------------------
-
-  def test_the_scene_looks_from_the_front_right_and_above_at_the_middle
-    eye, target = SceneManager.viewpoint([2000.0, 1500.0, 1000.0], [4000.0, 600.0, 2200.0])
-    assert_equal [2000.0, 1500.0, 1000.0], target
-    assert_operator eye[0], :>, 2000.0, 'in front (the doors face +X)'
-    assert_operator eye[1], :<, 1500.0, 'to the right'
-    assert_operator eye[2], :>, 1000.0, 'above'
-  end
-
-  def test_the_scene_stands_back_far_enough_for_a_big_kitchen
-    near, = SceneManager.viewpoint([0.0, 0.0, 0.0], [600.0, 600.0, 900.0])
-    far, = SceneManager.viewpoint([0.0, 0.0, 0.0], [6000.0, 3000.0, 2200.0])
-    assert_operator Math.sqrt(far.sum { |v| v * v }), :>, Math.sqrt(near.sum { |v| v * v })
-    assert_operator Math.sqrt(near.sum { |v| v * v }), :>=, 2500.0 - 1e-6, 'never closer than 2.5 m'
-  end
-
   def test_the_new_actions_are_routed
     dialog = File.read(File.join(plugin_dir, 'dialog_manager.rb'))
-    WorktopManager::ACTIONS.each { |action| assert_includes dialog, action }
+    %w[apply_worktop remove_worktop].each { |action| assert_includes dialog, action }
+    refute_includes dialog, 'create_scene', 'the 3D scene section is gone'
+  end
+  def plugin_dir = File.expand_path('../kitchen_cabinet_master', __dir__)
+
+  # ---- cutting into pieces -----------------------------------------------------------
+
+  def test_no_cutting_is_one_piece
+    assert_equal [[0.0, 3000.0]], Worktop.pieces(3000.0, settings)
   end
 
-  def plugin_dir = File.expand_path('../kitchen_cabinet_master', __dir__)
+  def test_a_longest_piece_cuts_the_run_into_equal_lengths_and_a_remainder
+    assert_equal [[0.0, 1200.0], [1200.0, 2400.0], [2400.0, 3000.0]], Worktop.pieces(3000.0, settings('worktop_piece' => 1200.0))
+  end
+
+  def test_a_piece_longer_than_the_run_leaves_it_whole
+    assert_equal [[0.0, 3000.0]], Worktop.pieces(3000.0, settings('worktop_piece' => 5000.0))
+  end
+
+  def test_cutting_at_listed_distances
+    assert_equal [[0.0, 1500.0], [1500.0, 2200.0], [2200.0, 3000.0]], Worktop.pieces(3000.0, settings('worktop_cuts' => '1500, 2200'))
+  end
+
+  def test_listed_cuts_win_over_a_piece_length_and_out_of_range_ones_are_ignored
+    assert_equal [[0.0, 1000.0], [1000.0, 3000.0]], Worktop.pieces(3000.0, settings('worktop_cuts' => '1000; 9000; 0.5', 'worktop_piece' => 500.0))
+  end
+
+  def test_the_cut_list_is_parsed
+    assert_equal [1500.0, 3000.0], Worktop.parse_cuts('3000, 1500')
+    assert_equal [], Worktop.parse_cuts('')
+    assert_nil Worktop.parse_cuts('1500, abc')
+    assert_nil Worktop.parse_cuts('-5')
+  end
+
+  def test_each_piece_is_a_slab_of_its_own_length_at_its_own_place
+    run = run_of(5) # 3000 mm
+    one = Worktop.slab(run, settings, from: 0.0, to: 1200.0)
+    two = Worktop.slab(run, settings, from: 1200.0, to: 3000.0)
+    assert_equal 1200.0, one[:extent][1]
+    assert_equal 1800.0, two[:extent][1]
+    assert_equal 1200.0, two[:offset][1]
+  end
+
+  def test_the_cut_list_is_validated_and_tidied
+    ok = ValidationManager.validate_worktop('worktop_thickness' => '38', 'worktop_front' => '20', 'worktop_end' => '0', 'worktop_cuts' => '3000;1500')
+    assert_empty ok.errors
+    assert_equal '1500,3000', ok.params['worktop_cuts']
+    bad = ValidationManager.validate_worktop('worktop_thickness' => '38', 'worktop_front' => '20', 'worktop_end' => '0', 'worktop_cuts' => '1500, x')
+    assert_equal 'worktop_cuts', bad.errors.first['field']
+  end
+
+  # ---- the back splash -----------------------------------------------------------------
+
+  def test_a_straight_slab_has_a_back_splash_along_its_back_edge_standing_on_it
+    run = run_of(3)
+    slab = Worktop.slab(run, settings)
+    pieces = Worktop.splash(run, slab, settings('backsplash_height' => 120.0, 'backsplash_thickness' => 20.0))
+    assert_equal 1, pieces.length
+    assert_equal [20.0, 1800.0, 120.0], pieces.first[:extent]
+    assert_equal [0.0, 0.0, 38.0], pieces.first[:offset], 'at the back, on top of the slab'
+  end
+
+  def test_the_back_splash_height_is_adjustable_and_zero_means_none
+    run = run_of(2)
+    slab = Worktop.slab(run, settings)
+    assert_equal 60.0, Worktop.splash(run, slab, settings('backsplash_height' => 60.0)).first[:extent][2]
+    assert_empty Worktop.splash(run, slab, settings('backsplash_height' => 0.0))
+  end
+
+  def test_a_corner_has_a_back_splash_along_each_of_its_two_walls
+    run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true, return_depth: 600.0)]).first
+    slab = Worktop.slab(run, settings)
+    walls = Worktop.splash(run, slab, settings)
+    assert_equal 2, walls.length
+    assert_equal [20.0, 900.0, 100.0], walls[0][:extent]
+    assert_equal [880.0, 20.0, 100.0], walls[1][:extent], 'the second stops at the first, no overlap'
+  end
+
+  def test_a_cut_piece_gets_a_back_splash_of_its_own_length
+    run = run_of(5)
+    piece = Worktop.slab(run, settings, from: 0.0, to: 1200.0)
+    assert_equal 1200.0, Worktop.splash(run, piece, settings).first[:extent][1]
+  end
+
+  def test_the_new_defaults
+    assert_equal 100.0, Worktop::DEFAULTS['backsplash_height']
+    assert_equal 0.0, Worktop::DEFAULTS['worktop_piece']
+    assert_equal '', Worktop::DEFAULTS['worktop_cuts']
+  end
+
+  def test_a_back_splash_is_on_the_worktop_tag
+    assert_equal 'Worktop', TagManager.for_stored('part_kind' => 'backsplash')
+  end
 end

@@ -68,8 +68,9 @@ module KitchenCabinetMaster
 
     # A WORKTOP slab: one board of extent [depth, length, thickness] at its own origin
     # (PartManager / WorktopManager put the part's root on top of the carcass).
-    def self.worktop(extent)
-      board = CabinetLayout::Panel.new(role: 'board', name: 'Worktop', extent: extent.map { |v| round2(v) }, offset: [0.0, 0.0, 0.0])
+    def self.worktop(extent, points = nil, name = 'Worktop')
+      board = CabinetLayout::Panel.new(role: 'board', name: name, extent: extent.map { |v| round2(v) }, offset: [0.0, 0.0, 0.0],
+                                       points: points&.map { |x, y| [round2(x), round2(y)] })
       Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: [])
     end
 

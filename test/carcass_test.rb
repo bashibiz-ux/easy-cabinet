@@ -161,10 +161,12 @@ class CarcassTest < Minitest::Test
     assert_in_delta 562.0, CabinetLayout.compute(old).doors.first.offset[0], 1e-9
   end
 
-  def test_the_top_follows_the_unit_type_until_a_style_is_chosen
+  def test_the_top_is_two_separate_panels_until_one_full_panel_is_chosen
     assert_includes panels_of({}), 'top_rear_rail'
     refute_includes panels_of({}), 'top'
-    assert_includes panels_of('cabinet_category' => 'wall', 'toe_kick_height' => 0.0), 'top'
+    assert_includes panels_of('cabinet_category' => 'wall', 'toe_kick_height' => 0.0), 'top_front_rail', 'wall units too'
+    assert_includes panels_of('cabinet_category' => 'tall'), 'top_rear_rail', 'and tall units'
+    assert_includes panels_of('top_panel_style' => 'full'), 'top'
   end
 
   def test_two_10_cm_panels_or_one_full_panel_on_any_unit

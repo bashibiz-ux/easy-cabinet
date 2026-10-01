@@ -68,6 +68,22 @@ class Kick < Sketchup::ComponentInstance
   def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
 end
 
+# Something that can be lifted: its transformation can be replaced.
+class Mover < Sketchup::ComponentInstance
+  attr_accessor :transformation
+  attr_reader :name
+
+  def initialize(attrs, z = 0.0)
+    super()
+    @attrs = attrs
+    @transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, z))
+    @name = attrs['part_name'] || attrs['cabinet_name']
+  end
+
+  def attribute_dictionary(_name, _create = false) = @attrs
+  def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
+end
+
 class Bag
   def initialize = @items = []
   def add(item) = @items << item
@@ -194,5 +210,56 @@ class ToeKickAllTest < Minitest::Test
     kick(y: 0.0)
     apply('toe_kick_height' => '9000')
     assert_empty CabinetManager.lifts
+  end
+
+  # ---- what goes up when the toe kick goes up ------------------------------------------
+
+  def mover(attrs, z = 0.0)
+    item = Mover.new(attrs, z)
+    @bag.add(item)
+    item
+  end
+
+  def lift(from, to) = PartManager.lift_attached(@model, from, to)
+
+  def test_wall_units_move_up_with_the_toe_kick_and_base_units_stay_put
+    wall = mover({ 'cabinet_id' => 'C1', 'cabinet_category' => 'wall', 'cabinet_name' => 'WU' }, 1480.0)
+    base = mover({ 'cabinet_id' => 'C2', 'cabinet_category' => 'base', 'cabinet_name' => 'BU' }, 0.0)
+    lift(100.0, 150.0)
+    assert_in_delta 1530.0, wall.transformation.origin.z, 1e-9
+    assert_in_delta 0.0, base.transformation.origin.z, 1e-9, 'a base unit is rebuilt higher instead'
+  end
+
+  def test_what_hangs_beside_a_wall_unit_moves_too
+    filler = mover({ 'part_id' => 'P1', 'part_kind' => 'filler', 'part_name' => 'FL', 'target_category' => 'wall', 'width' => 50.0 }, 1480.0)
+    panel = mover({ 'part_id' => 'P2', 'part_kind' => 'end_panel', 'part_name' => 'EP', 'target_base_z' => 1480.0, 'height' => 720.0 }, 1480.0)
+    lift(100.0, 130.0)
+    assert_in_delta 1510.0, filler.transformation.origin.z, 1e-9
+    assert_in_delta 1510.0, panel.transformation.origin.z, 1e-9
+    assert_empty PartGenerator.updates, 'nothing needed rebuilding'
+  end
+
+  def test_floor_standing_fillers_and_end_panels_are_rebuilt_not_moved
+    filler = mover({ 'part_id' => 'P1', 'part_kind' => 'filler', 'part_name' => 'FL', 'target_category' => 'base', 'target_base_z' => 100.0,
+                     'width' => 50.0, 'thickness' => 18.0, 'height' => 780.0, 'target_flush_x' => 580.0 })
+    panel = mover({ 'part_id' => 'P2', 'part_kind' => 'end_panel', 'part_name' => 'EP', 'target_base_z' => 0.0, 'depth' => 580.0,
+                    'thickness' => 18.0, 'height' => 880.0 })
+    lift(100.0, 150.0)
+    assert_in_delta 0.0, filler.transformation.origin.z, 1e-9
+    by_item = PartGenerator.updates.to_h { |root, params, _layout| [root, params] }
+    assert_equal 150.0, by_item[filler]['target_base_z']
+    assert_equal 930.0, by_item[panel]['height'], 'it grows to the cabinets new top'
+  end
+
+  def test_lowering_the_toe_kick_brings_the_wall_units_down
+    wall = mover({ 'cabinet_id' => 'C1', 'cabinet_category' => 'wall', 'cabinet_name' => 'WU' }, 1530.0)
+    lift(150.0, 100.0)
+    assert_in_delta 1480.0, wall.transformation.origin.z, 1e-9
+  end
+
+  def test_no_change_moves_nothing
+    wall = mover({ 'cabinet_id' => 'C1', 'cabinet_category' => 'wall', 'cabinet_name' => 'WU' }, 1480.0)
+    lift(100.0, 100.0)
+    assert_in_delta 1480.0, wall.transformation.origin.z, 1e-9
   end
 end

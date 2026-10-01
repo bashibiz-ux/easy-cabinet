@@ -24,6 +24,7 @@ module KitchenCabinetMaster
       params['handle_finish'] = bundle['finishes'].first['name'] if params['handle_finish'].to_s.empty?
       params['handle_orientation'] = defaults['orientation'] if params['handle_orientation'].to_s.empty?
       params['handle_position'] = defaults['position'] if params['handle_position'].to_s.empty?
+      params['handle_horizontal_place'] = defaults['horizontal_place'] if params['handle_horizontal_place'].to_s.empty?
       params['handle_side_offset'] ||= defaults['side_offset'].to_f
       params['handle_vertical_offset'] ||= defaults['vertical_offset'].to_f
       params['handle_custom_x'] ||= defaults['custom_x'].to_f
@@ -41,6 +42,7 @@ module KitchenCabinetMaster
         'material' => params['handle_material'].to_s,
         'orientation' => params['handle_orientation'].to_s,
         'position' => params['handle_position'].to_s,
+        'horizontal_place' => params['handle_horizontal_place'].to_s,
         'category' => params['cabinet_category'].to_s,
         'side_offset' => params['handle_side_offset'].to_f,
         'vertical_offset' => params['handle_vertical_offset'].to_f,
@@ -92,6 +94,11 @@ module KitchenCabinetMaster
 
       # A drawer's handle always centres horizontally (there is no hinge side to
       # offset from), regardless of the chosen position; marked by hinge 'center'.
+      # A horizontal handle can sit in the middle of the door instead of at its edge.
+      if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
+        return { 'u' => door_w / 2.0, 'v' => door_h / 2.0, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
+      end
+
       u = if door.hinge == 'center'
             (door_w / 2.0) - half_u
           else

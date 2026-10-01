@@ -152,6 +152,15 @@ module KitchenCabinetMaster
         end
       end
       out['handle_finish'] = raw['handle_finish'].to_s.strip
+
+      place = raw['handle_horizontal_place'].to_s.strip
+      if place.empty?
+        out['handle_horizontal_place'] = ''
+      elsif Defaults.handle_horizontal_place_ids.include?(place)
+        out['handle_horizontal_place'] = place
+      else
+        errors << error('handle_horizontal_place', 'Select where the horizontal handle goes.')
+      end
     end
     private_class_method :check_handle_choices
     private_class_method :check_choices
@@ -374,7 +383,9 @@ module KitchenCabinetMaster
     WORKTOP_FIELDS = {
       'worktop_thickness' => { label: 'Worktop thickness', min: 10.0, max: 100.0, required: true },
       'worktop_front'     => { label: 'Front overhang', min: 0.0, max: 100.0, required: true },
-      'worktop_end'       => { label: 'End overhang', min: 0.0, max: 200.0, required: true }
+      'worktop_end'       => { label: 'End overhang', min: 0.0, max: 200.0, required: true },
+      'worktop_piece'     => { label: 'Piece length', min: 0.0, max: 10_000.0 },
+      'backsplash_height' => { label: 'Back splash height', min: 0.0, max: 1000.0 }
     }.freeze
 
     def self.validate_worktop(raw)
@@ -388,6 +399,16 @@ module KitchenCabinetMaster
       end
       material = raw['material'].to_s.strip
       out['material'] = material unless material.empty?
+
+      # Where to cut: distances from the start of a run, all positive numbers.
+      cuts = raw['worktop_cuts'].to_s.strip
+      if cuts.empty?
+        out['worktop_cuts'] = ''
+      elsif (list = Worktop.parse_cuts(cuts))
+        out['worktop_cuts'] = list.map { |v| format('%g', v) }.join(',')
+      else
+        errors << error('worktop_cuts', 'Cut at: give distances like 1500, 3000 (positive numbers, separated by commas).')
+      end
       Result.new(out, errors)
     end
 

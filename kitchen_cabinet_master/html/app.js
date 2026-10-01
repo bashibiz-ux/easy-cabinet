@@ -6,14 +6,14 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.27.0';
+  const APP_VERSION = '0.28.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
   const FALLBACK_LISTS = {
     handle_orientations: [{ id: 'vertical', name: 'Vertical' }, { id: 'horizontal', name: 'Horizontal' }],
-    handle_positions: ['top', 'center', 'bottom', 'left', 'right', 'custom']
-      .map((id) => ({ id, name: id.charAt(0).toUpperCase() + id.slice(1) })),
+    handle_positions: [{ id: 'auto', name: 'By unit type' }],
+    handle_horizontal_places: [{ id: 'edge', name: 'At the edge of the door' }, { id: 'middle', name: 'In the middle of the door' }],
     end_panel_sides: [{ id: 'left', name: 'Left' }, { id: 'right', name: 'Right' }]
   };
 
@@ -57,6 +57,7 @@
     handle_material: 'handleMaterial',
     handle_orientation: 'handleOrientation',
     handle_position: 'handlePosition',
+    handle_horizontal_place: 'handleHPlace',
     handle_side_offset: 'handleSide',
     handle_vertical_offset: 'handleVert',
     handle_custom_x: 'handleCustomX',
@@ -99,7 +100,8 @@
     handle_length: 'handleLength',
     handle_finish: 'handleFinish',
     handle_orientation: 'handleOrientation',
-    handle_position: 'handlePosition'
+    handle_position: 'handlePosition',
+    handle_horizontal_place: 'handleHPlace'
   };
 
   const REQUEST_TIMEOUT_MS = 20000;
@@ -168,7 +170,7 @@
       loadCabinet(data);
     } else if (name === 'part_selected') {
       // A worktop has its own section: show its values there and leave the item list alone.
-      if (data.part_kind === 'worktop') {
+      if (data.part_kind === 'worktop' || data.part_kind === 'backsplash') {
         state.selectedKind = 'worktop';
         setBadge(data.part_name);
         applyWorktopDefaults(data);
@@ -271,14 +273,36 @@
       worktop_thickness: mmv('wtThickness'),
       worktop_front: mmv('wtFront'),
       worktop_end: mmv('wtEnd'),
+      worktop_piece: mmv('wtPiece'),
+      worktop_cuts: cutsToMm(),
+      backsplash_height: mmv('wtSplash'),
       material: $('wtMaterial').value
     };
+  }
+
+  // The Cut At field is a list of lengths ("1500, 3000"): each one is converted
+  // between the chosen unit and mm like any other length.
+  function cutsToMm() {
+    return $('wtCuts').value.split(/[\s,;]+/).filter(Boolean).map((token) => {
+      const n = num(token);
+      return Number.isFinite(n) ? String(Math.round(n * unitInfo().mm * 1e6) / 1e6) : token;
+    }).join(',');
+  }
+
+  function showCuts(mmText) {
+    $('wtCuts').value = String(mmText || '').split(',').filter(Boolean).map((token) => {
+      const n = num(token);
+      return Number.isFinite(n) ? fmtU(n) : token;
+    }).join(', ');
   }
 
   function applyWorktopDefaults(d) {
     setText('wtThickness', d.worktop_thickness);
     setText('wtFront', d.worktop_front);
     setText('wtEnd', d.worktop_end);
+    setText('wtPiece', d.worktop_piece);
+    setText('wtSplash', d.backsplash_height);
+    showCuts(d.worktop_cuts);
     setSelect('wtMaterial', d.material);
   }
 
@@ -377,7 +401,7 @@
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
-    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd'
+    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtPiece', 'wtSplash'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -424,11 +448,13 @@
   function setUnit(unit) {
     if (!UNITS[unit] || unit === state.unit) return;
     const values = LENGTH_IDS.map((id) => [id, mmv(id)]);
+    const cuts = cutsToMm();
     state.unit = unit;
     values.forEach(([id, mm]) => {
       const n = num(mm);
       if (mm !== '' && Number.isFinite(n)) showLength(id, n);
     });
+    showCuts(cuts);
     refreshUnitLabels();
     fillWidthPreset();
     fillThicknessPresets();
@@ -467,7 +493,7 @@
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
     'door_gap', 'door_reveal', 'door_distance', 'top_panel', 'panel_thickness', 'back_thickness',
-    'cabinet_extras', 'worktop', 'scene', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
+    'cabinet_extras', 'worktop', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
   ];
 
   function currentCatalog() {
@@ -603,6 +629,7 @@
       handle_material: handleValue('handleMaterial'),
       handle_orientation: handleValue('handleOrientation'),
       handle_position: handleValue('handlePosition'),
+      handle_horizontal_place: handleValue('handleHPlace'),
       handle_side_offset: handleValue('handleSide'),
       handle_vertical_offset: handleValue('handleVert'),
       handle_custom_x: handleValue('handleCustomX'),
@@ -676,6 +703,7 @@
       if (finishes[0]) $('handleFinish').value = finishes[0].id;
       setSelect('handleOrientation', d.orientation);
       setSelect('handlePosition', d.position);
+      setSelect('handleHPlace', d.horizontal_place || 'edge');
       setText('handleSide', d.side_offset);
       setText('handleVert', d.vertical_offset);
       setText('handleCustomX', d.custom_x);
@@ -693,6 +721,8 @@
     const position = $('handlePosition').value;
     setSoft($('handleCustom'), position !== 'custom');
     setSoft($('handleOffsets'), position === 'custom');
+    // Only a horizontal bar can sit in the middle of the door instead of at its edge.
+    setSoft($('handleHPlaceField'), $('handleOrientation').value !== 'horizontal');
     setSoft($('handleVertField'), !['top', 'bottom', 'auto'].includes(position));
   }
 
@@ -834,7 +864,9 @@
       knob,
       length,
       horizontal: !knob && $('handleOrientation').value === 'horizontal',
-      position: $('handlePosition').value || 'top',
+      position: $('handlePosition').value || 'auto',
+      category: $('category').value,
+      middle: !knob && $('handleOrientation').value === 'horizontal' && $('handleHPlace').value === 'middle',
       side: numOr(mmv('handleSide'), 0),
       vertical: numOr(mmv('handleVert'), 0),
       customX: numOr(mmv('handleCustomX'), 50),
@@ -847,25 +879,24 @@
   // Where the handle's centre goes on a door and how big it is, in millimetres
   // measured from the door's left edge and bottom (the same rules as
   // HandleManager.placement). `freeEdgeHigh`: the hinge is on the left.
-  function handleGeometry(spec, doorW, doorH, freeEdgeHigh) {
+  const TALL_HANDLE_HEIGHT_MM = 1050; // as in Defaults::TALL_HANDLE_HEIGHT
+
+  // doorZ is the height of the door's bottom edge above the floor. By unit type: a
+  // base unit's handle is near the top of its door, a wall unit's near the bottom,
+  // and a tall unit's at hand height. A horizontal handle can instead sit in the
+  // middle of the door.
+  function handleGeometry(spec, doorW, doorH, freeEdgeHigh, doorZ = 0) {
     const halfAlong = spec.length / 2;
     const halfAcross = spec.knob ? halfAlong : HANDLE_SECTION_MM / 2;
     const [halfU, halfV] = spec.horizontal ? [halfAlong, halfAcross] : [halfAcross, halfAlong];
-    let u;
-    switch (spec.position) {
-      case 'custom': u = spec.customX; break;
-      case 'left': u = spec.side + halfU; break;
-      case 'right': u = doorW - spec.side - halfU; break;
-      case 'center': u = doorW / 2 - halfU; break;
-      default: u = freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
-    }
+    if (spec.middle) return { u: doorW / 2, v: doorH / 2, halfU, halfV };
+
+    const place = spec.category === 'wall' ? 'bottom' : spec.category === 'tall' ? 'hand' : 'top';
+    const u = freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
     let v;
-    switch (spec.position) {
-      case 'custom': v = spec.customZ; break;
-      case 'top': v = doorH - spec.vertical - halfV; break;
-      case 'bottom': v = spec.vertical + halfV; break;
-      default: v = doorH / 2;
-    }
+    if (place === 'top') v = doorH - spec.vertical - halfV;
+    else if (place === 'bottom') v = spec.vertical + halfV;
+    else v = Math.min(Math.max(TALL_HANDLE_HEIGHT_MM - doorZ, halfV), Math.max(doorH - halfV, halfV));
     return { u, v, halfU, halfV };
   }
 
@@ -954,7 +985,7 @@
 
         if (handle) {
           // Hinge on the left means the free edge (where the handle goes) is the high one.
-          const g = handleGeometry(handle, doorWMm, doorHMm, left);
+          const g = handleGeometry(handle, doorWMm, doorHMm, left, (isWall ? 0 : toe) + revealMm);
           const cx = dx + g.u * s;
           const cy = doorTop + doorH - g.v * s;
           if (handle.knob) {
@@ -1335,6 +1366,7 @@
     handleMaterial: ['handle_material', 'handleMaterial'],
     handleOrientation: ['handle_orientation', 'handleOrientation'],
     handlePosition: ['handle_position', 'handlePosition'],
+    handleHPlace: ['handle_horizontal_place', 'handleHPlace'],
     handleSide: ['handle_side_offset', 'handleSide'],
     handleVert: ['handle_vertical_offset', 'handleVert'],
     handleCustomX: ['handle_custom_x', 'handleCustomX'],
@@ -1433,7 +1465,7 @@
 
   // The Worktop fields rebuild the worktops that are already there (nothing is
   // created until Apply Worktop is pressed).
-  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtMaterial']);
+  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial']);
 
   function scheduleWorktop(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.worktopTimer);
@@ -1546,7 +1578,7 @@
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
-    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, material: 'White' };
+    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, worktop_piece: 0, worktop_cuts: '', backsplash_height: 100, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
@@ -1558,7 +1590,7 @@
     $('units').value = state.unit;
     refreshUnitLabels();
     fillSelect($('topPanel'), [
-      { id: '', name: 'By unit type' },
+      { id: '', name: 'Two separate panels' },
       { id: 'full', name: 'One full panel' }
     ]);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
@@ -1570,6 +1602,7 @@
     fillThicknessPresets();
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
+    fillSelect($('handleHPlace'), m.handle_horizontal_places);
     fillSelect($('epSide'), m.end_panel_sides);
     loadMaterials(m.materials);
     applyDefaults(m.defaults);
@@ -1635,6 +1668,7 @@
     });
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);
+    $('handleOrientation').addEventListener('change', syncHandlePosition);
 
     document.querySelectorAll('input, select').forEach((el) => {
       const onEdit = () => {

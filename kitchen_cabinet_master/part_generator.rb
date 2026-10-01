@@ -59,7 +59,7 @@ module KitchenCabinetMaster
     private_class_method :place
 
     def self.place_board(model, entities, top, board, material)
-      definition = PanelGenerator.definition(model, board.extent)
+      definition = board.points ? PanelGenerator.polygon_definition(model, board.points, board.extent[2]) : PanelGenerator.definition(model, board.extent)
       transformation = Geom::Transformation.new(board.offset.map(&:mm))
       instance = place_instance(model, entities, top[board.role], board.role, definition, transformation)
       instance.name = board.name

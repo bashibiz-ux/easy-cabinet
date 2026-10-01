@@ -92,7 +92,7 @@ module KitchenCabinetMaster
     # A toe kick is a part too, but it stands under the cabinets' fronts rather
     # than in the row, so it never blocks a cabinet and is not an occupant.
     def self.occupant?(entity)
-      cabinet?(entity) || (part?(entity) && !%w[toe_kick worktop].include?(part_kind(entity)))
+      cabinet?(entity) || (part?(entity) && !%w[toe_kick worktop backsplash].include?(part_kind(entity)))
     end
 
     # Every child component of a cabinet (carcass, panels, later doors ...) is

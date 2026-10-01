@@ -57,13 +57,18 @@ module KitchenCabinetMaster
     # Top / Center / Bottom sit on the free-edge side of a hinged door; Left / Right
     # sit on that side edge, vertically centred; Custom uses exact coordinates.
     HANDLE_POSITIONS = [
-      { 'id' => 'auto',   'name' => 'By unit type' },
-      { 'id' => 'top',    'name' => 'Top' },
-      { 'id' => 'center', 'name' => 'Center' },
-      { 'id' => 'bottom', 'name' => 'Bottom' },
-      { 'id' => 'left',   'name' => 'Left' },
-      { 'id' => 'right',  'name' => 'Right' },
-      { 'id' => 'custom', 'name' => 'Custom' }
+      { 'id' => 'auto', 'name' => 'By unit type' }
+    ].freeze
+
+    # Positions older versions offered. They are no longer in the list, but a cabinet
+    # that still has one keeps working (it moves to By unit type when next updated).
+    LEGACY_HANDLE_POSITIONS = %w[top center bottom left right custom].freeze
+
+    # Where a HORIZONTAL handle sits: at the edge of the door (where By unit type puts
+    # it) or in the middle of the door.
+    HANDLE_HORIZONTAL_PLACES = [
+      { 'id' => 'edge',   'name' => 'At the edge of the door' },
+      { 'id' => 'middle', 'name' => 'In the middle of the door' }
     ].freeze
 
     # Used when a bundle does not say otherwise. Offsets are the clear distance (mm)
@@ -71,6 +76,7 @@ module KitchenCabinetMaster
     HANDLE_DEFAULTS = {
       'orientation'     => 'vertical',
       'position'        => 'auto', # base: top, wall: bottom, tall: at hand height
+      'horizontal_place' => 'edge',
       'side_offset'     => 25.0,
       'vertical_offset' => 25.0,
       'custom_x'        => 50.0, # from the door's left edge to the handle centre
@@ -131,8 +137,8 @@ module KitchenCabinetMaster
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
       'door_distance'          => DOOR_CLEARANCE, # how far the doors stand in front of the carcass
-      # The top of a cabinet: '' = by unit type (two rails on a base unit, one panel on
-      # a wall or tall unit), 'rails' = two 10 cm panels, 'full' = one full panel.
+      # The top of a cabinet: '' = two separate 10 cm panels (one full panel on an open
+      # unit), 'rails' = the same, spelled out, 'full' = one full panel.
       'top_panel_style'        => '',
 
       'placement_gap'          => 0.0,
@@ -216,7 +222,11 @@ module KitchenCabinetMaster
     end
 
     def self.handle_position_ids
-      HANDLE_POSITIONS.map { |o| o['id'] }
+      HANDLE_POSITIONS.map { |o| o['id'] } + LEGACY_HANDLE_POSITIONS
+    end
+
+    def self.handle_horizontal_place_ids
+      HANDLE_HORIZONTAL_PLACES.map { |o| o['id'] }
     end
   end
 end

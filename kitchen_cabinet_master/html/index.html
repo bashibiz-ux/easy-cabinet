@@ -105,6 +105,10 @@
               <div class="input"><select id="handlePosition"></select></div>
             </label>
           </div>
+          <label class="field" id="handleHPlaceField" hidden>
+            <span class="label">Horizontal Handle</span>
+            <div class="input"><select id="handleHPlace"></select></div>
+          </label>
           <div class="grid-2" id="handleOffsets">
             <label class="field">
               <span class="label">Side offset</span>
@@ -125,7 +129,7 @@
               <div class="input"><input id="handleCustomZ" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
-          <p class="hint" id="handleHint">Offsets are the clear distance from the door edge to the handle. Top, Center and Bottom sit on the free-edge side of the door.</p>
+          <p class="hint" id="handleHint">By unit type: a base unit's handle sits near the top of its door, a wall unit's near the bottom, a tall unit's at hand height. Offsets are the clear distance from the door edge to the handle.</p>
         </div>
       </div>
     </section>
@@ -291,6 +295,21 @@
           <span class="label">End Overhang</span>
           <div class="input"><input id="wtEnd" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <label class="field narrow">
+          <span class="label">Back Splash Height</span>
+          <div class="input"><input id="wtSplash" type="text" inputmode="decimal" autocomplete="off" aria-label="Back splash height, 0 for none"><em>mm</em></div>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Cut Into Pieces Of</span>
+            <div class="input"><input id="wtPiece" type="text" inputmode="decimal" autocomplete="off" aria-label="Longest piece, 0 for no cutting"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Or Cut At</span>
+            <div class="input"><input id="wtCuts" type="text" autocomplete="off" placeholder="1500, 3000" aria-label="Distances to cut at along each row"></div>
+          </label>
+        </div>
+        <p class="hint">Cutting: enter the longest piece (0 = no cutting) to cut every row into equal-length pieces, or list distances from the start of each row to cut exactly there. Back splash 0 = none.</p>
         <label class="field">
           <span class="label">Worktop Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="wtMaterial"></i><select id="wtMaterial" data-material></select></div>
@@ -298,17 +317,6 @@
         <div class="btn-row two">
           <button class="btn primary" type="button" data-action="apply_worktop">Apply Worktop</button>
           <button class="btn" type="button" data-action="remove_worktop">Remove</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3D scene -->
-    <section class="card" id="sec-scene" data-feature="scene">
-      <button class="card-head" type="button" aria-expanded="true">3D Scene</button>
-      <div class="card-body">
-        <p class="hint">Adds a scene called "Kitchen 3D" in SketchUp's Scenes tab: a perspective view of the whole kitchen from the front and above. Press again after changing the layout to update it.</p>
-        <div class="btn-row one">
-          <button class="btn" type="button" data-action="create_scene">Create 3D Scene</button>
         </div>
       </div>
     </section>

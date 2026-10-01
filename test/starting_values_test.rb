@@ -143,4 +143,45 @@ class StartingValuesTest < Minitest::Test
     assert(drawers.panels.any? { |p| p.role.include?('rail') }, 'a front means rails, like a door unit')
     assert_in_delta 560.0, drawers.panels.find { |p| p.role == 'left_side' }.then { |p| front(p) }, 1e-9, 'its sides stop at the drawer fronts'
   end
+
+  # ---- one position, and a horizontal handle in the middle of the door ------------------
+
+  def test_by_unit_type_is_the_only_position_offered
+    assert_equal ['auto'], Defaults::HANDLE_POSITIONS.map { |p| p['id'] }
+  end
+
+  def test_a_cabinet_that_still_has_an_old_position_keeps_working
+    %w[top center bottom left right custom].each { |old| assert_includes Defaults.handle_position_ids, old }
+  end
+
+  def test_a_horizontal_handle_can_sit_in_the_middle_of_the_door
+    params = Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0, 'height' => 780.0,
+                                   'door_count' => 1, 'toe_kick_height' => 100.0, 'handle_length' => 160.0,
+                                   'handle_orientation' => 'horizontal', 'handle_position' => 'auto',
+                                   'handle_side_offset' => 25.0, 'handle_vertical_offset' => 25.0)
+    door = CabinetLayout.compute(params).doors.first
+    edge = HandleManager.placement(door, HandleManager.settings(params.merge('handle_horizontal_place' => 'edge'), BAR), BAR)
+    middle = HandleManager.placement(door, HandleManager.settings(params.merge('handle_horizontal_place' => 'middle'), BAR), BAR)
+    assert_in_delta door.extent[2] - 25.0 - 5.0, edge['v'], 1e-9, 'at the edge: near the top, as before'
+    assert_in_delta door.extent[1] - 25.0 - 80.0, edge['u'], 1e-9
+    assert_in_delta door.extent[1] / 2.0, middle['u'], 1e-9, 'in the middle: centred across the door'
+    assert_in_delta door.extent[2] / 2.0, middle['v'], 1e-9, 'and halfway up'
+    assert middle['horizontal']
+  end
+
+  def test_the_middle_choice_does_nothing_to_a_vertical_handle
+    params = Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0, 'height' => 780.0,
+                                   'door_count' => 1, 'toe_kick_height' => 100.0, 'handle_length' => 160.0,
+                                   'handle_orientation' => 'vertical', 'handle_position' => 'auto',
+                                   'handle_side_offset' => 25.0, 'handle_vertical_offset' => 25.0)
+    door = CabinetLayout.compute(params).doors.first
+    plain = HandleManager.placement(door, HandleManager.settings(params, BAR), BAR)
+    asked = HandleManager.placement(door, HandleManager.settings(params.merge('handle_horizontal_place' => 'middle'), BAR), BAR)
+    assert_equal plain, asked
+  end
+
+  def test_the_horizontal_places_are_validated_and_listed
+    assert_equal %w[edge middle], Defaults::HANDLE_HORIZONTAL_PLACES.map { |p| p['id'] }
+    assert_equal 'edge', Defaults::HANDLE_DEFAULTS['horizontal_place']
+  end
 end

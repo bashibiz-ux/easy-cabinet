@@ -26,7 +26,7 @@ module KitchenCabinetMaster
     def self.for_stored(stored)
       return nil unless stored.is_a?(Hash)
       return TOE_KICK if stored['part_kind'] == 'toe_kick'
-      return WORKTOP if stored['part_kind'] == 'worktop'
+      return WORKTOP if %w[worktop backsplash].include?(stored['part_kind'])
       return nil if stored['part_kind']
 
       for_category(stored['cabinet_category']) if stored['cabinet_id']

@@ -108,7 +108,7 @@ module KitchenCabinetMaster
     GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness toe_kick_height
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
-                          handle_id handle_finish handle_material handle_orientation handle_position].freeze
+                          handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place].freeze
 
     # Door gap, door reveal, door distance, panel thickness, back panel thickness, the
     # Handle section and the materials of the Material section are settings for the whole job: changing one changes

@@ -550,26 +550,41 @@ module KitchenCabinetMaster
     end
     private_class_method :toe_kick_unchanged?
 
-    # The toe kick was raised from `from` to `to` mm: fillers and end panels beside
-    # the standing cabinets rise with them (a filler stands on the toe kick height, an
-    # end panel grows to the cabinets' new top). Wall units' are left. Inside an operation.
+    # The toe kick was raised from `from` to `to` mm. Everything that stands on it
+    # goes up with the cabinets: fillers rise to the new toe-kick height and end panels
+    # grow to the cabinets' new top. Everything on the WALL goes up by the same
+    # amount, so wall units, the fillers and end panels beside them keep their place
+    # above the base units. Inside an operation.
     def self.lift_attached(model, from, to)
       delta = to.to_f - from.to_f
       return if delta.abs < 1e-9
 
+      up = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, delta.mm))
       model.entities.grep(Sketchup::ComponentInstance).each do |item|
         stored = AttributeManager.read(item)
         next unless stored
 
         base = stored['target_base_z'].to_f
+        if AttributeManager.cabinet?(item)
+          item.transformation = up * item.transformation if stored['cabinet_category'] == 'wall'
+          next
+        end
+
         case AttributeManager.part_kind(item)
         when 'filler'
-          next if stored['target_category'] == 'wall' || (stored['target_category'].nil? && base.zero?)
+          if stored['target_category'] == 'wall'
+            item.transformation = up * item.transformation
+            next
+          end
+          next if stored['target_category'].nil? && base.zero?
 
           params = stored.merge('target_base_z' => to.to_f)
           PartGenerator.update(model, item, params, PartLayout.filler(params))
         when 'end_panel'
-          next if base.positive? # hangs beside a wall unit
+          if base.positive? # beside a wall unit: it hangs, so it moves
+            item.transformation = up * item.transformation
+            next
+          end
 
           params = stored.merge('height' => stored['height'].to_f + delta)
           PartGenerator.update(model, item, params, PartLayout.end_panel(params))
@@ -588,7 +603,7 @@ module KitchenCabinetMaster
       when 'filler' then update_filler(model, root, raw)
       when 'end_panel' then update_end_panel(model, root, raw)
       when 'toe_kick' then update_toe_kick(model, root, raw)
-      when 'worktop' then WorktopManager.apply(raw, only_if_exists: false)
+      when 'worktop', 'backsplash' then WorktopManager.apply(raw, only_if_exists: false)
       else Response.fail('That selection is not a filler, an end panel, a toe kick or a worktop.')
       end
     end
