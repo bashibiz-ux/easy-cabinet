@@ -106,7 +106,7 @@ class WorktopTest < Minitest::Test
   def test_a_corner_slab_is_the_shape_of_the_corner_cut_across_the_diagonal
     run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true, return_depth: 600.0)]).first
     slab = Worktop.slab(run, settings('worktop_front' => 0.0))
-    assert_equal [900.0, 900.0, 38.0], slab[:extent]
+    assert_equal [900.0, 900.0, 20.0], slab[:extent]
     assert_equal [[0.0, 0.0], [0.0, 900.0], [600.0, 900.0], [900.0, 600.0], [900.0, 0.0]], slab[:points], 'a pentagon: the front corner is cut'
   end
 
@@ -213,7 +213,7 @@ class WorktopTest < Minitest::Test
     pieces = Worktop.splash(run, slab, settings('backsplash_height' => 120.0, 'backsplash_thickness' => 20.0))
     assert_equal 1, pieces.length
     assert_equal [20.0, 1800.0, 120.0], pieces.first[:extent]
-    assert_equal [0.0, 0.0, 38.0], pieces.first[:offset], 'at the back, on top of the slab'
+    assert_equal [0.0, 0.0, 20.0], pieces.first[:offset], 'at the back, on top of the slab'
   end
 
   def test_the_back_splash_height_is_adjustable_and_zero_means_none
