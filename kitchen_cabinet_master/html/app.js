@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.5';
+  const APP_VERSION = '0.29.6';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -703,7 +703,7 @@
       const d = bundle.defaults || {};
       setSelect('handleLength', bundle.default_length);
       if (finishes[0]) $('handleFinish').value = finishes[0].id;
-      setSelect('handleOrientation', d.orientation);
+      setSelect('handleOrientation', d.orientation || 'horizontal');
       setSelect('handlePosition', d.position);
       setSelect('handleHPlace', d.horizontal_place || 'middle');
       setText('handleSide', d.side_offset);
@@ -1606,6 +1606,10 @@
     fillSelect($('handleOrientation'), m.handle_orientations);
     fillSelect($('handlePosition'), m.handle_positions);
     fillSelect($('handleHPlace'), m.handle_horizontal_places);
+    // A new cabinet starts with a horizontal handle in the middle of its doors.
+    setSelect('handleOrientation', 'horizontal');
+    setSelect('handleHPlace', 'middle');
+    syncHandlePosition();
     fillSelect($('epSide'), m.end_panel_sides);
     loadMaterials(m.materials);
     applyDefaults(m.defaults);
