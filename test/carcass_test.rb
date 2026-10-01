@@ -161,24 +161,35 @@ class CarcassTest < Minitest::Test
     assert_in_delta 562.0, CabinetLayout.compute(old).doors.first.offset[0], 1e-9
   end
 
-  def test_the_top_is_two_separate_panels_until_one_full_panel_is_chosen
+  def test_a_base_units_top_is_two_separate_panels_until_one_full_panel_is_chosen
     assert_includes panels_of({}), 'top_rear_rail'
     refute_includes panels_of({}), 'top'
-    assert_includes panels_of('cabinet_category' => 'wall', 'toe_kick_height' => 0.0), 'top_front_rail', 'wall units too'
-    assert_includes panels_of('cabinet_category' => 'tall'), 'top_rear_rail', 'and tall units'
+    assert_includes panels_of('top_panel_style' => 'rails'), 'top_front_rail'
     assert_includes panels_of('top_panel_style' => 'full'), 'top'
+    refute(panels_of('top_panel_style' => 'full').any? { |r| r.include?('rail') })
   end
 
-  def test_two_10_cm_panels_or_one_full_panel_on_any_unit
-    rails = CabinetLayout.compute(params('cabinet_category' => 'wall', 'toe_kick_height' => 0.0, 'top_panel_style' => 'rails')).panels
-    assert_equal %w[top_front_rail top_rear_rail], rails.map(&:role).grep(/rail/).sort
-    assert_equal [100.0, 100.0], rails.select { |p| p.role.include?('rail') }.map { |p| p.extent[0] }
-
-    full = CabinetLayout.compute(params('top_panel_style' => 'full')).panels
-    assert_includes full.map(&:role), 'top'
-    refute(full.any? { |p| p.role.include?('rail') })
+  def test_two_10_cm_panels_on_a_base_unit_are_each_100_deep
+    rails = CabinetLayout.compute(params('top_panel_style' => 'rails')).panels.select { |p| p.role.include?('rail') }
+    assert_equal [100.0, 100.0], rails.map { |p| p.extent[0] }
   end
 
+  def test_the_top_panel_setting_never_touches_wall_and_tall_units
+    [['wall', 0.0], ['tall', 100.0]].each do |category, toe|
+      ['', 'rails', 'full'].each do |style|
+        roles = panels_of('cabinet_category' => category, 'toe_kick_height' => toe, 'top_panel_style' => style)
+        assert_includes roles, 'top', "#{category} unit, style '#{style}': always one full top panel"
+        refute(roles.any? { |r| r.include?('rail') }, "#{category} unit, style '#{style}': never rails")
+      end
+    end
+  end
+
+  def test_an_open_base_unit_starts_with_a_full_top_and_a_chosen_style_still_wins
+    open = CabinetLayout.compute(params('door_count' => 0, 'drawer_count' => 0)).panels.map(&:role)
+    assert_includes open, 'top'
+    rails = CabinetLayout.compute(params('door_count' => 0, 'drawer_count' => 0, 'top_panel_style' => 'rails')).panels.map(&:role)
+    assert_includes rails, 'top_rear_rail'
+  end
   def test_the_new_settings_are_validated
     raw = { 'catalog_id' => 'x', 'cabinet_category' => 'base', 'cabinet_type' => 'y', 'width' => '600', 'depth' => '560',
             'height' => '780', 'door_opening_direction' => 'left', 'toe_kick_height' => '100' }

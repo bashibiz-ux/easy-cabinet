@@ -161,13 +161,13 @@ module KitchenCabinetMaster
       params['door_count'].to_i.zero? && params['drawer_count'].to_i.zero?
     end
 
-    # The top of the carcass: two separate 10 cm panels (a front and a rear rail), the
-    # default, or one full panel. An open unit (nothing in front to hide its top)
-    # always starts with one full panel.
+    # The top of the carcass. A BASE unit's is two separate 10 cm panels (a front and a
+    # rear rail), the default, or one full panel (the Top Panel setting); an open base
+    # unit, with nothing in front to hide its top, starts with one full panel. A wall or
+    # tall unit's is always one full panel, whatever the setting.
     def self.top_panels(category, dims, style = '', open: false)
       z = dims.height - dims.thick
-      # An open unit (no doors) shows its top, so by default it gets one full panel.
-      rails = style.to_s.empty? ? !open : style.to_s == 'rails'
+      rails = category == 'base' && (style.to_s.empty? ? !open : style.to_s == 'rails')
 
       if rails
         rail = [Defaults::RAIL_DEPTH, dims.interior_d / 2.0].min

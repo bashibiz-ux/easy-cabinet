@@ -137,8 +137,9 @@ module KitchenCabinetMaster
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
       'door_distance'          => DOOR_CLEARANCE, # how far the doors stand in front of the carcass
-      # The top of a cabinet: '' = two separate 10 cm panels (one full panel on an open
-      # unit), 'rails' = the same, spelled out, 'full' = one full panel.
+      # The top of a BASE unit: '' = two separate 10 cm panels (one full panel on an open
+      # unit), 'rails' = the same, spelled out, 'full' = one full panel. Wall and tall
+      # units always have one full panel.
       'top_panel_style'        => '',
 
       'placement_gap'          => 0.0,

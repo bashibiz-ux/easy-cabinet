@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.0';
+  const APP_VERSION = '0.29.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -725,6 +725,9 @@
     setSoft($('handleOffsets'), position === 'custom');
     // Only a horizontal bar can sit in the middle of the door instead of at its edge.
     setSoft($('handleHPlaceField'), $('handleOrientation').value !== 'horizontal');
+    // A horizontal handle centred across the door has no side to measure from.
+    const centred = $('handleOrientation').value === 'horizontal' && $('handleHPlace').value === 'middle';
+    setSoft($('handleSideField'), centred);
     setSoft($('handleVertField'), !['top', 'bottom', 'auto'].includes(position));
   }
 
@@ -1671,6 +1674,7 @@
     $('handle').addEventListener('change', () => onHandleChange(true));
     $('handlePosition').addEventListener('change', syncHandlePosition);
     $('handleOrientation').addEventListener('change', syncHandlePosition);
+    $('handleHPlace').addEventListener('change', syncHandlePosition);
 
     document.querySelectorAll('input, select').forEach((el) => {
       const onEdit = () => {
