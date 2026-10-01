@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.30.1';
+  const APP_VERSION = '0.30.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -205,7 +205,7 @@
   }
 
   function applyToeKickDefaults(d) {
-    setText('toeHeight', d.toe_kick_height);
+    setText('toeHeight', d.toe_kick_height ?? 100);
     setText('toeThickness', d.toe_kick_thickness);
     setText('pieceLength', d.toe_kick_piece_length);
     setText('pieceCount', d.toe_kick_pieces);
@@ -1080,7 +1080,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1110,7 +1110,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
@@ -1373,6 +1373,7 @@
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
+    carcassRaise: ['carcass_raise', 'carcassRaise'],
     handle: ['handle_id', 'handle'],
     handleLength: ['handle_length', 'handleLength'],
     handleFinish: ['handle_finish', 'handleFinish'],
@@ -1522,7 +1523,8 @@
         return;
       }
     }
-    if (GLOBAL_FIELDS[el.id]) {
+    // The carcass raise is for every wall unit, unless one wall unit is selected: then it is only that one's.
+    if (GLOBAL_FIELDS[el.id] && !(el.id === 'carcassRaise' && state.selectedKind === 'cabinet')) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
       // A different handle bundle brings its own lengths, finishes and positions

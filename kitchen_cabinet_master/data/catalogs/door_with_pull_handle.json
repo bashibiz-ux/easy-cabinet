@@ -62,7 +62,7 @@
         "id": "wall_1door",
         "name": "Wall - 1 door",
         "doors": 1,
-        "shelves": 1,
+        "shelves": 2,
         "defaults": {
           "width": 600,
           "depth": 320,
@@ -73,7 +73,7 @@
         "id": "wall_2door",
         "name": "Wall - 2 doors",
         "doors": 2,
-        "shelves": 1,
+        "shelves": 2,
         "defaults": {
           "width": 800,
           "depth": 320,

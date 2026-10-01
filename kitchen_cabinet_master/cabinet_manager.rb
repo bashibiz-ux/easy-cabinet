@@ -105,7 +105,7 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness toe_kick_height
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness toe_kick_height carcass_raise
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
                           handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place].freeze
@@ -189,6 +189,7 @@ module KitchenCabinetMaster
     def self.differs?(stored, overrides)
       overrides.any? do |key, value|
         next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
+        next false if key == 'carcass_raise' && stored['cabinet_category'] != 'wall' # only wall units lift their carcass
         if GLOBAL_NUMBERS.include?(key)
           ValidationManager.to_float(stored[key]) != ValidationManager.to_float(value)
         else
