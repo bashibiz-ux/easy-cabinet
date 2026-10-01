@@ -11,6 +11,7 @@ module KitchenCabinetMaster
       when 'insert_filler' then insert_filler(raw)
       when 'insert_end_panel' then insert_end_panel(raw)
       when 'insert_toe_kick' then insert_toe_kick(raw)
+      when 'apply_toe_kicks' then apply_toe_kicks(raw)
       when 'update_part' then update_part(raw)
       when 'delete_part' then delete_part
       else Response.fail("Unknown action \"#{action}\".")
@@ -432,6 +433,18 @@ module KitchenCabinetMaster
     private_class_method :stringify
 
     def self.update_toe_kick(model, root, raw)
+      params, layout, failure = build_toe_kick_update(model, root, raw)
+      return failure if failure
+
+      SelectionManager.suspend { with_operation(model, 'Update Toe Kick') { PartGenerator.update(model, root, params, layout) } }
+      SelectionManager.push_selection(model)
+      Response.ok("#{root.name} updated.")
+    end
+    private_class_method :update_toe_kick
+
+    # Checks `raw` for one existing toe kick and works out what it becomes. Returns
+    # [params, layout, nil], or [nil, nil, failure Response]. Changes nothing.
+    def self.build_toe_kick_update(model, root, raw, check_overlap: true)
       result = ValidationManager.validate_toe_kick(raw)
       params = result.params
       errors = result.errors.dup
@@ -439,22 +452,88 @@ module KitchenCabinetMaster
       stored = AttributeManager.read(root)
       %w[target_id target_depth target_door_material target_carcass_material toe_kick_from].each { |key| params[key] = stored[key] }
       errors.concat(toe_kick_fit_errors(model, params)) if errors.empty?
-      return Response.fail(summary(errors), errors) unless errors.empty?
+      return [nil, nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
       record_toe_kick_path(model, params, find_toe_kick_anchor(model, stored['toe_kick_from']))
-      if toe_kick_overlaps?(root.parent.entities, root.transformation, params, exclude: root)
-        return Response.fail('That would put this toe kick on top of another toe kick.')
+      if check_overlap && toe_kick_overlaps?(root.parent.entities, root.transformation, params, exclude: root)
+        return [nil, nil, Response.fail('That would put this toe kick on top of another toe kick.')]
       end
       params['width'] = ToeKick.total_length(params)
       params['part_id'] = AttributeManager.part_id(root)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.toe_kick_name(params))
-      layout = PartLayout.toe_kick(params)
-
-      SelectionManager.suspend { with_operation(model, 'Update Toe Kick') { PartGenerator.update(model, root, params, layout) } }
-      SelectionManager.push_selection(model)
-      Response.ok("#{root.name} updated.")
+      [params, PartLayout.toe_kick(params), nil]
     end
-    private_class_method :update_toe_kick
+    private_class_method :build_toe_kick_update
+
+    TOE_KICK_KEYS = %w[toe_kick_height toe_kick_thickness toe_kick_piece_length toe_kick_pieces toe_kick_recess toe_kick_material].freeze
+
+    # The Toe Kick fields act on EVERY toe kick in the model, live, as one Undo step,
+    # when none is selected (a selected toe kick is edited on its own, see
+    # update_part). Only the fields that were changed are sent; each toe kick keeps
+    # the rest of its own values. One that cannot take a change (it would run into
+    # the next toe kick, say) is left as it was, and the reply says so.
+    def self.apply_toe_kicks(raw)
+      raw = stringify(raw)
+      overrides = {}
+      TOE_KICK_KEYS.each do |key|
+        value = raw[key].to_s.strip
+        overrides[key] = value unless value.empty?
+      end
+
+      model = Sketchup.active_model
+      kicks = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'toe_kick' }
+      return Response.ok('No toe kicks in the model yet. A new toe kick will use these values.') if kicks.empty?
+
+      plans = []
+      problems = []
+      kicks.each do |kick|
+        stored = AttributeManager.read(kick)
+        merged = stored.slice(*TOE_KICK_KEYS).merge(overrides)
+        params, layout, failure = build_toe_kick_update(model, kick, merged, check_overlap: false)
+        failure ? problems << [kick, failure['message']] : plans << [kick, params, layout]
+      end
+
+      # The new runs must not stand on one another either (the old ones are being replaced).
+      accepted = []
+      plans.each do |kick, params, layout|
+        boxes = toe_kick_boxes(kick.transformation, params)
+        clash = accepted.find { |_k, other| boxes.any? { |a| other.any? { |c| boxes_overlap?(a, c) } } }
+        if clash
+          problems << [kick, "that would put it on top of #{clash[0].name}"]
+        else
+          accepted << [kick, boxes, params, layout]
+        end
+      end
+      accepted = accepted.map { |kick, _boxes, params, layout| [kick, params, layout] }
+      return Response.fail("#{problems.first[0].name}: #{problems.first[1]}") if accepted.empty? && problems.any?
+
+      changed = accepted.reject { |kick, params, _layout| toe_kick_unchanged?(kick, params) }
+      if changed.empty?
+        return Response.ok('Every toe kick already has these values.') if problems.empty?
+
+        return Response.fail("#{problems.first[0].name}: #{problems.first[1]}")
+      end
+
+      SelectionManager.suspend do
+        with_operation(model, 'Apply Toe Kick Settings') do
+          changed.each { |kick, params, layout| PartGenerator.update(model, kick, params, layout) }
+        end
+      end
+      SelectionManager.push_selection(model)
+
+      done = "#{changed.length} toe kick#{'s' unless changed.length == 1} updated."
+      return Response.ok(done) if problems.empty?
+
+      Response.ok("#{done} #{problems.length} left as #{problems.length == 1 ? 'it was' : 'they were'} (#{problems.first(2).map { |k, why| "#{k.name}: #{why}" }.join('; ')}).")
+    end
+    private_class_method :apply_toe_kicks
+
+    def self.toe_kick_unchanged?(kick, params)
+      stored = AttributeManager.read(kick)
+      TOE_KICK_KEYS.all? { |key| stored[key].to_s == params[key].to_s || (stored[key].to_f == params[key].to_f && !stored[key].is_a?(String)) } &&
+        stored['toe_kick_turns'].to_s == params['toe_kick_turns'].to_s
+    end
+    private_class_method :toe_kick_unchanged?
 
     # ---- update / delete (all kinds) -------------------------------------------
 

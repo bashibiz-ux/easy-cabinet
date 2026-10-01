@@ -41,6 +41,7 @@ module KitchenCabinetMaster
         'material' => params['handle_material'].to_s,
         'orientation' => params['handle_orientation'].to_s,
         'position' => params['handle_position'].to_s,
+        'category' => params['cabinet_category'].to_s,
         'side_offset' => params['handle_side_offset'].to_f,
         'vertical_offset' => params['handle_vertical_offset'].to_f,
         'custom_x' => params['handle_custom_x'].to_f,
@@ -86,7 +87,7 @@ module KitchenCabinetMaster
 
       side = settings['side_offset']
       vertical = settings['vertical_offset']
-      position = settings['position']
+      position = resolved_position(settings['position'], settings['category'])
       free_edge_is_high = door.hinge == 'left' # the hinge is on the other side
 
       # A drawer's handle always centres horizontally (there is no hinge side to
@@ -107,10 +108,24 @@ module KitchenCabinetMaster
           when 'custom' then settings['custom_z']
           when 'top' then door_h - vertical - half_v
           when 'bottom' then vertical + half_v
+          when 'hand' then (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(half_v, [door_h - half_v, half_v].max)
           else door_h / 2.0
           end
 
       { 'u' => u, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
+    end
+
+    # By unit type (and a blank, from older cabinets): a base or corner unit's handle
+    # sits near the top of its door, a wall unit's near the bottom, and a tall unit's
+    # at hand height ('hand', about 1050 mm above the floor). Anything else is as chosen.
+    def self.resolved_position(position, category)
+      return position unless position.to_s.empty? || position == 'auto'
+
+      case category.to_s
+      when 'wall' then 'bottom'
+      when 'tall' then 'hand'
+      else 'top'
+      end
     end
 
     # nil if the handle sits fully inside the door, otherwise an error Hash.

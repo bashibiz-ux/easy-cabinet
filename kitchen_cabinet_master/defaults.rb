@@ -52,9 +52,12 @@ module KitchenCabinetMaster
       { 'id' => 'horizontal', 'name' => 'Horizontal' }
     ].freeze
 
+    # By unit type puts the handle where it is reached: near the top of a base unit's
+    # door, near the bottom of a wall unit's, and at hand height on a tall unit's.
     # Top / Center / Bottom sit on the free-edge side of a hinged door; Left / Right
     # sit on that side edge, vertically centred; Custom uses exact coordinates.
     HANDLE_POSITIONS = [
+      { 'id' => 'auto',   'name' => 'By unit type' },
       { 'id' => 'top',    'name' => 'Top' },
       { 'id' => 'center', 'name' => 'Center' },
       { 'id' => 'bottom', 'name' => 'Bottom' },
@@ -67,12 +70,13 @@ module KitchenCabinetMaster
     # from the door edge to the nearest edge of the handle.
     HANDLE_DEFAULTS = {
       'orientation'     => 'vertical',
-      'position'        => 'top',
+      'position'        => 'auto', # base: top, wall: bottom, tall: at hand height
       'side_offset'     => 35.0,
       'vertical_offset' => 80.0,
       'custom_x'        => 50.0, # from the door's left edge to the handle centre
       'custom_z'        => 100.0 # from the door's bottom edge to the handle centre
     }.freeze
+    TALL_HANDLE_HEIGHT = 1050.0 # a tall unit's handle is centred this high above the floor (mm)
     HANDLE_SECTION = 10.0    # bar cross-section
     HANDLE_PROJECTION = 30.0 # distance from the door face to the outer face of the grip
 

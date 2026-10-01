@@ -63,7 +63,7 @@ module KitchenCabinetMaster
                   [dims.interior_start, dims.thick, 0])
           ]
         end
-      panels.concat(category == 'corner' ? corner_top_panels(dims) : top_panels(category, dims, params['top_panel_style']))
+      panels.concat(category == 'corner' ? corner_top_panels(dims) : top_panels(category, dims, params['top_panel_style'], open: open_unit?(params)))
       panels.concat(
         if category == 'corner'
           corner_shelf_panels(params['shelf_count'].to_i, dims)
@@ -146,7 +146,7 @@ module KitchenCabinetMaster
       # reach -- see corner panel/door geometry below.
       depth = width if corner
 
-      open_unit = params['door_count'].to_i.zero?
+      open_unit = open_unit?(params) # a unit with drawers has a front too, so it is not open
       depth += door_distance(params) + thick if open_unit && !corner
 
       Dims.new(width: width, depth: depth, height: params['height'].to_f, thick: thick, back: back,
@@ -156,12 +156,18 @@ module KitchenCabinetMaster
     end
     private_class_method :dimensions
 
+    # A unit with neither doors nor drawers.
+    def self.open_unit?(params)
+      params['door_count'].to_i.zero? && params['drawer_count'].to_i.zero?
+    end
+
     # The top of the carcass: two 10 cm panels (a front and a rear rail) or one full
-    # panel. Left unset it follows the unit type: rails on a base unit, one panel on
-    # a wall or tall unit.
-    def self.top_panels(category, dims, style = '')
+    # panel. Left unset it follows the unit type: rails on a closed base unit, one
+    # panel on a wall, tall or open unit.
+    def self.top_panels(category, dims, style = '', open: false)
       z = dims.height - dims.thick
-      rails = style.to_s.empty? ? category == 'base' : style.to_s == 'rails'
+      # An open unit (no doors) shows its top, so by default it gets one full panel.
+      rails = style.to_s.empty? ? (category == 'base' && !open) : style.to_s == 'rails'
 
       if rails
         rail = [Defaults::RAIL_DEPTH, dims.interior_d / 2.0].min

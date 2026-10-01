@@ -11,7 +11,7 @@ module KitchenCabinetMaster
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all].freeze
-    PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick update_part delete_part].freeze
+    PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick apply_toe_kicks update_part delete_part].freeze
 
     class << self
       def show

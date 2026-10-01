@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults cabinet_layout catalog_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout catalog_manager handle_manager].each { |f| require File.join(plugin, f) }
 
 class StartingValuesTest < Minitest::Test
   include KitchenCabinetMaster
@@ -73,5 +73,69 @@ class StartingValuesTest < Minitest::Test
     _l, closed = layout_for(1)
     _l, open = layout_for(0)
     assert_equal CabinetLayout.envelope(closed), CabinetLayout.envelope(open)
+  end
+
+  # ---- where the handle goes ------------------------------------------------------
+
+  BAR = { 'profile' => 'bar', 'lengths' => [160], 'section' => 10, 'projection' => 30 }.freeze
+
+  def handle_spot(category, height, position: 'auto')
+    params = Defaults.params.merge('cabinet_category' => category, 'width' => 600.0, 'depth' => 560.0, 'height' => height,
+                                   'door_count' => 1, 'toe_kick_height' => category == 'wall' ? 0.0 : 100.0,
+                                   'handle_length' => 160.0, 'handle_orientation' => 'vertical', 'handle_position' => position,
+                                   'handle_side_offset' => 35.0, 'handle_vertical_offset' => 80.0)
+    door = CabinetLayout.compute(params).doors.first
+    spot = HandleManager.placement(door, HandleManager.settings(params, BAR), BAR)
+    [spot, door]
+  end
+
+  def test_a_base_unit_handle_is_near_the_top_of_its_door
+    spot, door = handle_spot('base', 780.0)
+    assert_in_delta door.extent[2] - 80.0 - 80.0, spot['v'], 1e-9, '80 mm below the top edge to the top of the handle'
+  end
+
+  def test_a_wall_unit_handle_is_near_the_bottom_of_its_door
+    spot, = handle_spot('wall', 720.0)
+    assert_in_delta 80.0 + 80.0, spot['v'], 1e-9
+  end
+
+  def test_a_tall_unit_handle_is_at_hand_height
+    spot, door = handle_spot('tall', 2100.0)
+    height_from_floor = door.offset[2] + spot['v']
+    assert_in_delta 1050.0, height_from_floor, 1e-9, 'about a metre up, not at the top of the door'
+  end
+
+  def test_a_handle_position_chosen_by_hand_is_kept
+    spot, door = handle_spot('wall', 720.0, position: 'top')
+    assert_in_delta door.extent[2] - 80.0 - 80.0, spot['v'], 1e-9
+    centred, door2 = handle_spot('tall', 2100.0, position: 'center')
+    assert_in_delta door2.extent[2] / 2.0, centred['v'], 1e-9
+  end
+
+  def test_a_cabinet_stored_without_a_position_gets_the_unit_type_placement
+    spot, door = handle_spot('base', 780.0, position: '')
+    assert_in_delta door.extent[2] - 160.0, spot['v'], 1e-9
+  end
+
+  def test_the_panel_offers_by_unit_type_first
+    assert_equal 'auto', Defaults::HANDLE_POSITIONS.first['id']
+    assert_equal 'auto', Defaults::HANDLE_DEFAULTS['position']
+  end
+
+  # ---- the top of an open unit ------------------------------------------------------
+
+  def test_an_open_unit_has_one_full_top_panel_and_a_closed_base_unit_two_rails
+    open, = layout_for(0)
+    assert_includes open.panels.map(&:role), 'top'
+    refute(open.panels.any? { |p| p.role.include?('rail') })
+    closed, = layout_for(1)
+    assert(closed.panels.any? { |p| p.role.include?('rail') })
+    refute_includes closed.panels.map(&:role), 'top'
+  end
+
+  def test_a_unit_with_drawers_is_not_treated_as_open
+    drawers, = layout_for(0, 'drawer_count' => 3)
+    assert(drawers.panels.any? { |p| p.role.include?('rail') }, 'a front means rails, like a door unit')
+    assert_in_delta 560.0, drawers.panels.find { |p| p.role == 'left_side' }.then { |p| front(p) }, 1e-9, 'its sides stop at the drawer fronts'
   end
 end

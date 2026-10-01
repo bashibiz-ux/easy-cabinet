@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.25.0';
+  const APP_VERSION = '0.26.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -667,7 +667,7 @@
     const position = $('handlePosition').value;
     setSoft($('handleCustom'), position !== 'custom');
     setSoft($('handleOffsets'), position === 'custom');
-    setSoft($('handleVertField'), !['top', 'bottom'].includes(position));
+    setSoft($('handleVertField'), !['top', 'bottom', 'auto'].includes(position));
   }
 
   /* ---------------------------------------------------------------------- *
@@ -1361,8 +1361,63 @@
     }
   }
 
+  // The Toe Kick fields act on EVERY toe kick in the model, unless one is selected:
+  // then they edit that one on its own (see liveEdit). Only changed fields are sent.
+  const TOE_FIELDS = {
+    toeHeight: ['toe_kick_height', 'toeHeight'],
+    toeThickness: ['toe_kick_thickness', 'toeThickness'],
+    toeRecess: ['toe_kick_recess', 'toeRecess'],
+    pieceLength: ['toe_kick_piece_length', 'pieceLength'],
+    pieceCount: ['toe_kick_pieces', 'pieceCount'],
+    toeMaterial: ['toe_kick_material', 'toeMaterial']
+  };
+  const toeDirty = new Map();
+
+  function scheduleToe(delay = LIVE_TYPING_DELAY_MS) {
+    clearTimeout(state.toeTimer);
+    state.toeTimer = setTimeout(runToe, delay);
+  }
+
+  async function runToe() {
+    if (state.busy) {
+      scheduleToe();
+      return;
+    }
+    state.busy = true;
+    state.liveBusy = true;
+    clearInvalid();
+    try {
+      const payload = {};
+      toeDirty.forEach((elementId, key) => { payload[key] = LENGTH_IDS.includes(elementId) ? mmv(elementId) : $(elementId).value; });
+      toeDirty.clear();
+      const res = await call('apply_toe_kicks', payload);
+      if (res.ok) {
+        setStatus('ok', res.message);
+      } else {
+        markInvalid(res.errors, 'toe_kick', { focus: false });
+        setStatus('error', res.message, (res.errors || []).length > 1 ? res.errors.map((e) => e.message) : []);
+      }
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
   function liveEdit(el) {
+    const toe = TOE_FIELDS[el.id];
+    if (toe) {
+      const kind = state.selectedKind;
+      // Selected: edit that toe kick (or, for the shared height, that cabinet) on its own.
+      const alone = kind === 'toe_kick' || (el.id === 'toeHeight' && kind === 'cabinet');
+      if (!alone) {
+        toeDirty.set(toe[0], toe[1]);
+        scheduleToe(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+        return;
+      }
+    }
     if (GLOBAL_FIELDS[el.id]) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
