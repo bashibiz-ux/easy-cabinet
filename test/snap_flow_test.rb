@@ -64,6 +64,34 @@ module KitchenCabinetMaster
 
   module SelectionManager
     def self.suspended? = false
+    def self.push_selection(_model = nil) = nil
+  end
+
+  # What rescale hands the rebuild to: the real rules are tested elsewhere.
+  module CabinetManager
+    @rejects = false
+    class << self
+      attr_accessor :rejects
+
+      def restyle_params(_model, stored, overrides)
+        return [nil, [{ 'field' => 'width', 'message' => 'Width is too small.' }]] if rejects
+
+        [stored.merge(overrides), []]
+      end
+    end
+  end
+
+  module CabinetGenerator
+    @rebuilt = []
+    class << self
+      attr_reader :rebuilt
+
+      def update(_model, root, params) = @rebuilt << [root, params]
+    end
+  end
+
+  module NamingManager
+    def self.for_update(_root, params) = "BU#{params['width'].to_i}"
   end
 end
 
@@ -109,7 +137,7 @@ class FakeCabinet < Sketchup::ComponentInstance
       KitchenCabinetMaster::Defaults.params.merge('cabinet_category' => 'base', 'width' => width, 'depth' => 560.0,
                                                   'height' => 780.0, 'toe_kick_height' => 100.0)
     )
-    @attrs = { 'cabinet_id' => "CABINET_#{@persistent_id}", 'cabinet_category' => category, 'width' => width, 'envelope_depth' => env[0],
+    @attrs = { 'cabinet_id' => "CABINET_#{@persistent_id}", 'cabinet_category' => category, 'width' => width, 'depth' => 560.0, 'height' => 780.0, 'envelope_depth' => env[0],
                'envelope_width' => env[1], 'envelope_top' => env[2] }
   end
 
@@ -293,5 +321,62 @@ class SnapFlowTest < Minitest::Test
     high = cabinet(y: 3000.0)
     settle(high) { high.transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 3000, 500)) }
     assert_in_delta 500.0, z_of(high), 1e-6, 'more than 300 mm off the floor'
+  end
+
+  # ---- scaling by hand ---------------------------------------------------------
+
+  def scale(cabinet, x: 1.0, y: 1.0)
+    old = cabinet.transformation
+    cabinet.transformation = Geom::Transformation.new(nil, a: x, b: 0.0, c: 0.0, d: y, tx: old.tx, ty: old.ty, tz: old.tz)
+  end
+
+  def rescale_flow(cabinet)
+    Snap.remember(cabinet)
+    yield
+    Snap.modified(cabinet)
+    UI.fire_all
+  end
+
+  def test_a_hand_scaled_cabinet_is_rebuilt_at_the_new_size_with_the_scale_taken_off
+    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    KitchenCabinetMaster::CabinetManager.rejects = false
+    a = cabinet(y: 0.0, width: 600.0)
+    rescale_flow(a) { scale(a, x: 1.25, y: 1.5) } # 25 % deeper, 50 % wider
+    root, params = KitchenCabinetMaster::CabinetGenerator.rebuilt.last
+    assert_same a, root
+    assert_equal 700.0, params['depth']
+    assert_equal 900.0, params['width']
+    assert_equal 780.0, params['height'], 'unscaled sizes stay'
+    assert_equal 'BU900', params['cabinet_name'], 'the name follows the new size'
+    assert_in_delta 1.0, a.transformation.xscale, 1e-9, 'the scale is taken off again, so panels keep their thickness'
+    assert_in_delta 1.0, a.transformation.yscale, 1e-9
+    assert(KitchenCabinetMaster::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('900') })
+  end
+
+  def test_a_rejected_size_puts_the_cabinet_back
+    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    KitchenCabinetMaster::CabinetManager.rejects = true
+    a = cabinet(y: 0.0, width: 600.0)
+    rescale_flow(a) { scale(a, y: 0.1) }
+    assert_empty KitchenCabinetMaster::CabinetGenerator.rebuilt
+    assert_in_delta 1.0, a.transformation.yscale, 1e-9
+    assert(KitchenCabinetMaster::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('put back') })
+  ensure
+    KitchenCabinetMaster::CabinetManager.rejects = false
+  end
+
+  def test_scaling_is_handled_even_when_snapping_is_switched_off
+    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    Sketchup.snap_default = false
+    a = cabinet(y: 0.0, width: 600.0)
+    rescale_flow(a) { scale(a, y: 2.0) }
+    assert_equal 1200.0, KitchenCabinetMaster::CabinetGenerator.rebuilt.last[1]['width']
+  end
+
+  def test_an_unscaled_cabinet_is_never_rebuilt
+    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    a = cabinet(y: 0.0, width: 600.0)
+    rescale_flow(a) { a.transformation = Geom::Transformation.translation(V.new(0, 40, 0)) }
+    assert_empty KitchenCabinetMaster::CabinetGenerator.rebuilt
   end
 end

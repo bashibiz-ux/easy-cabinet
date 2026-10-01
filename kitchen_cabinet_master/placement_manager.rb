@@ -29,9 +29,12 @@ module KitchenCabinetMaster
       corner = params['cabinet_category'].to_s == 'corner'
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
-                 z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : nil)
+                 z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0)
     end
 
+    # Only a wall unit hangs in the air: base, tall and corner units always start on
+    # the floor, even when the item they follow is a wall unit up on the wall.
+    #
     # A wall unit hangs in the air, and its TOP is what stays put when its height
     # changes (a taller one grows downwards, see CabinetManager.update). Where a new
     # one starts:
@@ -105,7 +108,8 @@ module KitchenCabinetMaster
           Geom::Transformation.new
         end
 
-      # A wall unit goes at its own height, not the row's.
+      # Every unit goes at its own height, not the row's: a wall unit up on the wall,
+      # everything else on the floor.
       if z_mm
         lift = z_mm.mm - transformation.origin.z
         transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * transformation

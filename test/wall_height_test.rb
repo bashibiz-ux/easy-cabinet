@@ -169,4 +169,34 @@ class WallHeightTest < Minitest::Test
     assert_equal 100.0, layout.base_z
     assert_equal 2200.0, layout.top_z
   end
+
+  # ---- tall, base and corner units always start on the floor ----------------------
+
+  def new_unit_z(category, follows)
+    params = Defaults.params.merge('cabinet_category' => category, 'width' => 600.0, 'depth' => 560.0, 'height' => 2100.0,
+                                   'toe_kick_height' => 100.0, 'material_thickness' => 18.0)
+    _entities, transformation = PlacementManager.target_for_new(@model, params)
+    assert follows
+    transformation.origin.z
+  end
+
+  def test_a_tall_unit_after_a_wall_unit_still_starts_on_the_floor
+    wall = place('wall', z: 1480.0, top_z: 720.0)
+    assert_equal 0.0, new_unit_z('tall', wall)
+  end
+
+  def test_a_base_unit_after_a_wall_unit_starts_on_the_floor_too
+    wall = place('wall', z: 1480.0, top_z: 720.0)
+    assert_equal 0.0, new_unit_z('base', wall)
+  end
+
+  def test_the_new_unit_goes_beside_the_wall_unit_but_at_floor_level
+    place('wall', z: 1480.0, top_z: 720.0, y: 0.0)
+    _entities, transformation = PlacementManager.target_for_new(
+      @model, Defaults.params.merge('cabinet_category' => 'tall', 'width' => 600.0, 'depth' => 560.0, 'height' => 2100.0,
+                                    'toe_kick_height' => 100.0, 'material_thickness' => 18.0)
+    )
+    assert_equal 0.0, transformation.origin.z
+    assert_in_delta 600.0, transformation.origin.y, 1e-9, 'still next to it along the row'
+  end
 end

@@ -15,6 +15,11 @@ module Geom
     def initialize(x = 0, y = 0, z = 0) = super
   end
   Vector3d = Struct.new(:x, :y, :z) do
+    def normalize
+      length = Math.sqrt((x * x) + (y * y) + (z * z))
+      length.zero? ? self : Vector3d.new(x / length, y / length, z / length)
+    end
+
     # Rotated by the transformation (a direction, so no translation), like the real Vector3d#transform.
     def transform(transformation)
       Vector3d.new((transformation.a * x) + (transformation.b * y), (transformation.c * x) + (transformation.d * y), z)
@@ -37,6 +42,9 @@ module Geom
     end
 
     def self.translation(vector) = new(nil, tx: vector.x, ty: vector.y, tz: vector.z)
+
+    # The transformation with these axes (as given: unit length means no scaling).
+    def self.axes(origin, x, y, _z) = new(nil, a: x.x, b: y.x, c: x.y, d: y.y, tx: origin.x, ty: origin.y, tz: origin.z)
 
     def self.rotation(point, _axis, angle)
       cos = Math.cos(angle)
@@ -70,7 +78,12 @@ module Geom
     # Like the real Transformation#to_a: 16 numbers, column by column.
     def to_a = [a, c, 0.0, 0.0, b, d, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, tx, ty, tz, 1.0]
     def origin = Point3d.new(tx, ty, tz)
-    def xaxis = Vector3d.new(a, c, 0.0)
-    def yaxis = Vector3d.new(b, d, 0.0)
+    def xscale = Math.hypot(a, c)
+    def yscale = Math.hypot(b, d)
+    def zscale = 1.0
+    # Like SketchUp's, the axes are unit vectors; the scale is reported separately.
+    def xaxis = Vector3d.new(a, c, 0.0).normalize
+    def yaxis = Vector3d.new(b, d, 0.0).normalize
+    def zaxis = Vector3d.new(0.0, 0.0, 1.0)
   end
 end

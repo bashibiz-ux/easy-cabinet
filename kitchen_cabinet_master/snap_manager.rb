@@ -236,9 +236,18 @@ module KitchenCabinetMaster
 
     def self.modified(entity)
       return unless snappable?(entity)
-      return remember(entity) if @busy || SelectionManager.suspended? || !enabled?
+      return remember(entity) if @busy || SelectionManager.suspended?
 
       id = entity.persistent_id
+      # A cabinet stretched with the Scale tool is rebuilt at its new size (see rescale),
+      # whether or not snapping is switched on.
+      if scaled?(entity)
+        @dirty[id] = entity
+        request(QUIET_DELAY_S)
+        return
+      end
+      return remember(entity) unless enabled?
+
       return remember(entity) if @known[id].nil? || same?(@known[id], entity.transformation.to_a)
 
       @dirty[id] = entity
@@ -268,12 +277,68 @@ module KitchenCabinetMaster
         next unless entity.valid?
 
         begin
-          snap(entity)
+          next if rescale(entity)
+
+          snap(entity) if enabled?
         rescue StandardError => e
           warn "[Kitchen Cabinet Master] Could not snap #{entity.name}: #{e.class}: #{e.message}"
           notify("Could not snap #{entity.name}: #{e.message}")
         end
       end
+    end
+
+    # ---- scaling by hand -------------------------------------------------------------
+
+    # The cabinet has been stretched (SketchUp's Scale tool changes the instance's
+    # scale, which would stretch every panel, its thickness included).
+    def self.scaled?(entity)
+      return false unless AttributeManager.cabinet?(entity)
+
+      t = entity.transformation
+      [t.xscale, t.yscale, t.zscale].any? { |scale| (scale - 1.0).abs > 1e-4 }
+    end
+
+    # Turns a hand-scaled cabinet into a properly built one: the scale is taken off
+    # again and the cabinet is rebuilt at the stretched size (depth along X, width
+    # along Y, height along Z), so the panels keep their thickness and nothing else
+    # changes. Its name follows its new size. One transparent step, so Undo takes
+    # back the scale and the rebuild together. A size the rules do not allow leaves
+    # the cabinet as it was. Returns true when it handled the entity.
+    def self.rescale(entity)
+      return false unless scaled?(entity)
+
+      t = entity.transformation
+      stored = AttributeManager.read(entity)
+      sizes = { 'depth' => t.xscale, 'width' => t.yscale, 'height' => t.zscale }
+      overrides = sizes.to_h { |key, scale| [key, (stored[key].to_f * scale).round.to_f] }
+      model = entity.model
+      params, errors = CabinetManager.send(:restyle_params, model, stored, overrides)
+
+      upright = Geom::Transformation.axes(t.origin, t.xaxis.normalize, t.yaxis.normalize, t.zaxis.normalize)
+      @busy = true
+      model.start_operation('Resize Cabinet', true, false, true)
+      begin
+        entity.transformation = upright
+        if errors.empty?
+          params['cabinet_name'] = NamingManager.for_update(entity, params)
+          CabinetGenerator.update(model, entity, params)
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @busy = false
+      end
+      remember(entity)
+      SelectionManager.push_selection(model)
+
+      if errors.empty?
+        notify("#{entity.name} resized to #{overrides.values_at('width', 'depth', 'height').map { |v| format('%g', v) }.join(' x ')} mm (width x depth x height); the panels keep their thickness.")
+      else
+        notify("#{entity.name} could not be scaled to that size (#{errors.first['message']}), so it was put back.")
+      end
+      true
     end
 
     def self.snappable?(entity)
