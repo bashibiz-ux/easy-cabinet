@@ -225,12 +225,12 @@ class PlacementTest < Minitest::Test
     assert_equal 'BU600', NamingManager.for_update_base(nil, 'BU600')
   end
 
-  def test_ordinary_cabinets_still_run_straight_along_y
+  def test_ordinary_cabinets_run_straight_along_y_and_a_wall_unit_goes_above_the_selected_one
     insert('base', 600.0)
     second = insert('base', 800.0)
     third = insert('wall', 500.0)
     assert_point [0, 600], second.transformation.origin, 'second'
-    assert_point [0, 1400], third.transformation.origin, 'third'
+    assert_point [0, 600], third.transformation.origin, 'a wall unit goes above the selected base unit'
   end
 
   def test_corner_footprint_is_the_square_with_no_door_overhang
@@ -290,5 +290,15 @@ class PlacementTest < Minitest::Test
     deselect
     second = insert('wall', 600.0)
     assert_point [0, 600], second.transformation.origin, 'after the first wall unit'
+  end
+
+  def test_a_wall_unit_inserted_with_a_base_unit_selected_goes_directly_above_it
+    insert('base', 600.0)
+    middle = insert('base', 900.0)
+    insert('base', 600.0)
+    SelectionManager.selected = middle
+    wall = insert('wall', 600.0)
+    assert_point [0, 600], wall.transformation.origin, 'above the middle base unit'
+    assert_in_delta 820.0 + 600.0, wall.transformation.origin.z.to_mm, 0.01
   end
 end

@@ -101,7 +101,10 @@ module KitchenCabinetMaster
       # The first wall unit goes above the START of the row, not after its last unit; the
       # next ones then follow it.
       row_start = nil
-      if wall && !chosen
+      # A base unit (or filler, or corner) selected: the wall unit goes directly above it.
+      if wall && chosen && !%w[wall tall].include?(category_of(chosen).to_s)
+        row_start = chosen
+      elsif wall && !chosen
         last_wall = last_occupant(model) { |item| category_of(item) == 'wall' }
         if last_wall
           selected = last_wall
