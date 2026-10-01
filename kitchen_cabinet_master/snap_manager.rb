@@ -319,6 +319,11 @@ module KitchenCabinetMaster
       model.start_operation('Resize Cabinet', true, false, true)
       begin
         entity.transformation = upright
+        # A wall unit hangs by its top: a taller one grows downwards, a shorter one rises.
+        if errors.empty? && stored['cabinet_category'] == 'wall'
+          taller = params['height'].to_f - stored['height'].to_f
+          entity.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -taller.mm))) if taller.abs > 0.01
+        end
         if errors.empty?
           params['cabinet_name'] = NamingManager.for_update(entity, params)
           CabinetGenerator.update(model, entity, params)
