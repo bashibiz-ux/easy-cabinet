@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.6';
+  const APP_VERSION = '0.29.7';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -536,6 +536,8 @@
     const allowed = catalog && Array.isArray(catalog.handle_bundles) ? catalog.handle_bundles : null;
     const before = $('handle').value;
     fillSelect($('handle'), list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id)), { placeholder: 'None' });
+    // A cabinet comes with a handle: the first one the model offers, unless one is already chosen.
+    if (catalog && !$('handle').value && $('handle').options.length > 1) $('handle').selectedIndex = 1;
     if ($('handle').value !== before) onHandleChange(true);
     lockActions();
   }
