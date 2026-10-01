@@ -11,6 +11,8 @@ module KitchenCabinetMaster
     DEFAULT_THICKNESS = 18.0
     MIN_THICKNESS = 6.0
     MAX_THICKNESS = 50.0
+    DEFAULT_LENGTH = 2000.0 # each piece, laid end to end along the run (0 = one piece for the whole run)
+    # 0 = as deep as the carcass
 
     def self.perform(action, raw)
       case action
@@ -23,11 +25,9 @@ module KitchenCabinetMaster
     # Puts a panel under every run of lifted wall units, replacing the ones already there.
     def self.apply(raw)
       raw = raw.is_a?(Hash) ? raw.transform_keys(&:to_s) : {}
-      thickness = ValidationManager.to_float(raw['wall_bottom_thickness'].to_s.strip.empty? ? DEFAULT_THICKNESS : raw['wall_bottom_thickness'])
-      if thickness.nil? || thickness < MIN_THICKNESS || thickness > MAX_THICKNESS
-        message = "Bottom panel thickness must be between #{MIN_THICKNESS.to_i} and #{MAX_THICKNESS.to_i} mm."
-        return Response.fail(message, [{ 'field' => 'wall_bottom_thickness', 'message' => message }])
-      end
+      params, problem = read_params(raw)
+      return Response.fail(problem['message'], [problem]) if problem
+      thickness = params['thickness']
 
       model = Sketchup.active_model
       items = items_of(model)
@@ -38,13 +38,14 @@ module KitchenCabinetMaster
       SelectionManager.suspend do
         with_operation(model, 'Apply Wall Bottom Panel') do
           existing.each { |item| PartGenerator.remove(model, item) }
-          runs.each { |run| build(model, run, thickness) }
+          runs.each { |run| build(model, run, params) }
         end
       end
       SelectionManager.push_selection(model)
 
       note = items.any? { |item| item[:raise] < thickness } ? ' Where the raise is less than the panel thickness, the panel hangs below the doors.' : ''
-      Response.ok("#{runs.length} bottom panel#{'s' unless runs.length == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', thickness)} mm thick.#{note}")
+      count = runs.sum { |run| spans_of(run, params).length }
+      Response.ok("#{count} bottom panel#{'s' unless count == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', thickness)} mm thick.#{note}")
     end
 
     def self.remove
@@ -66,11 +67,13 @@ module KitchenCabinetMaster
       existing = pieces_in(model)
       return if existing.empty?
 
-      thickness = AttributeManager.read(existing.first)['wall_bottom_thickness'].to_f
-      thickness = DEFAULT_THICKNESS unless thickness.positive?
+      stored = AttributeManager.read(existing.first)
+      thickness = stored['wall_bottom_thickness'].to_f
+      params = { 'thickness' => thickness.positive? ? thickness : DEFAULT_THICKNESS,
+                 'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f }
       runs = Worktop.runs(items_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
-      runs.each { |run| build(model, run, thickness) }
+      runs.each { |run| build(model, run, params) }
     end
 
     def self.pieces_in(model)
@@ -97,24 +100,55 @@ module KitchenCabinetMaster
       end
     end
 
-    def self.build(model, run, thickness)
-      first = run[:items].first
-      placed = first[:ref].transformation
-      lift = (run[:top] - thickness).mm - placed.origin.z
-      placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
+    # Thickness, piece length and depth from the panel: [params, nil] or [nil, error].
+    def self.read_params(raw)
+      number = lambda do |key, default|
+        text = raw[key].to_s.strip
+        text.empty? ? default : ValidationManager.to_float(text)
+      end
+      limits = { 'wall_bottom_thickness' => ['Bottom panel thickness', MIN_THICKNESS, MAX_THICKNESS],
+                 'wall_bottom_length' => ['Bottom panel length', 0.0, 10_000.0],
+                 'wall_bottom_depth' => ['Bottom panel depth', 0.0, 1200.0] }
+      values = {}
+      limits.each do |key, (label, min, max)|
+        value = number.call(key, { 'wall_bottom_thickness' => DEFAULT_THICKNESS, 'wall_bottom_length' => DEFAULT_LENGTH, 'wall_bottom_depth' => 0.0 }[key])
+        if value.nil? || value < min || value > max
+          return [nil, { 'field' => key, 'message' => "#{label} must be between #{format('%g', min)} and #{format('%g', max)} mm." }]
+        end
+        values[key] = value
+      end
+      [{ 'thickness' => values['wall_bottom_thickness'], 'length' => values['wall_bottom_length'], 'depth' => values['wall_bottom_depth'] }, nil]
+    end
+    private_class_method :read_params
 
-      extent = [run[:depth], run[:length], thickness]
-      stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'width' => extent[1], 'depth' => extent[0],
-                 'material' => material_for(model, first[:material]) }
-      stored['part_id'] = AttributeManager.next_part_id(model)
-      stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
-      layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)
-      root = PartGenerator.build(model, model.entities, stored, placed, layout)
-      TagManager.assign(model, root, TagManager::WALL)
-      root
+    # The pieces of one run, [[from, to], ...] along it: laid end to end, each `length` long.
+    def self.spans_of(run, params)
+      Worktop.pieces(run[:length], 'worktop_piece' => params['length'], 'worktop_cuts' => '')
+    end
+    private_class_method :spans_of
+
+    def self.build(model, run, params)
+      thickness = params['thickness']
+      first = run[:items].first
+      depth = params['depth'].positive? ? params['depth'] : run[:depth]
+      material = material_for(model, first[:material])
+
+      spans_of(run, params).each do |from, to|
+        placed = first[:ref].transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, from.mm, 0))
+        lift = (run[:top] - thickness).mm - placed.origin.z
+        placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
+
+        extent = [depth, to - from, thickness]
+        stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'wall_bottom_length' => params['length'],
+                   'wall_bottom_depth' => params['depth'], 'width' => extent[1], 'depth' => extent[0], 'material' => material }
+        stored['part_id'] = AttributeManager.next_part_id(model)
+        stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
+        layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)
+        root = PartGenerator.build(model, model.entities, stored, placed, layout)
+        TagManager.assign(model, root, TagManager::WALL)
+      end
     end
     private_class_method :build
-
     # The carcass material of the units above it, when the model has it.
     def self.material_for(model, name)
       MaterialManager.available?(model, name) ? name : Defaults::PARAMS['carcass_material']

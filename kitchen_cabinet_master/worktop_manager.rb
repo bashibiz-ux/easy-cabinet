@@ -23,7 +23,7 @@ module KitchenCabinetMaster
     SQRT2 = Math.sqrt(2.0)
 
     DEFAULTS = {
-      'worktop_thickness' => 38.0,
+      'worktop_thickness' => 20.0,
       'worktop_front' => 20.0,
       'worktop_end' => 0.0,
       'worktop_round' => 10.0,       # radius of the rounded front edge (0 = square)
