@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.32.3';
+  const APP_VERSION = '0.32.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1645,7 +1645,7 @@
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
-    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, worktop_round: 10, worktop_piece: 0, worktop_cuts: '', backsplash_height: 100, material: 'White' };
+    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 20, worktop_front: 20, worktop_end: 0, worktop_round: 10, worktop_piece: 0, worktop_cuts: '', backsplash_height: 100, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
