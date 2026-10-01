@@ -12,7 +12,7 @@ module KitchenCabinetMaster
     MIN_THICKNESS = 6.0
     MAX_THICKNESS = 50.0
     DEFAULT_LENGTH = 2000.0 # each piece, laid end to end along the run (0 = one piece for the whole run)
-    # 0 = as deep as the carcass
+    DEFAULT_SETBACK = 20.0  # the panel stops this far short of the carcass front
 
     def self.perform(action, raw)
       case action
@@ -70,7 +70,9 @@ module KitchenCabinetMaster
       stored = AttributeManager.read(existing.first)
       thickness = stored['wall_bottom_thickness'].to_f
       params = { 'thickness' => thickness.positive? ? thickness : DEFAULT_THICKNESS,
-                 'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f }
+                 'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f,
+                 'setback' => stored['wall_bottom_setback'].nil? ? DEFAULT_SETBACK : stored['wall_bottom_setback'].to_f,
+                 'material' => stored['wall_bottom_material'].to_s.empty? ? Defaults::SAME_AS_DOOR : stored['wall_bottom_material'] }
       runs = Worktop.runs(items_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each { |run| build(model, run, params) }
@@ -96,7 +98,7 @@ module KitchenCabinetMaster
         heading = item.transformation.yaxis
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['depth'].to_f, top: origin.z.to_mm + raise_mm, corner: false, raise: raise_mm, ref: item,
-          material: stored['carcass_material'].to_s }
+          door_material: stored['material'].to_s.empty? ? CabinetGenerator.door_material(stored) : stored['material'] }
       end
     end
 
@@ -109,15 +111,20 @@ module KitchenCabinetMaster
       limits = { 'wall_bottom_thickness' => ['Bottom panel thickness', MIN_THICKNESS, MAX_THICKNESS],
                  'wall_bottom_length' => ['Bottom panel length', 0.0, 10_000.0],
                  'wall_bottom_depth' => ['Bottom panel depth', 0.0, 1200.0] }
+      limits['wall_bottom_setback'] = ['Front setback', 0.0, 500.0]
       values = {}
       limits.each do |key, (label, min, max)|
-        value = number.call(key, { 'wall_bottom_thickness' => DEFAULT_THICKNESS, 'wall_bottom_length' => DEFAULT_LENGTH, 'wall_bottom_depth' => 0.0 }[key])
+        value = number.call(key, { 'wall_bottom_thickness' => DEFAULT_THICKNESS, 'wall_bottom_length' => DEFAULT_LENGTH, 'wall_bottom_depth' => 0.0,
+                                   'wall_bottom_setback' => DEFAULT_SETBACK }[key])
         if value.nil? || value < min || value > max
           return [nil, { 'field' => key, 'message' => "#{label} must be between #{format('%g', min)} and #{format('%g', max)} mm." }]
         end
         values[key] = value
       end
-      [{ 'thickness' => values['wall_bottom_thickness'], 'length' => values['wall_bottom_length'], 'depth' => values['wall_bottom_depth'] }, nil]
+      material = raw['wall_bottom_material'].to_s.strip
+      material = Defaults::SAME_AS_DOOR if material.empty?
+      [{ 'thickness' => values['wall_bottom_thickness'], 'length' => values['wall_bottom_length'], 'depth' => values['wall_bottom_depth'],
+         'setback' => values['wall_bottom_setback'], 'material' => material }, nil]
     end
     private_class_method :read_params
 
@@ -130,8 +137,8 @@ module KitchenCabinetMaster
     def self.build(model, run, params)
       thickness = params['thickness']
       first = run[:items].first
-      depth = params['depth'].positive? ? params['depth'] : run[:depth]
-      material = material_for(model, first[:material])
+      depth = params['depth'].positive? ? params['depth'] : [run[:depth] - params['setback'], 10.0].max
+      material = material_for(model, params['material'] == Defaults::SAME_AS_DOOR ? first[:door_material] : params['material'])
 
       spans_of(run, params).each do |from, to|
         placed = first[:ref].transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, from.mm, 0))
@@ -140,7 +147,8 @@ module KitchenCabinetMaster
 
         extent = [depth, to - from, thickness]
         stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'wall_bottom_length' => params['length'],
-                   'wall_bottom_depth' => params['depth'], 'width' => extent[1], 'depth' => extent[0], 'material' => material }
+                   'wall_bottom_depth' => params['depth'], 'wall_bottom_setback' => params['setback'],
+                   'wall_bottom_material' => params['material'], 'width' => extent[1], 'depth' => extent[0], 'material' => material }
         stored['part_id'] = AttributeManager.next_part_id(model)
         stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
         layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)

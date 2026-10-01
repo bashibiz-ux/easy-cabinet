@@ -38,14 +38,48 @@ module KitchenCabinetMaster
 
       length = params['toe_kick_piece_length'].to_f
       count = params['toe_kick_pieces'].to_i
-      return [] unless length.positive? && count.positive?
+      total = params['toe_kick_total'].to_f
+      return [] unless length.positive? && (count.positive? || total.positive?)
 
       thick = params['toe_kick_thickness'].to_f
       front = front_offset(params)
       turns = turns_of(params)
-      return straight_pieces(count, length, thick, height, front) if turns.empty?
+      # Over a whole row: pieces of length laid one after another to cover 	otal, the last one shorter.
+      lengths = total.positive? ? piece_lengths(total, length) : Array.new(count, length)
+      return straight_pieces(lengths, thick, height, front) if turns.empty?
 
-      path_pieces(count, length, thick, height, front + thick, turns) # the path runs along the FRONT face
+      path_pieces(lengths, thick, height, front + thick, turns, total.positive? ? total : nil) # the path runs along the FRONT face
+    end
+
+    # 	otal mm cut into pieces of length; the last piece takes what is left.
+    def self.piece_lengths(total, length)
+      count = (total / length).ceil
+      count = 1 if count < 1
+      lengths = Array.new(count, length)
+      lengths[-1] = total - (length * (count - 1))
+      lengths
+    end
+
+    # How long the row of cabinets and fillers from nchor runs (see turns_from), in mm:
+    # their widths added up, for as long as they join on.
+    def self.run_length(anchor, items)
+      angle = 0.0
+      total = anchor[:width].to_f
+      previous_end = [anchor[:x].to_f, anchor[:y].to_f + anchor[:width].to_f]
+      items.each do |item|
+        break unless distance(previous_end, [item[:x], item[:y]]) <= item[:width].to_f + 150.0
+
+        change = normalise(item[:angle].to_f - angle)
+        if change.abs > 1.0
+          break unless (change + 90.0).abs < 1.0
+
+          angle = item[:angle].to_f
+        end
+        total += item[:width].to_f
+        forward = unit(item[:angle].to_f, :y)
+        previous_end = [item[:x] + forward[0] * item[:width].to_f, item[:y] + forward[1] * item[:width].to_f]
+      end
+      round2(total)
     end
 
     # The turns of the row of cabinets this toe kick follows: [[distance, degrees], ...].
@@ -145,13 +179,16 @@ module KitchenCabinetMaster
         end
       end
     end
-    def self.straight_pieces(count, length, thick, height, front)
-      (0...count).map do |index|
-        CabinetLayout::Panel.new(
+    def self.straight_pieces(lengths, thick, height, front)
+      along = 0.0
+      lengths.each_with_index.map do |length, index|
+        piece = CabinetLayout::Panel.new(
           role: "#{ROLE_PREFIX}#{index + 1}", name: "Toe Kick #{index + 1}",
           extent: [round2(thick), round2(length), round2(height)],
-          offset: [round2(front), round2(index * length), 0.0]
+          offset: [round2(front), round2(along), 0.0]
         )
+        along += length
+        piece
       end
     end
     private_class_method :straight_pieces
@@ -162,16 +199,21 @@ module KitchenCabinetMaster
     # overlap (a butt joint). All maths is in the toe kick's own plan frame: X is
     # depth (front is +X), Y runs along the first leg, and a turn of `degrees`
     # rotates the direction of travel about Z (clockwise is negative).
-    def self.path_pieces(count, length, thick, height, front, turns)
+    def self.path_pieces(lengths, thick, height, front, turns, total = nil)
       legs = legs_for(front, thick, turns)
+      length = lengths.first
+      count = lengths.length
+      remaining = total
       leg = 0
       used = 0.0
       pieces = []
 
-      while pieces.length < count
+      # Without a total: exactly count pieces. With one: as many as it takes to cover it.
+      while total ? remaining > 0.5 : pieces.length < count
         current = legs[leg]
         room = current[:length] ? current[:length] - used : length
         piece = [length, room].min
+        piece = [piece, remaining].min if total
         if piece < 1.0 && leg < legs.length - 1
           leg += 1
           used = 0.0
@@ -188,6 +230,7 @@ module KitchenCabinetMaster
           rotation: current[:angle]
         )
         used += piece
+        remaining -= piece if total
         if current[:length] && used >= current[:length] - 0.01 && leg < legs.length - 1
           leg += 1
           used = 0.0
@@ -232,7 +275,8 @@ module KitchenCabinetMaster
 
     # Total length of the whole run.
     def self.total_length(params)
-      params['toe_kick_piece_length'].to_f * params['toe_kick_pieces'].to_i
+      total = params['toe_kick_total'].to_f
+      total.positive? ? total : params['toe_kick_piece_length'].to_f * params['toe_kick_pieces'].to_i
     end
 
     # The material a toe kick is painted with: its own choice, or the colour of the

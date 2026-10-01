@@ -154,7 +154,7 @@ module KitchenCabinetMaster
     # start of the row. What a toe kick starts at when nothing is selected.
     def self.first_occupant(model)
       rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
-        AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler'
+        (AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
       end
       rows.each_with_index.min_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end

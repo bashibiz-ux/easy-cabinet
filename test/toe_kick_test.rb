@@ -356,4 +356,18 @@ class ToeKickTest < Minitest::Test
     assert_equal [[990.0, -90.0]], ToeKick.turns_of('toe_kick_turns' => text)
     assert_empty ToeKick.turns_of('toe_kick_turns' => '')
   end
+
+  def test_a_toe_kick_over_a_whole_row_is_cut_into_pieces_of_the_chosen_length
+    pieces = ToeKick.pieces(params('toe_kick_piece_length' => 2000.0, 'toe_kick_pieces' => 1, 'toe_kick_total' => 5200.0))
+    assert_equal [2000.0, 2000.0, 1200.0], pieces.map { |p| p.extent[1] }, 'the last piece takes what is left'
+    assert_equal [0.0, 2000.0, 4000.0], pieces.map { |p| p.offset[1] }
+    assert_equal 5200.0, ToeKick.total_length(params('toe_kick_total' => 5200.0))
+  end
+
+  def test_the_length_of_a_row_is_its_widths_added_up
+    anchor = { x: 0.0, y: 0.0, width: 600.0 }
+    items = [{ x: 0.0, y: 600.0, width: 800.0, angle: 0.0 }, { x: 0.0, y: 1400.0, width: 400.0, angle: 0.0 },
+             { x: 0.0, y: 5000.0, width: 600.0, angle: 0.0 }] # the last one is not joined on
+    assert_equal 1800.0, ToeKick.run_length(anchor, items)
+  end
 end

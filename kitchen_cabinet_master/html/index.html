@@ -328,7 +328,7 @@
 
         <!-- The panel under a run of wall units whose carcass has been lifted (Carcass bottom raise). -->
         <div class="subblock">
-          <p class="hint"><b>Wall bottom panel</b> - panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Depth 0 = as deep as the carcass; length 0 = one panel for the whole run.</p>
+          <p class="hint"><b>Wall bottom panel</b> - panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Depth 0 = the carcass depth less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
           <div class="grid-3">
             <label class="field">
               <span class="label">Length</span>
@@ -343,6 +343,14 @@
               <div class="input"><input id="wbThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
+          <label class="field narrow">
+            <span class="label">Front Setback</span>
+            <div class="input"><input id="wbSetback" type="text" inputmode="decimal" autocomplete="off" aria-label="How far the panel stops short of the carcass front"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Bottom Panel Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial"></select></div>
+          </label>
           <div class="btn-row two">
             <button class="btn primary" type="button" data-action="apply_wall_bottom">Apply Bottom Panel</button>
             <button class="btn" type="button" data-action="remove_wall_bottom">Remove</button>

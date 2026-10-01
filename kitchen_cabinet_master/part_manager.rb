@@ -258,9 +258,16 @@ module KitchenCabinetMaster
       part = SelectionManager.selected_part(model)
       return part if part && AttributeManager.part_kind(part) == 'toe_kick'
 
-      SelectionManager.selected_occupant(model) || PlacementManager.first_occupant(model)
+      SelectionManager.selected_occupant(model) || PlacementManager.first_occupant(model) { |item| !wall_item?(item) }
     end
     private_class_method :toe_kick_anchor
+
+    # A wall unit (or a filler beside one) hangs above the floor: it has no toe kick.
+    def self.wall_item?(item)
+      dictionary = AttributeManager::DICTIONARY
+      (item.get_attribute(dictionary, 'cabinet_category') || item.get_attribute(dictionary, 'target_category')) == 'wall'
+    end
+    private_class_method :wall_item?
 
     def self.toe_kick_placement(model, anchor)
       return [model.active_entities, Geom::Transformation.new] unless anchor
@@ -317,8 +324,8 @@ module KitchenCabinetMaster
       errors.concat(toe_kick_fit_errors(Sketchup.active_model, params)) if errors.empty?
       return [nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
-      params['width'] = ToeKick.total_length(params)
       record_toe_kick_path(Sketchup.active_model, params, anchor)
+      params['width'] = ToeKick.total_length(params)
       [params, nil]
     end
     private_class_method :prepare_toe_kick
@@ -348,10 +355,14 @@ module KitchenCabinetMaster
     # recess, say) can work the path out again.
     def self.record_toe_kick_path(model, params, anchor)
       params['toe_kick_turns'] = ''
+      params['toe_kick_total'] = 0.0
       return unless anchor && AttributeManager.part_kind(anchor) != 'toe_kick'
 
       params['toe_kick_from'] = AttributeManager.cabinet_id(anchor) || AttributeManager.part_id(anchor)
-      params['toe_kick_turns'] = ToeKick.turns_from(*toe_kick_row(anchor), params['toe_kick_recess'].to_f)
+      row = toe_kick_row(anchor)
+      params['toe_kick_turns'] = ToeKick.turns_from(*row, params['toe_kick_recess'].to_f)
+      # The toe kick covers the whole row from there: pieces of the chosen length, one after another.
+      params['toe_kick_total'] = ToeKick.run_length(*row)
     end
     private_class_method :record_toe_kick_path
 
@@ -363,7 +374,7 @@ module KitchenCabinetMaster
       order = ->(item) { item.get_attribute(dictionary, 'sequence').to_i }
       following = anchor.parent.entities.grep(Sketchup::ComponentInstance).select do |item|
         !item.equal?(anchor) && order.call(item) > order.call(anchor) &&
-          (AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler')
+          (AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler') && !wall_item?(item)
       end.sort_by(&order)
 
       describe = lambda do |item|
@@ -455,6 +466,7 @@ module KitchenCabinetMaster
       return [nil, nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
       record_toe_kick_path(model, params, find_toe_kick_anchor(model, stored['toe_kick_from']))
+      params['toe_kick_total'] = stored['toe_kick_total'].to_f if params['toe_kick_total'].to_f.zero? # carried on from another toe kick
       if check_overlap && toe_kick_overlaps?(root.parent.entities, root.transformation, params, exclude: root)
         return [nil, nil, Response.fail('That would put this toe kick on top of another toe kick.')]
       end
