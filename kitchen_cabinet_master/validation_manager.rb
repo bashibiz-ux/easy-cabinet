@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+﻿# frozen_string_literal: true
 
 module KitchenCabinetMaster
   # Turns the raw values sent by the HTML panel (mostly strings) into a clean,
@@ -26,8 +26,8 @@ module KitchenCabinetMaster
       # the toe kick itself is a separate entity, see validate_toe_kick.
       'toe_kick_height'       => { label: 'Toe-kick height', min: 0.0, max: 400.0, required: true, toe_kick: true },
       'handle_length'         => { label: 'Handle length', min: 10.0, max: 2000.0 },
-      'handle_side_offset'    => { label: 'Handle side offset', min: 0.0, max: 1000.0 },
-      'handle_vertical_offset' => { label: 'Handle top offset', min: 0.0, max: 2000.0 },
+      'handle_side_offset'    => { label: 'Handle vertical side offset', min: 0.0, max: 1000.0 },
+      'handle_vertical_offset' => { label: 'Handle horizontal side offset', min: 0.0, max: 2000.0 },
       'handle_custom_x'       => { label: 'Handle position from left edge', min: 0.0, max: 3000.0 },
       'handle_custom_z'       => { label: 'Handle position from bottom edge', min: 0.0, max: 3000.0 }
     }.freeze
