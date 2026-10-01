@@ -201,4 +201,26 @@ class CarcassTest < Minitest::Test
     assert_equal 'top_panel_style', ValidationManager.validate(raw.merge('top_panel_style' => 'zigzag')).errors.first['field']
     assert_equal '', ValidationManager.validate(raw).params['top_panel_style']
   end
+
+  def test_a_wall_unit_can_lift_its_carcass_bottom_while_the_doors_keep_full_height
+    full = CabinetLayout.compute(params('cabinet_category' => 'wall', 'height' => 780.0))
+    lifted = CabinetLayout.compute(params('cabinet_category' => 'wall', 'height' => 780.0, 'carcass_raise' => 100.0))
+    side = ->(layout) { layout.panels.find { |p| p.role == 'left_side' } }
+    assert_equal 780.0, side.call(full).extent[2]
+    assert_equal 680.0, side.call(lifted).extent[2], 'the carcass is 100 mm shorter'
+    assert_equal 100.0, side.call(lifted).offset[2], 'and starts 100 mm higher'
+    assert_equal 100.0, lifted.panels.find { |p| p.role == 'bottom' }.offset[2]
+    assert_equal full.doors.first.extent, lifted.doors.first.extent, 'the doors are unchanged'
+    assert_equal full.doors.first.offset, lifted.doors.first.offset
+    assert_equal 780.0, lifted.top_z, 'the unit keeps its overall height'
+    top = lifted.panels.select { |p| p.role.start_with?('top') }.map { |p| p.offset[2] + p.extent[2] }.max
+    assert_equal 780.0, top, 'the top panels still reach the top'
+  end
+
+  def test_the_raise_only_applies_to_wall_units
+    base = CabinetLayout.compute(params('cabinet_category' => 'base', 'carcass_raise' => 100.0))
+    assert_equal 780.0, base.panels.find { |p| p.role == 'left_side' }.extent[2]
+    result = ValidationManager.validate(params('cabinet_category' => 'base', 'carcass_raise' => '100'), door_count: 1)
+    assert_equal 0.0, result.params['carcass_raise']
+  end
 end

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.14';
+  const APP_VERSION = '0.30.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -43,6 +43,7 @@
     width: 'width',
     depth: 'depth',
     height: 'height',
+    carcass_raise: 'carcassRaise',
     shelf_count: 'shelves',
     carcass_material: 'carcassMaterial',
     door_reveal: 'doorReveal',
@@ -403,7 +404,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -628,6 +629,7 @@
       width: mmv('width'),
       depth: mmv('depth'),
       height: mmv('height'),
+      carcass_raise: mmv('carcassRaise'),
       shelf_count: $('shelves').value,
       carcass_material: $('carcassMaterial').value,
       toe_kick_height: mmv('toeHeight'),
@@ -661,6 +663,7 @@
       if (key === 'toe_kick_height' && p.cabinet_category === 'wall') return;
       if (key in p) setText(id, p[key]);
     });
+    setText('carcassRaise', Number(p.carcass_raise) || 0); // a cabinet saved before this option has none
     Object.entries(SELECT_PARAMS).forEach(([key, id]) => {
       if (key in p) setSelect(id, p[key]);
     });
@@ -828,6 +831,7 @@
     setSoft($('sub-end-panel'), kind !== 'end_panel');
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
     setSoft($('toeNote'), !(kind === 'cabinet' && $('category').value === 'wall'));
+    setSoft($('carcassRaiseField'), !(kind === 'cabinet' && $('category').value === 'wall'));
   }
 
   async function loadCabinet(params) {
@@ -1076,7 +1080,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã¢â‚¬â€ ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1106,7 +1110,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} ÃƒÆ’Ã¢â‚¬â€ ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 

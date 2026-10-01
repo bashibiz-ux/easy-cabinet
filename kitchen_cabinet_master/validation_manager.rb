@@ -17,6 +17,7 @@ module KitchenCabinetMaster
       'height'                => { label: 'Height', min: 100.0, max: 3000.0, required: true },
       'material_thickness'    => { label: 'Panel thickness', min: 6.0, max: 50.0 },
       'back_thickness'        => { label: 'Back panel thickness', min: 3.0, max: 25.0 },
+      'carcass_raise'         => { label: 'Carcass bottom raise', min: 0.0, max: 1000.0 },
       'door_gap'              => { label: 'Door gap', min: 0.0, max: 10.0 },
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
       'door_distance'         => { label: 'Door distance', min: 0.0, max: 50.0 },
@@ -99,6 +100,7 @@ module KitchenCabinetMaster
         end
       end
 
+      out['carcass_raise'] = 0.0 unless wall # only a wall unit lifts its carcass
       check_shelf_count(raw, out, errors)
     end
     private_class_method :check_numbers
@@ -213,6 +215,13 @@ module KitchenCabinetMaster
         minimum = (2 * thickness) + MIN_INTERIOR
         if out['height'] && out['height'] < minimum
           errors << error('height', "Height is too small for #{fmt(thickness)} mm panels (minimum #{fmt(minimum)} mm).")
+        end
+      end
+
+      if out['cabinet_category'] == 'wall' && usable.call('height', 'material_thickness', 'carcass_raise') && out['height']
+        room = out['height'] - (2 * thickness) - MIN_INTERIOR
+        if out['carcass_raise'].to_f > room
+          errors << error('carcass_raise', "The carcass would be too short: the bottom can be raised at most #{fmt(room.round(1))} mm.")
         end
       end
 

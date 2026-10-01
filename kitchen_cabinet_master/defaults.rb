@@ -145,6 +145,7 @@ module KitchenCabinetMaster
 
       'placement_gap'          => 0.0,
       'shelf_count'            => 1,
+      'carcass_raise'          => 0.0, # wall units: how far the carcass bottom is lifted (the doors stay full height)
 
       'toe_kick_height'        => 100.0,
       'toe_kick_thickness'     => 18.0,

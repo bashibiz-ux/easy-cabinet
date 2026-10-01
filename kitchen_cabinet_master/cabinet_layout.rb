@@ -43,6 +43,12 @@ module KitchenCabinetMaster
       dims = dimensions(params)
       category = params['cabinet_category'].to_s
 
+      # A wall unit can have its carcass bottom lifted (room for a panel under it): the
+      # carcass is shorter and starts higher, while the doors keep the full height.
+      full_height = dims.height
+      lift = category == 'wall' ? [params['carcass_raise'].to_f, 0.0].max : 0.0
+      dims.height = full_height - lift
+
       panels =
         if category == 'corner'
           [
@@ -77,6 +83,8 @@ module KitchenCabinetMaster
       # The toe kick itself is a separate entity (see ToeKick / PartLayout.toe_kick),
       # so the cabinet's layout has none.
       base_z = round2(category == 'wall' ? 0.0 : params['toe_kick_height'].to_f)
+      panels.each { |item| item.offset = [item.offset[0], item.offset[1], round2(item.offset[2] + lift)] } if lift.positive?
+      dims.height = full_height
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
