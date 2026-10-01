@@ -59,15 +59,24 @@ module KitchenCabinetMaster
 
       # A wider cabinet takes its space from the one next to it in the row, which
       # gets narrower (see RowResizer). Anything else it would run into refuses the edit.
-      growth = params['width'] - root.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
+      dictionary = AttributeManager::DICTIONARY
+      growth = params['width'] - root.get_attribute(dictionary, 'width').to_f
       squeeze = nil
-      if growth > 0.01
+      if growth.abs > 0.01
         squeeze, problem = RowResizer.plan(model, root, growth)
         return Response.fail(problem) if problem
       end
 
-      old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(AttributeManager::DICTIONARY, key).to_f }
-      if PlacementManager.crowds?(root.parent.entities, root, root.transformation, CabinetLayout.envelope(params), old_size,
+      # A wall unit hangs by its top: when it gets taller it grows DOWNWARDS (and a
+      # shorter one rises), so its top stays level with the tall units beside it.
+      placed = root.transformation
+      if params['cabinet_category'] == 'wall' && root.get_attribute(dictionary, 'cabinet_category') == 'wall'
+        taller = params['height'] - root.get_attribute(dictionary, 'height').to_f
+        placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -taller.mm)) * placed if taller.abs > 0.01
+      end
+
+      old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(dictionary, key).to_f }
+      if PlacementManager.crowds?(root.parent.entities, root, placed, CabinetLayout.envelope(params), old_size,
                                   also: squeeze && squeeze[:neighbour])
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
       end
@@ -76,6 +85,7 @@ module KitchenCabinetMaster
         with_operation(model, 'Update Cabinet') do
           params['cabinet_name'] = NamingManager.for_update(root, params)
           CabinetGenerator.update(model, root, params)
+          root.transformation = placed unless placed.equal?(root.transformation)
           RowResizer.apply(model, squeeze) if squeeze
           # Its filler, end panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
@@ -84,7 +94,11 @@ module KitchenCabinetMaster
 
       SelectionManager.push_selection(model)
       stored = AttributeManager.read(root)
-      note = squeeze ? " #{squeeze[:neighbour].name} was made #{fmt(squeeze[:need])} mm narrower to make room." : ''
+      note = ''
+      if squeeze
+        how = squeeze[:need].positive? ? 'narrower to make room' : 'wider to fill the space'
+        note = " #{squeeze[:neighbour].name} was made #{fmt(squeeze[:need].abs)} mm #{how}."
+      end
       Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.#{note}")
     end
     private_class_method :update
@@ -480,12 +494,14 @@ module KitchenCabinetMaster
     SAME_LINE_MM = 5.0   # how closely the next item must line up (back and height)
     MAX_GAP_MM = 3000.0  # further than this, it is not the next item
     MIN_FILLER_MM = 5.0
+    MAX_FILLER_MM = 1000.0
 
     # Returns [plan, nil] (the neighbour to narrow), [nil, nil] (no neighbour that
     # needs to give way) or [nil, problem message].
     def self.plan(model, root, growth)
       neighbour, gap = next_in_row(root)
       return [nil, nil] unless neighbour
+      return follow_back(model, neighbour, growth) if growth.negative?
 
       need = growth - gap
       return [nil, nil] if need <= 0.01
@@ -514,7 +530,29 @@ module KitchenCabinetMaster
       [{ neighbour: neighbour, need: need, width: new_width, params: params }, nil]
     end
 
-    # Narrows the neighbour and moves its start along by `need`. Call inside an operation.
+    # The cabinet got narrower by `-growth`: the next item follows it back, getting
+    # that much wider and starting that much sooner, so its far end stays where it is
+    # and the space between the two stays as it was. A corner unit is left alone, and
+    # so is a neighbour that cannot take the width (the gap simply stays).
+    def self.follow_back(model, neighbour, growth)
+      stored = AttributeManager.read(neighbour)
+      new_width = stored['width'].to_f - growth
+      if AttributeManager.part_kind(neighbour) == 'filler'
+        return [nil, nil] if new_width > MAX_FILLER_MM
+
+        return [{ neighbour: neighbour, need: growth, width: new_width, filler: true }, nil]
+      end
+
+      return [nil, nil] if stored['cabinet_category'] == 'corner' || new_width > ValidationManager::NUMERIC_FIELDS['width'][:max]
+
+      params, errors = CabinetManager.send(:restyle_params, model, stored, 'width' => new_width)
+      return [nil, nil] unless errors.empty?
+
+      [{ neighbour: neighbour, need: growth, width: new_width, params: params }, nil]
+    end
+
+    # Resizes the neighbour and moves its start along by `need` (negative: back).
+    # Call inside an operation.
     def self.apply(model, plan)
       neighbour = plan[:neighbour]
       moved = neighbour.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, plan[:need].mm, 0))

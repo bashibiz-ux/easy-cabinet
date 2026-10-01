@@ -1,41 +1,43 @@
-/* Kitchen Cabinet Master: a dark, smooth red theme. One palette, set here. */
+/* Kitchen Cabinet Master: a calm dark slate theme with one soft blue accent.
+   Every colour is set here; nothing below uses a colour of its own. */
 :root {
   color-scheme: dark;
-  --paper: #150a0d;          /* window background */
-  --sheet: #1f1014;          /* cards and bars */
-  --raised: #29151a;         /* hovered / raised surfaces */
-  --field: #12080a;          /* inputs */
-  --ink: #f6ebec;            /* main text */
-  --muted: #b99ca1;          /* labels, hints */
-  --line: #3a1d23;           /* hairlines */
-  --line-strong: #5b2c34;    /* input borders */
-  --accent: #e0575f;         /* the red */
-  --accent-strong: #c23a46;
-  --accent-deep: #8f2430;
-  --accent-ink: #fff5f5;
-  --accent-soft: #3d1a21;
-  --swing: #ff9a6a;
-  --danger: #ff8d8d;
-  --danger-soft: #3d1517;
-  --ok: #7fd6a4;
-  --ok-soft: #14301f;
-  --info-soft: #2a1519;
-  --grid: #2c161b;
-  --preview-bg: #190c10;
-  --glow: rgba(224, 87, 95, 0.28);
+  --paper: #12161c;          /* window background */
+  --sheet: #181d25;          /* cards and bars */
+  --raised: #1f2631;         /* buttons, raised surfaces */
+  --field: #10141a;          /* inputs */
+  --ink: #e8ecf2;            /* main text */
+  --muted: #9aa5b4;          /* labels, hints */
+  --line: #262e3a;           /* hairlines */
+  --line-strong: #364050;    /* input borders */
+  --accent: #6b95f0;         /* the one accent */
+  --accent-hover: #8fb0f7;
+  --accent-strong: #4f7be0;
+  --accent-deep: #3f68c7;
+  --accent-ink: #ffffff;
+  --accent-soft: #1d2a45;
+  --swing: #f2a65a;
+  --danger: #f29a9a;
+  --danger-soft: #3a2024;
+  --ok: #86d3a8;
+  --ok-soft: #173126;
+  --info-soft: #1e2530;
+  --grid: #1c222b;
+  --preview-bg: #141920;
+  --glow: rgba(107, 149, 240, 0.16);
   --ease: cubic-bezier(0.45, 0, 0.25, 1);
-  --collapse-ms: 900ms;
+  --soft-ms: 420ms;           /* fades, hovers, small changes */
+  --collapse-ms: 900ms;       /* a section sliding open or shut */
   --font: "Segoe UI Variable Text", "Segoe UI Variable Display", "Segoe UI", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
 }
-
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
 html, body {
   height: 100%;
   margin: 0;
-  background: radial-gradient(120% 80% at 50% -10%, #2a1118 0%, var(--paper) 55%);
+  background: var(--paper);
   color: var(--ink);
   font: 13px/1.45 var(--font);
   font-variant-numeric: tabular-nums;
@@ -43,13 +45,13 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-::selection { background: var(--accent-strong); color: var(--accent-ink); }
+::selection { background: var(--accent-deep); color: var(--accent-ink); }
 
 /* Thin red scrollbar */
 .scroll { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .scroll::-webkit-scrollbar { width: 9px; }
 .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--sheet); }
-.scroll::-webkit-scrollbar-thumb:hover { background: var(--accent-deep); }
+.scroll::-webkit-scrollbar-thumb:hover { background: #4a586b; }
 .app {
   display: flex;
   flex-direction: column;
@@ -60,9 +62,9 @@ html, body {
 
 .topbar {
   flex: none;
-  background: linear-gradient(180deg, #2a121a 0%, var(--sheet) 100%);
-  border-bottom: 1px solid var(--line-strong);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
   padding: 12px 14px 12px;
   position: relative;
   z-index: 2;
@@ -80,11 +82,8 @@ h1 {
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  background: linear-gradient(90deg, #fff1f1 0%, #ff9aa0 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.01em;
+  color: var(--ink);
 }
 
 .badge {
@@ -108,7 +107,7 @@ h1 {
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.25);
   background-color: var(--preview-bg);
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
@@ -153,8 +152,7 @@ h1 {
   background: var(--sheet);
 }
 
-.card { border-bottom: 1px solid var(--line); transition: background 0.4s var(--ease); }
-.card:not(.collapsed):not(.feature-off) { background: linear-gradient(180deg, rgba(224, 87, 95, 0.06), transparent 120px); }
+.card { border-bottom: 1px solid var(--line); }
 
 .card-head {
   display: flex;
@@ -174,7 +172,7 @@ h1 {
   transition: color 0.3s var(--ease), background 0.3s var(--ease);
 }
 
-.card-head:hover { color: #ffb3b8; background: rgba(224, 87, 95, 0.07); }
+.card-head:hover { color: var(--accent-hover); background: rgba(107, 149, 240, 0.06); }
 
 .card-head::after {
   content: "";
@@ -256,11 +254,11 @@ h1 {
   transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
 }
 
-.input:hover { border-color: #7a3841; }
+.input:hover { border-color: #4a586b; }
 
 .input:focus-within {
   border-color: var(--accent);
-  background: #190b0e;
+  background: #0d1116;
   box-shadow: 0 0 0 3px var(--glow);
 }
 
@@ -278,7 +276,7 @@ h1 {
 }
 
 .input select { margin: 0 -4px; }
-.input select option { color: var(--ink); background: #1f1014; }
+.input select option { color: var(--ink); background: #1b212a; }
 
 .input em {
   margin-left: 6px;
@@ -330,9 +328,9 @@ h1 {
 .actions {
   flex: none;
   padding: 10px 14px 12px;
-  background: linear-gradient(0deg, #12080a 0%, var(--paper) 100%);
-  border-top: 1px solid var(--line-strong);
-  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.22);
 }
 
 .btn-row { display: grid; gap: 6px; }
@@ -341,6 +339,18 @@ h1 {
 .btn-row.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .btn-row.five .btn { padding: 0 4px; }
 .btn-row.one { grid-template-columns: minmax(0, 1fr); }
+
+/* Soft changes: things fade rather than snap. */
+.feature-off { transition: opacity var(--soft-ms) var(--ease); }
+.status { animation: soft-in var(--soft-ms) var(--ease); }
+@keyframes soft-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.preview svg * { transition: opacity var(--soft-ms) var(--ease); }
+.check input, .input select, .input input { transition: color var(--soft-ms) var(--ease); }
+.scroll { scroll-behavior: auto; overscroll-behavior: contain; } /* wheel smoothing is done in script */
+@media (prefers-reduced-motion: reduce) {
+  :root { --soft-ms: 1ms; }
+  .status { animation: none; }
+}
 
 /* Filler / End Panel blocks inside the Cabinet section, and the small
    per-block Insert buttons (Filler, End Panel, Toe Kick). */
@@ -363,15 +373,10 @@ h1 {
               background 0.25s var(--ease), box-shadow 0.25s var(--ease), filter 0.25s var(--ease);
 }
 
-.btn:hover:not(:disabled) { border-color: var(--accent); color: #ffb3b8; box-shadow: 0 0 0 3px var(--glow); }
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-hover); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
-.btn.primary {
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
-  border-color: var(--accent-strong);
-  color: var(--accent-ink);
-  box-shadow: 0 4px 14px rgba(194, 58, 70, 0.35);
-}
-.btn.primary:hover:not(:disabled) { color: var(--accent-ink); filter: brightness(1.12); box-shadow: 0 4px 18px rgba(224, 87, 95, 0.5); }
+.btn.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: var(--accent-ink); }
+.btn.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .btn:disabled { opacity: 0.55; cursor: default; }

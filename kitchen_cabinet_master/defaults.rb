@@ -116,7 +116,7 @@ module KitchenCabinetMaster
       'wall_material'          => DEFAULT_MATERIAL,
       'tall_material'          => DEFAULT_MATERIAL,
       'cabinet_material'       => '',
-      'carcass_material'       => '', # blank = the carcass follows the door material
+      'carcass_material'       => DEFAULT_MATERIAL, # blank = the carcass follows the door material; it starts white
       'material_thickness'     => 18.0,
       'back_thickness'         => 6.0,
 

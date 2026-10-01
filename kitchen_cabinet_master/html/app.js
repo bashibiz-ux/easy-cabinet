@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.22.0';
+  const APP_VERSION = '0.23.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -629,7 +629,7 @@
   // orientation, position and offsets to the bundle's own defaults.
   function onHandleChange(useDefaults) {
     const bundle = currentBundle();
-    $('handleOptions').hidden = !bundle;
+    setSoft($('handleOptions'), !bundle);
     if (!bundle) {
       drawPreview();
       return;
@@ -662,9 +662,9 @@
   // Bottom use the top/bottom offset.
   function syncHandlePosition() {
     const position = $('handlePosition').value;
-    $('handleCustom').hidden = position !== 'custom';
-    $('handleOffsets').hidden = position === 'custom';
-    $('handleVertField').hidden = !['top', 'bottom'].includes(position);
+    setSoft($('handleCustom'), position !== 'custom');
+    setSoft($('handleOffsets'), position === 'custom');
+    setSoft($('handleVertField'), !['top', 'bottom'].includes(position));
   }
 
   /* ---------------------------------------------------------------------- *
@@ -750,14 +750,14 @@
   // hangs at height 0, so the toe-kick height does not raise it.
   function updateCategoryUi() {
     const kind = categoryKind();
-    document.querySelectorAll('.cabinet-only').forEach((el) => { el.hidden = kind !== 'cabinet'; });
+    document.querySelectorAll('.cabinet-only').forEach((el) => { setSoft(el, kind !== 'cabinet'); });
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
     // The toe-kick height is shared: it raises cabinets and is a toe kick's height.
-    document.querySelectorAll('.cabinet-or-toe').forEach((el) => { el.hidden = kind !== 'cabinet' && kind !== 'toe_kick'; });
-    $('sub-filler').hidden = kind !== 'filler';
-    $('sub-end-panel').hidden = kind !== 'end_panel';
-    $('sub-toe-kick').hidden = kind !== 'toe_kick';
-    $('toeNote').hidden = !(kind === 'cabinet' && $('category').value === 'wall');
+    document.querySelectorAll('.cabinet-or-toe').forEach((el) => { setSoft(el, kind !== 'cabinet' && kind !== 'toe_kick'); });
+    setSoft($('sub-filler'), kind !== 'filler');
+    setSoft($('sub-end-panel'), kind !== 'end_panel');
+    setSoft($('sub-toe-kick'), kind !== 'toe_kick');
+    setSoft($('toeNote'), !(kind === 'cabinet' && $('category').value === 'wall'));
   }
 
   async function loadCabinet(params) {
@@ -1090,6 +1090,73 @@
     }
   }
 
+  /* ---------------------------------------------------------------------- *
+   * Soft motion: things slide and fade instead of snapping
+   * ---------------------------------------------------------------------- */
+
+  const SOFT_MS = 420;
+  const SOFT_EASING = 'cubic-bezier(0.45, 0, 0.25, 1)';
+
+  // Shows or hides a block (a group of fields) by easing its height and opacity.
+  // Before the panel has finished building, or where the browser cannot animate,
+  // it just shows / hides.
+  function setSoft(el, hide) {
+    if (!el) return;
+    const wanted = el.softHide === undefined ? el.hidden : el.softHide;
+    if (wanted === hide) return;
+    el.softHide = hide;
+    if (el.softAnimation) {
+      el.softAnimation.cancel();
+      el.softAnimation = null;
+      el.style.overflow = '';
+    }
+    if (!state.animate || typeof el.animate !== 'function') {
+      el.hidden = hide;
+      return;
+    }
+
+    if (!hide) el.hidden = false;
+    const style = getComputedStyle(el);
+    const open = {
+      height: `${el.offsetHeight}px`, opacity: 1,
+      marginTop: style.marginTop, marginBottom: style.marginBottom,
+      paddingTop: style.paddingTop, paddingBottom: style.paddingBottom
+    };
+    const shut = { height: '0px', opacity: 0, marginTop: '0px', marginBottom: '0px', paddingTop: '0px', paddingBottom: '0px' };
+    el.style.overflow = 'hidden';
+    el.softAnimation = el.animate(hide ? [open, shut] : [shut, open], { duration: SOFT_MS, easing: SOFT_EASING });
+    el.softAnimation.onfinish = () => {
+      el.softAnimation = null;
+      el.style.overflow = '';
+      if (hide) el.hidden = true;
+    };
+  }
+
+  // Mouse-wheel scrolling that glides to where it is going instead of jumping.
+  function enableSmoothScroll(el) {
+    let target = el.scrollTop;
+    let frame = null;
+    const step = () => {
+      const distance = target - el.scrollTop;
+      if (Math.abs(distance) < 0.5) {
+        el.scrollTop = target;
+        frame = null;
+        return;
+      }
+      el.scrollTop += distance * 0.13;
+      frame = requestAnimationFrame(step);
+    };
+    el.addEventListener('wheel', (event) => {
+      if (event.ctrlKey || event.deltaY === 0) return;
+      event.preventDefault();
+      const pixels = event.deltaMode === 1 ? event.deltaY * 32 : event.deltaMode === 2 ? event.deltaY * el.clientHeight : event.deltaY;
+      const start = frame ? target : el.scrollTop;
+      target = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, start + pixels));
+      if (!frame) frame = requestAnimationFrame(step);
+    }, { passive: false });
+    // Dragging the scroll bar, the keyboard or scrollIntoView move it too: follow.
+    el.addEventListener('scroll', () => { if (!frame) target = el.scrollTop; });
+  }
   // Like an accordion: opening a section closes whichever other one is open.
   function toggleCard(card, open) {
     const collapsed = open === undefined ? !card.classList.contains('collapsed') : !open;
@@ -1355,7 +1422,6 @@
     refreshUnitLabels();
     fillSelect($('topPanel'), [
       { id: '', name: 'By unit type' },
-      { id: 'rails', name: 'Two 10 cm panels' },
       { id: 'full', name: 'One full panel' }
     ]);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
@@ -1449,6 +1515,7 @@
 
   async function init() {
     wrapCardBodies();
+    enableSmoothScroll($('scroll'));
     wireEvents();
     try {
       const saved = localStorage.getItem('kcm.unit');

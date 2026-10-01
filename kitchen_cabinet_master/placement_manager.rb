@@ -28,8 +28,58 @@ module KitchenCabinetMaster
     def self.target_for_new(model, params)
       corner = params['cabinet_category'].to_s == 'corner'
       target_row(model, params, CabinetLayout.envelope(params),
-                 turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f)
+                 turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
+                 z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : nil)
     end
+
+    # A wall unit hangs in the air, and its TOP is what stays put when its height
+    # changes (a taller one grows downwards, see CabinetManager.update). Where a new
+    # one starts:
+    #   * a tall unit in the model: its top lines up with the tall unit's top;
+    #   * else a wall unit already in the row: tops line up with it;
+    #   * else above the base unit it follows: its bottom is WALL_ABOVE_BASE_MM above
+    #     that unit's top;
+    #   * else (nothing in the model yet) where it would be over a standard base unit.
+    # Returns the Z of its origin (its bottom), in millimetres.
+    WALL_ABOVE_BASE_MM = 600.0
+    DEFAULT_WALL_BOTTOM_MM = 1480.0 # 100 toe kick + 780 base unit + 600
+
+    def self.wall_origin_z(model, params, selected = nil)
+      selected ||= SelectionManager.selected_occupant(model) || last_occupant(model)
+      height = params['height'].to_f
+
+      tall = latest_cabinet(model) { |stored| stored['cabinet_category'] == 'tall' }
+      return top_of_item(tall) - height if tall
+
+      return top_of_item(selected) - height if selected && category_of(selected) == 'wall'
+
+      base = (selected if selected && category_of(selected) != 'wall') || latest_cabinet(model) { |stored| stored['cabinet_category'] != 'wall' }
+      return top_of_item(base) + WALL_ABOVE_BASE_MM if base
+
+      DEFAULT_WALL_BOTTOM_MM
+    end
+
+    # The most recently inserted cabinet whose stored parameters satisfy the block.
+    def self.latest_cabinet(model)
+      dictionary = AttributeManager::DICTIONARY
+      found = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
+        AttributeManager.cabinet?(instance) && yield(AttributeManager.read(instance) || {})
+      end
+      found.each_with_index.max_by { |instance, index| [instance.get_attribute(dictionary, 'sequence').to_i, index] }&.first
+    end
+    private_class_method :latest_cabinet
+
+    def self.category_of(item)
+      dictionary = AttributeManager::DICTIONARY
+      item.get_attribute(dictionary, 'cabinet_category') || item.get_attribute(dictionary, 'target_category')
+    end
+    private_class_method :category_of
+
+    # World height of an item's top, in millimetres: where it stands plus its own top.
+    def self.top_of_item(item)
+      item.transformation.origin.z.to_mm + item.get_attribute(AttributeManager::DICTIONARY, 'top_z').to_f
+    end
+    private_class_method :top_of_item
 
     # Returns [entities, transformation] for a new item of any kind, given its
     # own closed size [depth, width, top] in millimetres.
@@ -41,7 +91,7 @@ module KitchenCabinetMaster
     # item's `own_width`, since a quarter turn swings it that far sideways.
     # Nothing selected: it follows the LAST cabinet or filler inserted (see
     # last_occupant); with none in the model yet, it goes at the origin unturned.
-    def self.target_row(model, params, size, turn: nil, own_width: nil)
+    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil)
       selected = SelectionManager.selected_occupant(model) || last_occupant(model)
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
@@ -54,6 +104,12 @@ module KitchenCabinetMaster
         else
           Geom::Transformation.new
         end
+
+      # A wall unit goes at its own height, not the row's.
+      if z_mm
+        lift = z_mm.mm - transformation.origin.z
+        transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * transformation
+      end
 
       [entities, clear_of_occupants(entities, transformation, size.map(&:mm), gap)]
     end
