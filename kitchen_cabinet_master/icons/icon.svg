@@ -1,1 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect x="1" y="1" width="46" height="46" rx="9" fill="#0e5a73"/><rect x="9" y="9" width="30" height="27" fill="#fff"/><rect x="11" y="11" width="12.5" height="23" fill="#dcebf1"/><rect x="24.5" y="11" width="12.5" height="23" fill="#dcebf1"/><rect x="20" y="20" width="1.8" height="7" fill="#0e5a73"/><rect x="26.2" y="20" width="1.8" height="7" fill="#0e5a73"/><rect x="11" y="37.5" width="26" height="3.5" fill="#e67832"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#608cee"/><stop offset="1" stop-color="#263e8c"/></linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8eefa"/><stop offset="1" stop-color="#c4cfe6"/></linearGradient>
+    <linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4e2"/><stop offset="1" stop-color="#e8d0ac"/></linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e1e9f8"/></linearGradient>
+    <linearGradient id="pull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a7cd6"/><stop offset="1" stop-color="#28408c"/></linearGradient>
+    <linearGradient id="plinth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#243878"/><stop offset="1" stop-color="#182656"/></linearGradient>
+    <clipPath id="clip"><rect x="10" y="10" width="492" height="492" rx="112"/></clipPath>
+  </defs>
+  <rect x="10" y="10" width="492" height="492" rx="112" fill="url(#tile)"/>
+  <ellipse cx="256" cy="-20" rx="316" ry="210" fill="#fff" opacity=".15" clip-path="url(#clip)"/>
+  <rect x="10" y="10" width="492" height="492" rx="112" fill="none" stroke="#fff" stroke-opacity=".24" stroke-width="3"/>
+  <ellipse cx="256" cy="435" rx="160" ry="17" fill="#0a143c" opacity=".28"/>
+  <rect x="128" y="372" width="256" height="30" rx="6" fill="url(#plinth)"/>
+  <rect x="104" y="112" width="304" height="268" rx="14" fill="url(#body)"/>
+  <rect x="84" y="84" width="344" height="40" rx="12" fill="url(#top)"/>
+  <rect x="96" y="118" width="320" height="8" fill="#78501e" opacity=".27"/>
+  <g fill="url(#door)"><rect x="118" y="138" width="130" height="228" rx="10"/><rect x="264" y="138" width="130" height="228" rx="10"/></g>
+  <g fill="none" stroke="#becae4" stroke-width="3"><rect x="132" y="152" width="102" height="200" rx="6"/><rect x="278" y="152" width="102" height="200" rx="6"/></g>
+  <rect x="253" y="138" width="6" height="228" fill="#3c4e82" opacity=".35"/>
+  <rect x="232" y="224" width="18" height="96" rx="9" fill="url(#pull)"/>
+  <rect x="262" y="224" width="18" height="96" rx="9" fill="url(#pull)"/>
+</svg>

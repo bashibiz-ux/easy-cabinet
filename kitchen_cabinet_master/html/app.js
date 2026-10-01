@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.24.0';
+  const APP_VERSION = '0.25.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -596,6 +596,9 @@
       onHandleChange(false);
     }
     Object.entries(TEXT_PARAMS).forEach(([key, id]) => {
+      // A wall unit stores a toe-kick height of 0 (it hangs); that must not become the
+      // starting height of the next base or tall unit, which stand on a 100 mm toe kick.
+      if (key === 'toe_kick_height' && p.cabinet_category === 'wall') return;
       if (key in p) setText(id, p[key]);
     });
     Object.entries(SELECT_PARAMS).forEach(([key, id]) => {
@@ -1300,6 +1303,16 @@
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
+    handle: ['handle_id', 'handle'],
+    handleLength: ['handle_length', 'handleLength'],
+    handleFinish: ['handle_finish', 'handleFinish'],
+    handleMaterial: ['handle_material', 'handleMaterial'],
+    handleOrientation: ['handle_orientation', 'handleOrientation'],
+    handlePosition: ['handle_position', 'handlePosition'],
+    handleSide: ['handle_side_offset', 'handleSide'],
+    handleVert: ['handle_vertical_offset', 'handleVert'],
+    handleCustomX: ['handle_custom_x', 'handleCustomX'],
+    handleCustomZ: ['handle_custom_z', 'handleCustomZ'],
     topPanel: ['top_panel_style', 'topPanel'],
     thickness: ['material_thickness', 'thickness'],
     thicknessPreset: ['material_thickness', 'thickness'],
@@ -1327,7 +1340,11 @@
     clearInvalid();
     try {
       const payload = {};
-      globalDirty.forEach((elementId, key) => { payload[key] = LENGTH_IDS.includes(elementId) ? mmv(elementId) : $(elementId).value; });
+      const withHandle = !!$('handle').value;
+      globalDirty.forEach((elementId, key) => {
+        if (key.startsWith('handle_') && key !== 'handle_id' && !withHandle) payload[key] = ''; // no handle: nothing to set
+        else payload[key] = LENGTH_IDS.includes(elementId) ? mmv(elementId) : $(elementId).value;
+      });
       globalDirty.clear();
       const res = await call('apply_all', payload);
       if (res.ok) {
@@ -1349,6 +1366,11 @@
     if (GLOBAL_FIELDS[el.id]) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
+      // A different handle bundle brings its own lengths, finishes and positions
+      // (the panel has just refilled them), so they all go along with it.
+      if (el.id === 'handle') {
+        Object.entries(GLOBAL_FIELDS).filter(([id]) => id.startsWith('handle')).forEach(([, [k, e]]) => globalDirty.set(k, e));
+      }
       scheduleGlobal(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
     }
@@ -1408,8 +1430,8 @@
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
     m.defaults = m.defaults || {};
-    m.filler_defaults = m.filler_defaults || { width: 100, thickness: 18, height: 780, material: 'White' };
-    m.end_panel_defaults = m.end_panel_defaults || { side: 'left', thickness: 18, material: 'White' };
+    m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
+    m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
@@ -1476,7 +1498,14 @@
       liveAfterCabinetChange();
     });
     $('widthPreset').addEventListener('change', () => {
-      if ($('widthPreset').value !== 'custom') setText('width', Number($('widthPreset').value));
+      if ($('widthPreset').value !== 'custom') {
+        setText('width', Number($('widthPreset').value));
+        // A standard width comes with the standard depth and height of the cabinet
+        // (560 deep, 780 high for a base unit).
+        const standard = (currentCabinet() || {}).defaults || {};
+        setText('depth', standard.depth);
+        setText('height', standard.height);
+      }
       drawPreview();
     });
     $('width').addEventListener('input', syncWidthPreset);

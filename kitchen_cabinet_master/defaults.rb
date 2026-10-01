@@ -149,7 +149,7 @@ module KitchenCabinetMaster
     # starts out as that cabinet's height). It has no material of its own: it
     # always takes the door material of that cabinet.
     FILLER_PARAMS = {
-      'width'     => 100.0,
+      'width'     => 50.0,
       'thickness' => 18.0,
       'height'    => 780.0
     }.freeze
@@ -175,7 +175,7 @@ module KitchenCabinetMaster
     # material starts as "same as door material" and follows the door until one is
     # picked by hand.
     END_PANEL_PARAMS = {
-      'side'      => 'left',
+      'side'      => 'right',
       'depth'     => 580.0,
       'thickness' => 18.0,
       'height'    => 880.0,
