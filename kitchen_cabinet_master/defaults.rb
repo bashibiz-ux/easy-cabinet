@@ -1,4 +1,4 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 require 'json'
 
@@ -133,6 +133,7 @@ module KitchenCabinetMaster
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
       'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
+      'show_wall_opening_direction' => false, # a wall unit's plan line on the floor has its own tick
       'show_door_symbol'       => false, # the dashed swing lines on the door (ticked by the user when wanted)
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,

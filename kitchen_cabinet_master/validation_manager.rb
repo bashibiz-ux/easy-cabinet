@@ -1,4 +1,4 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 module KitchenCabinetMaster
   # Turns the raw values sent by the HTML panel (mostly strings) into a clean,
@@ -131,7 +131,7 @@ module KitchenCabinetMaster
         errors << error('top_panel_style', 'Select how the top panel is made.')
       end
 
-      %w[show_opening_direction show_door_symbol].each do |key|
+      %w[show_opening_direction show_door_symbol show_wall_opening_direction].each do |key|
         out[key] = truthy?(raw[key]) if raw.key?(key)
       end
 

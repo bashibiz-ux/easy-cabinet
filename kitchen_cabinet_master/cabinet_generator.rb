@@ -97,8 +97,10 @@ module KitchenCabinetMaster
     # on): `show_floor_symbol` is the plan symbol on the floor, `show_door_symbol`
     # the dashed lines on each door. Only flips `visible` on existing containers;
     # nothing is rebuilt.
-    def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol)
+    def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol = false)
       doors_visible = visibility['door'] != false
+      # A wall unit's plan line has its own switch.
+      show_floor_symbol = show_wall_symbol if root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
 
       index_by_role(root.definition.entities).each do |role, instance|
         if role == CARCASS_ROLE then instance.visible = visibility['carcass'] != false
@@ -372,7 +374,8 @@ module KitchenCabinetMaster
         container.set_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY, signature)
       end
 
-      container.visible = doors_visible && params['show_opening_direction'] != false
+      container.visible = doors_visible &&
+                           (params['cabinet_category'] == 'wall' ? params['show_wall_opening_direction'] == true : params['show_opening_direction'] != false)
     end
     private_class_method :sync_indicator
 

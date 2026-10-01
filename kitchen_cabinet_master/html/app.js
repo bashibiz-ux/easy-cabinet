@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.13';
+  const APP_VERSION = '0.29.14';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -620,6 +620,7 @@
       door_opening_angle: $('angle').value,
       show_opening_direction: $('showDirection').checked,
       show_door_symbol: $('showDoorSymbol').checked,
+      show_wall_opening_direction: $('showWallDirection').checked,
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
@@ -665,6 +666,7 @@
     });
     if ('show_opening_direction' in p) $('showDirection').checked = !!p.show_opening_direction;
     if ('show_door_symbol' in p) $('showDoorSymbol').checked = !!p.show_door_symbol;
+    if ('show_wall_opening_direction' in p) $('showWallDirection').checked = !!p.show_wall_opening_direction;
     if (p.visibility_settings && typeof p.visibility_settings === 'object') {
       const v = p.visibility_settings;
       if ('carcass' in v) $('visCarcass').checked = !!v.carcass;
@@ -1074,7 +1076,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} Ãƒâ€” ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã¢â‚¬â€ ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1104,7 +1106,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} Ãƒâ€” ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} ÃƒÆ’Ã¢â‚¬â€ ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
@@ -1331,7 +1333,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1540,6 +1542,7 @@
         door: $('visDoor').checked,
         toe_kick: $('visToe').checked,
         opening_direction: $('showDirection').checked, // the plan symbol on the floor
+        wall_opening_direction: $('showWallDirection').checked, // a wall unit's plan symbol on the floor
         door_symbol: $('showDoorSymbol').checked // the dashed lines on each door
       });
       setStatus(res.ok ? 'ok' : 'error', res.message);
@@ -1564,6 +1567,7 @@
     // Both start unticked; the user ticks them when wanted.
     $('showDirection').checked = d.show_opening_direction === true;
     $('showDoorSymbol').checked = d.show_door_symbol === true;
+    $('showWallDirection').checked = d.show_wall_opening_direction === true;
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
@@ -1701,7 +1705,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }
