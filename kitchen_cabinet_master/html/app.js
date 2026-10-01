@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.30.0';
+  const APP_VERSION = '0.30.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -826,11 +826,11 @@
     document.querySelectorAll('.cabinet-only').forEach((el) => { setSoft(el, kind !== 'cabinet'); });
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
     // The toe-kick height is shared: it raises cabinets and is a toe kick's height.
-    document.querySelectorAll('.cabinet-or-toe').forEach((el) => { setSoft(el, kind !== 'cabinet' && kind !== 'toe_kick'); });
+    document.querySelectorAll('.cabinet-or-toe').forEach((el) => { setSoft(el, kind !== 'toe_kick'); });
     setSoft($('sub-filler'), kind !== 'filler');
     setSoft($('sub-end-panel'), kind !== 'end_panel');
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
-    setSoft($('toeNote'), !(kind === 'cabinet' && $('category').value === 'wall'));
+    setSoft($('toeNote'), true);
     setSoft($('carcassRaiseField'), !(kind === 'cabinet' && $('category').value === 'wall'));
   }
 
@@ -1080,7 +1080,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1110,7 +1110,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
@@ -1515,7 +1515,7 @@
     if (toe) {
       const kind = state.selectedKind;
       // Selected: edit that toe kick (or, for the shared height, that cabinet) on its own.
-      const alone = kind === 'toe_kick' || (el.id === 'toeHeight' && kind === 'cabinet');
+      const alone = kind === 'toe_kick';
       if (!alone) {
         toeDirty.set(toe[0], toe[1]);
         scheduleToe(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);

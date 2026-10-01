@@ -197,17 +197,14 @@
           <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
         </label>
 
-        <!-- One field, two jobs: how far cabinets stand off the floor, and the height of a toe kick. -->
+        <!-- Shown only with Cabinet Category = Toe Kick: the height of a toe kick, which is also how far cabinets stand off the floor. -->
         <label class="field narrow cabinet-or-toe">
           <span class="label">Toe-kick Height</span>
           <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
         <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
 
-        <label class="field narrow cabinet-only">
-          <span class="label">Gap to next cabinet</span>
-          <div class="input"><input id="gap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
+        <div hidden><input id="gap" type="text" autocomplete="off"></div>
 
         <!-- Filler: shown when Cabinet Category = Filler. A single board beside a cabinet. -->
         <div class="subblock filler-only" id="sub-filler" hidden>
