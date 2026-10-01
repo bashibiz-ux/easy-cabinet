@@ -1,4 +1,4 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 module KitchenCabinetMaster
   # Decides where a new cabinet or filler is inserted.
@@ -30,7 +30,7 @@ module KitchenCabinetMaster
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
                  z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0,
-                 wall: params['cabinet_category'].to_s == 'wall')
+                 wall: params['cabinet_category'].to_s == 'wall', base: params['cabinet_category'].to_s == 'base')
     end
 
     # Only a wall unit hangs in the air: base, tall and corner units always start on
@@ -95,14 +95,17 @@ module KitchenCabinetMaster
     # item's `own_width`, since a quarter turn swings it that far sideways.
     # Nothing selected: it follows the LAST cabinet or filler inserted (see
     # last_occupant); with none in the model yet, it goes at the origin unturned.
-    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil, wall: false)
+    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil, wall: false, base: false)
       chosen = SelectionManager.selected_occupant(model)
       selected = chosen || last_occupant(model)
       # The first wall unit goes above the START of the row, not after its last unit; the
       # next ones then follow it.
       row_start = nil
       # A base unit (or filler, or corner) selected: the wall unit goes directly above it.
-      if wall && chosen && !%w[wall tall].include?(category_of(chosen).to_s)
+      # A wall unit selected: a new base unit goes directly below it, on the floor.
+      if base && chosen && category_of(chosen).to_s == 'wall'
+        row_start = chosen
+      elsif wall && chosen && !%w[wall tall].include?(category_of(chosen).to_s)
         row_start = chosen
       elsif wall && !chosen
         last_wall = last_occupant(model) { |item| category_of(item) == 'wall' }

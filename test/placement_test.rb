@@ -1,4 +1,4 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 # Runs the plugin's REAL PlacementManager (and CabinetLayout.envelope) outside
 # SketchUp, with a fake selection and fake model. Run:  ruby test/placement_test.rb
@@ -300,5 +300,17 @@ class PlacementTest < Minitest::Test
     wall = insert('wall', 600.0)
     assert_point [0, 600], wall.transformation.origin, 'above the middle base unit'
     assert_in_delta 820.0 + 600.0, wall.transformation.origin.z.to_mm, 0.01
+  end
+
+  def test_a_base_unit_inserted_with_a_wall_unit_selected_goes_directly_below_it
+    insert('base', 600.0)
+    deselect
+    wall = insert('wall', 600.0)
+    second_wall = insert('wall', 800.0)
+    SelectionManager.selected = second_wall
+    base = insert('base', 800.0)
+    assert_in_delta second_wall.transformation.origin.y, base.transformation.origin.y, 0.01, 'below the selected wall unit'
+    assert_in_delta 0.0, base.transformation.origin.z, 0.01, 'on the floor'
+    refute_equal wall.transformation.origin.y, base.transformation.origin.y
   end
 end
