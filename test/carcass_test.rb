@@ -138,4 +138,54 @@ class CarcassTest < Minitest::Test
     big = doors_of('door_count' => 1, 'door_reveal' => 5.0).first
     assert_in_delta 6.0, small.extent[1] - big.extent[1], 0.05
   end
+
+  # ---- door distance and the top panel -----------------------------------------
+
+  def panels_of(overrides) = CabinetLayout.compute(params(overrides)).panels.map(&:role)
+
+  def test_door_distance_sets_how_far_the_doors_stand_off_the_carcass
+    near = doors_of('door_distance' => 2.0).first
+    far = doors_of('door_distance' => 10.0).first
+    assert_in_delta 560.0 + 2.0, near.offset[0], 1e-9
+    assert_in_delta 560.0 + 10.0, far.offset[0], 1e-9
+    assert_in_delta 8.0, far.pivot[0] - near.pivot[0], 1e-9, 'the hinge moves with the door'
+  end
+
+  def test_the_envelope_follows_the_door_distance
+    assert_in_delta 560.0 + 2.0 + 18.0, CabinetLayout.envelope(params('door_distance' => 2.0))[0], 1e-9
+    assert_in_delta 560.0 + 7.0 + 18.0, CabinetLayout.envelope(params('door_distance' => 7.0))[0], 1e-9
+  end
+
+  def test_a_cabinet_stored_before_door_distance_existed_keeps_2_mm
+    old = params.reject { |k, _| k == 'door_distance' }
+    assert_in_delta 562.0, CabinetLayout.compute(old).doors.first.offset[0], 1e-9
+  end
+
+  def test_the_top_follows_the_unit_type_until_a_style_is_chosen
+    assert_includes panels_of({}), 'top_rear_rail'
+    refute_includes panels_of({}), 'top'
+    assert_includes panels_of('cabinet_category' => 'wall', 'toe_kick_height' => 0.0), 'top'
+  end
+
+  def test_two_10_cm_panels_or_one_full_panel_on_any_unit
+    rails = CabinetLayout.compute(params('cabinet_category' => 'wall', 'toe_kick_height' => 0.0, 'top_panel_style' => 'rails')).panels
+    assert_equal %w[top_front_rail top_rear_rail], rails.map(&:role).grep(/rail/).sort
+    assert_equal [100.0, 100.0], rails.select { |p| p.role.include?('rail') }.map { |p| p.extent[0] }
+
+    full = CabinetLayout.compute(params('top_panel_style' => 'full')).panels
+    assert_includes full.map(&:role), 'top'
+    refute(full.any? { |p| p.role.include?('rail') })
+  end
+
+  def test_the_new_settings_are_validated
+    raw = { 'catalog_id' => 'x', 'cabinet_category' => 'base', 'cabinet_type' => 'y', 'width' => '600', 'depth' => '560',
+            'height' => '780', 'door_opening_direction' => 'left', 'toe_kick_height' => '100' }
+    ok = ValidationManager.validate(raw.merge('door_distance' => '4', 'top_panel_style' => 'full'))
+    assert_empty ok.errors
+    assert_equal 4.0, ok.params['door_distance']
+    assert_equal 'full', ok.params['top_panel_style']
+    assert_equal 'door_distance', ValidationManager.validate(raw.merge('door_distance' => '90')).errors.first['field']
+    assert_equal 'top_panel_style', ValidationManager.validate(raw.merge('top_panel_style' => 'zigzag')).errors.first['field']
+    assert_equal '', ValidationManager.validate(raw).params['top_panel_style']
+  end
 end

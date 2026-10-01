@@ -91,8 +91,8 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal material_thickness back_thickness].freeze
-    GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material].freeze
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness].freeze
+    GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style].freeze
 
     # Door gap, door reveal, panel thickness, back panel thickness and the materials
     # of the Material section are settings for the whole job: changing one changes

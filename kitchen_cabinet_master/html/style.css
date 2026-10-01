@@ -1,46 +1,32 @@
+/* Kitchen Cabinet Master: a dark, smooth red theme. One palette, set here. */
 :root {
-  --paper: #f5f7f8;
-  --sheet: #ffffff;
-  --field: #ffffff;
-  --ink: #16232b;
-  --muted: #5d6a72;
-  --line: #dde3e7;
-  --line-strong: #bcc6cc;
-  --accent: #0e5a73;
-  --accent-ink: #ffffff;
-  --accent-soft: #dcebf1;
-  --swing: #d4622a;
-  --danger: #b3261e;
-  --danger-soft: #fbe9e7;
-  --ok: #23724b;
-  --ok-soft: #e4f3ea;
-  --info-soft: #e9eef1;
-  --grid: #dfe7eb;
-  --preview-bg: #e8eef1;
-  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #12191d;
-    --sheet: #182126;
-    --field: #10171b;
-    --ink: #e6edf0;
-    --muted: #93a2ab;
-    --line: #2a353b;
-    --line-strong: #40505a;
-    --accent: #4fb3d1;
-    --accent-ink: #08161c;
-    --accent-soft: #1b3742;
-    --swing: #f08a55;
-    --danger: #ff8a80;
-    --danger-soft: #3a1f1c;
-    --ok: #6fd0a0;
-    --ok-soft: #173025;
-    --info-soft: #222d33;
-    --grid: #232f35;
-    --preview-bg: #0f171b;
-  }
+  color-scheme: dark;
+  --paper: #150a0d;          /* window background */
+  --sheet: #1f1014;          /* cards and bars */
+  --raised: #29151a;         /* hovered / raised surfaces */
+  --field: #12080a;          /* inputs */
+  --ink: #f6ebec;            /* main text */
+  --muted: #b99ca1;          /* labels, hints */
+  --line: #3a1d23;           /* hairlines */
+  --line-strong: #5b2c34;    /* input borders */
+  --accent: #e0575f;         /* the red */
+  --accent-strong: #c23a46;
+  --accent-deep: #8f2430;
+  --accent-ink: #fff5f5;
+  --accent-soft: #3d1a21;
+  --swing: #ff9a6a;
+  --danger: #ff8d8d;
+  --danger-soft: #3d1517;
+  --ok: #7fd6a4;
+  --ok-soft: #14301f;
+  --info-soft: #2a1519;
+  --grid: #2c161b;
+  --preview-bg: #190c10;
+  --glow: rgba(224, 87, 95, 0.28);
+  --ease: cubic-bezier(0.45, 0, 0.25, 1);
+  --collapse-ms: 900ms;
+  --font: "Segoe UI Variable Text", "Segoe UI Variable Display", "Segoe UI", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -49,12 +35,21 @@
 html, body {
   height: 100%;
   margin: 0;
-  background: var(--paper);
+  background: radial-gradient(120% 80% at 50% -10%, #2a1118 0%, var(--paper) 55%);
   color: var(--ink);
-  font: 13px/1.4 var(--font);
+  font: 13px/1.45 var(--font);
   font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+::selection { background: var(--accent-strong); color: var(--accent-ink); }
+
+/* Thin red scrollbar */
+.scroll { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.scroll::-webkit-scrollbar { width: 9px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--sheet); }
+.scroll::-webkit-scrollbar-thumb:hover { background: var(--accent-deep); }
 .app {
   display: flex;
   flex-direction: column;
@@ -65,9 +60,12 @@ html, body {
 
 .topbar {
   flex: none;
-  background: var(--sheet);
-  border-bottom: 1px solid var(--line);
-  padding: 10px 14px 12px;
+  background: linear-gradient(180deg, #2a121a 0%, var(--sheet) 100%);
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  padding: 12px 14px 12px;
+  position: relative;
+  z-index: 2;
 }
 
 .topbar-row {
@@ -79,9 +77,14 @@ html, body {
 
 h1 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #fff1f1 0%, #ff9aa0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .badge {
@@ -89,8 +92,9 @@ h1 {
   color: var(--muted);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 2px 10px;
   white-space: nowrap;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease);
 }
 
 .badge.active {
@@ -101,8 +105,10 @@ h1 {
 
 .preview {
   margin: 10px 0 0;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.35);
   background-color: var(--preview-bg);
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
@@ -147,38 +153,63 @@ h1 {
   background: var(--sheet);
 }
 
-.card { border-bottom: 1px solid var(--line); }
+.card { border-bottom: 1px solid var(--line); transition: background 0.4s var(--ease); }
+.card:not(.collapsed):not(.feature-off) { background: linear-gradient(180deg, rgba(224, 87, 95, 0.06), transparent 120px); }
 
 .card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border: 0;
   background: transparent;
   color: var(--ink);
-  font: inherit;
+  font-family: var(--font-display);
+  font-size: 13.5px;
   font-weight: 650;
+  letter-spacing: 0.02em;
   text-align: left;
   cursor: pointer;
+  transition: color 0.3s var(--ease), background 0.3s var(--ease);
 }
+
+.card-head:hover { color: #ffb3b8; background: rgba(224, 87, 95, 0.07); }
 
 .card-head::after {
   content: "";
   width: 7px;
   height: 7px;
   margin-right: 3px;
-  border-right: 1.6px solid var(--muted);
-  border-bottom: 1.6px solid var(--muted);
+  border-right: 1.8px solid var(--accent);
+  border-bottom: 1.8px solid var(--accent);
   transform: rotate(45deg);
-  transition: transform 0.15s ease;
+  transition: transform var(--collapse-ms) var(--ease);
 }
 
 .card.collapsed .card-head::after { transform: rotate(-45deg); }
-.card.collapsed .card-body { display: none; }
 
-.card-body { padding: 2px 14px 12px; }
+/* A section opens and closes by sliding its body down / up, slowly. The height is
+   set from script (see toggleCard); the padding lives on the inner box so the
+   measured height is exact. */
+.card-body {
+  overflow: hidden;
+  transition: height var(--collapse-ms) var(--ease), opacity calc(var(--collapse-ms) * 0.8) var(--ease), visibility 0s;
+}
+
+.card-inner { padding: 2px 14px 14px; }
+.card.collapsed .card-body {
+  height: 0;
+  opacity: 0;
+  visibility: hidden; /* so a closed section's fields cannot be tabbed into */
+  transition: height var(--collapse-ms) var(--ease), opacity calc(var(--collapse-ms) * 0.6) var(--ease), visibility 0s linear var(--collapse-ms);
+}
+
+.no-anim .card-body, .no-anim .card-head::after { transition: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --collapse-ms: 1ms; }
+}
 
 .card.is-disabled .card-body { opacity: 0.55; }
 
@@ -209,22 +240,28 @@ h1 {
 
 .label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
 }
 
 .input {
   display: flex;
   align-items: center;
-  height: 30px;
-  padding: 0 8px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--field);
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
 }
+
+.input:hover { border-color: #7a3841; }
 
 .input:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  background: #190b0e;
+  box-shadow: 0 0 0 3px var(--glow);
 }
 
 .input input,
@@ -241,7 +278,7 @@ h1 {
 }
 
 .input select { margin: 0 -4px; }
-.input select option { color: #16232b; background: #ffffff; }
+.input select option { color: var(--ink); background: #1f1014; }
 
 .input em {
   margin-left: 6px;
@@ -293,8 +330,9 @@ h1 {
 .actions {
   flex: none;
   padding: 10px 14px 12px;
-  background: var(--paper);
+  background: linear-gradient(0deg, #12080a 0%, var(--paper) 100%);
   border-top: 1px solid var(--line-strong);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .btn-row { display: grid; gap: 6px; }
@@ -311,20 +349,29 @@ h1 {
 .sub-btn { width: 100%; margin-top: 8px; }
 
 .btn {
-  height: 32px;
-  padding: 0 8px;
+  height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--sheet);
+  border-radius: 8px;
+  background: var(--raised);
   color: var(--ink);
   font: inherit;
   font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  transition: transform 0.15s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease),
+              background 0.25s var(--ease), box-shadow 0.25s var(--ease), filter 0.25s var(--ease);
 }
 
-.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.primary:hover:not(:disabled) { color: var(--accent-ink); filter: brightness(1.08); }
+.btn:hover:not(:disabled) { border-color: var(--accent); color: #ffb3b8; box-shadow: 0 0 0 3px var(--glow); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.primary {
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  border-color: var(--accent-strong);
+  color: var(--accent-ink);
+  box-shadow: 0 4px 14px rgba(194, 58, 70, 0.35);
+}
+.btn.primary:hover:not(:disabled) { color: var(--accent-ink); filter: brightness(1.12); box-shadow: 0 4px 18px rgba(224, 87, 95, 0.5); }
 .btn.danger { color: var(--danger); }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .btn:disabled { opacity: 0.55; cursor: default; }
@@ -333,7 +380,7 @@ h1 {
   margin-bottom: 8px;
   padding: 7px 10px;
   border-left: 3px solid var(--line-strong);
-  border-radius: 3px;
+  border-radius: 6px;
   background: var(--info-soft);
   font-size: 12.5px;
   max-height: 120px;

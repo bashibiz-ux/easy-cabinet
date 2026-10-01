@@ -19,6 +19,7 @@ module KitchenCabinetMaster
       'back_thickness'        => { label: 'Back panel thickness', min: 3.0, max: 25.0 },
       'door_gap'              => { label: 'Door gap', min: 0.0, max: 10.0 },
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
+      'door_distance'         => { label: 'Door distance', min: 0.0, max: 50.0 },
       'door_opening_angle'    => { label: 'Opening angle', min: 1.0, max: 170.0, unit: 'degrees' },
       'placement_gap'         => { label: 'Gap between cabinets', min: 0.0, max: 100.0 },
       # A cabinet only needs the toe-kick HEIGHT (how far it stands off the floor);
@@ -121,6 +122,13 @@ module KitchenCabinetMaster
         out['door_opening_direction'] = direction
       else
         errors << error('door_opening_direction', 'Select a door opening direction.')
+      end
+
+      style = raw['top_panel_style'].to_s.strip
+      if Defaults::TOP_PANEL_STYLES.include?(style)
+        out['top_panel_style'] = style
+      else
+        errors << error('top_panel_style', 'Select how the top panel is made.')
       end
 
       %w[show_opening_direction show_door_symbol].each do |key|

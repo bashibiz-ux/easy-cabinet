@@ -63,7 +63,7 @@ module KitchenCabinetMaster
                   [dims.interior_start, dims.thick, 0])
           ]
         end
-      panels.concat(category == 'corner' ? corner_top_panels(dims) : top_panels(category, dims))
+      panels.concat(category == 'corner' ? corner_top_panels(dims) : top_panels(category, dims, params['top_panel_style']))
       panels.concat(
         if category == 'corner'
           corner_shelf_panels(params['shelf_count'].to_i, dims)
@@ -83,6 +83,13 @@ module KitchenCabinetMaster
                  drawers: drawers, toe_kick: [])
     end
 
+    # How far the doors stand in front of the carcass (Door Distance in the Presets).
+    # Cabinets stored before it existed use the old fixed 2 mm.
+    def self.door_distance(params)
+      value = params['door_distance']
+      value.nil? || value.to_s.strip.empty? ? Defaults::DOOR_CLEARANCE : value.to_f
+    end
+
     # The space a cabinet takes up, closed: [depth, width, top Z] in millimetres,
     # measured from its rear-left-bottom corner. Depth includes the doors (or, on an
     # open unit, the flush front), so it is the same either way. Used to keep new
@@ -96,7 +103,7 @@ module KitchenCabinetMaster
       nominal_depth = category == 'corner' ? params['width'].to_f : params['depth'].to_f
       # A corner unit's doors sit on a diagonal inside that square, so nothing of
       # it stands proud of Width; the door clearance only applies to flat fronts.
-      depth = category == 'corner' ? nominal_depth : nominal_depth + Defaults::DOOR_CLEARANCE + thick
+      depth = category == 'corner' ? nominal_depth : nominal_depth + door_distance(params) + thick
       [depth, params['width'].to_f, base_z + params['height'].to_f]
     end
 
@@ -140,7 +147,7 @@ module KitchenCabinetMaster
       depth = width if corner
 
       open_unit = params['door_count'].to_i.zero?
-      depth += Defaults::DOOR_CLEARANCE + thick if open_unit && !corner
+      depth += door_distance(params) + thick if open_unit && !corner
 
       Dims.new(width: width, depth: depth, height: params['height'].to_f, thick: thick, back: back,
                inner_w: width - (2 * thick), interior_start: start, interior_d: depth - start,
@@ -149,11 +156,14 @@ module KitchenCabinetMaster
     end
     private_class_method :dimensions
 
-    # Base units get two structural rails; wall and tall units get a full top panel.
-    def self.top_panels(category, dims)
+    # The top of the carcass: two 10 cm panels (a front and a rear rail) or one full
+    # panel. Left unset it follows the unit type: rails on a base unit, one panel on
+    # a wall or tall unit.
+    def self.top_panels(category, dims, style = '')
       z = dims.height - dims.thick
+      rails = style.to_s.empty? ? category == 'base' : style.to_s == 'rails'
 
-      if category == 'base'
+      if rails
         rail = [Defaults::RAIL_DEPTH, dims.interior_d / 2.0].min
         [
           panel('top_rear_rail',  'Top Rear Rail',  [rail, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, z]),
@@ -262,9 +272,9 @@ module KitchenCabinetMaster
         Door.new(
           role: "door_#{index + 1}", name: "Door #{index + 1}",
           extent: [dims.thick, door_w, door_h].map { |v| round2(v) },
-          offset: [dims.depth + Defaults::DOOR_CLEARANCE, y, base_z + reveal].map { |v| round2(v) },
+          offset: [dims.depth + door_distance(params), y, base_z + reveal].map { |v| round2(v) },
           hinge: hinge_left ? 'left' : 'right',
-          pivot: [dims.depth + Defaults::DOOR_CLEARANCE + dims.thick, hinge_left ? y : y + door_w, base_z].map { |v| round2(v) },
+          pivot: [dims.depth + door_distance(params) + dims.thick, hinge_left ? y : y + door_w, base_z].map { |v| round2(v) },
           rotation: 0.0
         )
       end
@@ -291,7 +301,7 @@ module KitchenCabinetMaster
     def self.corner_door(params, dims, base_z)
       inner_edge = dims.width - dims.thick
       reveal = params['door_reveal'].to_f
-      clear = Defaults::DOOR_CLEARANCE
+      clear = door_distance(params)
       thick = dims.thick
       outward = [Math.sqrt(0.5), Math.sqrt(0.5)] # away from the back-left wall corner, at 45 degrees
 
@@ -340,7 +350,7 @@ module KitchenCabinetMaster
         Door.new(
           role: "drawer_#{index + 1}", name: "Drawer #{index + 1}",
           extent: [dims.thick, front_w, front_h].map { |v| round2(v) },
-          offset: [dims.depth + Defaults::DOOR_CLEARANCE, reveal, base_z + z].map { |v| round2(v) },
+          offset: [dims.depth + door_distance(params), reveal, base_z + z].map { |v| round2(v) },
           hinge: 'center', pivot: [dims.depth, reveal, base_z].map { |v| round2(v) }, rotation: 0.0
         )
       end

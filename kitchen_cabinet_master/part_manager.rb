@@ -70,7 +70,7 @@ module KitchenCabinetMaster
     def self.filler_target(target, target_params)
       corner = target_params['cabinet_category'] == 'corner'
       depth = (corner ? target_params['width'] : target_params['depth']).to_f
-      flush = corner ? depth : depth + Defaults::DOOR_CLEARANCE + target_params['material_thickness'].to_f
+      flush = corner ? depth : depth + CabinetLayout.door_distance(target_params) + target_params['material_thickness'].to_f
       {
         'target_id' => AttributeManager.cabinet_id(target),
         'target_width' => target_params['width'].to_f,

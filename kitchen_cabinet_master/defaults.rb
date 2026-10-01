@@ -97,7 +97,8 @@ module KitchenCabinetMaster
     SHELF_FRONT_SETBACK  = 20.0  # shelves stop this far short of the carcass front
     SHELF_SIDE_CLEARANCE = 1.0   # gap each side of a shelf so it can be removed
     TOE_KICK_RECESS      = 50.0  # the toe kick is set back this far from the carcass front
-    DOOR_CLEARANCE       = 2.0   # doors stand this far in front of the carcass
+    DOOR_CLEARANCE       = 2.0   # doors stand this far in front of the carcass (the default Door Distance)
+    TOP_PANEL_STYLES     = ['', 'rails', 'full'].freeze
 
     PARAMS = {
       'catalog_id'             => '',
@@ -125,6 +126,10 @@ module KitchenCabinetMaster
       'show_door_symbol'       => false, # the dashed swing lines on the door (ticked by the user when wanted)
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
+      'door_distance'          => DOOR_CLEARANCE, # how far the doors stand in front of the carcass
+      # The top of a cabinet: '' = by unit type (two rails on a base unit, one panel on
+      # a wall or tall unit), 'rails' = two 10 cm panels, 'full' = one full panel.
+      'top_panel_style'        => '',
 
       'placement_gap'          => 0.0,
       'shelf_count'            => 1,

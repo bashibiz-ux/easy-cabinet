@@ -22,13 +22,13 @@
 
   <main class="scroll" id="scroll">
 
-    <!-- Catalog / Configuration -->
-    <section class="card" id="sec-catalog">
-      <button class="card-head" type="button" aria-expanded="true">Catalog</button>
+    <!-- Presets: units and the settings every cabinet shares -->
+    <section class="card" id="sec-presets">
+      <button class="card-head" type="button" aria-expanded="true">Presets</button>
       <div class="card-body">
         <label class="field">
-          <span class="label">Catalog Selection</span>
-          <div class="input"><select id="catalog"></select></div>
+          <span class="label">Units</span>
+          <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
         </label>
         <div class="grid-2">
           <label class="field" data-feature="door_gap">
@@ -40,6 +40,10 @@
             <div class="input"><input id="doorReveal" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
+        <label class="field narrow" data-feature="door_distance">
+          <span class="label">Door Distance</span>
+          <div class="input"><input id="doorDistance" type="text" inputmode="decimal" autocomplete="off" aria-label="Door distance: how far the doors stand in front of the carcass"><em>mm</em></div>
+        </label>
         <label class="field" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
           <div class="thick-row">
@@ -53,11 +57,24 @@
             <div class="input"><select id="backThicknessPreset" aria-label="Back panel thickness, standard sizes"></select></div>
             <div class="input"><input id="backThickness" type="text" inputmode="decimal" autocomplete="off" aria-label="Back panel thickness, custom"><em>mm</em></div>
           </div>
-          <span class="hint">At 18 mm or more the back panel sits flush with the back edge of the sides.</span>
+        </label>
+        <label class="field" data-feature="top_panel">
+          <span class="label">Top Panel</span>
+          <div class="input"><select id="topPanel" aria-label="Top panel of the cabinet"></select></div>
         </label>
       </div>
     </section>
 
+    <!-- Models -->
+    <section class="card" id="sec-catalog">
+      <button class="card-head" type="button" aria-expanded="true">Models</button>
+      <div class="card-body">
+        <label class="field">
+          <span class="label">Model Selection</span>
+          <div class="input"><select id="catalog"></select></div>
+        </label>
+      </div>
+    </section>
     <!-- Handle -->
     <section class="card" id="sec-handle" data-feature="handle">
       <button class="card-head" type="button" aria-expanded="true">Handle</button>

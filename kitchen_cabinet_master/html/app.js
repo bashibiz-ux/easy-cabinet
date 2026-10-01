@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.21.1';
+  const APP_VERSION = '0.22.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -33,6 +33,8 @@
     material_thickness: 'thickness',
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
+    door_distance: 'doorDistance',
+    top_panel_style: 'topPanel',
     door_opening_direction: 'direction',
     door_opening_angle: 'angle',
     cabinet_category: 'category',
@@ -67,6 +69,7 @@
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
     door_reveal: 'doorReveal',
+    door_distance: 'doorDistance',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -90,6 +93,7 @@
     wall_material: 'wallMaterial',
     tall_material: 'tallMaterial',
     carcass_material: 'carcassMaterial',
+    top_panel_style: 'topPanel',
     toe_kick_material: 'toeMaterial',
     door_opening_direction: 'direction',
     handle_length: 'handleLength',
@@ -112,7 +116,9 @@
     // What is selected in the model: 'cabinet', 'filler', 'end_panel', 'toe_kick' or null.
     selectedKind: null,
     // Filler / end panel fields the user has set themselves (see followCabinet).
-    touched: new Set()
+    touched: new Set(),
+    unit: 'mm',
+    animate: false // section animations start once the panel is built
   };
 
   /* ---------------------------------------------------------------------- *
@@ -200,14 +206,14 @@
 
   function collectToeKick() {
     return {
-      toe_kick_height: $('toeHeight').value,
-      toe_kick_thickness: $('toeThickness').value,
+      toe_kick_height: mmv('toeHeight'),
+      toe_kick_thickness: mmv('toeThickness'),
       toe_kick_material: $('toeMaterial').value,
-      toe_kick_piece_length: $('pieceLength').value,
+      toe_kick_piece_length: mmv('pieceLength'),
       toe_kick_pieces: $('pieceCount').value,
-      toe_kick_recess: $('toeRecess').value,
+      toe_kick_recess: mmv('toeRecess'),
       // Used only when nothing is selected: the carcass depth the toe kick sits under.
-      depth: $('depth').value,
+      depth: mmv('depth'),
       // A new toe kick follows the Toe Kick tick in the Visibility section.
       visible: $('visToe').checked
     };
@@ -255,9 +261,9 @@
 
   function collectFiller() {
     return {
-      width: $('fillerWidth').value,
-      thickness: $('fillerThickness').value,
-      height: $('fillerHeight').value,
+      width: mmv('fillerWidth'),
+      thickness: mmv('fillerThickness'),
+      height: mmv('fillerHeight'),
       // Untouched, the height is the selected unit's own (a tall, base or wall filler).
       height_auto: !state.touched.has('fillerHeight')
     };
@@ -266,10 +272,10 @@
   function collectEndPanel() {
     return {
       side: $('epSide').value,
-      depth: $('epDepth').value,
+      depth: mmv('epDepth'),
       depth_auto: !state.touched.has('epDepth'),
-      thickness: $('epThickness').value,
-      height: $('epHeight').value,
+      thickness: mmv('epThickness'),
+      height: mmv('epHeight'),
       height_auto: !state.touched.has('epHeight'),
       material: $('epMaterial').value
     };
@@ -329,6 +335,83 @@
     return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
   }
 
+  /* ---------------------------------------------------------------------- *
+   * Units: the panel shows lengths in the chosen unit; SketchUp always gets mm
+   * ---------------------------------------------------------------------- */
+
+  const UNITS = {
+    mm: { name: 'Millimetres (mm)', label: 'mm', mm: 1, decimals: 1 },
+    cm: { name: 'Centimetres (cm)', label: 'cm', mm: 10, decimals: 2 },
+    m: { name: 'Metres (m)', label: 'm', mm: 1000, decimals: 4 },
+    in: { name: 'Inches (in)', label: 'in', mm: 25.4, decimals: 3 },
+    ft: { name: 'Feet (ft)', label: 'ft', mm: 304.8, decimals: 4 }
+  };
+
+  // The inputs that hold a length. Each one's text is in the chosen unit.
+  const LENGTH_IDS = [
+    'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
+    'width', 'depth', 'height', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
+    'toeThickness', 'toeRecess', 'pieceLength'
+  ];
+
+  function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
+
+  // mm -> text in the chosen unit (no unit label), trimmed of trailing zeros.
+  function fmtU(mm) {
+    if (!Number.isFinite(mm)) return '';
+    const { decimals, mm: factor } = unitInfo();
+    const scaled = mm / factor;
+    const rounded = Math.round(scaled * 10 ** decimals) / 10 ** decimals;
+    return String(rounded);
+  }
+
+  function fmtLen(mm) { return `${fmtU(mm)} ${unitInfo().label}`; }
+
+  // The length typed in a field, in mm, as text. A field nobody has edited since it
+  // was filled gives back the exact mm it was filled with, so converting to inches
+  // and back never drifts the size of a cabinet.
+  function mmv(id) {
+    const el = $(id);
+    const text = el.value.trim();
+    if (!text) return '';
+    if (el.dataset.mm !== undefined && el.dataset.shown === el.value) return el.dataset.mm;
+    const n = num(text);
+    return Number.isFinite(n) ? String(Math.round(n * unitInfo().mm * 1e6) / 1e6) : text;
+  }
+
+  function showLength(id, mm) {
+    const el = $(id);
+    el.value = fmtU(mm);
+    el.dataset.mm = String(mm);
+    el.dataset.shown = el.value;
+  }
+
+  function refreshUnitLabels() {
+    LENGTH_IDS.forEach((id) => {
+      const el = $(id);
+      const label = el && el.parentElement && el.parentElement.querySelector('em');
+      if (label) label.textContent = unitInfo().label;
+    });
+  }
+
+  // Switching unit re-writes every length in the new unit (same sizes, other numbers).
+  function setUnit(unit) {
+    if (!UNITS[unit] || unit === state.unit) return;
+    const values = LENGTH_IDS.map((id) => [id, mmv(id)]);
+    state.unit = unit;
+    values.forEach(([id, mm]) => {
+      const n = num(mm);
+      if (mm !== '' && Number.isFinite(n)) showLength(id, n);
+    });
+    refreshUnitLabels();
+    fillWidthPreset();
+    fillThicknessPresets();
+    [...$('handleLength').options].forEach((o) => { if (o.value) o.textContent = fmtLen(Number(o.value)); });
+    $('units').value = unit;
+    try { localStorage.setItem('kcm.unit', unit); } catch (_) { /* a private window: not remembered */ }
+    drawPreview();
+  }
   function fillSelect(el, items, { placeholder = null } = {}) {
     const previous = el.value;
     el.innerHTML = '';
@@ -345,6 +428,10 @@
 
   function setText(id, value) {
     if (value === undefined || value === null) return;
+    if (LENGTH_IDS.includes(id) && typeof value === 'number') {
+      showLength(id, value);
+      return;
+    }
     $(id).value = typeof value === 'number' ? fmt(value) : String(value);
   }
 
@@ -354,7 +441,7 @@
 
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
-    'door_gap', 'door_reveal', 'panel_thickness', 'back_thickness',
+    'door_gap', 'door_reveal', 'door_distance', 'top_panel', 'panel_thickness', 'back_thickness',
     'cabinet_extras', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
   ];
 
@@ -466,23 +553,25 @@
       base_material: $('baseMaterial').value,
       wall_material: $('wallMaterial').value,
       tall_material: $('tallMaterial').value,
-      material_thickness: $('thickness').value,
-      back_thickness: $('backThickness').value,
-      door_gap: $('doorGap').value,
+      material_thickness: mmv('thickness'),
+      back_thickness: mmv('backThickness'),
+      door_gap: mmv('doorGap'),
+      door_distance: mmv('doorDistance'),
+      top_panel_style: $('topPanel').value,
       door_opening_direction: $('direction').value,
       door_opening_angle: $('angle').value,
       show_opening_direction: $('showDirection').checked,
       show_door_symbol: $('showDoorSymbol').checked,
-      door_reveal: $('doorReveal').value,
+      door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
-      placement_gap: $('gap').value,
-      width: $('width').value,
-      depth: $('depth').value,
-      height: $('height').value,
+      placement_gap: mmv('gap'),
+      width: mmv('width'),
+      depth: mmv('depth'),
+      height: mmv('height'),
       shelf_count: $('shelves').value,
       carcass_material: $('carcassMaterial').value,
-      toe_kick_height: $('toeHeight').value,
+      toe_kick_height: mmv('toeHeight'),
       handle_length: handleValue('handleLength'),
       handle_finish: handleValue('handleFinish'),
       handle_material: handleValue('handleMaterial'),
@@ -547,7 +636,7 @@
     }
 
     const finishes = list(bundle.finishes);
-    fillSelect($('handleLength'), list(bundle.lengths).map((l) => ({ id: String(l), name: `${l} mm` })));
+    fillSelect($('handleLength'), list(bundle.lengths).map((l) => ({ id: String(l), name: fmtLen(l) })));
     fillSelect($('handleFinish'), finishes);
     state.finishColors = {};
     finishes.forEach((f) => { if (f.color) state.finishColors[f.id] = f.color; });
@@ -612,7 +701,7 @@
   // typed freely, and the list follows it (Custom when it is not a listed size).
   function fillWidthPreset() {
     const sizes = list(state.meta && state.meta.standard_widths);
-    fillSelect($('widthPreset'), [{ id: 'custom', name: 'Custom' }, ...sizes.map((w) => ({ id: String(w), name: `${w} mm` }))]);
+    fillSelect($('widthPreset'), [{ id: 'custom', name: 'Custom' }, ...sizes.map((w) => ({ id: String(w), name: fmtLen(w) }))]);
     syncWidthPreset();
   }
 
@@ -623,21 +712,21 @@
 
   function fillThicknessPresets() {
     THICKNESS_PAIRS.forEach(([presetId]) => {
-      fillSelect($(presetId), [{ id: 'custom', name: 'Custom' }, ...THICKNESS_SIZES.map((t) => ({ id: String(t), name: `${t} mm` }))]);
+      fillSelect($(presetId), [{ id: 'custom', name: 'Custom' }, ...THICKNESS_SIZES.map((t) => ({ id: String(t), name: fmtLen(t) }))]);
     });
     syncThicknessPresets();
   }
 
   function syncThicknessPresets() {
     THICKNESS_PAIRS.forEach(([presetId, inputId]) => {
-      const value = String(num($(inputId).value));
+      const value = String(num(mmv(inputId)));
       const listed = [...$(presetId).options].some((o) => o.value === value);
       $(presetId).value = listed ? value : 'custom';
     });
   }
 
   function syncWidthPreset() {
-    const value = String(num($('width').value));
+    const value = String(num(mmv('width')));
     const listed = [...$('widthPreset').options].some((o) => o.value === value);
     $('widthPreset').value = listed ? value : 'custom';
   }
@@ -717,10 +806,10 @@
       length,
       horizontal: !knob && $('handleOrientation').value === 'horizontal',
       position: $('handlePosition').value || 'top',
-      side: numOr($('handleSide').value, 0),
-      vertical: numOr($('handleVert').value, 0),
-      customX: numOr($('handleCustomX').value, 50),
-      customZ: numOr($('handleCustomZ').value, 100)
+      side: numOr(mmv('handleSide'), 0),
+      vertical: numOr(mmv('handleVert'), 0),
+      customX: numOr(mmv('handleCustomX'), 50),
+      customZ: numOr(mmv('handleCustomZ'), 100)
     };
   }
 
@@ -755,9 +844,9 @@
     const svg = $('preview');
     const caption = $('previewCaption');
 
-    const W = num($('width').value);
-    const H = num($('height').value);
-    const D = num($('depth').value);
+    const W = num(mmv('width'));
+    const H = num(mmv('height'));
+    const D = num(mmv('depth'));
     if (!(W > 0 && H > 0)) {
       svg.innerHTML = '';
       caption.textContent = 'Enter width and height to see the front view.';
@@ -765,7 +854,7 @@
     }
 
     const isWall = $('category').value === 'wall';
-    let toe = isWall ? 0 : num($('toeHeight').value);
+    let toe = isWall ? 0 : num(mmv('toeHeight'));
     if (!Number.isFinite(toe) || toe < 0) toe = 0;
 
     const cabinet = currentCabinet();
@@ -778,8 +867,8 @@
     const showToe = $('visToe').checked;
     const carcassClass = $('visCarcass').checked ? 'pv-body' : 'pv-body pv-off';
     const handle = handleSpec();
-    const revealMm = numOr($('doorReveal').value, 2);
-    const gapMm = numOr($('doorGap').value, 1.5);
+    const revealMm = numOr(mmv('doorReveal'), 2);
+    const gapMm = numOr(mmv('doorGap'), 1.5);
 
     const padX = 26;
     const top = 12;
@@ -850,12 +939,12 @@
       }
     }
 
-    out.push(`<text class="pv-dim" x="${VBW / 2}" y="${floorY + 14}" text-anchor="middle">${fmt(W)}</text>`);
-    out.push(`<text class="pv-dim" transform="translate(${x0 + bw + 11} ${(bodyTop + bodyBottom) / 2}) rotate(-90)" text-anchor="middle">${fmt(H)}</text>`);
+    out.push(`<text class="pv-dim" x="${VBW / 2}" y="${floorY + 14}" text-anchor="middle">${fmtU(W)}</text>`);
+    out.push(`<text class="pv-dim" transform="translate(${x0 + bw + 11} ${(bodyTop + bodyBottom) / 2}) rotate(-90)" text-anchor="middle">${fmtU(H)}</text>`);
     svg.innerHTML = out.join('');
 
-    const depthText = Number.isFinite(D) ? `, D ${fmt(D)}` : '';
-    caption.textContent = `W ${fmt(W)}${depthText}, H ${fmt(H)} mm. Base Z ${fmt(toe)} mm, top Z ${fmt(toe + H)} mm.`;
+    const depthText = Number.isFinite(D) ? `, D ${fmtU(D)}` : '';
+    caption.textContent = `W ${fmtU(W)}${depthText}, H ${fmtU(H)} ${unitInfo().label}. Base Z ${fmtU(toe)} ${unitInfo().label}, top Z ${fmtU(toe + H)} ${unitInfo().label}.`;
   }
 
   // ---- filler / end panel / toe kick ------------------------------------------------
@@ -897,46 +986,46 @@
 
   // The cabinet the part goes with, as a dashed outline.
   function ghostCabinet(lift) {
-    const w = numOr($('width').value, 600);
-    const h = numOr($('height').value, 780);
+    const w = numOr(mmv('width'), 600);
+    const h = numOr(mmv('height'), 780);
     return { x: 0, z: lift, w, h, cls: 'pv-ghost' };
   }
 
   function drawExtraPreview(kind) {
     const svg = $('preview');
-    const lift = Math.max(0, numOr($('toeHeight').value, 100));
+    const lift = Math.max(0, numOr(mmv('toeHeight'), 100));
     const cabinet = ghostCabinet(lift);
 
     if (kind === 'filler') {
-      const w = num($('fillerWidth').value);
-      const t = num($('fillerThickness').value);
-      const h = num($('fillerHeight').value);
+      const w = num(mmv('fillerWidth'));
+      const t = num(mmv('fillerThickness'));
+      const h = num(mmv('fillerHeight'));
       if (!(w > 0 && h > 0)) {
         svg.innerHTML = '';
         $('previewCaption').textContent = 'Enter the filler width and height to see it.';
         return;
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
-      const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmt(w), heightLabel: fmt(h) };
-      drawScene([cabinet, filler], `Filler ${fmt(w)} × ${fmt(h)} mm${Number.isFinite(t) ? `, ${fmt(t)} thick` : ''}, flush with the door, base Z ${fmt(lift)} mm.`);
+      const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} × ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
-      const d = num($('epDepth').value);
-      const t = num($('epThickness').value);
-      const h = num($('epHeight').value);
+      const d = num(mmv('epDepth'));
+      const t = num(mmv('epThickness'));
+      const h = num(mmv('epHeight'));
       if (!(t > 0 && h > 0)) {
         svg.innerHTML = '';
         $('previewCaption').textContent = 'Enter the end panel thickness and height to see it.';
         return;
       }
       const left = $('epSide').value !== 'right';
-      const panel = { x: left ? -t : cabinet.w, z: 0, w: t, h, cls: 'pv-part', label: fmt(t), heightLabel: fmt(h) };
-      drawScene([cabinet, panel], `End panel on the ${left ? 'left' : 'right'}: depth ${Number.isFinite(d) ? fmt(d) : '?'}, thickness ${fmt(t)}, height ${fmt(h)} mm.`);
+      const panel = { x: left ? -t : cabinet.w, z: 0, w: t, h, cls: 'pv-part', label: fmtU(t), heightLabel: fmtU(h) };
+      drawScene([cabinet, panel], `End panel on the ${left ? 'left' : 'right'}: depth ${Number.isFinite(d) ? fmtU(d) : '?'}, thickness ${fmtU(t)}, height ${fmtU(h)} ${unitInfo().label}.`);
     } else {
-      const len = num($('pieceLength').value);
+      const len = num(mmv('pieceLength'));
       const count = Math.floor(num($('pieceCount').value));
-      const h = num($('toeHeight').value);
-      const t = num($('toeThickness').value);
-      const recess = num($('toeRecess').value);
+      const h = num(mmv('toeHeight'));
+      const t = num(mmv('toeThickness'));
+      const recess = num(mmv('toeRecess'));
       if (!(len > 0 && count > 0 && h > 0)) {
         svg.innerHTML = '';
         $('previewCaption').textContent = 'Enter the piece length, number of pieces and height to see the toe kick.';
@@ -945,10 +1034,10 @@
       const total = len * count;
       const joints = [];
       for (let i = 1; i < Math.min(count, 60); i += 1) joints.push(len * i);
-      const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmt(total), heightLabel: fmt(h) };
+      const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} × ${fmt(len)} = ${fmt(total)} mm long, ${fmt(h)} high${Number.isFinite(t) ? `, ${fmt(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmt(recess)} mm` : ''}.`);
+        `Toe kick: ${count} × ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
@@ -1009,8 +1098,50 @@
         if (other !== card && other.querySelector('.card-head') && !other.classList.contains('collapsed')) toggleCard(other, false);
       });
     }
-    card.classList.toggle('collapsed', collapsed);
     card.querySelector('.card-head').setAttribute('aria-expanded', String(!collapsed));
+
+    const body = card.querySelector('.card-body');
+    const inner = body && body.firstElementChild;
+    if (card.classList.contains('collapsed') === collapsed) return;
+    if (!body || !inner || !state.animate) {
+      card.classList.toggle('collapsed', collapsed);
+      if (body) body.style.height = '';
+      return;
+    }
+
+    // Slide the body down (open) or up (closed) over --collapse-ms. From wherever it
+    // is now, so a click in the middle of a slide just turns it round.
+    clearTimeout(body.slideTimer);
+    const from = body.offsetHeight;
+    body.style.height = `${from}px`;
+    void body.offsetHeight; // let the browser take that height before it changes
+    if (collapsed) {
+      card.classList.add('collapsed');
+      body.style.height = '0px';
+    } else {
+      card.classList.remove('collapsed');
+      body.style.height = `${inner.scrollHeight}px`;
+      // Once open, the height follows the content again (fields that show or hide).
+      body.slideTimer = setTimeout(() => {
+        if (!card.classList.contains('collapsed')) body.style.height = '';
+      }, 1000);
+    }
+  }
+
+  // Each section body gets an inner box that carries the padding, so the height the
+  // slide animates to is exactly the height of the content.
+  function wrapCardBodies() {
+    document.querySelectorAll('.card-body').forEach((body) => {
+      if (body.firstElementChild && body.firstElementChild.classList.contains('card-inner')) return;
+      const inner = document.createElement('div');
+      inner.className = 'card-inner';
+      if (body.classList.contains('checks')) {
+        inner.classList.add('checks');
+        body.classList.remove('checks');
+      }
+      while (body.firstChild) inner.appendChild(body.firstChild);
+      body.appendChild(inner);
+    });
   }
 
   /* ---------------------------------------------------------------------- *
@@ -1066,7 +1197,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1101,6 +1232,8 @@
   const GLOBAL_FIELDS = {
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
+    doorDistance: ['door_distance', 'doorDistance'],
+    topPanel: ['top_panel_style', 'topPanel'],
     thickness: ['material_thickness', 'thickness'],
     thicknessPreset: ['material_thickness', 'thickness'],
     backThickness: ['back_thickness', 'backThickness'],
@@ -1127,7 +1260,7 @@
     clearInvalid();
     try {
       const payload = {};
-      globalDirty.forEach((elementId, key) => { payload[key] = $(elementId).value; });
+      globalDirty.forEach((elementId, key) => { payload[key] = LENGTH_IDS.includes(elementId) ? mmv(elementId) : $(elementId).value; });
       globalDirty.clear();
       const res = await call('apply_all', payload);
       if (res.ok) {
@@ -1193,6 +1326,7 @@
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
     $('visToe').checked = v.toe_kick !== false;
+    syncThicknessPresets();
     updateChips();
   }
 
@@ -1216,7 +1350,15 @@
   async function buildUi() {
     const m = state.meta;
     $('appVersion').textContent = 'v' + (m.version || APP_VERSION);
-    fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a catalog...' : 'No catalogs found' });
+    fillSelect($('units'), Object.entries(UNITS).map(([id, unit]) => ({ id, name: unit.name })));
+    $('units').value = state.unit;
+    refreshUnitLabels();
+    fillSelect($('topPanel'), [
+      { id: '', name: 'By unit type' },
+      { id: 'rails', name: 'Two 10 cm panels' },
+      { id: 'full', name: 'One full panel' }
+    ]);
+    fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
@@ -1272,6 +1414,7 @@
       drawPreview();
     });
     $('width').addEventListener('input', syncWidthPreset);
+    $('units').addEventListener('change', () => setUnit($('units').value));
     THICKNESS_PAIRS.forEach(([presetId, inputId]) => {
       $(presetId).addEventListener('change', () => {
         if ($(presetId).value !== 'custom') setText(inputId, Number($(presetId).value));
@@ -1305,7 +1448,12 @@
   }
 
   async function init() {
+    wrapCardBodies();
     wireEvents();
+    try {
+      const saved = localStorage.getItem('kcm.unit');
+      if (UNITS[saved]) state.unit = saved;
+    } catch (_) { /* no stored choice: millimetres */ }
     // Every section starts closed; the user opens the ones they need.
     document.querySelectorAll('.card').forEach((card) => {
       if (card.querySelector('.card-head')) toggleCard(card, false);
@@ -1318,6 +1466,8 @@
     } catch (error) {
       setStatus('error', error.message);
     }
+    // From here on, sections slide open and shut.
+    requestAnimationFrame(() => requestAnimationFrame(() => { state.animate = true; }));
   }
 
   // Any error the panel itself throws is shown, with where it happened, instead of failing silently.
