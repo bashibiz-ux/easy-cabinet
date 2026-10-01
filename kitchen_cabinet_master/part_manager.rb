@@ -362,7 +362,7 @@ module KitchenCabinetMaster
       row = toe_kick_row(anchor)
       params['toe_kick_turns'] = ToeKick.turns_from(*row, params['toe_kick_recess'].to_f)
       # The toe kick covers the whole row from there: pieces of the chosen length, one after another.
-      params['toe_kick_total'] = ToeKick.run_length(*row)
+      params['toe_kick_total'] = ToeKick.run_length(*row) if params['toe_kick_cover_row'] == true
     end
     private_class_method :record_toe_kick_path
 
@@ -466,7 +466,7 @@ module KitchenCabinetMaster
       return [nil, nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
       record_toe_kick_path(model, params, find_toe_kick_anchor(model, stored['toe_kick_from']))
-      params['toe_kick_total'] = stored['toe_kick_total'].to_f if params['toe_kick_total'].to_f.zero? # carried on from another toe kick
+      params['toe_kick_total'] = stored['toe_kick_total'].to_f if params['toe_kick_cover_row'] == true && params['toe_kick_total'].to_f.zero? # carried on from another toe kick
       if check_overlap && toe_kick_overlaps?(root.parent.entities, root.transformation, params, exclude: root)
         return [nil, nil, Response.fail('That would put this toe kick on top of another toe kick.')]
       end
@@ -477,7 +477,8 @@ module KitchenCabinetMaster
     end
     private_class_method :build_toe_kick_update
 
-    TOE_KICK_KEYS = %w[toe_kick_height toe_kick_thickness toe_kick_piece_length toe_kick_pieces toe_kick_recess toe_kick_material].freeze
+    TOE_KICK_KEYS = %w[toe_kick_height toe_kick_thickness toe_kick_piece_length toe_kick_pieces toe_kick_recess toe_kick_material
+                       toe_kick_cover_row].freeze
 
     # The Toe Kick fields act on EVERY toe kick in the model, live, as one Undo step,
     # when none is selected (a selected toe kick is edited on its own, see
@@ -557,7 +558,11 @@ module KitchenCabinetMaster
 
     def self.toe_kick_unchanged?(kick, params)
       stored = AttributeManager.read(kick)
-      TOE_KICK_KEYS.all? { |key| stored[key].to_s == params[key].to_s || (stored[key].to_f == params[key].to_f && !stored[key].is_a?(String)) } &&
+      TOE_KICK_KEYS.all? do |key|
+        was = stored[key]
+        was = false if key == 'toe_kick_cover_row' && was.nil? # older toe kicks never covered the row
+        was.to_s == params[key].to_s || (was.is_a?(Numeric) && was.to_f == params[key].to_f)
+      end &&
         stored['toe_kick_turns'].to_s == params['toe_kick_turns'].to_s
     end
     private_class_method :toe_kick_unchanged?

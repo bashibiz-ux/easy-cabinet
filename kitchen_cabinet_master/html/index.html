@@ -270,6 +270,7 @@
             <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
           <input id="pieceCount" type="hidden" value="1">
+          <label class="check"><input type="checkbox" id="toeCover"><span>Cover the whole row in pieces of this length</span></label>
           <label class="field">
             <span class="label">Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
@@ -349,7 +350,7 @@
           </label>
           <label class="field">
             <span class="label">Bottom Panel Material</span>
-            <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial"></select></div>
+            <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial" data-material></select></div>
           </label>
           <div class="btn-row two">
             <button class="btn primary" type="button" data-action="apply_wall_bottom">Apply Bottom Panel</button>

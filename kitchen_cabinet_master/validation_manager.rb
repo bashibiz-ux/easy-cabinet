@@ -383,6 +383,7 @@ module KitchenCabinetMaster
 
       material = raw['toe_kick_material'].to_s.strip
       out['toe_kick_material'] = material unless material.empty?
+      out['toe_kick_cover_row'] = truthy?(raw['toe_kick_cover_row']) # pieces of the chosen length over the whole row
 
       Result.new(out, errors)
     end

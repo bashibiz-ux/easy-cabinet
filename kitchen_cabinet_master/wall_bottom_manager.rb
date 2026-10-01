@@ -25,6 +25,11 @@ module KitchenCabinetMaster
     # Puts a panel under every run of lifted wall units, replacing the ones already there.
     def self.apply(raw)
       raw = raw.is_a?(Hash) ? raw.transform_keys(&:to_s) : {}
+      # A live edit only changes panels that are already there.
+      if [true, 'true', 1, '1'].include?(raw['only_if_exists']) && pieces_in(Sketchup.active_model).empty?
+        return Response.ok('No wall bottom panel applied yet. Press Apply Bottom Panel.')
+      end
+
       params, problem = read_params(raw)
       return Response.fail(problem['message'], [problem]) if problem
       thickness = params['thickness']
