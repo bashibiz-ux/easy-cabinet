@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+﻿# frozen_string_literal: true
 
 # Runs the plugin's REAL PlacementManager (and CabinetLayout.envelope) outside
 # SketchUp, with a fake selection and fake model. Run:  ruby test/placement_test.rb
@@ -36,6 +36,7 @@ class FakeCabinet < Sketchup::ComponentInstance
     @parent = parent
     env = KitchenCabinetMaster::CabinetLayout.envelope(params)
     @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
+               'cabinet_category' => params['cabinet_category'], 'top_z' => env[2],
                'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2] }
   end
 
@@ -270,5 +271,24 @@ class PlacementTest < Minitest::Test
     assert PlacementManager.crowds?(@entities, first, first.transformation, overlapping, size_of(600.0))
     refute PlacementManager.crowds?(@entities, first, first.transformation, overlapping, overlapping),
            'when the old size already collided, the edit is not refused for it'
+  end
+
+  def test_the_first_wall_unit_starts_where_the_base_row_starts
+    insert('base', 600.0)
+    insert('base', 600.0)
+    insert('base', 600.0)
+    deselect
+    wall = insert('wall', 600.0)
+    assert_point [0, 0], wall.transformation.origin, 'above the first base unit, not after the last'
+  end
+
+  def test_the_next_wall_unit_follows_the_first_one
+    insert('base', 600.0)
+    insert('base', 600.0)
+    deselect
+    insert('wall', 600.0)
+    deselect
+    second = insert('wall', 600.0)
+    assert_point [0, 600], second.transformation.origin, 'after the first wall unit'
   end
 end

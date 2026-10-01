@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+﻿# frozen_string_literal: true
 
 module KitchenCabinetMaster
   # Decides where a new cabinet or filler is inserted.
@@ -29,7 +29,8 @@ module KitchenCabinetMaster
       corner = params['cabinet_category'].to_s == 'corner'
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
-                 z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0)
+                 z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0,
+                 wall: params['cabinet_category'].to_s == 'wall')
     end
 
     # Only a wall unit hangs in the air: base, tall and corner units always start on
@@ -94,13 +95,27 @@ module KitchenCabinetMaster
     # item's `own_width`, since a quarter turn swings it that far sideways.
     # Nothing selected: it follows the LAST cabinet or filler inserted (see
     # last_occupant); with none in the model yet, it goes at the origin unturned.
-    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil)
-      selected = SelectionManager.selected_occupant(model) || last_occupant(model)
+    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil, wall: false)
+      chosen = SelectionManager.selected_occupant(model)
+      selected = chosen || last_occupant(model)
+      # The first wall unit goes above the START of the row, not after its last unit; the
+      # next ones then follow it.
+      row_start = nil
+      if wall && !chosen
+        last_wall = last_occupant(model) { |item| category_of(item) == 'wall' }
+        if last_wall
+          selected = last_wall
+        elsif selected
+          row_start = first_occupant(model)
+        end
+      end
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
 
       transformation =
-        if selected
+        if row_start
+          turn ? turned(row_start.transformation, turn, own_width.to_f.mm) : row_start.transformation
+        elsif selected
           width = selected.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
           slot = selected.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, width.mm + gap, 0))
           turn ? turned(slot, turn, own_width.to_f.mm) : slot
@@ -124,7 +139,7 @@ module KitchenCabinetMaster
     # model has none. An end panel or toe kick is not part of the row, so is skipped.
     def self.last_occupant(model)
       rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
-        AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler'
+        (AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
       end
       rows.each_with_index.max_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
