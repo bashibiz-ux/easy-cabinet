@@ -97,7 +97,12 @@ module KitchenCabinetMaster
       # A horizontal handle can be centred across the door instead of sitting at its
       # free edge: still at the top of the door, `vertical` (the offset) below the edge.
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
-        return { 'u' => door_w / 2.0, 'v' => door_h - vertical - half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
+        v = case position
+            when 'bottom' then vertical + half_v
+            when 'hand' then (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(half_v, [door_h - half_v, half_v].max)
+            else door_h - vertical - half_v
+            end
+        return { 'u' => door_w / 2.0, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
       end
 
       u = if door.hinge == 'center'

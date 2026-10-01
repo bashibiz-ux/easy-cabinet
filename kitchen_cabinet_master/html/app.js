@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.1';
+  const APP_VERSION = '0.29.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -894,10 +894,8 @@
     const halfAlong = spec.length / 2;
     const halfAcross = spec.knob ? halfAlong : HANDLE_SECTION_MM / 2;
     const [halfU, halfV] = spec.horizontal ? [halfAlong, halfAcross] : [halfAcross, halfAlong];
-    if (spec.middle) return { u: doorW / 2, v: doorH - spec.vertical - halfV, halfU, halfV }; // centred, at the top
-
     const place = spec.category === 'wall' ? 'bottom' : spec.category === 'tall' ? 'hand' : 'top';
-    const u = freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
+    const u = spec.middle ? doorW / 2 : freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
     let v;
     if (place === 'top') v = doorH - spec.vertical - halfV;
     else if (place === 'bottom') v = spec.vertical + halfV;
@@ -1072,7 +1070,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} × ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} Ã— ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1102,7 +1100,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} × ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} Ã— ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
