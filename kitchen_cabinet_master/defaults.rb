@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+﻿# frozen_string_literal: true
 
 require 'json'
 
@@ -67,8 +67,8 @@ module KitchenCabinetMaster
     # Where a HORIZONTAL handle sits: at the edge of the door (where By unit type puts
     # it) or centred across the door, still at the top.
     HANDLE_HORIZONTAL_PLACES = [
-      { 'id' => 'edge',   'name' => 'At the edge of the door' },
-      { 'id' => 'middle', 'name' => 'In the middle of the door (top)' }
+      { 'id' => 'edge',   'name' => 'Doors edge' },
+      { 'id' => 'middle', 'name' => 'Doors middle' }
     ].freeze
 
     # Used when a bundle does not say otherwise. Offsets are the clear distance (mm)
@@ -76,7 +76,7 @@ module KitchenCabinetMaster
     HANDLE_DEFAULTS = {
       'orientation'     => 'vertical',
       'position'        => 'auto', # base: top, wall: bottom, tall: at hand height
-      'horizontal_place' => 'edge',
+      'horizontal_place' => 'middle',
       'side_offset'     => 25.0,
       'vertical_offset' => 25.0,
       'custom_x'        => 50.0, # from the door's left edge to the handle centre

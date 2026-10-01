@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+﻿# frozen_string_literal: true
 
 # What a new item starts as, and that an open shelf unit lines up with the doors
 # beside it.  Run:  ruby test/starting_values_test.rb
@@ -183,6 +183,6 @@ class StartingValuesTest < Minitest::Test
 
   def test_the_horizontal_places_are_validated_and_listed
     assert_equal %w[edge middle], Defaults::HANDLE_HORIZONTAL_PLACES.map { |p| p['id'] }
-    assert_equal 'edge', Defaults::HANDLE_DEFAULTS['horizontal_place']
+    assert_equal 'middle', Defaults::HANDLE_DEFAULTS['horizontal_place']
   end
 end

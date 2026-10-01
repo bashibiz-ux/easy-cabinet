@@ -6,14 +6,14 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.3';
+  const APP_VERSION = '0.29.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
   const FALLBACK_LISTS = {
     handle_orientations: [{ id: 'vertical', name: 'Vertical' }, { id: 'horizontal', name: 'Horizontal' }],
     handle_positions: [{ id: 'auto', name: 'By unit type' }],
-    handle_horizontal_places: [{ id: 'edge', name: 'At the edge of the door' }, { id: 'middle', name: 'In the middle of the door (top)' }],
+    handle_horizontal_places: [{ id: 'edge', name: 'Doors edge' }, { id: 'middle', name: 'Doors middle' }],
     end_panel_sides: [{ id: 'left', name: 'Left' }, { id: 'right', name: 'Right' }]
   };
 
@@ -705,7 +705,7 @@
       if (finishes[0]) $('handleFinish').value = finishes[0].id;
       setSelect('handleOrientation', d.orientation);
       setSelect('handlePosition', d.position);
-      setSelect('handleHPlace', d.horizontal_place || 'edge');
+      setSelect('handleHPlace', d.horizontal_place || 'middle');
       setText('handleSide', d.side_offset);
       setText('handleVert', d.vertical_offset);
       setText('handleCustomX', d.custom_x);
