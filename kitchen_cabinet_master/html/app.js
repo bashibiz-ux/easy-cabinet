@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.29.9';
+  const APP_VERSION = '0.29.10';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -164,6 +164,8 @@
     // Our own live update re-selects the item it just changed; do not let that
     // overwrite what the user is in the middle of typing.
     if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
+
+    if (name === 'cabinet_selected' || name === 'part_selected' || name === 'cabinet_cleared') state.liveHold = false;
 
     if (name === 'cabinet_selected') {
       state.selectedKind = 'cabinet';
@@ -1072,7 +1074,7 @@
       }
       // Beside the cabinet, on the same base height (the wall side is worked out when it is inserted).
       const filler = { x: cabinet.w, z: lift, w, h, cls: 'pv-part', label: fmtU(w), heightLabel: fmtU(h) };
-      drawScene([cabinet, filler], `Filler ${fmtU(w)} Ã— ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
+      drawScene([cabinet, filler], `Filler ${fmtU(w)} Ãƒâ€” ${fmtU(h)} ${unitInfo().label}${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}, flush with the door, base Z ${fmtU(lift)} ${unitInfo().label}.`);
     } else if (kind === 'end_panel') {
       const d = num(mmv('epDepth'));
       const t = num(mmv('epThickness'));
@@ -1102,7 +1104,7 @@
       const kick = { x: 0, z: 0, w: total, h, cls: 'pv-toe', joints, label: fmtU(total), heightLabel: fmtU(h) };
       // The cabinet stands on it.
       drawScene([{ ...cabinet, z: h }, kick],
-        `Toe kick: ${count} Ã— ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
+        `Toe kick: ${count} Ãƒâ€” ${fmtU(len)} = ${fmtU(total)} ${unitInfo().label} long, ${fmtU(h)} high${Number.isFinite(t) ? `, ${fmtU(t)} thick` : ''}${Number.isFinite(recess) ? `, recess ${fmtU(recess)} ${unitInfo().label}` : ''}.`);
     }
   }
 
@@ -1348,7 +1350,7 @@
   }
 
   async function runLive() {
-    if (!state.selectedKind) return;
+    if (!state.selectedKind || state.liveHold) return;
     if (state.busy) {
       scheduleLive(); // something else is still running; try again shortly
       return;
@@ -1525,7 +1527,7 @@
       scheduleGlobal(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
     }
-    if (NO_LIVE_IDS.has(el.id) || !state.selectedKind) return;
+    if (NO_LIVE_IDS.has(el.id) || !state.selectedKind || state.liveHold) return;
     if (!fieldKinds(el).includes(state.selectedKind)) return;
     scheduleLive(el.tagName === 'SELECT' || el.type === 'checkbox' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
   }
@@ -1646,9 +1648,11 @@
       liveAfterCabinetChange();
     });
     $('category').addEventListener('change', async () => {
+      // Choosing a category is for the next Insert: the cabinet selected in the model stays as it is
+      // until another one is selected.
+      if (state.selectedKind) { state.liveHold = true; clearTimeout(state.liveTimer); }
       updateCategoryUi();
       await refreshCabinets();
-      liveAfterCabinetChange();
     });
     $('cabinet').addEventListener('change', () => {
       applyCabinetDefaults();
