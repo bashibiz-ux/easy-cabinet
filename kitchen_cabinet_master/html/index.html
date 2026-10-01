@@ -325,6 +325,19 @@
           <button class="btn primary" type="button" data-action="apply_worktop">Apply Worktop</button>
           <button class="btn" type="button" data-action="remove_worktop">Remove</button>
         </div>
+
+        <!-- The panel under a run of wall units whose carcass has been lifted (Carcass bottom raise). -->
+        <div class="subblock">
+          <p class="hint"><b>Wall bottom panel</b> - one panel under every full run of wall units that have a Carcass bottom raise, as deep as the carcass.</p>
+          <label class="field narrow">
+            <span class="label">Bottom Panel Thickness</span>
+            <div class="input"><input id="wbThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <div class="btn-row two">
+            <button class="btn primary" type="button" data-action="apply_wall_bottom">Apply Bottom Panel</button>
+            <button class="btn" type="button" data-action="remove_wall_bottom">Remove</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -353,6 +366,7 @@
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
         <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
+        <label class="check"><input type="checkbox" id="hideWallHandles"><span>Hide wall unit handles</span></label>
         <label class="check"><input type="checkbox" id="showWallDirection"><span>Wall unit door opening direction on the floor</span></label>
         <label class="check"><input type="checkbox" id="showDoorSymbol"><span>Door opening direction on the door</span></label>
       </div>

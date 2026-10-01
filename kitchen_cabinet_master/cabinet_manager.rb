@@ -89,6 +89,7 @@ module KitchenCabinetMaster
           RowResizer.apply(model, squeeze) if squeeze
           # Its filler, end panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
+          WallBottomManager.refresh(model) if defined?(WallBottomManager)
         end
       end
 
@@ -165,6 +166,7 @@ module KitchenCabinetMaster
             PartManager.lift_attached(model, before, ValidationManager.to_float(overrides['toe_kick_height']))
             WorktopManager.refresh(model)
           end
+          WallBottomManager.refresh(model) if defined?(WallBottomManager)
         end
       end
       SelectionManager.push_selection(model)
@@ -266,6 +268,7 @@ module KitchenCabinetMaster
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
+      hide_wall_handles = on.call(raw['hide_wall_handles'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -281,8 +284,9 @@ module KitchenCabinetMaster
             AttributeManager.write(cabinet, 'visibility_settings' => visibility,
                                             'show_opening_direction' => show_floor_symbol,
                                             'show_door_symbol' => show_door_symbol,
-                                            'show_wall_opening_direction' => show_wall_symbol)
-            CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol)
+                                            'show_wall_opening_direction' => show_wall_symbol,
+                                            'hide_wall_handles' => hide_wall_handles)
+            CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }

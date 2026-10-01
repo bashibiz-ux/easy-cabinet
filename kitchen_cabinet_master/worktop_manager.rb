@@ -165,6 +165,8 @@ module KitchenCabinetMaster
       case action
       when 'apply_worktop' then apply(raw)
       when 'remove_worktop' then remove
+      when 'apply_wall_bottom' then WallBottomManager.perform(action, raw)
+      when 'remove_wall_bottom' then WallBottomManager.perform(action, raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end

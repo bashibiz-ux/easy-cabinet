@@ -604,6 +604,7 @@ module KitchenCabinetMaster
       when 'end_panel' then update_end_panel(model, root, raw)
       when 'toe_kick' then update_toe_kick(model, root, raw)
       when 'worktop', 'backsplash' then WorktopManager.apply(raw, only_if_exists: false)
+      when 'wall_bottom' then Response.ok('Change the wall bottom panel with Apply in the Worktop section.')
       else Response.fail('That selection is not a filler, an end panel, a toe kick or a worktop.')
       end
     end
