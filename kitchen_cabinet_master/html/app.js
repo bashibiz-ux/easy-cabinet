@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.32.2';
+  const APP_VERSION = '0.32.3';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1502,7 +1502,7 @@
     state.worktopTimer = setTimeout(runWorktop, delay);
   }
 
-  // The Wall bottom panel fields change the panels already applied, live.
+  // The Wall bottom panel fields apply the panels live (no need to press Apply first).
   const WALL_BOTTOM_IDS = new Set(['wbLength', 'wbThickness', 'wbSetback', 'wbMaterial']);
 
   function scheduleWallBottom(delay = LIVE_TYPING_DELAY_MS) {
@@ -1519,7 +1519,7 @@
     state.liveBusy = true;
     clearInvalid();
     try {
-      const res = await call('apply_wall_bottom', Object.assign(COLLECTORS.wall_bottom(), { only_if_exists: true }));
+      const res = await call('apply_wall_bottom', COLLECTORS.wall_bottom());
       if (res.ok) setStatus('ok', res.message);
       else setStatus('error', res.message);
     } catch (error) {
