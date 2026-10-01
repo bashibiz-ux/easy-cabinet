@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.33.0';
+  const APP_VERSION = '0.33.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -409,7 +409,7 @@
     const unit = unitInfo().label;
     table.innerHTML = '';
     const head = table.createTHead().insertRow();
-    ['Part', `Length (${unit})`, `Width (${unit})`, `Thickness (${unit})`, 'Material', 'Qty', 'Used in'].forEach((text) => {
+    ['Part', `Length (${unit})`, `Width (${unit})`, `Thickness (${unit})`, 'Material', 'Qty', 'Cabinet'].forEach((text) => {
       const cell = document.createElement('th');
       cell.textContent = text;
       head.append(cell);
@@ -431,6 +431,7 @@
   const COLLECTORS = {
     rotate: () => ({ degrees: $('rotateDegrees').value }),
     worktop: () => collectWorktop(),
+    cutlist: () => ({ group: $('cutGroup').checked }),
     wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value }),
     cabinet: () => collect(),
     filler: () => collectFiller(),
@@ -452,6 +453,7 @@
   function formKind(action) {
     if (action === 'apply_worktop') return 'worktop';
     if (action === 'apply_wall_bottom') return 'wall_bottom';
+    if (action === 'get_cut_list' || action === 'export_cut_list') return 'cutlist';
     if (action === 'insert') return categoryKind();
     if (action === 'update') return state.selectedKind || categoryKind();
     if (action === 'rotate') return 'rotate';
@@ -1437,7 +1439,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showDoorSymbol', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:

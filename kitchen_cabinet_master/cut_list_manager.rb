@@ -10,22 +10,29 @@ module KitchenCabinetMaster
   module CutList
     Row = Struct.new(:part, :length, :width, :thickness, :material, :quantity, :used_in, keyword_init: true)
 
-    HEADER = ['Part', 'Length (mm)', 'Width (mm)', 'Thickness (mm)', 'Material', 'Quantity', 'Used in'].freeze
+    HEADER = ['Part', 'Length (mm)', 'Width (mm)', 'Thickness (mm)', 'Material', 'Quantity', 'Cabinet'].freeze
 
     # records - Array of stored-parameter Hashes (one per cabinet / part in the model).
     # handle_name - lambda taking a handle id and returning its name (or nil).
-    def self.rows(records, handle_name: ->(_id) { nil })
+    # group_all: false keeps every cabinet's boards on lines of their own; true adds identical
+    # boards of different cabinets together.
+    def self.rows(records, handle_name: ->(_id) { nil }, group_all: false)
       found = {}
       records.each do |stored|
         boards_of(stored, handle_name).each do |board|
-          key = [board[:part], board[:size], board[:material]]
+          key = [board[:part], board[:size], board[:material], (group_all ? nil : board[:owner])]
           row = (found[key] ||= Row.new(part: board[:part], length: board[:size][0], width: board[:size][1],
                                          thickness: board[:size][2], material: board[:material], quantity: 0, used_in: []))
           row.quantity += board[:quantity] || 1
           row.used_in << board[:owner] unless board[:owner].to_s.empty? || row.used_in.include?(board[:owner])
         end
       end
-      found.values.sort_by { |row| [row.part.start_with?('Handle') ? 1 : 0, row.material.to_s, -row.length, row.part] }
+      found.values.sort_by { |row| [group_all ? '' : natural(row.used_in.first), row.part.start_with?('Handle') ? 1 : 0, row.material.to_s, -row.length, row.part] }
+    end
+
+    # BU600 2 sorts before BU600 10.
+    def self.natural(text)
+      text.to_s.gsub(/\d+/) { |digits| digits.rjust(8, '0') }
     end
 
     # Total sheet area per material and thickness in square metres: [[material, thickness, m2], ...].
@@ -131,22 +138,22 @@ module KitchenCabinetMaster
   module CutListManager
     def self.perform(action, raw)
       case action
-      when 'get_cut_list' then get_cut_list
+      when 'get_cut_list' then get_cut_list(raw)
       when 'export_cut_list' then export(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
 
-    def self.get_cut_list
-      rows = current_rows
+    def self.get_cut_list(raw = {})
+      rows = current_rows(group_all?(raw))
       return Response.ok('There is nothing in the model yet.', { 'rows' => [], 'areas' => [] }) if rows.empty?
 
       Response.ok("#{rows.sum(&:quantity)} pieces in #{rows.length} lines.", { 'rows' => rows.map { |row| row_hash(row) },
                                                                                  'areas' => CutList.areas(rows).map { |m, t, a| { 'material' => m, 'thickness' => t, 'area' => a } } })
     end
 
-    def self.export(_raw)
-      rows = current_rows
+    def self.export(raw)
+      rows = current_rows(group_all?(raw))
       return Response.fail('There is nothing in the model to list yet.') if rows.empty?
 
       folder = begin
@@ -165,13 +172,18 @@ module KitchenCabinetMaster
       Response.fail("The cut list could not be saved (#{e.message}).")
     end
 
-    def self.current_rows
+    def self.group_all?(raw)
+      raw.is_a?(Hash) && [true, 'true', 1, '1'].include?(raw['group'])
+    end
+    private_class_method :group_all?
+
+    def self.current_rows(group_all = false)
       model = Sketchup.active_model
       records = model.entities.grep(Sketchup::ComponentInstance).filter_map do |item|
         stored = AttributeManager.read(item)
         stored if stored && (AttributeManager.cabinet?(item) || AttributeManager.part?(item))
       end
-      CutList.rows(records, handle_name: ->(id) { CatalogManager.handle_bundle(id)&.fetch('name', nil) })
+      CutList.rows(records, handle_name: ->(id) { CatalogManager.handle_bundle(id)&.fetch('name', nil) }, group_all: group_all)
     end
     private_class_method :current_rows
 

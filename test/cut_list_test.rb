@@ -27,12 +27,19 @@ class CutListTest < Minitest::Test
   def row(rows, part) = rows.find { |r| r.part == part }
 
   def test_identical_boards_are_grouped_with_a_quantity
-    rows = CutList.rows([cabinet, cabinet('cabinet_name' => 'BU600b')])
+    rows = CutList.rows([cabinet, cabinet('cabinet_name' => 'BU600b')], group_all: true)
     sides = row(rows, 'Left Side Panel')
     assert_equal 2, sides.quantity
     assert_equal [780.0, 560.0, 18.0], [sides.length, sides.width, sides.thickness].map(&:to_f).then { |l, w, t| [l, w, t] }
     assert_equal 'White', sides.material
     assert_equal 'BU600 BU600b', sides.used_in.join(' ')
+  end
+
+  def test_by_default_every_cabinet_has_its_own_lines
+    rows = CutList.rows([cabinet, cabinet('cabinet_name' => 'BU600b')])
+    sides = rows.select { |r| r.part == 'Left Side Panel' }
+    assert_equal [1, 1], sides.map(&:quantity)
+    assert_equal [['BU600'], ['BU600b']], sides.map(&:used_in)
   end
 
   def test_doors_are_grouped_whatever_their_number_and_use_the_door_material
