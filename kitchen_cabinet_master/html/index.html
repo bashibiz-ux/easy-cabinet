@@ -307,7 +307,7 @@
           <span class="label">Back Splash Height</span>
           <div class="input"><input id="wtSplash" type="text" inputmode="decimal" autocomplete="off" aria-label="Back splash height, 0 for none"><em>mm</em></div>
         </label>
-        <div class="grid-2">
+        <div hidden><div class="grid-2">
           <label class="field">
             <span class="label">Cut Into Pieces Of</span>
             <div class="input"><input id="wtPiece" type="text" inputmode="decimal" autocomplete="off" aria-label="Longest piece, 0 for no cutting"><em>mm</em></div>
@@ -317,7 +317,8 @@
             <div class="input"><input id="wtCuts" type="text" autocomplete="off" placeholder="1500, 3000" aria-label="Distances to cut at along each row"></div>
           </label>
         </div>
-        <p class="hint">Cutting: enter the longest piece (0 = no cutting) to cut every row into equal-length pieces, or list distances from the start of each row to cut exactly there. Back splash 0 = none.</p>
+        </div>
+        <p class="hint">Back splash height 0 = no back splash.</p>
         <label class="field">
           <span class="label">Worktop Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="wtMaterial"></i><select id="wtMaterial" data-material></select></div>
@@ -329,15 +330,11 @@
 
         <!-- The panel under a run of wall units whose carcass has been lifted (Carcass bottom raise). -->
         <div class="subblock">
-          <p class="hint"><b>Wall bottom panel</b> - panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Depth 0 = the carcass depth less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
-          <div class="grid-3">
+          <p class="hint"><b>Wall bottom panel</b> - panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
+          <div class="grid-2">
             <label class="field">
               <span class="label">Length</span>
               <div class="input"><input id="wbLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span class="label">Depth</span>
-              <div class="input"><input id="wbDepth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field">
               <span class="label">Thickness</span>

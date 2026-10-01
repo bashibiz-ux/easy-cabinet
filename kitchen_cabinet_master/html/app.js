@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.32.1';
+  const APP_VERSION = '0.32.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -46,7 +46,6 @@
     carcass_raise: 'carcassRaise',
     wall_bottom_thickness: 'wbThickness',
     wall_bottom_length: 'wbLength',
-    wall_bottom_depth: 'wbDepth',
     wall_bottom_setback: 'wbSetback',
     shelf_count: 'shelves',
     carcass_material: 'carcassMaterial',
@@ -288,8 +287,8 @@
       worktop_front: mmv('wtFront'),
       worktop_end: mmv('wtEnd'),
       worktop_round: mmv('wtRound'),
-      worktop_piece: mmv('wtPiece'),
-      worktop_cuts: cutsToMm(),
+      worktop_piece: 0, // cutting into pieces was taken out of the panel
+      worktop_cuts: '',
       backsplash_height: mmv('wtSplash'),
       material: $('wtMaterial').value
     };
@@ -349,7 +348,7 @@
   const COLLECTORS = {
     rotate: () => ({ degrees: $('rotateDegrees').value }),
     worktop: () => collectWorktop(),
-    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_depth: mmv('wbDepth'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value }),
+    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value }),
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
@@ -417,7 +416,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'wbThickness', 'wbLength', 'wbDepth', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -1504,7 +1503,7 @@
   }
 
   // The Wall bottom panel fields change the panels already applied, live.
-  const WALL_BOTTOM_IDS = new Set(['wbLength', 'wbDepth', 'wbThickness', 'wbSetback', 'wbMaterial']);
+  const WALL_BOTTOM_IDS = new Set(['wbLength', 'wbThickness', 'wbSetback', 'wbMaterial']);
 
   function scheduleWallBottom(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.wallBottomTimer);
@@ -1540,7 +1539,7 @@
     state.liveBusy = true;
     clearInvalid();
     try {
-      const res = await call('apply_worktop', Object.assign(collectWorktop(), { only_if_exists: true }));
+      const res = await call('apply_worktop', collectWorktop());
       if (res.ok) setStatus('ok', res.message);
       else setStatus('error', res.message);
     } catch (error) {
@@ -1684,7 +1683,6 @@
     applyWorktopDefaults(m.worktop_defaults);
     setText('wbThickness', 18);
     setText('wbLength', 2000);
-    setText('wbDepth', 0);
     setText('wbSetback', 20);
     updateCategoryUi();
     await refreshCabinets();
