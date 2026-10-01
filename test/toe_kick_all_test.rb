@@ -33,6 +33,19 @@ module KitchenCabinetMaster
     end
   end
 
+  # The cabinets' side of a toe kick height change is tested elsewhere; here it is recorded.
+  module CabinetManager
+    @lifts = []
+    class << self
+      attr_reader :lifts
+
+      def apply_all(raw)
+        @lifts << raw
+        Response.ok('3 cabinets updated.')
+      end
+    end
+  end
+
   DATA_DIR = 'unused'
 end
 
@@ -86,6 +99,7 @@ class ToeKickAllTest < Minitest::Test
     Sketchup.instance_variable_set(:@active_model, @model)
     Sketchup.define_singleton_method(:active_model) { @active_model }
     PartGenerator.updates.clear
+    CabinetManager.lifts.clear
     @count = 0
   end
 
@@ -155,5 +169,30 @@ class ToeKickAllTest < Minitest::Test
     result = apply('toe_kick_height' => '120')
     assert result['ok']
     assert_match(/No toe kicks/, result['message'])
+  end
+
+  def test_a_higher_toe_kick_lifts_the_cabinets_too
+    kick(y: 0.0)
+    result = apply('toe_kick_height' => '150')
+    assert_equal [{ 'toe_kick_height' => '150' }], CabinetManager.lifts
+    assert_match(/3 cabinets updated/, result['message'])
+  end
+
+  def test_other_toe_kick_fields_leave_the_cabinets_alone
+    kick(y: 0.0)
+    apply('toe_kick_recess' => '30')
+    assert_empty CabinetManager.lifts
+  end
+
+  def test_the_cabinets_are_lifted_even_when_the_toe_kicks_already_have_that_height
+    kick(y: 0.0)
+    apply('toe_kick_height' => '100')
+    assert_equal 1, CabinetManager.lifts.length
+  end
+
+  def test_nothing_is_lifted_when_the_toe_kick_change_is_refused
+    kick(y: 0.0)
+    apply('toe_kick_height' => '9000')
+    assert_empty CabinetManager.lifts
   end
 end

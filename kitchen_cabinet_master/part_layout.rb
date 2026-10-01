@@ -66,6 +66,13 @@ module KitchenCabinetMaster
       Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: [])
     end
 
+    # A WORKTOP slab: one board of extent [depth, length, thickness] at its own origin
+    # (PartManager / WorktopManager put the part's root on top of the carcass).
+    def self.worktop(extent)
+      board = CabinetLayout::Panel.new(role: 'board', name: 'Worktop', extent: extent.map { |v| round2(v) }, offset: [0.0, 0.0, 0.0])
+      Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: [])
+    end
+
     # [depth, thickness, top] from the end panel's own local floor origin.
     def self.end_panel_envelope(params)
       [params['depth'].to_f, params['thickness'].to_f, params['target_base_z'].to_f + params['height'].to_f]

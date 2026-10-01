@@ -369,6 +369,28 @@ module KitchenCabinetMaster
       Result.new(out, errors)
     end
 
+    # ---- worktop ------------------------------------------------------------
+
+    WORKTOP_FIELDS = {
+      'worktop_thickness' => { label: 'Worktop thickness', min: 10.0, max: 100.0, required: true },
+      'worktop_front'     => { label: 'Front overhang', min: 0.0, max: 100.0, required: true },
+      'worktop_end'       => { label: 'End overhang', min: 0.0, max: 200.0, required: true }
+    }.freeze
+
+    def self.validate_worktop(raw)
+      raw = stringify_keys(raw)
+      errors = []
+      out = { 'material' => Defaults::DEFAULT_MATERIAL }
+      WORKTOP_FIELDS.each do |key, spec|
+        value, problem = numeric_field(raw, key, spec)
+        out[key] = value unless value.nil?
+        errors << problem if problem
+      end
+      material = raw['material'].to_s.strip
+      out['material'] = material unless material.empty?
+      Result.new(out, errors)
+    end
+
     # ---- end panel ----------------------------------------------------------
 
     END_PANEL_FIELDS = {

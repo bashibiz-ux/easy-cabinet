@@ -18,6 +18,7 @@ module KitchenCabinetMaster
 
       place(model, root, params, layout)
       AttributeManager.write(root, attributes_for(params, layout))
+      TagManager.assign(model, root, TagManager.for_stored(params))
       root
     end
 
@@ -30,6 +31,7 @@ module KitchenCabinetMaster
 
       place(model, root, params, layout)
       AttributeManager.write(root, attributes_for(params, layout))
+      TagManager.assign(model, root, TagManager.for_stored(params))
       root
     end
 

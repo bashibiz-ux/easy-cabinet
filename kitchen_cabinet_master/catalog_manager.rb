@@ -24,7 +24,7 @@ module KitchenCabinetMaster
     # A catalog with no eatures list offers all of them.
     FEATURES = %w[base wall tall corner filler end_panel toe_kick
                   door_gap door_reveal door_distance top_panel panel_thickness back_thickness
-                  cabinet_extras handle materials door_opening visibility rotate].freeze
+                  cabinet_extras worktop scene handle materials door_opening visibility rotate].freeze
 
     class << self
       # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]

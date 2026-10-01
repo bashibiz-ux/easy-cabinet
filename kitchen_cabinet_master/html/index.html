@@ -85,16 +85,12 @@
         </label>
 
         <div id="handleOptions" hidden>
-          <div class="grid-2">
-            <label class="field">
-              <span class="label">Length</span>
-              <div class="input"><select id="handleLength"></select></div>
-            </label>
-            <label class="field">
-              <span class="label">Finish</span>
-              <div class="input has-chip"><i class="chip" data-chip-for="handleFinish"></i><select id="handleFinish" data-material></select></div>
-            </label>
-          </div>
+          <label class="field">
+            <span class="label">Length</span>
+            <div class="input"><select id="handleLength"></select></div>
+          </label>
+          <!-- The finish is not offered: a handle takes its bundle's first finish, and Handle Material below picks any other colour. -->
+          <div hidden><select id="handleFinish" data-material></select></div>
           <label class="field">
             <span class="label">Handle Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="handleMaterial"></i><select id="handleMaterial" data-material></select></div>
@@ -264,16 +260,11 @@
               <div class="input"><input id="toeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
-          <div class="grid-2">
-            <label class="field">
-              <span class="label">Piece Length</span>
-              <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span class="label">Number of Pieces</span>
-              <div class="input"><input id="pieceCount" type="text" inputmode="numeric" autocomplete="off"></div>
-            </label>
-          </div>
+          <label class="field">
+            <span class="label">Piece Length</span>
+            <div class="input"><input id="pieceLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <input id="pieceCount" type="hidden" value="1">
           <label class="field">
             <span class="label">Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="toeMaterial"></i><select id="toeMaterial" data-material></select></div>
@@ -281,6 +272,47 @@
         </div>
       </div>
     </section>
+    <!-- Worktop -->
+    <section class="card" id="sec-worktop" data-feature="worktop">
+      <button class="card-head" type="button" aria-expanded="true">Worktop</button>
+      <div class="card-body">
+        <p class="hint">Lays a worktop over the base units: one slab over each row of units standing together, and a square one on a corner unit. Change a value and the worktop follows.</p>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Thickness</span>
+            <div class="input"><input id="wtThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Front Overhang</span>
+            <div class="input"><input id="wtFront" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
+        <label class="field narrow">
+          <span class="label">End Overhang</span>
+          <div class="input"><input id="wtEnd" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field">
+          <span class="label">Worktop Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="wtMaterial"></i><select id="wtMaterial" data-material></select></div>
+        </label>
+        <div class="btn-row two">
+          <button class="btn primary" type="button" data-action="apply_worktop">Apply Worktop</button>
+          <button class="btn" type="button" data-action="remove_worktop">Remove</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3D scene -->
+    <section class="card" id="sec-scene" data-feature="scene">
+      <button class="card-head" type="button" aria-expanded="true">3D Scene</button>
+      <div class="card-body">
+        <p class="hint">Adds a scene called "Kitchen 3D" in SketchUp's Scenes tab: a perspective view of the whole kitchen from the front and above. Press again after changing the layout to update it.</p>
+        <div class="btn-row one">
+          <button class="btn" type="button" data-action="create_scene">Create 3D Scene</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Door Opening -->
     <section class="card" id="sec-door" data-feature="door_opening">
       <button class="card-head" type="button" aria-expanded="true">Door Opening</button>

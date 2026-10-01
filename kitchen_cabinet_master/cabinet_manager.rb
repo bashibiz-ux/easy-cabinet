@@ -105,7 +105,7 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance material_thickness back_thickness toe_kick_height
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
                           handle_id handle_finish handle_material handle_orientation handle_position].freeze
@@ -150,12 +150,20 @@ module KitchenCabinetMaster
       end
       return Response.ok('Every cabinet already has these settings.') if plans.empty?
 
+      # A higher toe kick lifts every cabinet standing on it: they are rebuilt with the new
+      # height, and what is attached to them (fillers, end panels, the worktop) goes up too.
+      lifting = overrides.key?('toe_kick_height')
+      before = lifted_from(cabinets)
       SelectionManager.suspend do
         with_operation(model, 'Apply Settings To All Cabinets') do
           plans.each do |cabinet, params|
             params['cabinet_name'] = NamingManager.for_update(cabinet, params)
             CabinetGenerator.update(model, cabinet, params)
             PartManager.follow_door(model, cabinet)
+          end
+          if lifting
+            PartManager.lift_attached(model, before, ValidationManager.to_float(overrides['toe_kick_height']))
+            WorktopManager.refresh(model)
           end
         end
       end
@@ -170,9 +178,17 @@ module KitchenCabinetMaster
     end
     private_class_method :apply_all
 
+    # The toe-kick height the standing cabinets have now (before it is changed).
+    def self.lifted_from(cabinets)
+      standing = cabinets.map { |cabinet| AttributeManager.read(cabinet) }.reject { |stored| stored['cabinet_category'] == 'wall' }
+      standing.empty? ? 0.0 : standing.first['toe_kick_height'].to_f
+    end
+    private_class_method :lifted_from
+
     # Does any override change what this cabinet already has?
     def self.differs?(stored, overrides)
       overrides.any? do |key, value|
+        next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
         if GLOBAL_NUMBERS.include?(key)
           ValidationManager.to_float(stored[key]) != ValidationManager.to_float(value)
         else

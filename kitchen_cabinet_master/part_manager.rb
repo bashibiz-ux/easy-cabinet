@@ -474,6 +474,21 @@ module KitchenCabinetMaster
     # the next toe kick, say) is left as it was, and the reply says so.
     def self.apply_toe_kicks(raw)
       raw = stringify(raw)
+      answer = apply_to_toe_kicks(raw)
+
+      # A higher toe kick lifts every cabinet that stands on it (and what is attached).
+      height = raw['toe_kick_height'].to_s.strip
+      return answer if height.empty? || !answer['ok']
+
+      lifted = CabinetManager.send(:apply_all, 'toe_kick_height' => height)
+      return answer unless lifted['ok']
+
+      note = lifted['message'].to_s
+      note.empty? || note.start_with?('Every cabinet', 'No cabinets') ? answer : Response.ok("#{answer['message']} #{note}")
+    end
+    private_class_method :apply_toe_kicks
+
+    def self.apply_to_toe_kicks(raw)
       overrides = {}
       TOE_KICK_KEYS.each do |key|
         value = raw[key].to_s.strip
@@ -526,7 +541,7 @@ module KitchenCabinetMaster
 
       Response.ok("#{done} #{problems.length} left as #{problems.length == 1 ? 'it was' : 'they were'} (#{problems.first(2).map { |k, why| "#{k.name}: #{why}" }.join('; ')}).")
     end
-    private_class_method :apply_toe_kicks
+    private_class_method :apply_to_toe_kicks
 
     def self.toe_kick_unchanged?(kick, params)
       stored = AttributeManager.read(kick)
@@ -534,6 +549,33 @@ module KitchenCabinetMaster
         stored['toe_kick_turns'].to_s == params['toe_kick_turns'].to_s
     end
     private_class_method :toe_kick_unchanged?
+
+    # The toe kick was raised from `from` to `to` mm: fillers and end panels beside
+    # the standing cabinets rise with them (a filler stands on the toe kick height, an
+    # end panel grows to the cabinets' new top). Wall units' are left. Inside an operation.
+    def self.lift_attached(model, from, to)
+      delta = to.to_f - from.to_f
+      return if delta.abs < 1e-9
+
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        stored = AttributeManager.read(item)
+        next unless stored
+
+        base = stored['target_base_z'].to_f
+        case AttributeManager.part_kind(item)
+        when 'filler'
+          next if stored['target_category'] == 'wall' || (stored['target_category'].nil? && base.zero?)
+
+          params = stored.merge('target_base_z' => to.to_f)
+          PartGenerator.update(model, item, params, PartLayout.filler(params))
+        when 'end_panel'
+          next if base.positive? # hangs beside a wall unit
+
+          params = stored.merge('height' => stored['height'].to_f + delta)
+          PartGenerator.update(model, item, params, PartLayout.end_panel(params))
+        end
+      end
+    end
 
     # ---- update / delete (all kinds) -------------------------------------------
 
@@ -546,7 +588,8 @@ module KitchenCabinetMaster
       when 'filler' then update_filler(model, root, raw)
       when 'end_panel' then update_end_panel(model, root, raw)
       when 'toe_kick' then update_toe_kick(model, root, raw)
-      else Response.fail('That selection is not a filler, an end panel or a toe kick.')
+      when 'worktop' then WorktopManager.apply(raw, only_if_exists: false)
+      else Response.fail('That selection is not a filler, an end panel, a toe kick or a worktop.')
       end
     end
     private_class_method :update_part

@@ -12,6 +12,7 @@ module KitchenCabinetMaster
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick apply_toe_kicks update_part delete_part].freeze
+    WORKTOP_ACTIONS = %w[apply_worktop remove_worktop create_scene].freeze
 
     class << self
       def show
@@ -71,12 +72,13 @@ module KitchenCabinetMaster
         data = {} unless data.is_a?(Hash)
 
         case action
-        when 'init'          then Response.ok('', init_payload)
+        when 'init'          then (organise_tags; Response.ok('', init_payload))
         when 'undo'          then undo_last
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
+        when *WORKTOP_ACTIONS then WorktopManager.perform(action, data)
         else Response.fail("Unknown action \"#{action}\".")
         end
       rescue StandardError => e
@@ -89,6 +91,25 @@ module KitchenCabinetMaster
       def undo_last
         Sketchup.undo
         Response.ok('Undone.')
+      end
+
+      # Opening the panel makes sure the Base Unit, Worktop, Wall Unit, Tall Unit and
+      # Toe Kick tags exist and that what is already in the model is on them. Nothing
+      # happens (and nothing is added to Undo) when it is all in place.
+      def organise_tags
+        model = Sketchup.active_model
+        return unless model && TagManager.needs_sync?(model)
+
+        model.start_operation('Organise Tags', true)
+        begin
+          TagManager.sync_existing(model)
+          model.commit_operation
+        rescue StandardError
+          model.abort_operation
+          raise
+        end
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not organise tags: #{e.message}"
       end
 
       def init_payload
@@ -107,6 +128,7 @@ module KitchenCabinetMaster
           'filler_defaults' => Defaults.filler_params,
           'end_panel_defaults' => Defaults.end_panel_params,
           'toe_kick_defaults' => Defaults.toe_kick_params,
+          'worktop_defaults'  => Worktop::DEFAULTS,
           'warnings'        => CatalogManager.warnings
         }
       end

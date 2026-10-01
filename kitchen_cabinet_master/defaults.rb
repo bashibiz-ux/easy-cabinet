@@ -71,8 +71,8 @@ module KitchenCabinetMaster
     HANDLE_DEFAULTS = {
       'orientation'     => 'vertical',
       'position'        => 'auto', # base: top, wall: bottom, tall: at hand height
-      'side_offset'     => 35.0,
-      'vertical_offset' => 80.0,
+      'side_offset'     => 25.0,
+      'vertical_offset' => 25.0,
       'custom_x'        => 50.0, # from the door's left edge to the handle centre
       'custom_z'        => 100.0 # from the door's bottom edge to the handle centre
     }.freeze

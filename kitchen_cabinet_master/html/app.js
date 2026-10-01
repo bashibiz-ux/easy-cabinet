@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.26.0';
+  const APP_VERSION = '0.27.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -167,6 +167,13 @@
       state.selectedKind = 'cabinet';
       loadCabinet(data);
     } else if (name === 'part_selected') {
+      // A worktop has its own section: show its values there and leave the item list alone.
+      if (data.part_kind === 'worktop') {
+        state.selectedKind = 'worktop';
+        setBadge(data.part_name);
+        applyWorktopDefaults(data);
+        return;
+      }
       const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
       state.selectedKind = kind;
       // A part is edited with the Cabinet & Extras fields, which need a catalog: use the first if none is chosen.
@@ -259,6 +266,22 @@
     drawPreview();
   }
 
+  function collectWorktop() {
+    return {
+      worktop_thickness: mmv('wtThickness'),
+      worktop_front: mmv('wtFront'),
+      worktop_end: mmv('wtEnd'),
+      material: $('wtMaterial').value
+    };
+  }
+
+  function applyWorktopDefaults(d) {
+    setText('wtThickness', d.worktop_thickness);
+    setText('wtFront', d.worktop_front);
+    setText('wtEnd', d.worktop_end);
+    setSelect('wtMaterial', d.material);
+  }
+
   function collectFiller() {
     return {
       width: mmv('fillerWidth'),
@@ -285,6 +308,7 @@
   // Update follows whatever is selected in the model.
   const COLLECTORS = {
     rotate: () => ({ degrees: $('rotateDegrees').value }),
+    worktop: () => collectWorktop(),
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
@@ -303,6 +327,7 @@
   // The main Insert button inserts whatever the Cabinet Category says; Update
   // follows whatever is selected in the model.
   function formKind(action) {
+    if (action === 'apply_worktop') return 'worktop';
     if (action === 'insert') return categoryKind();
     if (action === 'update') return state.selectedKind || categoryKind();
     if (action === 'rotate') return 'rotate';
@@ -352,7 +377,7 @@
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
-    'toeThickness', 'toeRecess', 'pieceLength'
+    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -442,7 +467,7 @@
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
     'door_gap', 'door_reveal', 'door_distance', 'top_panel', 'panel_thickness', 'back_thickness',
-    'cabinet_extras', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
+    'cabinet_extras', 'worktop', 'scene', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
   ];
 
   function currentCatalog() {
@@ -513,6 +538,7 @@
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
+    fillSelect($('wtMaterial'), panel);
     updateChips();
   }
 
@@ -1405,8 +1431,41 @@
     }
   }
 
+  // The Worktop fields rebuild the worktops that are already there (nothing is
+  // created until Apply Worktop is pressed).
+  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtMaterial']);
+
+  function scheduleWorktop(delay = LIVE_TYPING_DELAY_MS) {
+    clearTimeout(state.worktopTimer);
+    state.worktopTimer = setTimeout(runWorktop, delay);
+  }
+
+  async function runWorktop() {
+    if (state.busy) {
+      scheduleWorktop();
+      return;
+    }
+    state.busy = true;
+    state.liveBusy = true;
+    clearInvalid();
+    try {
+      const res = await call('apply_worktop', Object.assign(collectWorktop(), { only_if_exists: true }));
+      if (res.ok) setStatus('ok', res.message);
+      else setStatus('error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
   function liveEdit(el) {
+    if (WORKTOP_IDS.has(el.id)) {
+      scheduleWorktop(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      return;
+    }
     const toe = TOE_FIELDS[el.id];
     if (toe) {
       const kind = state.selectedKind;
@@ -1487,6 +1546,7 @@
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
+    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
@@ -1516,6 +1576,7 @@
     applyFillerDefaults(m.filler_defaults);
     applyEndPanelDefaults(m.end_panel_defaults);
     applyToeKickDefaults(m.toe_kick_defaults);
+    applyWorktopDefaults(m.worktop_defaults);
     updateCategoryUi();
     await refreshCabinets();
 

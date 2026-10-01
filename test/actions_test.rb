@@ -27,8 +27,13 @@ class ActionsTest < Minitest::Test
     assert_equal handled('part_manager.rb').sort, routed('PART_ACTIONS').sort
   end
 
+  def test_every_worktop_action_is_handled
+    handled = source('worktop_manager.rb')[/def self\.perform\(action, raw\)(.*?)\n    end\n/m, 1].scan(/when '(\w+)'/).flatten
+    assert_equal handled.sort, routed('WORKTOP_ACTIONS').sort
+  end
+
   def test_every_action_the_panel_calls_is_routed
-    known = routed('CABINET_ACTIONS') + routed('PART_ACTIONS') + %w[init get_cabinets get_materials undo]
+    known = routed('CABINET_ACTIONS') + routed('PART_ACTIONS') + routed('WORKTOP_ACTIONS') + %w[init get_cabinets get_materials undo]
     sent = source('html/app.js').scan(/call\('(\w+)'/).flatten.uniq
     assert_empty sent - known, 'the panel calls actions Ruby does not know'
   end

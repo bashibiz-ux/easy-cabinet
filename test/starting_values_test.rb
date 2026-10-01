@@ -122,6 +122,11 @@ class StartingValuesTest < Minitest::Test
     assert_equal 'auto', Defaults::HANDLE_DEFAULTS['position']
   end
 
+  def test_the_handle_offsets_start_at_25_mm
+    assert_equal 25.0, Defaults::HANDLE_DEFAULTS['side_offset']
+    assert_equal 25.0, Defaults::HANDLE_DEFAULTS['vertical_offset']
+  end
+
   # ---- the top of an open unit ------------------------------------------------------
 
   def test_an_open_unit_has_one_full_top_panel_and_a_closed_base_unit_two_rails

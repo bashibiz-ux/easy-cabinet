@@ -410,3 +410,4 @@ h1 {
 .thick-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .rotate-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .rotate-row .btn { margin-bottom: 10px; padding: 0 18px; }
+.btn-row.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
