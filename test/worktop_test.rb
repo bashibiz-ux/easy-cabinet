@@ -247,4 +247,23 @@ class WorktopTest < Minitest::Test
   def test_a_back_splash_is_on_the_worktop_tag
     assert_equal 'Worktop', TagManager.for_stored('part_kind' => 'backsplash')
   end
+
+  # ---- the rounded front edge -----------------------------------------------------------
+
+  def test_the_worktop_front_is_rounded_by_default
+    assert_equal 10.0, Worktop::DEFAULTS['worktop_round']
+  end
+
+  def test_the_layout_carries_the_radius_for_a_slab
+    layout = PartLayout.worktop([600.0, 1200.0, 38.0], nil, 'Worktop', 10.0)
+    assert_equal 10.0, layout.board.round
+    assert_equal 0.0, PartLayout.worktop([20.0, 1200.0, 100.0], nil, 'Back Splash', 0.0).board.round
+  end
+
+  def test_the_radius_is_validated
+    base = { 'worktop_thickness' => '38', 'worktop_front' => '20', 'worktop_end' => '0' }
+    assert_empty ValidationManager.validate_worktop(base.merge('worktop_round' => '15')).errors
+    assert_equal 15.0, ValidationManager.validate_worktop(base.merge('worktop_round' => '15')).params['worktop_round']
+    assert_equal 'worktop_round', ValidationManager.validate_worktop(base.merge('worktop_round' => '500')).errors.first['field']
+  end
 end

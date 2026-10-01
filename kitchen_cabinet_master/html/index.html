@@ -115,7 +115,7 @@
               <div class="input"><input id="handleSide" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field" id="handleVertField">
-              <span class="label">Top / bottom offset</span>
+              <span class="label">Bottom offset</span>
               <div class="input"><input id="handleVert" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
@@ -280,7 +280,7 @@
     <section class="card" id="sec-worktop" data-feature="worktop">
       <button class="card-head" type="button" aria-expanded="true">Worktop</button>
       <div class="card-body">
-        <p class="hint">Lays a worktop over the base units: one slab over each row of units standing together, and a square one on a corner unit. Change a value and the worktop follows.</p>
+        <p class="hint">Lays a worktop over the base units: one slab over each row of units standing together, and one in the shape of the corner on a corner unit. The front edge of a row's slab is rounded. Change a value and the worktop follows.</p>
         <div class="grid-2">
           <label class="field">
             <span class="label">Thickness</span>
@@ -291,10 +291,16 @@
             <div class="input"><input id="wtFront" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field narrow">
-          <span class="label">End Overhang</span>
-          <div class="input"><input id="wtEnd" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">End Overhang</span>
+            <div class="input"><input id="wtEnd" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Rounded Front Edge</span>
+            <div class="input"><input id="wtRound" type="text" inputmode="decimal" autocomplete="off" aria-label="Radius of the rounded front edge, 0 for square"><em>mm</em></div>
+          </label>
+        </div>
         <label class="field narrow">
           <span class="label">Back Splash Height</span>
           <div class="input"><input id="wtSplash" type="text" inputmode="decimal" autocomplete="off" aria-label="Back splash height, 0 for none"><em>mm</em></div>

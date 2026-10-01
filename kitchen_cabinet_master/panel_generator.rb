@@ -44,6 +44,25 @@ module KitchenCabinetMaster
       definition
     end
 
+    # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is
+    # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
+    # its size and radius, so equal pieces share one definition.
+    ROUND_STEPS = 8
+
+    def self.rounded_definition(model, size, radius)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      r = [[radius.to_f, dz].min, dx].min
+      name = format('%<prefix>sRounded %<x>g x %<y>g x %<z>g r%<r>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: r)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      build_rounded(definition.entities, dx, dy, dz, r)
+      definition
+    end
+
     # Removes a definition this extension created once nothing uses it any more.
     def self.discard_if_unused(model, definition)
       return unless definition && definition.valid?
@@ -66,6 +85,28 @@ module KitchenCabinetMaster
       face.pushpull(dz)
     end
     private_class_method :build_box
+
+    # The slab's profile (X across, Z up) with one rounded corner, extruded along Y.
+    def self.build_rounded(entities, dx, dy, dz, radius)
+      profile = [[0.0, 0.0], [dx, 0.0]]
+      if radius.positive?
+        centre = [dx - radius, dz - radius]
+        profile << [dx, dz - radius]
+        (1...ROUND_STEPS).each do |step|
+          angle = (Math::PI / 2.0) * step / ROUND_STEPS
+          profile << [centre[0] + (radius * Math.cos(angle)), centre[1] + (radius * Math.sin(angle))]
+        end
+        profile << [dx - radius, dz]
+      else
+        profile << [dx, dz]
+      end
+      profile << [0.0, dz]
+
+      face = entities.add_face(profile.map { |x, z| [x.mm, 0, z.mm] })
+      face.reverse! if face.normal.y < 0
+      face.pushpull(dy.mm)
+    end
+    private_class_method :build_rounded
 
     # A flat, horizontal solid: `points` outline pushed up by `thickness`.
     def self.build_polygon(entities, points, thickness)

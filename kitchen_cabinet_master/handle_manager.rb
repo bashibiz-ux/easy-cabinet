@@ -94,9 +94,10 @@ module KitchenCabinetMaster
 
       # A drawer's handle always centres horizontally (there is no hinge side to
       # offset from), regardless of the chosen position; marked by hinge 'center'.
-      # A horizontal handle can sit in the middle of the door instead of at its edge.
+      # A horizontal handle can be centred across the door instead of sitting at its
+      # free edge: still at the top of the door, `vertical` (the offset) below the edge.
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
-        return { 'u' => door_w / 2.0, 'v' => door_h / 2.0, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
+        return { 'u' => door_w / 2.0, 'v' => door_h - vertical - half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
       end
 
       u = if door.hinge == 'center'

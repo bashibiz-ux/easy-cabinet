@@ -59,7 +59,11 @@ module KitchenCabinetMaster
     private_class_method :place
 
     def self.place_board(model, entities, top, board, material)
-      definition = board.points ? PanelGenerator.polygon_definition(model, board.points, board.extent[2]) : PanelGenerator.definition(model, board.extent)
+      definition =
+        if board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2])
+        elsif board.round.to_f.positive? then PanelGenerator.rounded_definition(model, board.extent, board.round)
+        else PanelGenerator.definition(model, board.extent)
+        end
       transformation = Geom::Transformation.new(board.offset.map(&:mm))
       instance = place_instance(model, entities, top[board.role], board.role, definition, transformation)
       instance.name = board.name

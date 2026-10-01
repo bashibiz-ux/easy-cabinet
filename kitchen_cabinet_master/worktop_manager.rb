@@ -26,6 +26,7 @@ module KitchenCabinetMaster
       'worktop_thickness' => 38.0,
       'worktop_front' => 20.0,
       'worktop_end' => 0.0,
+      'worktop_round' => 10.0,       # radius of the rounded front edge (0 = square)
       'worktop_piece' => 0.0,        # 0 = no maximum length
       'worktop_cuts' => '',          # distances (mm) from the start of a run to cut at, e.g. "1500,3000"
       'backsplash_height' => 100.0,  # 0 = no back splash
@@ -284,7 +285,8 @@ module KitchenCabinetMaster
       stored['part_name'] = "#{kind == 'worktop' ? 'Worktop' : 'Back Splash'} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]
       stored['depth'] = extent[0]
-      layout = PartLayout.worktop(extent, points, kind == 'worktop' ? 'Worktop' : 'Back Splash')
+      slab = kind == 'worktop'
+      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0)
       root = PartGenerator.build(model, model.entities, stored, transformation, layout)
       TagManager.assign(model, root, TagManager::WORKTOP)
       root

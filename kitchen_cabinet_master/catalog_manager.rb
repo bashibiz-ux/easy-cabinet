@@ -16,12 +16,12 @@ module KitchenCabinetMaster
     LEGACY_FILES = ['catalogs/sample_catalog.json'].freeze
 
     # What a catalog can switch on in the panel. A catalog lists the ones it offers
-    # under eatures; anything not listed stays greyed out while it is selected.
+    # under `features`; anything not listed stays greyed out while it is selected.
     #   categories : base wall tall corner filler end_panel toe_kick
     #   options    : door_gap door_reveal door_distance top_panel panel_thickness back_thickness
     #   sections   : cabinet_extras (the Cabinet & Extras section) handle materials
     #                door_opening visibility rotate
-    # A catalog with no eatures list offers all of them.
+    # A catalog with no `features` list offers all of them.
     FEATURES = %w[base wall tall corner filler end_panel toe_kick
                   door_gap door_reveal door_distance top_panel panel_thickness back_thickness
                   cabinet_extras worktop handle materials door_opening visibility rotate].freeze

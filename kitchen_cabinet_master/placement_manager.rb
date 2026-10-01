@@ -175,7 +175,7 @@ module KitchenCabinetMaster
     # neighbour? True only when the NEW size collides and the size it has now does not,
     # so an edit is never blocked by an overlap that was already there (say, from a
     # cabinet the user moved by hand). Sizes are [depth, width, top] in mm.
-    # lso is a neighbour that is being made room for (shrunk), so it is not in the way.
+    # `also` is a neighbour that is being made room for (shrunk), so it is not in the way.
     def self.crowds?(entities, root, transformation, new_size, old_size, also: nil)
       collides?(entities, transformation, new_size, exclude: [root, also]) &&
         !collides?(entities, transformation, old_size, exclude: [root, also])

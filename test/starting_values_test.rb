@@ -154,7 +154,7 @@ class StartingValuesTest < Minitest::Test
     %w[top center bottom left right custom].each { |old| assert_includes Defaults.handle_position_ids, old }
   end
 
-  def test_a_horizontal_handle_can_sit_in_the_middle_of_the_door
+  def test_a_horizontal_handle_can_be_centred_across_the_door_at_the_top
     params = Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0, 'height' => 780.0,
                                    'door_count' => 1, 'toe_kick_height' => 100.0, 'handle_length' => 160.0,
                                    'handle_orientation' => 'horizontal', 'handle_position' => 'auto',
@@ -164,8 +164,9 @@ class StartingValuesTest < Minitest::Test
     middle = HandleManager.placement(door, HandleManager.settings(params.merge('handle_horizontal_place' => 'middle'), BAR), BAR)
     assert_in_delta door.extent[2] - 25.0 - 5.0, edge['v'], 1e-9, 'at the edge: near the top, as before'
     assert_in_delta door.extent[1] - 25.0 - 80.0, edge['u'], 1e-9
-    assert_in_delta door.extent[1] / 2.0, middle['u'], 1e-9, 'in the middle: centred across the door'
-    assert_in_delta door.extent[2] / 2.0, middle['v'], 1e-9, 'and halfway up'
+    assert_in_delta door.extent[1] / 2.0, middle['u'], 1e-9, 'centred across the door'
+    assert_in_delta edge['v'], middle['v'], 1e-9, 'still at the top of the door, the same height as at the edge'
+    assert_in_delta door.extent[2] - 25.0 - 5.0, middle['v'], 1e-9, 'the bottom offset below the top edge'
     assert middle['horizontal']
   end
 

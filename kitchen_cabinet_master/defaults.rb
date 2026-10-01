@@ -65,10 +65,10 @@ module KitchenCabinetMaster
     LEGACY_HANDLE_POSITIONS = %w[top center bottom left right custom].freeze
 
     # Where a HORIZONTAL handle sits: at the edge of the door (where By unit type puts
-    # it) or in the middle of the door.
+    # it) or centred across the door, still at the top.
     HANDLE_HORIZONTAL_PLACES = [
       { 'id' => 'edge',   'name' => 'At the edge of the door' },
-      { 'id' => 'middle', 'name' => 'In the middle of the door' }
+      { 'id' => 'middle', 'name' => 'In the middle of the door (top)' }
     ].freeze
 
     # Used when a bundle does not say otherwise. Offsets are the clear distance (mm)

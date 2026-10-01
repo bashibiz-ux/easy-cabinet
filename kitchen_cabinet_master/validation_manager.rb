@@ -27,7 +27,7 @@ module KitchenCabinetMaster
       'toe_kick_height'       => { label: 'Toe-kick height', min: 0.0, max: 400.0, required: true, toe_kick: true },
       'handle_length'         => { label: 'Handle length', min: 10.0, max: 2000.0 },
       'handle_side_offset'    => { label: 'Handle side offset', min: 0.0, max: 1000.0 },
-      'handle_vertical_offset' => { label: 'Handle top/bottom offset', min: 0.0, max: 2000.0 },
+      'handle_vertical_offset' => { label: 'Handle bottom offset', min: 0.0, max: 2000.0 },
       'handle_custom_x'       => { label: 'Handle position from left edge', min: 0.0, max: 3000.0 },
       'handle_custom_z'       => { label: 'Handle position from bottom edge', min: 0.0, max: 3000.0 }
     }.freeze
@@ -385,6 +385,7 @@ module KitchenCabinetMaster
       'worktop_front'     => { label: 'Front overhang', min: 0.0, max: 100.0, required: true },
       'worktop_end'       => { label: 'End overhang', min: 0.0, max: 200.0, required: true },
       'worktop_piece'     => { label: 'Piece length', min: 0.0, max: 10_000.0 },
+      'worktop_round'     => { label: 'Front edge radius', min: 0.0, max: 100.0 },
       'backsplash_height' => { label: 'Back splash height', min: 0.0, max: 1000.0 }
     }.freeze
 

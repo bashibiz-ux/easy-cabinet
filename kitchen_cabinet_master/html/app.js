@@ -6,14 +6,14 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.28.0';
+  const APP_VERSION = '0.29.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
   const FALLBACK_LISTS = {
     handle_orientations: [{ id: 'vertical', name: 'Vertical' }, { id: 'horizontal', name: 'Horizontal' }],
     handle_positions: [{ id: 'auto', name: 'By unit type' }],
-    handle_horizontal_places: [{ id: 'edge', name: 'At the edge of the door' }, { id: 'middle', name: 'In the middle of the door' }],
+    handle_horizontal_places: [{ id: 'edge', name: 'At the edge of the door' }, { id: 'middle', name: 'In the middle of the door (top)' }],
     end_panel_sides: [{ id: 'left', name: 'Left' }, { id: 'right', name: 'Right' }]
   };
 
@@ -273,6 +273,7 @@
       worktop_thickness: mmv('wtThickness'),
       worktop_front: mmv('wtFront'),
       worktop_end: mmv('wtEnd'),
+      worktop_round: mmv('wtRound'),
       worktop_piece: mmv('wtPiece'),
       worktop_cuts: cutsToMm(),
       backsplash_height: mmv('wtSplash'),
@@ -300,6 +301,7 @@
     setText('wtThickness', d.worktop_thickness);
     setText('wtFront', d.worktop_front);
     setText('wtEnd', d.worktop_end);
+    setText('wtRound', d.worktop_round);
     setText('wtPiece', d.worktop_piece);
     setText('wtSplash', d.backsplash_height);
     showCuts(d.worktop_cuts);
@@ -401,7 +403,7 @@
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
-    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtPiece', 'wtSplash'
+    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -889,7 +891,7 @@
     const halfAlong = spec.length / 2;
     const halfAcross = spec.knob ? halfAlong : HANDLE_SECTION_MM / 2;
     const [halfU, halfV] = spec.horizontal ? [halfAlong, halfAcross] : [halfAcross, halfAlong];
-    if (spec.middle) return { u: doorW / 2, v: doorH / 2, halfU, halfV };
+    if (spec.middle) return { u: doorW / 2, v: doorH - spec.vertical - halfV, halfU, halfV }; // centred, at the top
 
     const place = spec.category === 'wall' ? 'bottom' : spec.category === 'tall' ? 'hand' : 'top';
     const u = freeEdgeHigh ? doorW - spec.side - halfU : spec.side + halfU;
@@ -1465,7 +1467,7 @@
 
   // The Worktop fields rebuild the worktops that are already there (nothing is
   // created until Apply Worktop is pressed).
-  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial']);
+  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial']);
 
   function scheduleWorktop(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.worktopTimer);
@@ -1578,7 +1580,7 @@
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
-    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, worktop_piece: 0, worktop_cuts: '', backsplash_height: 100, material: 'White' };
+    m.worktop_defaults = m.worktop_defaults || { worktop_thickness: 38, worktop_front: 20, worktop_end: 0, worktop_round: 10, worktop_piece: 0, worktop_cuts: '', backsplash_height: 100, material: 'White' };
     m.toe_kick_defaults = m.toe_kick_defaults || { toe_kick_height: 100, toe_kick_thickness: 18, toe_kick_material: '__door__', toe_kick_piece_length: 2000, toe_kick_pieces: 1, toe_kick_recess: 50 };
     return m;
   }
