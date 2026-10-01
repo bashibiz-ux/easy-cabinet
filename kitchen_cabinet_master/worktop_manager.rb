@@ -134,7 +134,7 @@ module KitchenCabinetMaster
       returned = run[:items].first[:return_depth] || width
       cut = [returned + (front * SQRT2), width].min
       points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
-      { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points }
+      { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
     end
     private_class_method :corner_slab
 
@@ -271,7 +271,7 @@ module KitchenCabinetMaster
         lift = run[:top].mm - placed.origin.z
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
-        make_part(model, 'worktop', slab[:extent], slab[:points], placed, params)
+        make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge])
         Worktop.splash(run, slab, params).each do |piece|
           up = placed * Geom::Transformation.translation(Geom::Vector3d.new(piece[:offset][0].mm, piece[:offset][1].mm, piece[:offset][2].mm))
           make_part(model, 'backsplash', piece[:extent], nil, up, params)
@@ -280,7 +280,7 @@ module KitchenCabinetMaster
       spans.length
     end
 
-    def self.make_part(model, kind, extent, points, transformation, params)
+    def self.make_part(model, kind, extent, points, transformation, params, round_edge = nil)
       stored = params.dup
       stored['part_kind'] = kind
       stored['part_id'] = AttributeManager.next_part_id(model)
@@ -288,7 +288,7 @@ module KitchenCabinetMaster
       stored['width'] = extent[1]
       stored['depth'] = extent[0]
       slab = kind == 'worktop'
-      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0)
+      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0, round_edge)
       root = PartGenerator.build(model, model.entities, stored, transformation, layout)
       TagManager.assign(model, root, TagManager::WORKTOP)
       root

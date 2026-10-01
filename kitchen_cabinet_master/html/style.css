@@ -410,4 +410,9 @@ h1 {
 .thick-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .rotate-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .rotate-row .btn { margin-bottom: 10px; padding: 0 18px; }
+.cutlist-wrap { margin-top: 10px; overflow-x: auto; }
+.cutlist { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cutlist th, .cutlist td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); white-space: nowrap; }
+.cutlist th:first-child, .cutlist td:first-child, .cutlist th:nth-child(5), .cutlist td:nth-child(5) { text-align: left; }
+.cutlist th { font-weight: 600; opacity: .8; }
 .btn-row.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }

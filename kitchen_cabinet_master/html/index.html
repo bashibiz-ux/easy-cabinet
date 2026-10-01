@@ -62,6 +62,10 @@
           <span class="label">Top Panel</span>
           <div class="input"><select id="topPanel" aria-label="Top panel of the cabinet"></select></div>
         </label>
+        <p class="hint">The panel remembers the settings you use (units, door gap, thickness, materials, handle, toe kick, worktop and bottom panel) and starts with them next time.</p>
+        <div class="btn-row one">
+          <button class="btn" type="button" data-action="reset_presets">Reset Saved Settings</button>
+        </div>
       </div>
     </section>
 
@@ -399,6 +403,22 @@
             <div class="input"><input id="rotateDegrees" type="text" inputmode="decimal" autocomplete="off" value="90"><em>deg</em></div>
           </label>
           <button class="btn" type="button" data-action="rotate">Rotate</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cut list: every board in the model, grouped, with a CSV export -->
+    <section class="card" id="sec-cutlist">
+      <button class="card-head" type="button" aria-expanded="true">Cut List</button>
+      <div class="card-body">
+        <p class="hint">Every board of every cabinet and part in the model, grouped by name, size and material. Sizes are shown in the chosen unit; the CSV file is always in millimetres.</p>
+        <div class="btn-row two">
+          <button class="btn primary" type="button" data-action="get_cut_list">Show Cut List</button>
+          <button class="btn" type="button" data-action="export_cut_list">Export CSV</button>
+        </div>
+        <div class="cutlist-wrap" id="cutListWrap" hidden>
+          <table class="cutlist" id="cutList"></table>
+          <p class="hint" id="cutListAreas"></p>
         </div>
       </div>
     </section>

@@ -60,7 +60,9 @@ module KitchenCabinetMaster
 
     def self.place_board(model, entities, top, board, material)
       definition =
-        if board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2])
+        if board.points && board.round.to_f.positive? && board.round_edge
+          PanelGenerator.rounded_polygon_definition(model, board.points, board.extent[2], board.round, board.round_edge)
+        elsif board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2])
         elsif board.round.to_f.positive? then PanelGenerator.rounded_definition(model, board.extent, board.round)
         else PanelGenerator.definition(model, board.extent)
         end

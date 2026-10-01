@@ -17,10 +17,18 @@ class CatalogTest < Minitest::Test
   include KitchenCabinetMaster
   DATA_DIR_FOR_TEST = KitchenCabinetMaster::DATA_DIR
 
-  def test_there_is_one_catalog_named_door_with_pull_handle
+  def test_the_models_are_door_with_pull_handle_drawer_units_and_handleless_doors
     catalogs = CatalogManager.catalogs
-    assert_equal ['Door with pull handle'], catalogs.map { |c| c['name'] }
+    assert_equal ['Door with pull handle', 'Drawer base units', 'Handleless doors'], catalogs.map { |c| c['name'] }
     assert_empty CatalogManager.warnings
+  end
+
+  def test_the_handleless_model_has_no_handle_and_the_drawer_model_has_drawers
+    plain = CatalogManager.catalogs.find { |c| c['id'] == 'handleless_doors' }
+    refute_includes plain['features'], 'handle'
+    assert_equal [], plain['handle_bundles']
+    assert_equal [2, 3, 4, 3, 0], CatalogManager.cabinets('drawer_units', 'base').map { |c| c['drawers'].to_i }
+    refute_empty CatalogManager.cabinets('handleless_doors', 'wall')
   end
 
   def test_the_catalog_switches_on_every_option

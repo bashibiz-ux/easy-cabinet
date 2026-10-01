@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.32.4';
+  const APP_VERSION = '0.33.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -341,6 +341,89 @@
       height_auto: !state.touched.has('epHeight'),
       material: $('epMaterial').value
     };
+  }
+
+  /* ---------------------------------------------------------------------- *
+   * Saved settings: kept between sessions, restored when the panel opens
+   * ---------------------------------------------------------------------- */
+
+  const PRESET_IDS = [
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness', 'topPanel',
+    'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
+    'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
+    'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
+    'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtSplash', 'wtMaterial',
+    'wbThickness', 'wbLength', 'wbSetback', 'wbMaterial'
+  ];
+
+  function gatherPresets() {
+    const values = {};
+    PRESET_IDS.forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      if (el.type === 'checkbox') values[id] = el.checked;
+      else if (LENGTH_IDS.includes(id)) {
+        const text = String(mmv(id)).trim();
+        const mm = Number(text);
+        if (text !== '' && Number.isFinite(mm)) values[id] = mm;
+      } else values[id] = el.value;
+    });
+    return values;
+  }
+
+  function schedulePresetSave() {
+    if (!state.presetsReady) return; // not until what was saved has been put back
+    clearTimeout(state.presetTimer);
+    state.presetTimer = setTimeout(() => {
+      call('save_presets', { values: gatherPresets() }).catch(() => { /* saving is a convenience */ });
+    }, 700);
+  }
+
+  async function restorePresets() {
+    try {
+      const res = await call('load_presets');
+      const saved = res.ok && res.data ? res.data.values || {} : {};
+      const put = (id) => {
+        const el = $(id);
+        if (!el || !(id in saved)) return;
+        if (el.type === 'checkbox') el.checked = saved[id] === true;
+        else if (LENGTH_IDS.includes(id) && typeof saved[id] === 'number') setText(id, saved[id]);
+        else if (el.tagName === 'SELECT') setSelect(id, saved[id]);
+        else el.value = String(saved[id]);
+      };
+      if ('units' in saved && UNITS[saved.units]) setUnit(saved.units); // first: every length below is shown in it
+      put('handle');
+      onHandleChange(false); // the handle brings its own lengths and finishes
+      PRESET_IDS.filter((id) => id !== 'units' && id !== 'handle').forEach(put);
+      syncHandlePosition();
+      syncThicknessPresets();
+      updateChips();
+    } catch (_) { /* the panel starts from the standard values */ }
+    state.presetsReady = true;
+  }
+
+  // The cut list table, in the chosen unit.
+  function renderCutList(data) {
+    const rows = list(data.rows);
+    const table = $('cutList');
+    const unit = unitInfo().label;
+    table.innerHTML = '';
+    const head = table.createTHead().insertRow();
+    ['Part', `Length (${unit})`, `Width (${unit})`, `Thickness (${unit})`, 'Material', 'Qty', 'Used in'].forEach((text) => {
+      const cell = document.createElement('th');
+      cell.textContent = text;
+      head.append(cell);
+    });
+    const body = table.createTBody();
+    rows.forEach((r) => {
+      const tr = body.insertRow();
+      [r.part, r.length ? fmtU(r.length) : '', r.width ? fmtU(r.width) : '', r.thickness ? fmtU(r.thickness) : '', r.material, r.quantity, r.used_in].forEach((value) => {
+        tr.insertCell().textContent = value === undefined || value === null ? '' : String(value);
+      });
+    });
+    const areas = list(data.areas).map((a) => `${a.material || 'no material'} ${fmtU(a.thickness)} thick: ${a.area} m2`);
+    $('cutListAreas').textContent = areas.length ? `Sheet area: ${areas.join('; ')}.` : '';
+    $('cutListWrap').hidden = rows.length === 0;
   }
 
   // Which form an action reads. Each Insert button belongs to its own block;
@@ -1327,6 +1410,8 @@
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
+        if (action === 'get_cut_list') renderCutList(res.data || {});
+        if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
         markInvalid(res.errors, kind, { focus: !live });
@@ -1684,6 +1769,7 @@
     setText('wbThickness', 18);
     setText('wbLength', 2000);
     setText('wbSetback', 20);
+    await restorePresets();
     updateCategoryUi();
     await refreshCabinets();
 
@@ -1754,6 +1840,7 @@
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
         liveEdit(el); // update the selected item with what was just entered
+        if (PRESET_IDS.includes(el.id)) schedulePresetSave();
         if (FOLLOWS_CABINET.includes(el.id)) state.touched.add(el.id); // the user's own value now
       };
       el.addEventListener('input', onEdit);
