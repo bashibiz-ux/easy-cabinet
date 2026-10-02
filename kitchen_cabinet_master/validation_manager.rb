@@ -143,7 +143,7 @@ module KitchenCabinetMaster
         errors << error('top_panel_style', 'Select how the top panel is made.')
       end
 
-      %w[show_opening_direction show_door_symbol show_wall_opening_direction hide_wall_handles show_cabinet_names].each do |key|
+      %w[show_opening_direction show_door_symbol show_wall_opening_direction hide_wall_handles hide_base_handles show_cabinet_names].each do |key|
         out[key] = truthy?(raw[key]) if raw.key?(key)
       end
 

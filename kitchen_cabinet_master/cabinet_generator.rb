@@ -97,9 +97,11 @@ module KitchenCabinetMaster
     # on): `show_floor_symbol` is the plan symbol on the floor, `show_door_symbol`
     # the dashed lines on each door. Only flips `visible` on existing containers;
     # nothing is rebuilt.
-    def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol = false, hide_wall_handles = false)
+    def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol = false, hide_wall_handles = false,
+                             hide_base_handles = false)
       doors_visible = visibility['door'] != false
       wall = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
+      base_like = %w[base corner].include?(root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category'))
       # A wall unit's plan line has its own switch.
       show_floor_symbol = show_wall_symbol if root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
 
@@ -112,7 +114,7 @@ module KitchenCabinetMaster
           symbol = index_by_role(instance.definition.entities)[DOOR_SYMBOL_ROLE]
           symbol.visible = show_door_symbol if symbol
           handle = index_by_role(instance.definition.entities)[HANDLE_ROLE]
-          handle.visible = !(wall && hide_wall_handles) if handle
+          handle.visible = !(wall ? hide_wall_handles : (base_like && hide_base_handles)) if handle
         end
       end
     end
@@ -349,7 +351,8 @@ module KitchenCabinetMaster
       handle = place_instance(model, entities, existing, HANDLE_ROLE, definition,
                               HandleManager.transformation(spot, door.extent[0]))
       handle.name = 'Handle'
-      handle.visible = !(params['cabinet_category'] == 'wall' && params['hide_wall_handles'] == true)
+      handle.visible = !(if params['cabinet_category'] == 'wall' then params['hide_wall_handles'] == true
+                         else %w[base corner].include?(params['cabinet_category']) && params['hide_base_handles'] == true end)
 
       if settings['material'].to_s.empty?
         material_name, color = HandleManager.finish_material(bundle, settings['finish'])

@@ -36,10 +36,7 @@ module KitchenCabinetMaster
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
-          built = CabinetGenerator.build(model, entities, params, transformation)
-          # A base unit inserted while "Hide base units" is ticked starts hidden.
-          built.visible = false if params['cabinet_category'] == 'base' && [true, 'true', 1, '1'].include?(raw['hide_base_units'])
-          built
+          CabinetGenerator.build(model, entities, params, transformation)
         end
       end
 
@@ -273,7 +270,7 @@ module KitchenCabinetMaster
       show_wall_symbol = on.call(raw['wall_opening_direction'])
       hide_wall_handles = on.call(raw['hide_wall_handles'])
       show_names = on.call(raw['show_cabinet_names'])
-      hide_base = on.call(raw['hide_base_units'])
+      hide_base_handles = on.call(raw['hide_base_handles'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -291,15 +288,14 @@ module KitchenCabinetMaster
                                             'show_door_symbol' => show_door_symbol,
                                             'show_wall_opening_direction' => show_wall_symbol,
                                             'hide_wall_handles' => hide_wall_handles,
+                                            'hide_base_handles' => hide_base_handles,
                                             'show_cabinet_names' => show_names)
-            CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles)
+            CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles,
+                                              hide_base_handles)
             CabinetGenerator.sync_name_label_for(model, cabinet)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
-          # Hide base units: the base cabinets, and the fillers and end panels beside them.
-          model.set_attribute(AttributeManager::DICTIONARY, 'hide_base_units', hide_base)
-          instances.each { |item| item.visible = !hide_base if base_item?(item) }
         end
       end
 
@@ -308,16 +304,6 @@ module KitchenCabinetMaster
     end
     private_class_method :set_visibility
 
-    # A base cabinet, or a filler / end panel that belongs to one.
-    def self.base_item?(item)
-      dictionary = AttributeManager::DICTIONARY
-      if AttributeManager.cabinet?(item)
-        item.get_attribute(dictionary, 'cabinet_category') == 'base'
-      else
-        %w[filler end_panel].include?(AttributeManager.part_kind(item)) && item.get_attribute(dictionary, 'target_category') == 'base'
-      end
-    end
-    private_class_method :base_item?
 
     # A copy of the selected cabinet exactly as it is stored (unsaved edits in the
     # panel are not used; that is what Insert is for). It gets a new ID, is placed

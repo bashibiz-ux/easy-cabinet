@@ -152,6 +152,7 @@ module KitchenCabinetMaster
       'bottom_zone' => 0.0,         # an oven housing: the height of the drawers at the bottom (the door is front_zone at the top, the niche between)
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
+      'hide_base_handles' => false, # base units' handles hidden (a tick in Visibility)
       'hide_wall_handles' => false, # wall units' handles hidden (a tick in Visibility)
       'show_wall_opening_direction' => false, # a wall unit's plan line on the floor has its own tick
       'show_door_symbol'       => false, # the dashed swing lines on the door (ticked by the user when wanted)

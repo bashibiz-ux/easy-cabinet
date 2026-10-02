@@ -74,7 +74,7 @@ module KitchenCabinetMaster
         data = {} unless data.is_a?(Hash)
 
         case action
-        when 'init'          then (organise_tags; Response.ok('', init_payload))
+        when 'init'          then (organise_tags; unhide_base_units; Response.ok('', init_payload))
         when 'undo'          then undo_last
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
@@ -100,6 +100,33 @@ module KitchenCabinetMaster
       # Opening the panel makes sure the Base Unit, Worktop, Wall Unit, Tall Unit and
       # Toe Kick tags exist and that what is already in the model is on them. Nothing
       # happens (and nothing is added to Undo) when it is all in place.
+      # Version 0.36.0 had a "Hide base units" tick that is gone. A model saved with it ticked would
+      # keep its base units hidden with nothing to show them again, so they are shown once, here.
+      def unhide_base_units
+        model = Sketchup.active_model
+        dictionary = AttributeManager::DICTIONARY
+        return unless model && model.get_attribute(dictionary, 'hide_base_units', false) == true
+
+        model.start_operation('Show Base Units', true)
+        begin
+          model.entities.grep(Sketchup::ComponentInstance).each do |item|
+            next if item.visible?
+
+            category = item.get_attribute(dictionary, 'cabinet_category') || item.get_attribute(dictionary, 'target_category')
+            kind = AttributeManager.part_kind(item)
+            base_unit = AttributeManager.cabinet?(item) || %w[filler end_panel].include?(kind)
+            item.visible = true if base_unit && category == 'base'
+          end
+          model.delete_attribute(dictionary, 'hide_base_units')
+          model.commit_operation
+        rescue StandardError
+          model.abort_operation
+          raise
+        end
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not show the base units: #{e.message}"
+      end
+
       def organise_tags
         model = Sketchup.active_model
         return unless model && TagManager.needs_sync?(model)
@@ -129,7 +156,7 @@ module KitchenCabinetMaster
           'handle_orientations' => Defaults::HANDLE_ORIENTATIONS,
           'end_panel_sides' => Defaults::END_PANEL_SIDES.map { |s| { 'id' => s, 'name' => s.capitalize } },
           'materials'       => MaterialManager.options(Sketchup.active_model),
-          'defaults'        => Defaults.params.merge('hide_base_units' => Sketchup.active_model.get_attribute(AttributeManager::DICTIONARY, 'hide_base_units', false) == true),
+          'defaults'        => Defaults.params,
           'filler_defaults' => Defaults.filler_params,
           'end_panel_defaults' => Defaults.end_panel_params,
           'toe_kick_defaults' => Defaults.toe_kick_params,
