@@ -6,6 +6,7 @@ module KitchenCabinetMaster
   # Central place for default values. All lengths are millimetres; angles are degrees.
   module Defaults
     # Toe-kick material choices that follow another part instead of naming a material.
+    CORNER_STYLES = %w[diagonal l_shape blind].freeze
     SAME_AS_DOOR    = '__door__'
     SAME_AS_CARCASS = '__carcass__'
     SAME_AS_CABINET = '__cabinet__' # stored by older versions; it means "same as door material"
@@ -103,6 +104,19 @@ module KitchenCabinetMaster
     def self.back_recess(back_thickness)
       back_thickness.to_f >= FLUSH_BACK_FROM ? 0.0 : BACK_RECESS
     end
+    # The shape of a corner-type cabinet: diagonal, l_shape or blind; nil for an ordinary one. A
+    # cabinet saved as category "corner" before shapes existed is a diagonal corner.
+    def self.corner_style(params)
+      style = params['corner_style'].to_s
+      style = 'diagonal' if style.empty? && params['cabinet_category'].to_s == 'corner'
+      CORNER_STYLES.include?(style) ? style : nil
+    end
+
+    # A square footprint (Width x Width) that turns the row a quarter turn.
+    def self.corner?(params)
+      %w[diagonal l_shape].include?(corner_style(params))
+    end
+
     RAIL_DEPTH           = 100.0 # depth of the two structural rails that top a base unit
     SHELF_FRONT_SETBACK  = 20.0  # shelves stop this far short of the carcass front
     SHELF_SIDE_CLEARANCE = 1.0   # gap each side of a shelf so it can be removed
@@ -133,6 +147,9 @@ module KitchenCabinetMaster
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
       'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
+      'corner_style' => '',        # a corner unit's shape: diagonal, l_shape or blind (blank = an ordinary cabinet)
+      'front_zone' => 0.0,          # drawers over a door: the height of the drawer zone at the top; a door alone: the door's height at the top (0 = full height)
+      'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
       'hide_wall_handles' => false, # wall units' handles hidden (a tick in Visibility)
       'show_wall_opening_direction' => false, # a wall unit's plan line on the floor has its own tick

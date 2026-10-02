@@ -26,7 +26,7 @@ module KitchenCabinetMaster
 
     # Returns [entities, transformation] for a new CABINET.
     def self.target_for_new(model, params)
-      corner = params['cabinet_category'].to_s == 'corner'
+      corner = CabinetLayout.corner?(params)
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
                  z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0,

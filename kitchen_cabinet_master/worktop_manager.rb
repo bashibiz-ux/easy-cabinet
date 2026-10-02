@@ -132,11 +132,21 @@ module KitchenCabinetMaster
     def self.corner_slab(run, front, thickness)
       width = run[:length]
       returned = run[:items].first[:return_depth] || width
+      return l_slab(width, returned, front, thickness) if run[:items].first[:corner_style] == 'l_shape'
       cut = [returned + (front * SQRT2), width].min
       points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
       { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
     end
     private_class_method :corner_slab
+
+    # An L-shaped corner unit has an L-shaped worktop: two arms as deep as the unit (plus the
+    # front overhang) along the walls.
+    def self.l_slab(width, returned, front, thickness)
+      arm = [returned + front, width].min
+      points = [[0.0, 0.0], [0.0, width], [arm, width], [arm, arm], [width, arm], [width, 0.0]]
+      { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points }
+    end
+    private_class_method :l_slab
 
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
     # own frame, standing on its top. A straight slab has one along its back edge; a
@@ -256,10 +266,10 @@ module KitchenCabinetMaster
 
         origin = item.transformation.origin
         heading = item.transformation.yaxis
-        corner = !filler && category == 'corner'
+        corner = !filler && CabinetLayout.corner?(stored)
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
-          corner: corner, return_depth: stored['depth'].to_f, ref: item }
+          corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f, ref: item }
       end
     end
 

@@ -38,10 +38,23 @@ module KitchenCabinetMaster
     Dims   = Struct.new(:width, :depth, :height, :thick, :back, :inner_w, :interior_start, :interior_d,
                         :shelf_setback, :return_depth, :recess, :groove, keyword_init: true)
 
+    # The shape of a corner-type cabinet: diagonal, l_shape or blind; nil for an ordinary one.
+    # (A cabinet saved as category "corner" before shapes existed is a diagonal corner.)
+    def self.corner_style(params) = Defaults.corner_style(params)
+
+    # A unit with a square footprint (Width x Width) that turns the row a quarter turn.
+    def self.corner?(params) = Defaults.corner?(params)
+
+    # A straight cabinet whose front is part door, part fixed blind panel.
+    def self.blind?(params)
+      corner_style(params) == 'blind'
+    end
+
     # params - validated parameter Hash (millimetres)
     def self.compute(params)
       dims = dimensions(params)
       category = params['cabinet_category'].to_s
+      style = corner_style(params)
 
       # A wall unit can have its carcass bottom lifted (room for a panel under it): the
       # carcass is shorter and starts higher, while the doors keep the full height.
@@ -50,7 +63,9 @@ module KitchenCabinetMaster
       dims.height = full_height - lift
 
       panels =
-        if category == 'corner'
+        if style == 'l_shape'
+          l_panels(dims)
+        elsif style == 'diagonal'
           [
             panel('left_side', 'Left Side Panel', [dims.width - dims.thick, dims.thick, dims.height], [0, 0, 0]),
             panel('right_side', 'Right Side Panel', [dims.return_depth, dims.thick, dims.height],
@@ -69,10 +84,18 @@ module KitchenCabinetMaster
                   [dims.interior_start, dims.thick, 0])
           ]
         end
-      panels.concat(category == 'corner' ? corner_top_panels(dims) : top_panels(category, dims, params['top_panel_style'], open: open_unit?(params)))
       panels.concat(
-        if category == 'corner'
+        case style
+        when 'diagonal' then corner_top_panels(dims)
+        when 'l_shape' then l_top_panels(dims)
+        else top_panels(category, dims, params['top_panel_style'], open: open_unit?(params))
+        end
+      )
+      panels.concat(
+        if style == 'diagonal'
           corner_shelf_panels(params['shelf_count'].to_i, dims)
+        elsif style == 'l_shape'
+          l_shelf_panels(params['shelf_count'].to_i, dims)
         else
           shelf_panels(params['shelf_count'].to_i, dims)
         end
@@ -85,6 +108,12 @@ module KitchenCabinetMaster
       base_z = round2(category == 'wall' ? 0.0 : params['toe_kick_height'].to_f)
       panels.each { |item| item.offset = [item.offset[0], item.offset[1], round2(item.offset[2] + lift)] } if lift.positive?
       dims.height = full_height
+      panels << blind_panel(params, dims) if blind?(params) # the fixed front stays full height
+      zone = front_zone(params, dims)
+      if zone && zone[:drawers] # a rail between the drawers and the door below
+        mid = dims.height - zone[:drawers] - (params['door_gap'].to_f / 2.0) - (dims.thick / 2.0)
+        panels << panel('drawer_rail', 'Drawer Rail', [dims.interior_d, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, mid])
+      end
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
@@ -108,10 +137,11 @@ module KitchenCabinetMaster
       base_z = category == 'wall' ? 0.0 : params['toe_kick_height'].to_f
       # A corner unit's outer footprint is a square sized by Width in both
       # directions; its own Depth instead controls the internal return panels.
-      nominal_depth = category == 'corner' ? params['width'].to_f : params['depth'].to_f
+      square = corner?(params)
+      nominal_depth = square ? params['width'].to_f : params['depth'].to_f
       # A corner unit's doors sit on a diagonal inside that square, so nothing of
       # it stands proud of Width; the door clearance only applies to flat fronts.
-      depth = category == 'corner' ? nominal_depth : nominal_depth + door_distance(params) + thick
+      depth = square ? nominal_depth : nominal_depth + door_distance(params) + thick
       [depth, params['width'].to_f, base_z + params['height'].to_f]
     end
 
@@ -144,7 +174,7 @@ module KitchenCabinetMaster
       # reach forward to the front face of the neighbours' doors (door clearance
       # plus door thickness) and its shelves are flush too. With doors, the carcass
       # ends at the nominal depth and the shelves stop short of the doors.
-      corner = params['cabinet_category'].to_s == 'corner'
+      corner = corner?(params)
       return_depth = depth # the value the user actually typed in "Depth"
 
       # A corner unit's carcass footprint is a square (Width x Width): its two
@@ -273,12 +303,15 @@ module KitchenCabinetMaster
     def self.door_panels(params, dims, base_z)
       count = params['door_count'].to_i
       return [] unless count.positive?
-      return corner_door(params, dims, base_z) if params['cabinet_category'].to_s == 'corner'
+      style = corner_style(params)
+      return corner_door(params, dims, base_z) if style == 'diagonal'
+      return l_doors(params, dims, base_z) if style == 'l_shape'
+      return blind_doors(params, dims, base_z) if style == 'blind'
 
       gap = params['door_gap'].to_f
       reveal = params['door_reveal'].to_f
       door_w = (dims.width - (2 * reveal) - ((count - 1) * gap)) / count
-      door_h = dims.height - (2 * reveal)
+      door_h, door_z = door_span(params, dims)
 
       (0...count).map do |index|
         hinge_left = count == 1 ? params['door_opening_direction'].to_s != 'right' : index < count / 2.0
@@ -286,7 +319,7 @@ module KitchenCabinetMaster
         Door.new(
           role: "door_#{index + 1}", name: "Door #{index + 1}",
           extent: [dims.thick, door_w, door_h].map { |v| round2(v) },
-          offset: [dims.depth + door_distance(params), y, base_z + reveal].map { |v| round2(v) },
+          offset: [dims.depth + door_distance(params), y, base_z + door_z].map { |v| round2(v) },
           hinge: hinge_left ? 'left' : 'right',
           pivot: [dims.depth + door_distance(params) + dims.thick, hinge_left ? y : y + door_w, base_z].map { |v| round2(v) },
           rotation: 0.0
@@ -344,6 +377,173 @@ module KitchenCabinetMaster
     end
     private_class_method :corner_door
 
+    # ---- L-shaped corner unit ---------------------------------------------------------
+    #
+    #   plan view (X = depth up the page is the front, walls on the low X and low Y sides):
+    #
+    #            Y=0                       Y=width
+    #   X=depth  ┌──────────────────────────┐ ...  arm 2 runs along the Y=0 wall
+    #            │  open room corner        │
+    #   X=D      ├─────┐                    │      arm 1 runs along the X=0 wall
+    #            │ door│ (arm 1 front)      │
+    #   X=0      └─────┴────────────────────┘
+    #
+    # Two arms of depth `return_depth` (the Depth field) meet in an L; the front of each arm has
+    # a door, so the inside of the L is reached from the room through two doors at right angles.
+    # The footprint is a Width x Width square, like the diagonal corner unit, and the row turns a
+    # quarter turn there in the same way.
+    def self.l_panels(dims)
+      t = dims.thick
+      d = dims.return_depth
+      w = dims.width
+      [
+        panel('left_side', 'Left Side Panel', [w - t, t, dims.height], [0, 0, 0]),
+        panel('right_side', 'Right Side Panel', [d, t, dims.height], [0, w - t, 0]),
+        panel('front_return', 'Front Return Panel', [t, d, dims.height], [w - t, 0, 0]),
+        panel('inner_front_1', 'Inner Front Panel', [t, w - d, dims.height], [d - t, d - t, 0]),
+        panel('inner_front_2', 'Inner Front Panel', [w - d - t, t, dims.height], [d, d - t, 0]),
+        back_panel(dims),
+        Panel.new(role: 'bottom', name: 'Bottom Panel', points: l_footprint(dims, 0.0, 0.0),
+                  extent: [nil, nil, round2(t)], offset: [0, 0, 0])
+      ]
+    end
+    private_class_method :l_panels
+
+    # The inside outline of the L, inset by `setback` from the doors and `side_margin` from the sides.
+    def self.l_footprint(dims, setback, side_margin)
+      t = dims.thick
+      d = dims.return_depth
+      w = dims.width
+      [
+        [dims.interior_start, t + side_margin],
+        [dims.interior_start, w - t - side_margin],
+        [d - t - setback, w - t - side_margin],
+        [d - t - setback, d - t - setback],
+        [w - t - side_margin, d - t - setback],
+        [w - t - side_margin, t + side_margin]
+      ].map { |x, y| [round2(x), round2(y)] }
+    end
+    private_class_method :l_footprint
+
+    def self.l_top_panels(dims)
+      [Panel.new(role: 'top', name: 'Top Panel', points: l_footprint(dims, 0.0, 0.0),
+                 extent: [nil, nil, round2(dims.thick)], offset: [0, 0, round2(dims.height - dims.thick)])]
+    end
+    private_class_method :l_top_panels
+
+    def self.l_shelf_panels(count, dims)
+      return [] unless count.positive?
+
+      clear = dims.height - (2 * dims.thick)
+      gap = (clear - (count * dims.thick)) / (count + 1)
+      points = l_footprint(dims, dims.shelf_setback, Defaults::SHELF_SIDE_CLEARANCE)
+      (1..count).map do |index|
+        z = dims.thick + (gap * index) + (dims.thick * (index - 1))
+        Panel.new(role: "shelf_#{index}", name: "Shelf #{index}", points: points,
+                  extent: [nil, nil, round2(dims.thick)], offset: [0, 0, round2(z)])
+      end
+    end
+    private_class_method :l_shelf_panels
+
+    # One door on the front of each arm, meeting at the inside corner of the L. By default both
+    # hinge at the outer ends, so they open away from the corner ("right" swaps them).
+    def self.l_doors(params, dims, base_z)
+      t = dims.thick
+      d = dims.return_depth
+      w = dims.width
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      clear = door_distance(params)
+      height = dims.height - (2 * reveal)
+      outer = params['door_opening_direction'].to_s != 'right'
+
+      y_from = d + clear + t + gap # clear of the other door
+      y_to = w - reveal
+      x_from = d + reveal
+      x_to = w - reveal
+
+      [
+        Door.new(role: 'door_1', name: 'Door 1', extent: [t, y_to - y_from, height].map { |v| round2(v) },
+                 offset: [d + clear, y_from, base_z + reveal].map { |v| round2(v) },
+                 hinge: outer ? 'right' : 'left',
+                 pivot: [d + clear + t, outer ? y_to : y_from, base_z].map { |v| round2(v) }, rotation: 0.0),
+        # Faces +Y: its frame is turned a quarter turn, so its length runs from x_to back to x_from.
+        Door.new(role: 'door_2', name: 'Door 2', extent: [t, x_to - x_from, height].map { |v| round2(v) },
+                 offset: [x_to, d + clear, base_z + reveal].map { |v| round2(v) },
+                 hinge: outer ? 'left' : 'right',
+                 pivot: [outer ? x_to : x_from, d + clear + t, base_z].map { |v| round2(v) }, rotation: 90.0)
+      ]
+    end
+    private_class_method :l_doors
+
+    # ---- blind corner unit --------------------------------------------------------------
+    #
+    # A straight cabinet whose front is one door over the open part and a fixed panel over the
+    # `blind_width` part, which sits behind the neighbouring run. Door Opening Direction "left"
+    # puts the door on the left and the blind part on the right; "right" swaps them.
+    def self.blind_split(params, dims)
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      blind = params['blind_width'].to_f.clamp(MIN_BLIND, [dims.width - MIN_BLIND, MIN_BLIND].max)
+      open = dims.width - blind
+      if params['door_opening_direction'].to_s != 'right' # blind on the right
+        { door: [reveal, open - (gap / 2.0)], blind: [open + (gap / 2.0), dims.width - reveal] }
+      else
+        { door: [blind + (gap / 2.0), dims.width - reveal], blind: [reveal, blind - (gap / 2.0)] }
+      end
+    end
+    private_class_method :blind_split
+    MIN_BLIND = 50.0
+
+    def self.blind_panel(params, dims)
+      from, to = blind_split(params, dims)[:blind]
+      reveal = params['door_reveal'].to_f
+      panel('blind_front', 'Blind Panel', [dims.thick, to - from, dims.height - (2 * reveal)],
+            [dims.depth + door_distance(params), from, reveal])
+    end
+    private_class_method :blind_panel
+
+    def self.blind_doors(params, dims, base_z)
+      from, to = blind_split(params, dims)[:door]
+      reveal = params['door_reveal'].to_f
+      hinge_left = params['door_opening_direction'].to_s != 'right'
+      door_w = to - from
+      [Door.new(
+        role: 'door_1', name: 'Door 1', extent: [dims.thick, door_w, dims.height - (2 * reveal)].map { |v| round2(v) },
+        offset: [dims.depth + door_distance(params), from, base_z + reveal].map { |v| round2(v) },
+        hinge: hinge_left ? 'left' : 'right',
+        pivot: [dims.depth + door_distance(params) + dims.thick, hinge_left ? from : to, base_z].map { |v| round2(v) },
+        rotation: 0.0
+      )]
+    end
+    private_class_method :blind_doors
+    # The height and bottom (above the carcass bottom) of the doors: the full height, or, with a
+    # front zone, only what is left under the drawers, or only the zone at the top over an open niche.
+    def self.door_span(params, dims)
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      zone = front_zone(params, dims)
+      return [dims.height - (2 * reveal), reveal] unless zone
+
+      if zone[:drawers]
+        top = dims.height - zone[:drawers] - gap
+        [top - reveal, reveal]
+      else
+        [zone[:door] - reveal, dims.height - zone[:door]]
+      end
+    end
+    private_class_method :door_span
+
+    # nil without a zone; { drawers: zone_height } over a door, { door: zone_height } for a door on top
+    # of an open niche (a fridge housing).
+    def self.front_zone(params, dims)
+      zone = params['front_zone'].to_f
+      return nil unless zone.positive? && zone < dims.height && params['door_count'].to_i.positive?
+
+      params['drawer_count'].to_i.positive? ? { drawers: zone } : { door: zone }
+    end
+    private_class_method :front_zone
+
     # Overlay drawer fronts, stacked from bottom to top in one column across the
     # full width, using the same reveal/gap and overlay plane as doors. Each is a
     # Door-shaped struct (role "drawer_N") so it can share the door/handle
@@ -357,10 +557,13 @@ module KitchenCabinetMaster
       gap = params['door_gap'].to_f
       reveal = params['door_reveal'].to_f
       front_w = dims.width - (2 * reveal)
-      front_h = (dims.height - (2 * reveal) - ((count - 1) * gap)) / count
+      zone = front_zone(params, dims)
+      # Over a door the drawers share the zone at the top; otherwise they share the whole height.
+      from = zone ? dims.height - zone[:drawers] : reveal
+      front_h = zone ? (zone[:drawers] - reveal - ((count - 1) * gap)) / count : (dims.height - (2 * reveal) - ((count - 1) * gap)) / count
 
       (0...count).map do |index|
-        z = reveal + (index * (front_h + gap))
+        z = from + (index * (front_h + gap))
         Door.new(
           role: "drawer_#{index + 1}", name: "Drawer #{index + 1}",
           extent: [dims.thick, front_w, front_h].map { |v| round2(v) },

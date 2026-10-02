@@ -69,7 +69,7 @@ module KitchenCabinetMaster
     # door front: the carcass depth plus the door clearance and door thickness (a
     # corner unit is a square with nothing standing proud of it).
     def self.filler_target(target, target_params)
-      corner = target_params['cabinet_category'] == 'corner'
+      corner = CabinetLayout.corner?(target_params)
       depth = (corner ? target_params['width'] : target_params['depth']).to_f
       flush = corner ? depth : depth + CabinetLayout.door_distance(target_params) + target_params['material_thickness'].to_f
       {
@@ -381,7 +381,7 @@ module KitchenCabinetMaster
         relative = to_frame * item.transformation
         heading = relative.yaxis
         stored = AttributeManager.read(item) || {}
-        corner = stored['cabinet_category'] == 'corner'
+        corner = CabinetLayout.corner?(stored)
         width = stored['width'].to_f
         { x: relative.origin.x.to_mm, y: relative.origin.y.to_mm,
           angle: Math.atan2(-heading.x, heading.y) * 180.0 / Math::PI,
@@ -423,7 +423,7 @@ module KitchenCabinetMaster
         door = stored['material'].to_s
         door = CabinetGenerator.door_material(stored) if door.empty?
         # A corner unit is a square: its carcass reaches Width, not its Depth field.
-        depth = stored['cabinet_category'] == 'corner' ? stored['width'] : stored['depth']
+        depth = CabinetLayout.corner?(stored) ? stored['width'] : stored['depth']
         { 'target_id' => AttributeManager.cabinet_id(anchor), 'target_depth' => depth.to_f,
           'target_door_material' => door, 'target_carcass_material' => CabinetGenerator.carcass_material(stored, door) }
       end

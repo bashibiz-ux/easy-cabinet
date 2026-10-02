@@ -401,6 +401,9 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
 
       cabinet = CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
+      # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
+      # also say how wide the blind part is): the shape travels with the cabinet.
+      raw = raw.merge('corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'])
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
 
@@ -543,7 +546,7 @@ module KitchenCabinetMaster
         return [{ neighbour: neighbour, need: need, width: new_width, filler: true }, nil]
       end
 
-      if stored['cabinet_category'] == 'corner'
+      if CabinetLayout.corner?(stored)
         return [nil, "#{neighbour.name} is a corner unit and cannot be made narrower, so there is no room for that width."]
       end
 
@@ -571,7 +574,7 @@ module KitchenCabinetMaster
         return [{ neighbour: neighbour, need: growth, width: new_width, filler: true }, nil]
       end
 
-      return [nil, nil] if stored['cabinet_category'] == 'corner' || new_width > ValidationManager::NUMERIC_FIELDS['width'][:max]
+      return [nil, nil] if CabinetLayout.corner?(stored) || new_width > ValidationManager::NUMERIC_FIELDS['width'][:max]
 
       params, errors = CabinetManager.send(:restyle_params, model, stored, 'width' => new_width)
       return [nil, nil] unless errors.empty?

@@ -19,7 +19,7 @@ class CatalogTest < Minitest::Test
 
   def test_the_models_are_door_with_pull_handle_drawer_units_and_handleless_doors
     catalogs = CatalogManager.catalogs
-    assert_equal ['Door with pull handle', 'Drawer base units', 'Handleless doors'], catalogs.map { |c| c['name'] }
+    assert_equal ['Door with pull handle', 'Drawer base units', 'Handleless doors', 'Kitchen Cabinets'], catalogs.map { |c| c['name'] }
     assert_empty CatalogManager.warnings
   end
 

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.34.0';
+  const APP_VERSION = '0.35.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -869,13 +869,15 @@
       : (state.cabinets[0] ? state.cabinets[0].id : '');
 
     if (!keepValues) applyCabinetDefaults();
+    else fillWidthPreset((currentCabinet() || {}).widths);
     drawPreview();
   }
 
   // The Standard Width list: a fixed size fills the Width field; Width can still be
   // typed freely, and the list follows it (Custom when it is not a listed size).
-  function fillWidthPreset() {
-    const sizes = list(state.meta && state.meta.standard_widths);
+  function fillWidthPreset(widths) {
+    // A catalog cabinet can list the widths it comes in; otherwise the general list.
+    const sizes = Array.isArray(widths) && widths.length ? widths : list(state.meta && state.meta.standard_widths);
     fillSelect($('widthPreset'), [{ id: 'custom', name: 'Custom' }, ...sizes.map((w) => ({ id: String(w), name: fmtLen(w) }))]);
     syncWidthPreset();
   }
@@ -910,6 +912,7 @@
     const cabinet = currentCabinet();
     if (!cabinet) return;
     const d = cabinet.defaults || {};
+    fillWidthPreset(cabinet.widths);
     setText('width', d.width);
     syncWidthPreset();
     setText('depth', d.depth);

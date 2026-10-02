@@ -71,6 +71,14 @@ module KitchenCabinetMaster
       errors << error('cabinet_type', 'Select a cabinet.') if out['cabinet_type'].empty?
 
       out['handle_id'] = raw['handle_id'].to_s.strip
+
+      # A corner-type catalog entry says what shape it is (see CabinetManager.prepare).
+      style = raw['corner_style'].to_s
+      out['corner_style'] = style if Defaults::CORNER_STYLES.include?(style)
+      zone = to_float(raw['front_zone'])
+      out['front_zone'] = zone if zone && zone >= 0
+      blind = to_float(raw['blind_width'])
+      out['blind_width'] = blind if blind && blind >= 0
     end
     private_class_method :check_identity
 
@@ -234,6 +242,7 @@ module KitchenCabinetMaster
 
       check_shelves(out, errors, bad)
       check_corner(out, errors, bad)
+      check_zone(out, door_count, drawer_count, errors, bad)
 
       check_doors(out, door_count, errors, bad)
       check_drawers(out, drawer_count, errors, bad)
@@ -254,11 +263,27 @@ module KitchenCabinetMaster
 
     MIN_DRAWER_HEIGHT = 80.0
 
+    # A front zone (drawers over a door, or a door over an open niche) must leave sensible sizes.
+    def self.check_zone(out, door_count, drawer_count, errors, bad)
+      zone = out['front_zone'].to_f
+      return unless zone.positive? && door_count.to_i.positive? && (bad & %w[height door_gap door_reveal]).empty? && out['height']
+
+      if drawer_count.to_i.positive?
+        door_h = out['height'] - zone - out['door_gap'] - out['door_reveal']
+        errors << error('height', "The door under the drawers would be only #{fmt(door_h.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).") if door_h < MIN_DOOR_SIZE
+        each = (zone - out['door_reveal'] - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
+        errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
+      elsif zone - out['door_reveal'] < MIN_DOOR_SIZE
+        errors << error('height', "The door would be only #{fmt((zone - out['door_reveal']).round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
+      end
+    end
+    private_class_method :check_zone
+
     # A cabinet type has doors OR drawers, never both, so this and check_doors
     # never both fire for the same cabinet in practice.
     def self.check_drawers(out, drawer_count, errors, bad)
       return unless drawer_count.to_i.positive?
-      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height']
+      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive?
 
       count = drawer_count.to_i
       front_h = (out['height'] - (2 * out['door_reveal']) - ((count - 1) * out['door_gap'])) / count
@@ -269,6 +294,7 @@ module KitchenCabinetMaster
     private_class_method :check_drawers
 
     MIN_CORNER_SIZE = 500.0
+    MIN_L_ARM = 150.0
 
     # A corner unit must be square (its one door runs diagonally corner to
     # corner) and big enough for that diagonal door to be a sensible size.
@@ -278,11 +304,19 @@ module KitchenCabinetMaster
     # be set to match a neighbouring run). Depth must leave room for those two
     # panels to meet the diagonal without overlapping, and for a sensible door.
     def self.check_corner(out, errors, bad)
-      return unless out['cabinet_category'] == 'corner'
+      check_blind(out, errors, bad)
+      return unless Defaults.corner?(out)
       return unless (bad & %w[width depth material_thickness]).empty? && out['width'] && out['depth']
 
       if out['width'] < MIN_CORNER_SIZE
         errors << error('width', "A corner unit must be at least #{fmt(MIN_CORNER_SIZE)} mm wide (minimum #{fmt(MIN_CORNER_SIZE)} mm).")
+        return
+      end
+
+      if Defaults.corner_style(out) == 'l_shape'
+        if out['width'] - out['depth'] < MIN_L_ARM
+          errors << error('depth', "Depth is too large for a #{fmt(out['width'])} mm wide L-shaped corner unit: each arm needs at least #{fmt(MIN_L_ARM)} mm of door beyond the depth.")
+        end
         return
       end
 
@@ -299,6 +333,18 @@ module KitchenCabinetMaster
     end
     private_class_method :check_corner
 
+    # A blind corner: a door over the open part and a fixed panel over the blind part.
+    def self.check_blind(out, errors, bad)
+      return unless Defaults.corner_style(out) == 'blind' && (bad & %w[width]).empty? && out['width']
+
+      blind = out['blind_width'].to_f
+      open = out['width'] - blind
+      if blind < 50.0 || open < MIN_DOOR_SIZE
+        errors << error('width', "A blind corner needs a blind part of at least 50 mm and a door of at least #{fmt(MIN_DOOR_SIZE)} mm (this one is #{fmt(blind)} + #{fmt(open.round(1))} mm).")
+      end
+    end
+    private_class_method :check_blind
+
     # A corner unit's single door is sized by check_corner (its width is a
     # diagonal, not the cabinet's own Width), so the usual width-based door-fit
     # check below does not apply to it; the height check still does.
@@ -306,14 +352,14 @@ module KitchenCabinetMaster
       return unless door_count.to_i.positive?
 
       count = door_count.to_i
-      if out['cabinet_category'] != 'corner' && (bad & %w[width door_gap door_reveal]).empty? && out['width']
+      if Defaults.corner_style(out).nil? && (bad & %w[width door_gap door_reveal]).empty? && out['width']
         door_width = (out['width'] - (2 * out['door_reveal']) - ((count - 1) * out['door_gap'])) / count
         if door_width < MIN_DOOR_SIZE
           errors << error('width', "Each door would be only #{fmt(door_width.round(1))} mm wide (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
         end
       end
 
-      return unless (bad & %w[height door_reveal]).empty? && out['height']
+      return unless (bad & %w[height door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive?
 
       door_height = out['height'] - (2 * out['door_reveal'])
       return unless door_height < MIN_DOOR_SIZE

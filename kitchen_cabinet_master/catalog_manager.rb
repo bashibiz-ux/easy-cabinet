@@ -200,3 +200,6 @@ module KitchenCabinetMaster
     end
   end
 end
+
+# A hot reload of this file must also forget the catalogs it read before, so new catalog files show up.
+KitchenCabinetMaster::CatalogManager.reload!

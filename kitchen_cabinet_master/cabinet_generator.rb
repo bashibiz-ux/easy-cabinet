@@ -413,7 +413,7 @@ module KitchenCabinetMaster
         return
       end
 
-      depth = params['cabinet_category'].to_s == 'corner' ? params['width'].to_f : params['depth'].to_f
+      depth = CabinetLayout.corner?(params) ? params['width'].to_f : params['depth'].to_f
       width = params['width'].to_f
       z = layout.top_z + label_lift(model, params) + 0.2
       signature = [name, z.round(2), depth, width].join('|')

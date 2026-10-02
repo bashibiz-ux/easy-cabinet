@@ -1,0 +1,457 @@
+{
+  "id": "kitchen_cabinets",
+  "name": "Kitchen Cabinets",
+  "version": 1,
+  "aliases": [
+
+  ],
+  "handle_bundles": [
+    "sample_bar_handles",
+    "sample_knobs"
+  ],
+  "features": [
+    "base",
+    "wall",
+    "tall",
+    "corner",
+    "filler",
+    "end_panel",
+    "toe_kick",
+    "door_gap",
+    "door_reveal",
+    "door_distance",
+    "top_panel",
+    "panel_thickness",
+    "back_thickness",
+    "cabinet_extras",
+    "worktop",
+    "handle",
+    "materials",
+    "door_opening",
+    "visibility",
+    "rotate"
+  ],
+  "categories": {
+    "base": [
+      {
+        "id": "base_1door",
+        "name": "Base - 1 door",
+        "code": "BU",
+        "doors": 1,
+        "shelves": 1,
+        "widths": [
+          300,
+          400,
+          450,
+          500,
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_2door",
+        "name": "Base - 2 doors",
+        "code": "BU",
+        "doors": 2,
+        "shelves": 1,
+        "widths": [
+          700,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_open",
+        "name": "Base - open shelf",
+        "code": "BO",
+        "doors": 0,
+        "shelves": 1,
+        "widths": [
+          300,
+          600,
+          800
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_2drawer",
+        "name": "Base - 2 drawers",
+        "code": "BD",
+        "doors": 0,
+        "drawers": 2,
+        "shelves": 0,
+        "widths": [
+          600,
+          800
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_3drawer",
+        "name": "Base - 3 drawers",
+        "code": "BD",
+        "doors": 0,
+        "drawers": 3,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_4drawer",
+        "name": "Base - 4 drawers",
+        "code": "BD",
+        "doors": 0,
+        "drawers": 4,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_drawer_door",
+        "name": "Base - 1 drawer over 1 door",
+        "code": "BDU",
+        "doors": 1,
+        "drawers": 1,
+        "shelves": 1,
+        "widths": [
+          600,
+          800
+        ],
+        "zone": 180,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_sink",
+        "name": "Base - sink, 2 doors",
+        "code": "BS",
+        "doors": 2,
+        "shelves": 0,
+        "widths": [
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_pullout",
+        "name": "Base - narrow pull-out",
+        "code": "BP",
+        "doors": 0,
+        "drawers": 1,
+        "shelves": 0,
+        "widths": [
+          150,
+          200
+        ],
+        "defaults": {
+          "width": 200,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_corner_l",
+        "name": "Base - corner L shape",
+        "code": "CL",
+        "doors": 2,
+        "shelves": 1,
+        "widths": [
+          900,
+          1000,
+          1100
+        ],
+        "corner": "l_shape",
+        "defaults": {
+          "width": 1000,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_corner_blind",
+        "name": "Base - corner blind",
+        "code": "CB",
+        "doors": 1,
+        "shelves": 1,
+        "widths": [
+          900,
+          1000,
+          1200
+        ],
+        "corner": "blind",
+        "blind": 450,
+        "defaults": {
+          "width": 1000,
+          "depth": 560,
+          "height": 780
+        }
+      }
+    ],
+    "wall": [
+      {
+        "id": "wall_1door",
+        "name": "Wall - 1 door",
+        "code": "WU",
+        "doors": 1,
+        "shelves": 2,
+        "widths": [
+          300,
+          400,
+          450,
+          500,
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_2door",
+        "name": "Wall - 2 doors",
+        "code": "WU",
+        "doors": 2,
+        "shelves": 2,
+        "widths": [
+          700,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_open",
+        "name": "Wall - open shelf",
+        "code": "WO",
+        "doors": 0,
+        "shelves": 2,
+        "widths": [
+          300,
+          600,
+          800
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_short",
+        "name": "Wall - short, 2 doors",
+        "code": "WS",
+        "doors": 2,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 360
+        }
+      },
+      {
+        "id": "wall_corner_l",
+        "name": "Wall - corner L shape",
+        "code": "WCL",
+        "doors": 2,
+        "shelves": 2,
+        "widths": [
+          600,
+          700,
+          800
+        ],
+        "corner": "l_shape",
+        "defaults": {
+          "width": 700,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_corner_blind",
+        "name": "Wall - corner blind",
+        "code": "WCB",
+        "doors": 1,
+        "shelves": 2,
+        "widths": [
+          800,
+          900,
+          1000
+        ],
+        "corner": "blind",
+        "blind": 300,
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 780
+        }
+      }
+    ],
+    "tall": [
+      {
+        "id": "tall_1door",
+        "name": "Tall - 1 door",
+        "code": "TU",
+        "doors": 1,
+        "shelves": 4,
+        "widths": [
+          300,
+          450,
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_2door",
+        "name": "Tall - 2 doors",
+        "code": "TU",
+        "doors": 2,
+        "shelves": 4,
+        "widths": [
+          600,
+          900
+        ],
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_pantry",
+        "name": "Tall - pantry, 2 doors",
+        "code": "TP",
+        "doors": 2,
+        "shelves": 6,
+        "widths": [
+          900
+        ],
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_4drawer",
+        "name": "Tall - 4 drawers",
+        "code": "TD",
+        "doors": 0,
+        "drawers": 4,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_fridge",
+        "name": "Tall - fridge housing",
+        "code": "TF",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "zone": 500,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 2160
+        }
+      }
+    ],
+    "corner": [
+      {
+        "id": "corner_diagonal_900",
+        "name": "Corner - diagonal door 900",
+        "doors": 1,
+        "shelves": 1,
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        },
+        "widths": [
+          900,
+          1000
+        ]
+      },
+      {
+        "id": "corner_diagonal_1000",
+        "name": "Corner - diagonal door 1000",
+        "doors": 1,
+        "shelves": 1,
+        "defaults": {
+          "width": 1000,
+          "depth": 560,
+          "height": 780
+        },
+        "widths": [
+          900,
+          1000
+        ]
+      }
+    ]
+  }
+}
