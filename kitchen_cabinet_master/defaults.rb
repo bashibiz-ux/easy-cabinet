@@ -149,6 +149,7 @@ module KitchenCabinetMaster
       'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
       'corner_style' => '',        # a corner unit's shape: diagonal, l_shape or blind (blank = an ordinary cabinet)
       'front_zone' => 0.0,          # drawers over a door: the height of the drawer zone at the top; a door alone: the door's height at the top (0 = full height)
+      'bottom_zone' => 0.0,         # an oven housing: the height of the drawers at the bottom (the door is front_zone at the top, the niche between)
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
       'hide_wall_handles' => false, # wall units' handles hidden (a tick in Visibility)

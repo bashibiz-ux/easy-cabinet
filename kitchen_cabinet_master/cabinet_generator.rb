@@ -402,7 +402,8 @@ module KitchenCabinetMaster
     NAME_HEIGHT_MM = 70.0 # letter height before it is shrunk to fit the top
 
     # The name as flat lettering on the top of the cabinet, readable from above (it runs along
-    # the cabinet's depth, left to right in plan view). A little container of its own inside the
+    # the cabinet's WIDTH, with the tops of the letters towards the back, so it reads correctly
+    # from the front). A little container of its own inside the
     # cabinet, so it moves, turns and copies with it. Shown only while the Show Cabinet Names
     # tick is on.
     def self.sync_name_label(model, root, top, params, layout)
@@ -416,7 +417,7 @@ module KitchenCabinetMaster
       depth = CabinetLayout.corner?(params) ? params['width'].to_f : params['depth'].to_f
       width = params['width'].to_f
       z = layout.top_z + label_lift(model, params) + 0.2
-      signature = [name, z.round(2), depth, width].join('|')
+      signature = [name, z.round(2), depth, width, 'along-width'].join('|')
       container = ensure_container(model, root, top, NAME_ROLE, 'Cabinet Name', 0)
       unless container.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature
         rebuild_name_label(model, container, name, depth, width, z)
@@ -441,15 +442,17 @@ module KitchenCabinetMaster
       entities = container.definition.entities
       entities.clear!
       group = entities.add_group
-      # centred, flat (no extrusion), facing up, reading along X
+      # centred, flat (no extrusion), facing up
       group.entities.add_3d_text(name, 1, 'Arial', true, false, NAME_HEIGHT_MM.mm, 0.0, 0.0, true, 0.0)
       if group.entities.count.zero?
         group.erase!
         return
       end
 
+      # turn it a quarter so it runs along Y (the width) and its letters stand towards the back
+      group.transform!(Geom::Transformation.rotation(group.bounds.center, Geom::Vector3d.new(0, 0, 1), Math::PI / 2.0))
       bounds = group.bounds
-      scale = [1.0, (depth.mm * 0.8) / [bounds.width, 1.0.mm].max, (width.mm * 0.6) / [bounds.height, 1.0.mm].max].min
+      scale = [1.0, (width.mm * 0.8) / [bounds.height, 1.0.mm].max, (depth.mm * 0.6) / [bounds.width, 1.0.mm].max].min
       group.transform!(Geom::Transformation.scaling(bounds.center, scale)) if scale < 1.0
       bounds = group.bounds
       middle = Geom::Point3d.new(depth.mm / 2.0, width.mm / 2.0, z.mm)

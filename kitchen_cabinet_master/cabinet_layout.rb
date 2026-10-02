@@ -110,7 +110,11 @@ module KitchenCabinetMaster
       dims.height = full_height
       panels << blind_panel(params, dims) if blind?(params) # the fixed front stays full height
       zone = front_zone(params, dims)
-      if zone && zone[:drawers] # a rail between the drawers and the door below
+      if zone && zone[:bottom] # an oven housing: a shelf for the oven over the drawers, a rail under the door
+        shelf = [dims.interior_d - dims.shelf_setback, dims.inner_w, dims.thick]
+        panels << panel('oven_shelf', 'Oven Shelf', shelf, [dims.interior_start, dims.thick, zone[:bottom]])
+        panels << panel('niche_rail', 'Niche Rail', shelf, [dims.interior_start, dims.thick, dims.height - zone[:door] - dims.thick]) if zone[:door]
+      elsif zone && zone[:drawers] # a rail between the drawers and the door below
         mid = dims.height - zone[:drawers] - (params['door_gap'].to_f / 2.0) - (dims.thick / 2.0)
         panels << panel('drawer_rail', 'Drawer Rail', [dims.interior_d, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, mid])
       end
@@ -525,6 +529,13 @@ module KitchenCabinetMaster
       zone = front_zone(params, dims)
       return [dims.height - (2 * reveal), reveal] unless zone
 
+      if zone[:bottom]
+        return [zone[:door] - reveal, dims.height - zone[:door]] if zone[:door]
+
+        low = zone[:bottom] + gap # the door covers everything above the drawers
+        return [dims.height - reveal - low, low]
+      end
+
       if zone[:drawers]
         top = dims.height - zone[:drawers] - gap
         [top - reveal, reveal]
@@ -538,7 +549,14 @@ module KitchenCabinetMaster
     # of an open niche (a fridge housing).
     def self.front_zone(params, dims)
       zone = params['front_zone'].to_f
-      return nil unless zone.positive? && zone < dims.height && params['door_count'].to_i.positive?
+      bottom = params['bottom_zone'].to_f
+      return nil unless params['door_count'].to_i.positive?
+
+      # An oven housing: drawers at the bottom, the door at the top, an open niche between.
+      if bottom.positive? && bottom < dims.height && params['drawer_count'].to_i.positive?
+        return { bottom: bottom, door: (zone.positive? && zone + bottom < dims.height ? zone : nil) }
+      end
+      return nil unless zone.positive? && zone < dims.height
 
       params['drawer_count'].to_i.positive? ? { drawers: zone } : { door: zone }
     end
@@ -559,8 +577,12 @@ module KitchenCabinetMaster
       front_w = dims.width - (2 * reveal)
       zone = front_zone(params, dims)
       # Over a door the drawers share the zone at the top; otherwise they share the whole height.
-      from = zone ? dims.height - zone[:drawers] : reveal
-      front_h = zone ? (zone[:drawers] - reveal - ((count - 1) * gap)) / count : (dims.height - (2 * reveal) - ((count - 1) * gap)) / count
+      from = zone && zone[:drawers] ? dims.height - zone[:drawers] : reveal
+      front_h =
+        if zone && zone[:bottom] then (zone[:bottom] - reveal - (gap / 2.0) - ((count - 1) * gap)) / count
+        elsif zone then (zone[:drawers] - reveal - ((count - 1) * gap)) / count
+        else (dims.height - (2 * reveal) - ((count - 1) * gap)) / count
+        end
 
       (0...count).map do |index|
         z = from + (index * (front_h + gap))

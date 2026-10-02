@@ -21,7 +21,7 @@ class KitchenCatalogTest < Minitest::Test
     { 'catalog_id' => CATALOG, 'cabinet_category' => category, 'cabinet_type' => entry['id'], 'width' => width.to_s,
       'depth' => entry['defaults']['depth'].to_s, 'height' => entry['defaults']['height'].to_s, 'toe_kick_height' => '100',
       'door_opening_direction' => 'left', 'corner_style' => entry['corner'].to_s, 'blind_width' => entry['blind'],
-      'front_zone' => entry['zone'], 'shelf_count' => entry['shelves'].to_s }
+      'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'shelf_count' => entry['shelves'].to_s }
   end
 
   def each_entry
@@ -33,7 +33,7 @@ class KitchenCatalogTest < Minitest::Test
   end
 
   def test_the_catalog_is_listed
-    assert_includes CatalogManager.catalogs.map { |c| c['name'] }, 'Kitchen Cabinets'
+    assert_includes CatalogManager.catalogs.map { |c| c['name'] }, 'Kitchen Cabinet - Pull Handle'
     assert_empty CatalogManager.warnings
   end
 
@@ -80,5 +80,21 @@ class KitchenCatalogTest < Minitest::Test
     door = CabinetLayout.compute(result.params.merge('door_count' => 1, 'drawer_count' => 0)).doors.first
     assert_in_delta 500.0 - Defaults.params['door_reveal'], door.extent[2], 0.05
     assert_in_delta 100.0 + 2160.0 - 500.0, door.offset[2], 0.05
+  end
+
+  def test_an_oven_housing_has_drawers_below_a_niche_and_a_door_above
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_oven')
+    result = ValidationManager.validate(raw_for('tall', entry, 600), door_count: 1, drawer_count: 2)
+    assert_empty result.errors.map { |e| e['message'] }
+    layout = CabinetLayout.compute(result.params.merge('door_count' => 1, 'drawer_count' => 2))
+    door = layout.doors.first
+    top_drawer = layout.drawers.last
+    assert_in_delta 860.0 - Defaults.params['door_reveal'], door.extent[2], 0.05, 'the door is the top zone'
+    assert_in_delta 100.0 + 2160.0 - 860.0, door.offset[2], 0.05
+    assert_operator top_drawer.offset[2] + top_drawer.extent[2], :<=, 100.0 + 700.0, 'the drawers stay in the bottom zone'
+    niche_height = door.offset[2] - (top_drawer.offset[2] + top_drawer.extent[2])
+    assert_operator niche_height, :>, 550.0, 'about 600 mm of open niche for the oven'
+    assert_includes layout.panels.map(&:role), 'oven_shelf'
+    assert_includes layout.panels.map(&:role), 'niche_rail'
   end
 end

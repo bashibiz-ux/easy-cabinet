@@ -129,7 +129,7 @@ module KitchenCabinetMaster
           'handle_orientations' => Defaults::HANDLE_ORIENTATIONS,
           'end_panel_sides' => Defaults::END_PANEL_SIDES.map { |s| { 'id' => s, 'name' => s.capitalize } },
           'materials'       => MaterialManager.options(Sketchup.active_model),
-          'defaults'        => Defaults.params,
+          'defaults'        => Defaults.params.merge('hide_base_units' => Sketchup.active_model.get_attribute(AttributeManager::DICTIONARY, 'hide_base_units', false) == true),
           'filler_defaults' => Defaults.filler_params,
           'end_panel_defaults' => Defaults.end_panel_params,
           'toe_kick_defaults' => Defaults.toe_kick_params,

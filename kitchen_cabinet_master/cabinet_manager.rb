@@ -36,7 +36,10 @@ module KitchenCabinetMaster
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
-          CabinetGenerator.build(model, entities, params, transformation)
+          built = CabinetGenerator.build(model, entities, params, transformation)
+          # A base unit inserted while "Hide base units" is ticked starts hidden.
+          built.visible = false if params['cabinet_category'] == 'base' && [true, 'true', 1, '1'].include?(raw['hide_base_units'])
+          built
         end
       end
 
@@ -270,6 +273,7 @@ module KitchenCabinetMaster
       show_wall_symbol = on.call(raw['wall_opening_direction'])
       hide_wall_handles = on.call(raw['hide_wall_handles'])
       show_names = on.call(raw['show_cabinet_names'])
+      hide_base = on.call(raw['hide_base_units'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -293,6 +297,9 @@ module KitchenCabinetMaster
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
+          # Hide base units: the base cabinets, and the fillers and end panels beside them.
+          model.set_attribute(AttributeManager::DICTIONARY, 'hide_base_units', hide_base)
+          instances.each { |item| item.visible = !hide_base if base_item?(item) }
         end
       end
 
@@ -300,6 +307,17 @@ module KitchenCabinetMaster
                   "#{" and #{toe_kicks.length} toe kick#{'s' unless toe_kicks.length == 1}" unless toe_kicks.empty?}.")
     end
     private_class_method :set_visibility
+
+    # A base cabinet, or a filler / end panel that belongs to one.
+    def self.base_item?(item)
+      dictionary = AttributeManager::DICTIONARY
+      if AttributeManager.cabinet?(item)
+        item.get_attribute(dictionary, 'cabinet_category') == 'base'
+      else
+        %w[filler end_panel].include?(AttributeManager.part_kind(item)) && item.get_attribute(dictionary, 'target_category') == 'base'
+      end
+    end
+    private_class_method :base_item?
 
     # A copy of the selected cabinet exactly as it is stored (unsaved edits in the
     # panel are not used; that is what Insert is for). It gets a new ID, is placed
@@ -403,7 +421,7 @@ module KitchenCabinetMaster
       cabinet = CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
       # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
       # also say how wide the blind part is): the shape travels with the cabinet.
-      raw = raw.merge('corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'])
+      raw = raw.merge('corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'], 'bottom_zone' => cabinet && cabinet['zone_bottom'])
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
 

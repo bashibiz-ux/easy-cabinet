@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.35.0';
+  const APP_VERSION = '0.36.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -722,6 +722,7 @@
       show_wall_opening_direction: $('showWallDirection').checked,
       hide_wall_handles: !$('hideWallHandles').checked, // the tick says Show
       show_cabinet_names: $('showNames').checked,
+      hide_base_units: $('hideBase').checked, // a base unit inserted now starts hidden while this is ticked
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
@@ -1444,7 +1445,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBase', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1691,6 +1692,7 @@
         wall_opening_direction: $('showWallDirection').checked, // a wall unit's plan symbol on the floor
         hide_wall_handles: !$('hideWallHandles').checked, // the tick says Show
         show_cabinet_names: $('showNames').checked,
+        hide_base_units: $('hideBase').checked,
         door_symbol: $('showDoorSymbol').checked // the dashed lines on each door
       });
       setStatus(res.ok ? 'ok' : 'error', res.message);
@@ -1718,6 +1720,7 @@
     $('showWallDirection').checked = d.show_wall_opening_direction === true;
     $('hideWallHandles').checked = d.hide_wall_handles !== true;
     $('showNames').checked = d.show_cabinet_names === true;
+    $('hideBase').checked = d.hide_base_units === true;
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
@@ -1860,7 +1863,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBase', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }

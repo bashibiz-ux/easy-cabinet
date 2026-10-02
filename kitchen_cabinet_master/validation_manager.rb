@@ -77,6 +77,8 @@ module KitchenCabinetMaster
       out['corner_style'] = style if Defaults::CORNER_STYLES.include?(style)
       zone = to_float(raw['front_zone'])
       out['front_zone'] = zone if zone && zone >= 0
+      bottom = to_float(raw['bottom_zone'])
+      out['bottom_zone'] = bottom if bottom && bottom >= 0
       blind = to_float(raw['blind_width'])
       out['blind_width'] = blind if blind && blind >= 0
     end
@@ -266,9 +268,15 @@ module KitchenCabinetMaster
     # A front zone (drawers over a door, or a door over an open niche) must leave sensible sizes.
     def self.check_zone(out, door_count, drawer_count, errors, bad)
       zone = out['front_zone'].to_f
-      return unless zone.positive? && door_count.to_i.positive? && (bad & %w[height door_gap door_reveal]).empty? && out['height']
+      bottom = out['bottom_zone'].to_f
+      return unless (zone.positive? || bottom.positive?) && door_count.to_i.positive? && (bad & %w[height door_gap door_reveal]).empty? && out['height']
 
-      if drawer_count.to_i.positive?
+      if bottom.positive? && drawer_count.to_i.positive?
+        each = (bottom - out['door_reveal'] - (out['door_gap'] / 2.0) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
+        errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
+        niche = out['height'] - bottom - zone - (2 * out['door_gap'])
+        errors << error('height', "The niche between the drawers and the door would be only #{fmt(niche.round(1))} mm high.") if zone.positive? && niche < 100.0
+      elsif drawer_count.to_i.positive?
         door_h = out['height'] - zone - out['door_gap'] - out['door_reveal']
         errors << error('height', "The door under the drawers would be only #{fmt(door_h.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).") if door_h < MIN_DOOR_SIZE
         each = (zone - out['door_reveal'] - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
@@ -283,7 +291,7 @@ module KitchenCabinetMaster
     # never both fire for the same cabinet in practice.
     def self.check_drawers(out, drawer_count, errors, bad)
       return unless drawer_count.to_i.positive?
-      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive?
+      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive? && !out['bottom_zone'].to_f.positive?
 
       count = drawer_count.to_i
       front_h = (out['height'] - (2 * out['door_reveal']) - ((count - 1) * out['door_gap'])) / count
@@ -359,7 +367,7 @@ module KitchenCabinetMaster
         end
       end
 
-      return unless (bad & %w[height door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive?
+      return unless (bad & %w[height door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive? && !out['bottom_zone'].to_f.positive?
 
       door_height = out['height'] - (2 * out['door_reveal'])
       return unless door_height < MIN_DOOR_SIZE
