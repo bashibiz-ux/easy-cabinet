@@ -197,7 +197,9 @@ module KitchenCabinetMaster
       count = SelectionManager.suspend do
         with_operation(model, 'Apply Worktop') do
           existing.each { |item| PartGenerator.remove(model, item) }
-          runs.sum { |run| build(model, run, params) }
+          built = runs.sum { |run| build(model, run, params) }
+          CabinetGenerator.sync_all_names(model) # the names sit on top of the worktop
+          built
         end
       end
       SelectionManager.push_selection(model)
@@ -211,7 +213,10 @@ module KitchenCabinetMaster
       return Response.ok('There is no worktop to remove.') if existing.empty?
 
       SelectionManager.suspend do
-        with_operation(model, 'Remove Worktop') { existing.each { |item| PartGenerator.remove(model, item) } }
+        with_operation(model, 'Remove Worktop') do
+          existing.each { |item| PartGenerator.remove(model, item) }
+          CabinetGenerator.sync_all_names(model)
+        end
       end
       SelectionManager.push_selection(model)
       Response.ok('The worktop and its back splash were removed.')

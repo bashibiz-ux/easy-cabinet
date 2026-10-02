@@ -190,6 +190,7 @@ module KitchenCabinetMaster
       sync_doors(model, root, top, params, layout, door_mat, doors_visible)
       sync_drawers(model, root, top, params, layout, door_mat, doors_visible)
       sync_indicator(model, root, top, params, layout, doors_visible)
+      sync_name_label(model, root, top, params, layout)
       layout
     end
     private_class_method :sync
@@ -394,6 +395,84 @@ module KitchenCabinetMaster
     end
     private_class_method :rebuild_indicator
 
+    # ---- the cabinet's name, flat on its top ---------------------------------------
+
+    NAME_ROLE = 'name_label'
+    NAME_MATERIAL = 'Cabinet Name Label'
+    NAME_HEIGHT_MM = 70.0 # letter height before it is shrunk to fit the top
+
+    # The name as flat lettering on the top of the cabinet, readable from above (it runs along
+    # the cabinet's depth, left to right in plan view). A little container of its own inside the
+    # cabinet, so it moves, turns and copies with it. Shown only while the Show Cabinet Names
+    # tick is on.
+    def self.sync_name_label(model, root, top, params, layout)
+      existing = top[NAME_ROLE]
+      name = params['cabinet_name'].to_s.strip
+      unless params['show_cabinet_names'] == true && !name.empty?
+        discard_instance(model, existing) if existing
+        return
+      end
+
+      depth = params['cabinet_category'].to_s == 'corner' ? params['width'].to_f : params['depth'].to_f
+      width = params['width'].to_f
+      z = layout.top_z + label_lift(model, params) + 0.2
+      signature = [name, z.round(2), depth, width].join('|')
+      container = ensure_container(model, root, top, NAME_ROLE, 'Cabinet Name', 0)
+      unless container.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature
+        rebuild_name_label(model, container, name, depth, width, z)
+        container.set_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY, signature)
+      end
+      container.visible = true
+    end
+    private_class_method :sync_name_label
+
+    # A worktop on top of a base or corner unit lifts the top surface the name must sit on.
+    def self.label_lift(model, params)
+      return 0.0 unless %w[base corner].include?(params['cabinet_category'].to_s)
+
+      slab = WorktopManager.pieces_in(model).find { |item| AttributeManager.part_kind(item) == 'worktop' }
+      slab ? AttributeManager.read(slab)['worktop_thickness'].to_f : 0.0
+    rescue StandardError
+      0.0
+    end
+    private_class_method :label_lift
+
+    def self.rebuild_name_label(model, container, name, depth, width, z)
+      entities = container.definition.entities
+      entities.clear!
+      group = entities.add_group
+      # centred, flat (no extrusion), facing up, reading along X
+      group.entities.add_3d_text(name, 1, 'Arial', true, false, NAME_HEIGHT_MM.mm, 0.0, 0.0, true, 0.0)
+      if group.entities.count.zero?
+        group.erase!
+        return
+      end
+
+      bounds = group.bounds
+      scale = [1.0, (depth.mm * 0.8) / [bounds.width, 1.0.mm].max, (width.mm * 0.6) / [bounds.height, 1.0.mm].max].min
+      group.transform!(Geom::Transformation.scaling(bounds.center, scale)) if scale < 1.0
+      bounds = group.bounds
+      middle = Geom::Point3d.new(depth.mm / 2.0, width.mm / 2.0, z.mm)
+      group.transform!(Geom::Transformation.translation(middle - bounds.center))
+      group.name = 'Name'
+      MaterialManager.apply(group, NAME_MATERIAL, model, '#1c1c1c')
+    end
+    private_class_method :rebuild_name_label
+
+    # Brings one cabinet's name label in line with its stored settings (used when the tick
+    # changes). Inside an operation.
+    def self.sync_name_label_for(model, root)
+      params = AttributeManager.read(root)
+      return unless params
+
+      sync_name_label(model, root, index_by_role(root.definition.entities), params, CabinetLayout.compute(params))
+    end
+
+    def self.sync_all_names(model)
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        sync_name_label_for(model, item) if AttributeManager.cabinet?(item)
+      end
+    end
     # `top` is the shared snapshot from `sync`. A container this call creates is
     # not written back into it: each role is only ever looked up once per sync.
     def self.ensure_container(model, root, top, role, title, base_z)

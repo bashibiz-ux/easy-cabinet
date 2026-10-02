@@ -332,9 +332,16 @@
           <button class="btn" type="button" data-action="remove_worktop">Remove</button>
         </div>
 
+      </div>
+    </section>
+
+    <!-- Wall bottom panel: its own tab -->
+    <section class="card" id="sec-wallbottom" data-feature="wall">
+      <button class="card-head" type="button" aria-expanded="true">Wall Bottom Panel</button>
+      <div class="card-body">
         <!-- The panel under a run of wall units whose carcass has been lifted (Carcass bottom raise). -->
-        <div class="subblock">
-          <p class="hint"><b>Wall bottom panel</b> - panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
+        <div>
+          <p class="hint">Panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Length</span>
@@ -386,6 +393,8 @@
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
         <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
+        <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
+        <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
         <label class="check"><input type="checkbox" id="hideWallHandles"><span>Show wall unit handles</span></label>
         <label class="check"><input type="checkbox" id="showWallDirection"><span>Wall unit door opening direction on the floor</span></label>
         <label class="check"><input type="checkbox" id="showDoorSymbol"><span>Door opening direction on the door</span></label>

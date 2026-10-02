@@ -269,6 +269,7 @@ module KitchenCabinetMaster
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
       hide_wall_handles = on.call(raw['hide_wall_handles'])
+      show_names = on.call(raw['show_cabinet_names'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -285,8 +286,10 @@ module KitchenCabinetMaster
                                             'show_opening_direction' => show_floor_symbol,
                                             'show_door_symbol' => show_door_symbol,
                                             'show_wall_opening_direction' => show_wall_symbol,
-                                            'hide_wall_handles' => hide_wall_handles)
+                                            'hide_wall_handles' => hide_wall_handles,
+                                            'show_cabinet_names' => show_names)
             CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles)
+            CabinetGenerator.sync_name_label_for(model, cabinet)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
