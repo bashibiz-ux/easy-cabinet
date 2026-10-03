@@ -180,8 +180,8 @@ class CornerDoorTest < Minitest::Test
         'base_material' => '', 'wall_material' => '', 'tall_material' => '' }
     )
     assert_empty result.errors.map { |e| e['field'] } & %w[base_material wall_material tall_material]
-    assert_equal 'White', result.params['base_material']
-    assert_equal 'White', result.params['wall_material']
+    assert_equal Defaults::DEFAULT_MATERIAL, result.params['base_material']
+    assert_equal Defaults::DEFAULT_MATERIAL, result.params['wall_material']
   end
 
   def test_ordinary_door_is_unchanged

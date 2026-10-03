@@ -204,7 +204,7 @@ class FillerTest < Minitest::Test
     assert_nil failure
     assert_equal 'Oak', params['material'], 'a material sent from the panel is ignored: it follows the door'
 
-    assert_equal 'White', PartManager.send(:door_material_of, { 'cabinet_category' => 'base' }), 'nothing recorded: plain white'
+    assert_equal Defaults::DEFAULT_MATERIAL, PartManager.send(:door_material_of, { 'cabinet_category' => 'base' }), 'nothing recorded: plain white'
     corner = { 'cabinet_category' => 'corner', 'base_material' => 'Walnut', 'material' => '' }
     assert_equal 'Walnut', PartManager.send(:door_material_of, corner), 'a corner uses the Base Unit door material'
   end

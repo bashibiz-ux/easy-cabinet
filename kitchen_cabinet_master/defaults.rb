@@ -11,7 +11,8 @@ module KitchenCabinetMaster
     OVEN_HEIGHT = 595.0   # a standard built-in oven
     MICRO_HEIGHT = 380.0  # a standard built-in microwave
     DRAWER_BOX_THICKNESS = 18.0 # the boards of a drawer's inner box
-    DRAWER_SLIDE_GAP = 13.0     # room each side of the box for the runners
+    DRAWER_SLIDE_GAP = 10.0     # room each side of the box for the runners
+    DRAWER_BOX_SETBACK = 52.0   # the box is this much shorter than the carcass is deep
     SAME_AS_DOOR    = '__door__'
     SAME_AS_CARCASS = '__carcass__'
     SAME_AS_CABINET = '__cabinet__' # stored by older versions; it means "same as door material"
@@ -34,7 +35,8 @@ module KitchenCabinetMaster
 
     # The plain white a cabinet, filler, end panel or toe kick gets when no
     # material has been chosen (a preset in data/materials.json, created on first use).
-    DEFAULT_MATERIAL = 'White'
+    DEFAULT_MATERIAL = 'Shutter - Light Beige'          # the doors start light beige (the L-corner builder script's shutter colour)
+    DEFAULT_CARCASS_MATERIAL = 'Carcass - Light Gray'   # and the carcass light grey
 
     # Cabinet names are the unit code plus the width: BU600, WU800, TU600 ...
     # A catalog cabinet can set its own "code"; otherwise its category decides.
@@ -145,7 +147,7 @@ module KitchenCabinetMaster
       'wall_material'          => DEFAULT_MATERIAL,
       'tall_material'          => DEFAULT_MATERIAL,
       'cabinet_material'       => '',
-      'carcass_material'       => DEFAULT_MATERIAL, # blank = the carcass follows the door material; it starts white
+      'carcass_material'       => DEFAULT_CARCASS_MATERIAL, # blank = the carcass follows the door material; it starts light grey
       'material_thickness'     => 18.0,
       'back_thickness'         => 6.0,
 

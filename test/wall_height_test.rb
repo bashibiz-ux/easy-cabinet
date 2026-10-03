@@ -158,9 +158,9 @@ class WallHeightTest < Minitest::Test
 
   # ---- starting values ------------------------------------------------------------
 
-  def test_the_carcass_starts_white_not_the_door_material
-    assert_equal 'White', Defaults.params['carcass_material']
-    assert_equal 'White', CabinetGenerator.carcass_material(Defaults.params.merge('base_material' => 'Oak'), 'Oak')
+  def test_the_carcass_starts_light_grey_not_the_door_material
+    assert_equal Defaults::DEFAULT_CARCASS_MATERIAL, Defaults.params['carcass_material']
+    assert_equal Defaults::DEFAULT_CARCASS_MATERIAL, CabinetGenerator.carcass_material(Defaults.params.merge('base_material' => 'Oak'), 'Oak')
   end
 
   def test_a_tall_unit_stands_100_mm_up_on_its_toe_kick

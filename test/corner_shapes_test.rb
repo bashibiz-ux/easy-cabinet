@@ -59,8 +59,8 @@ class CornerShapesTest < Minitest::Test
   def test_the_doors_hinge_at_their_outer_ends_and_swap_when_asked
     outer = CabinetLayout.compute(params).doors
     assert_equal %w[right left], outer.map(&:hinge)
-    assert_in_delta 900.0 - 2.0, outer[0].pivot[1], 0.01, 'door 1 pivots at its far end'
-    assert_in_delta 900.0 - 2.0, outer[1].pivot[0], 0.01, 'door 2 pivots at its far end'
+    assert_in_delta 900.0 - Defaults.params['door_gap'], outer[0].pivot[1], 0.01, 'door 1 pivots at its far end'
+    assert_in_delta 900.0 - Defaults.params['door_gap'], outer[1].pivot[0], 0.01, 'door 2 pivots at its far end'
     inner = CabinetLayout.compute(params('door_opening_direction' => 'right')).doors
     assert_equal %w[left right], inner.map(&:hinge)
   end
@@ -69,7 +69,7 @@ class CornerShapesTest < Minitest::Test
     layout = CabinetLayout.compute(params('cabinet_category' => 'wall', 'toe_kick_height' => 0.0, 'depth' => 320.0, 'carcass_raise' => 100.0))
     assert_equal 0.0, layout.base_z
     assert_equal 680.0, layout.panels.find { |p| p.role == 'right_side' }.extent[2]
-    assert_equal 780.0 - 2 * Defaults.params['door_reveal'], layout.doors.first.extent[2]
+    assert_equal 780.0 - 2 * Defaults.params['door_gap'], layout.doors.first.extent[2]
   end
 
   def test_a_blind_corner_has_one_door_and_a_fixed_panel_that_share_the_width
@@ -98,8 +98,8 @@ class CornerShapesTest < Minitest::Test
     assert_equal [560.0, 1000.0 - 18.0], bottom[4]
     one, two = layout.doors.map { |d| plan_box(d) }
     refute overlap?(one, two)
-    assert_in_delta 1000.0 - Defaults.params['door_reveal'], one[3], 0.01, 'door A reaches leg 1''s end'
-    assert_in_delta 800.0 - Defaults.params['door_reveal'], two[1], 0.01, 'door B reaches leg 2''s end'
+    assert_in_delta 1000.0 - Defaults.params['door_gap'], one[3], 0.01, 'door A reaches leg 1''s end'
+    assert_in_delta 800.0 - Defaults.params['door_gap'], two[1], 0.01, 'door B reaches leg 2''s end'
     side_one = layout.panels.find { |x| x.role == 'right_side' }
     side_two = layout.panels.find { |x| x.role == 'front_return' }
     assert_equal [560.0, 18.0], side_one.extent.first(2), 'leg 1''s end panel is as deep as leg 1'
@@ -115,5 +115,32 @@ class CornerShapesTest < Minitest::Test
     assert_equal 'l_shape', fine.params['corner_style']
     narrow_blind = ValidationManager.validate(base.merge('corner_style' => 'blind', 'blind_width' => '960', 'width' => '1000', 'depth' => '560', 'height' => '780'), door_count: 1)
     assert_includes narrow_blind.errors.map { |e| e['field'] }, 'width'
+  end
+
+  # The numbers of the L-corner builder script: legs of 900 with depths 580 and a 780 high cabinet.
+  def test_the_l_doors_are_the_size_of_the_script_s_shutters
+    p = params('width' => 900.0, 'depth' => 580.0, 'leg2_length' => 900.0, 'leg2_depth' => 580.0, 'door_gap' => 1.5, 'door_reveal' => 2.0)
+    layout = CabinetLayout.compute(p)
+    one, two = layout.doors
+    assert_equal [18.0, 900.0 - 580.0 - 3.0, 780.0 - 3.0], one.extent, 'shutter on leg 2 of the script'
+    assert_equal [18.0, 900.0 - 580.0 - 3.0 - 18.0 - 4.0, 780.0 - 3.0], two.extent, 'shutter on leg 1 of the script'
+    assert_in_delta 100.0 + 1.5, one.offset[2], 1e-9, 'a 1.5 mm gap under the doors'
+    assert_in_delta 580.0 + 2.0, one.offset[0], 1e-9, 'a 2 mm stand-off from the carcass'
+    assert_in_delta 580.0 + 1.5, one.offset[1], 1e-9
+    assert_in_delta 580.0 + 2.0, two.offset[1], 1e-9
+    assert_in_delta 900.0 - 1.5, two.offset[0], 1e-9, 'door B runs from the far end back towards the notch'
+    assert_in_delta 580.0 + 1.5 + 18.0 + 4.0, two.offset[0] - two.extent[1], 1e-9, 'it starts a panel and 4 mm past the notch'
+  end
+
+  def test_the_left_back_panel_is_always_an_18_mm_panel_flush_with_the_wall
+    [6.0, 9.0, 12.0, 18.0].each do |back|
+      layout = CabinetLayout.compute(params('back_thickness' => back))
+      left = layout.panels.find { |x| x.role == 'back_2' }
+      assert_equal [900.0 - 18.0, 18.0, 780.0], left.extent, "back #{back}"
+      assert_equal [0.0, 0.0, 0.0], left.offset, 'flush with the wall, not set in'
+      leg1 = layout.panels.find { |x| x.role == 'back' }
+      assert_equal back, leg1.extent[0], 'the other back keeps the back panel thickness'
+      assert_equal 18.0, leg1.offset[1], 'and starts beside the left panel'
+    end
   end
 end

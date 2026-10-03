@@ -1,5 +1,7 @@
 {
   "materials": [
+    { "name": "Shutter - Light Beige", "color": "#E6DCC8", "kinds": ["panel", "toe_kick"] },
+    { "name": "Carcass - Light Gray",  "color": "#D3D3D3", "kinds": ["panel", "toe_kick"] },
     { "name": "White",           "color": "#FFFFFF", "kinds": ["panel", "toe_kick"] },
     { "name": "White Melamine",  "color": "#F2F2EE", "kinds": ["panel", "toe_kick"] },
     { "name": "Light Oak",       "color": "#C9A46A", "kinds": ["panel", "toe_kick"] },

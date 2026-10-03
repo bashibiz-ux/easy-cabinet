@@ -424,9 +424,10 @@ module KitchenCabinetMaster
       [
         panel('right_side', 'Right Side Panel', [l[:da], t, dims.height], [0, l[:la] - t, 0]),
         panel('front_return', 'Front Side Panel', [t, l[:db], dims.height], [l[:lb] - t, 0, 0]),
-        # leg 1's back runs along the X=0 wall, leg 2's along the Y=0 wall; leg 2's starts where leg 1's ends
-        panel('back', 'Back Panel Leg 1', [dims.back, l[:la] - t + dims.groove - dims.recess, dims.height], [dims.recess, dims.recess, 0]),
-        panel('back_2', 'Back Panel Leg 2', [l[:lb] - t + dims.groove - start, dims.back, dims.height], [start, dims.recess, 0]),
+        # The left back (along the Y=0 wall, leg 2) is always a full 18 mm panel, flush with the wall,
+        # whatever the back panel thickness; leg 1's thin back (along the X=0 wall) starts beside it.
+        panel('back_2', 'Left Back Panel', [l[:lb] - t, t, dims.height], [0, 0, 0]),
+        panel('back', 'Back Panel Leg 1', [dims.back, l[:la] - (2 * t) + dims.groove, dims.height], [dims.recess, t, 0]),
         Panel.new(role: 'bottom', name: 'Bottom Panel', points: l_footprint(params, dims, 0.0, 0.0),
                   extent: [nil, nil, round2(t)], offset: [0, 0, 0])
       ]
@@ -439,8 +440,8 @@ module KitchenCabinetMaster
       l = l_legs(params, dims)
       s = dims.interior_start
       [
-        [s, s],
-        [l[:lb] - t - side_margin, s],
+        [s, t],
+        [l[:lb] - t - side_margin, t],
         [l[:lb] - t - side_margin, l[:db] - setback],
         [l[:da] - setback, l[:db] - setback],
         [l[:da] - setback, l[:la] - t - side_margin],
@@ -475,24 +476,25 @@ module KitchenCabinetMaster
     def self.l_doors(params, dims, base_z)
       t = dims.thick
       l = l_legs(params, dims)
-      reveal = params['door_reveal'].to_f
+      # Sized like the L-corner builder script's shutters: a door gap (1.5 mm) all round and a 2 mm stand-off.
+      gap = params['door_gap'].to_f
       clear = door_distance(params)
-      height = dims.height - (2 * reveal)
+      height = dims.height - (2 * gap)
       outer = params['door_opening_direction'].to_s != 'right'
 
-      y_from = l[:db] + reveal
-      y_to = l[:la] - reveal
-      x_from = l[:da] + reveal + t + 4.0
-      x_to = l[:lb] - reveal
+      y_from = l[:db] + gap
+      y_to = l[:la] - gap
+      x_from = l[:da] + gap + t + 4.0
+      x_to = l[:lb] - gap
 
       [
         Door.new(role: 'door_1', name: 'Door 1', extent: [t, y_to - y_from, height].map { |v| round2(v) },
-                 offset: [l[:da] + clear, y_from, base_z + reveal].map { |v| round2(v) },
+                 offset: [l[:da] + clear, y_from, base_z + gap].map { |v| round2(v) },
                  hinge: outer ? 'right' : 'left',
                  pivot: [l[:da] + clear + t, outer ? y_to : y_from, base_z].map { |v| round2(v) }, rotation: 0.0),
         # Faces +Y: its frame is turned a quarter turn, so its length runs from x_to back to x_from.
         Door.new(role: 'door_2', name: 'Door 2', extent: [t, x_to - x_from, height].map { |v| round2(v) },
-                 offset: [x_to, l[:db] + clear, base_z + reveal].map { |v| round2(v) },
+                 offset: [x_to, l[:db] + clear, base_z + gap].map { |v| round2(v) },
                  hinge: outer ? 'left' : 'right',
                  pivot: [outer ? x_to : x_from, l[:db] + clear + t, base_z].map { |v| round2(v) }, rotation: 90.0)
       ]
@@ -539,32 +541,40 @@ module KitchenCabinetMaster
       )]
     end
     private_class_method :blind_doors
-    # The inner box of every drawer: a front, two sides, a back and a bottom, all 18 mm boards, in the
-    # drawer's own frame (the origin is the back face of its front at the left edge; X points out of the
-    # cabinet, so the box lies at negative X). { drawer role => [Panel, ...] }. A drawer too small for a
-    # box gets none.
+    # The inner box of every drawer, built the way the drawer script does it: two sides, a bottom and a
+    # back, all 18 mm boards (the front of the drawer is the drawer front itself). It is 10 mm clear of
+    # the carcass on each side and 52 mm shorter than the carcass is deep, so the back sits 54 mm from
+    # the wall behind it. The bottom of the lowest drawer rests 20 mm above the bottom panel, the others
+    # 20 mm above their front; every box stops 50 mm below the top of its front (and 50 mm under the
+    # top rails). Boards are in the drawer's own frame (the origin is the back face of its front at the
+    # left edge; X points out of the cabinet, so the box lies at negative X). { drawer role => [Panel, ...] }.
+    # A drawer too small for a box gets none.
     def self.drawer_boxes(params, dims, drawers)
       boxes = {}
       t = Defaults::DRAWER_BOX_THICKNESS
       slide = Defaults::DRAWER_SLIDE_GAP
       reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      base = params['cabinet_category'].to_s == 'wall' ? 0.0 : params['toe_kick_height'].to_f
+      length = dims.depth - Defaults::DRAWER_BOX_SETBACK
+      width = dims.inner_w - (2 * slide)
       drawers.each do |drawer|
-        length = (dims.depth + door_distance(params)) - (dims.interior_start + 20.0)
-        width = dims.inner_w - (2 * slide)
-        height = drawer.extent[2] - 50.0
+        front_z = drawer.offset[2] - base # the front's bottom, above the carcass bottom
+        bottom = [front_z + 20.0, dims.thick + 20.0].max
+        top = [front_z + drawer.extent[2] - 50.0, dims.height - dims.thick - 50.0 - gap].min
+        height = top - bottom
         next if length < 100.0 || width < 100.0 || height < 40.0
 
         y0 = (dims.thick - reveal) + slide
-        z0 = 20.0
+        z0 = bottom - front_z
         name = lambda do |role, label, extent, offset|
           panel("#{drawer.role}_box_#{role}", "Drawer Box #{label}", extent, offset)
         end
         boxes[drawer.role] = [
           name.call('left', 'Side', [length, t, height], [-length, y0, z0]),
           name.call('right', 'Side', [length, t, height], [-length, y0 + width - t, z0]),
-          name.call('front', 'Front', [t, width - (2 * t), height], [-t, y0 + t, z0]),
-          name.call('back', 'Back', [t, width - (2 * t), height], [-length, y0 + t, z0]),
-          name.call('bottom', 'Bottom', [length - (2 * t), width - (2 * t), t], [-length + t, y0 + t, z0])
+          name.call('bottom', 'Bottom', [length, width - (2 * t), t], [-length, y0 + t, z0]),
+          name.call('back', 'Back', [t, width - (2 * t), height - t], [-length, y0 + t, z0 + t])
         ]
       end
       boxes
