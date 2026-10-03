@@ -209,6 +209,11 @@
             </label>
           </div>
         </div>
+        <!-- A fridge housing's door, the drawers over a door, a stacked pair's top door: their height can be adjusted. -->
+        <label class="field narrow" id="zoneField" hidden>
+          <span class="label" id="zoneLabel">Door Height</span>
+          <div class="input"><input id="zoneHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
         <!-- An L-shaped corner unit has a second leg of its own: Width and Depth are leg 1. -->
         <div class="grid-2" id="legFields" hidden>
           <label class="field">
@@ -426,6 +431,7 @@
         <label class="check"><input type="checkbox" id="showMicro" checked><span>Show microwave</span></label>
         <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
         <label class="check"><input type="checkbox" id="hideBaseHandles"><span>Show base unit handles</span></label>
+        <label class="check"><input type="checkbox" id="hideTallHandles"><span>Show tall unit handles</span></label>
         <label class="check"><input type="checkbox" id="hideWallHandles"><span>Show wall unit handles</span></label>
         <label class="check"><input type="checkbox" id="showWallDirection"><span>Wall unit door opening direction on the floor</span></label>
         <label class="check"><input type="checkbox" id="showDoorSymbol"><span>Door opening direction on the door</span></label>

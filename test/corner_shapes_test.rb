@@ -72,22 +72,29 @@ class CornerShapesTest < Minitest::Test
     assert_equal 780.0 - 2 * Defaults.params['door_gap'], layout.doors.first.extent[2]
   end
 
-  def test_a_blind_corner_has_one_door_and_a_fixed_panel_that_share_the_width
-    p = params('corner_style' => 'blind', 'width' => 1000.0, 'blind_width' => 450.0, 'door_count' => 1)
-    layout = CabinetLayout.compute(p)
-    door = layout.doors.first
-    blind = layout.panels.find { |x| x.role == 'blind_front' }
+  def test_a_blind_corner_has_one_door_and_a_blind_panel_that_is_always_50_mm_wider
     gap = Defaults.params['door_gap']
     reveal = Defaults.params['door_reveal']
-    assert_in_delta 1000.0 - 450.0 - reveal - (gap / 2.0), door.extent[1], 0.01
-    assert_in_delta 450.0 - reveal - (gap / 2.0), blind.extent[1], 0.01
-    assert_in_delta door.offset[1] + door.extent[1] + gap, blind.offset[1], 0.02, 'a door gap between them'
-    assert_equal 'left', door.hinge
-    flipped = CabinetLayout.compute(p.merge('door_opening_direction' => 'right'))
-    assert_operator flipped.panels.find { |x| x.role == 'blind_front' }.offset[1], :<, flipped.doors.first.offset[1], 'blind on the left'
-    assert_equal [560.0 + 2.0 + 18.0, 1000.0, 880.0], CabinetLayout.envelope(p), 'a blind corner is a straight cabinet'
+    [900.0, 1000.0, 1200.0].each do |width|
+      layout = CabinetLayout.compute(params('corner_style' => 'blind', 'width' => width, 'door_count' => 1))
+      door = layout.doors.first
+      blind = layout.panels.find { |x| x.role == 'blind_front' }
+      assert_in_delta door.extent[1] + 50.0, blind.extent[1], 0.02, "#{width}: the blind panel is 50 mm wider than the door"
+      assert_in_delta width - (2 * reveal) - gap, door.extent[1] + blind.extent[1], 0.02, 'together they fill the width'
+      assert_in_delta door.offset[1] + door.extent[1] + gap, blind.offset[1], 0.02, 'a door gap between them'
+    end
   end
 
+  def test_a_blind_corner_door_hinges_on_the_blind_side_and_swaps_with_the_direction
+    left = CabinetLayout.compute(params('corner_style' => 'blind', 'door_count' => 1)) # blind on the right
+    door = left.doors.first
+    assert_equal 'right', door.hinge, 'the hinge is next to the blind panel'
+    assert_in_delta door.offset[1] + door.extent[1], door.pivot[1], 0.01, 'its pivot is at the blind-side end'
+    flipped = CabinetLayout.compute(params('corner_style' => 'blind', 'door_count' => 1, 'door_opening_direction' => 'right'))
+    assert_equal 'left', flipped.doors.first.hinge
+    assert_operator flipped.panels.find { |x| x.role == 'blind_front' }.offset[1], :<, flipped.doors.first.offset[1], 'blind on the left'
+    assert_equal [560.0 + 2.0 + 18.0, 900.0, 880.0], CabinetLayout.envelope(params('corner_style' => 'blind')), 'a blind corner is a straight cabinet'
+  end
   def test_the_two_legs_can_differ_in_length_and_depth
     p = params('width' => 1000.0, 'depth' => 560.0, 'leg2_length' => 800.0, 'leg2_depth' => 400.0)
     assert_equal [800.0, 1000.0, 880.0], CabinetLayout.envelope(p), 'x reaches leg 2''s length, y leg 1''s'
@@ -113,7 +120,7 @@ class CornerShapesTest < Minitest::Test
     fine = ValidationManager.validate(base.merge('corner_style' => 'l_shape', 'width' => '900', 'depth' => '560', 'height' => '780'), door_count: 2)
     assert_empty fine.errors
     assert_equal 'l_shape', fine.params['corner_style']
-    narrow_blind = ValidationManager.validate(base.merge('corner_style' => 'blind', 'blind_width' => '960', 'width' => '1000', 'depth' => '560', 'height' => '780'), door_count: 1)
+    narrow_blind = ValidationManager.validate(base.merge('corner_style' => 'blind', 'width' => '150', 'depth' => '560', 'height' => '780'), door_count: 1)
     assert_includes narrow_blind.errors.map { |e| e['field'] }, 'width'
   end
 

@@ -13,7 +13,6 @@
     "base",
     "wall",
     "tall",
-    "corner",
     "filler",
     "end_panel",
     "toe_kick",
@@ -150,6 +149,7 @@
           800
         ],
         "zone": 180,
+        "zone_label": "Drawer Zone Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -170,6 +170,7 @@
           1200
         ],
         "zone": 180,
+        "zone_label": "Drawer Zone Height",
         "defaults": {
           "width": 900,
           "depth": 560,
@@ -230,6 +231,23 @@
         }
       },
       {
+        "id": "base_corner_diagonal",
+        "name": "Base - corner diagonal",
+        "code": "CD",
+        "doors": 1,
+        "shelves": 1,
+        "widths": [
+          900,
+          1000
+        ],
+        "corner": "diagonal",
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_corner_l",
         "name": "Base - corner L shape",
         "code": "CL",
@@ -259,9 +277,30 @@
           1200
         ],
         "corner": "blind",
-        "blind": 450,
         "defaults": {
           "width": 1000,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_oven",
+        "name": "Base - built-in oven",
+        "code": "BOV",
+        "doors": 0,
+        "drawers": 1,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "zone_bottom": 140,
+        "appliances": "oven",
+        "appliance_sets": [
+          "oven"
+        ],
+        "defaults": {
+          "width": 600,
           "depth": 560,
           "height": 780
         }
@@ -340,6 +379,24 @@
         }
       },
       {
+        "id": "wall_corner_diagonal",
+        "name": "Wall - corner diagonal",
+        "code": "WCD",
+        "doors": 1,
+        "shelves": 2,
+        "widths": [
+          600,
+          700,
+          800
+        ],
+        "corner": "diagonal",
+        "defaults": {
+          "width": 700,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
         "id": "wall_corner_l",
         "name": "Wall - corner L shape",
         "code": "WCL",
@@ -369,7 +426,6 @@
           1000
         ],
         "corner": "blind",
-        "blind": 300,
         "defaults": {
           "width": 800,
           "depth": 320,
@@ -449,9 +505,44 @@
         "doors": 1,
         "shelves": 0,
         "widths": [
-          600
+          600,
+          900
         ],
         "zone": 500,
+        "zone_label": "Door Height",
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_fridge_builtin_1door",
+        "name": "Tall - built-in fridge, 1 door",
+        "code": "TFB",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_fridge_builtin_2door",
+        "name": "Tall - built-in fridge, 2 doors",
+        "code": "TFB",
+        "doors": 2,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "stacked": true,
+        "zone": 700,
+        "zone_label": "Top Door Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -476,38 +567,6 @@
           "depth": 560,
           "height": 2160
         }
-      }
-    ],
-    "corner": [
-      {
-        "id": "corner_diagonal_900",
-        "name": "Corner - diagonal door 900",
-        "doors": 1,
-        "shelves": 1,
-        "defaults": {
-          "width": 900,
-          "depth": 560,
-          "height": 780
-        },
-        "widths": [
-          900,
-          1000
-        ]
-      },
-      {
-        "id": "corner_diagonal_1000",
-        "name": "Corner - diagonal door 1000",
-        "doors": 1,
-        "shelves": 1,
-        "defaults": {
-          "width": 1000,
-          "depth": 560,
-          "height": 780
-        },
-        "widths": [
-          900,
-          1000
-        ]
       }
     ]
   }

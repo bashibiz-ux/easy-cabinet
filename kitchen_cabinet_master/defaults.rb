@@ -155,6 +155,7 @@ module KitchenCabinetMaster
       'door_opening_angle'     => 90.0,
       'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
       'corner_style' => '',        # a corner unit's shape: diagonal, l_shape or blind (blank = an ordinary cabinet)
+      'door_stacked' => false,        # two doors one above the other (a built-in fridge-freezer); front_zone is the top door's height
       'front_zone' => 0.0,          # drawers over a door: the height of the drawer zone at the top; a door alone: the door's height at the top (0 = full height)
       'bottom_zone' => 0.0,         # an oven housing: the height of the drawers at the bottom (the door is front_zone at the top, the niche between)
       'appliance_set' => '',       # an oven housing: oven, double_oven or oven_micro
@@ -164,6 +165,7 @@ module KitchenCabinetMaster
       'leg2_depth' => 0.0,
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
+      'hide_tall_handles' => false, # tall units' handles hidden (a tick in Visibility)
       'hide_base_handles' => false, # base units' handles hidden (a tick in Visibility)
       'hide_wall_handles' => false, # wall units' handles hidden (a tick in Visibility)
       'show_wall_opening_direction' => false, # a wall unit's plan line on the floor has its own tick

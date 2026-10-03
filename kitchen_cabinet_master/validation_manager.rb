@@ -81,6 +81,7 @@ module KitchenCabinetMaster
       out['leg2_length'] = second_length if second_length && second_length > 0 && out['corner_style'] == 'l_shape'
       second_depth = to_float(raw['leg2_depth'])
       out['leg2_depth'] = second_depth if second_depth && second_depth > 0 && out['corner_style'] == 'l_shape'
+      out['door_stacked'] = truthy?(raw['door_stacked'])
       set = raw['appliance_set'].to_s
       out['appliance_set'] = Defaults::APPLIANCE_SETS.include?(set) ? set : ''
       zone = to_float(raw['front_zone'])
@@ -151,7 +152,7 @@ module KitchenCabinetMaster
         errors << error('top_panel_style', 'Select how the top panel is made.')
       end
 
-      %w[show_opening_direction show_door_symbol show_wall_opening_direction hide_wall_handles hide_base_handles show_cabinet_names].each do |key|
+      %w[show_opening_direction show_door_symbol show_wall_opening_direction hide_wall_handles hide_base_handles hide_tall_handles show_cabinet_names].each do |key|
         out[key] = truthy?(raw[key]) if raw.key?(key)
       end
 
@@ -277,10 +278,12 @@ module KitchenCabinetMaster
     def self.check_zone(out, door_count, drawer_count, errors, bad)
       zone = out['front_zone'].to_f
       bottom = out['bottom_zone'].to_f
-      return unless (zone.positive? || bottom.positive?) && door_count.to_i.positive? && (bad & %w[height door_gap door_reveal]).empty? && out['height']
+      return check_stacked(out, errors, bad) if out['door_stacked'] && door_count.to_i == 2
+      return unless (zone.positive? || bottom.positive?) && (door_count.to_i.positive? || (bottom.positive? && drawer_count.to_i.positive?)) &&
+                    (bad & %w[height door_gap door_reveal]).empty? && out['height']
 
       if bottom.positive? && drawer_count.to_i.positive?
-        check_appliances(out, bottom, errors)
+        check_appliances(out, bottom, errors, door_count.to_i.positive?)
         each = (bottom - out['door_reveal'] - (out['door_gap'] / 2.0) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
         errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
         niche = out['height'] - bottom - zone - (2 * out['door_gap'])
@@ -296,14 +299,34 @@ module KitchenCabinetMaster
     end
     private_class_method :check_zone
 
+    # Two stacked doors (a built-in fridge-freezer): the top door's height is front_zone.
+    def self.check_stacked(out, errors, bad)
+      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height']
+
+      top = out['front_zone'].to_f
+      return unless top.positive?
+
+      bottom = out['height'] - top - out['door_gap'] - out['door_reveal']
+      if top - out['door_reveal'] < MIN_DOOR_SIZE || bottom < MIN_DOOR_SIZE
+        errors << error('height', "The two doors would be #{fmt((top - out['door_reveal']).round(1))} and #{fmt(bottom.round(1))} mm high (each needs at least #{fmt(MIN_DOOR_SIZE)} mm).")
+      end
+    end
+    private_class_method :check_stacked
+
     # The appliances of an oven housing, stacked on shelves above the drawers, must leave room for a door.
-    def self.check_appliances(out, bottom, errors)
+    def self.check_appliances(out, bottom, errors, with_door = true)
       kinds = { 'oven' => [:oven], 'double_oven' => %i[oven oven], 'oven_micro' => %i[oven micro] }[out['appliance_set']]
       return unless kinds && out['oven_height'] && out['micro_height'] && out['material_thickness']
 
       t = out['material_thickness']
-      used = bottom + kinds.sum { |kind| t + (kind == :oven ? out['oven_height'] : out['micro_height']) + 4.0 } + t
-      door = out['height'] - used
+      stacked = bottom + kinds.sum { |kind| t + (kind == :oven ? out['oven_height'] : out['micro_height']) + 4.0 }
+      unless with_door # a built-in oven with no door: the appliances must fit under the top panel
+        room = out['height'] - t - stacked
+        errors << error('oven_height', "The appliances do not fit: they need #{fmt((-room).round(1))} mm more height under the top panel. Choose a smaller appliance set or a taller unit.") if room.negative?
+        return
+      end
+
+      door = out['height'] - (stacked + t)
       return if door >= MIN_DOOR_SIZE + out['door_reveal']
 
       errors << error('oven_height', "The appliances do not fit: they leave only #{fmt(door.round(1))} mm for the door above them (needs #{fmt(MIN_DOOR_SIZE + out['door_reveal'])}). Choose smaller appliances or a taller unit.")
@@ -387,10 +410,9 @@ module KitchenCabinetMaster
     def self.check_blind(out, errors, bad)
       return unless Defaults.corner_style(out) == 'blind' && (bad & %w[width]).empty? && out['width']
 
-      blind = out['blind_width'].to_f
-      open = out['width'] - blind
-      if blind < 50.0 || open < MIN_DOOR_SIZE
-        errors << error('width', "A blind corner needs a blind part of at least 50 mm and a door of at least #{fmt(MIN_DOOR_SIZE)} mm (this one is #{fmt(blind)} + #{fmt(open.round(1))} mm).")
+      door = (out['width'] - (2 * out['door_reveal']) - out['door_gap'] - 50.0) / 2.0
+      if door < MIN_DOOR_SIZE
+        errors << error('width', "A blind corner is too narrow: its door would be only #{fmt(door.round(1))} mm wide (the blind panel is always 50 mm wider than the door; minimum door #{fmt(MIN_DOOR_SIZE)} mm).")
       end
     end
     private_class_method :check_blind
@@ -402,6 +424,8 @@ module KitchenCabinetMaster
       return unless door_count.to_i.positive?
 
       count = door_count.to_i
+      return if out['door_stacked'] && count == 2 # two doors one above the other: see check_stacked
+
       if Defaults.corner_style(out).nil? && (bad & %w[width door_gap door_reveal]).empty? && out['width']
         door_width = (out['width'] - (2 * out['door_reveal']) - ((count - 1) * out['door_gap'])) / count
         if door_width < MIN_DOOR_SIZE

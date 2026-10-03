@@ -126,6 +126,9 @@ module KitchenCabinetMaster
       elsif zone && zone[:drawers] # a rail between the drawers and the door below
         mid = dims.height - zone[:drawers] - (params['door_gap'].to_f / 2.0) - (dims.thick / 2.0)
         panels << panel('drawer_rail', 'Drawer Rail', [dims.interior_d, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, mid])
+      elsif zone && zone[:door] # a door over an open niche (a fridge housing): a panel under the door, where it closes
+        panels << panel('door_rail', 'Door Rail', [dims.interior_d - dims.shelf_setback, dims.inner_w, dims.thick],
+                        [dims.interior_start, dims.thick, dims.height - zone[:door] - dims.thick])
       end
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
@@ -321,6 +324,7 @@ module KitchenCabinetMaster
       return corner_door(params, dims, base_z) if style == 'diagonal'
       return l_doors(params, dims, base_z) if style == 'l_shape'
       return blind_doors(params, dims, base_z) if style == 'blind'
+      return stacked_doors(params, dims, base_z) if params['door_stacked'] == true && count == 2
 
       gap = params['door_gap'].to_f
       reveal = params['door_reveal'].to_f
@@ -502,22 +506,28 @@ module KitchenCabinetMaster
     private_class_method :l_doors
     # ---- blind corner unit --------------------------------------------------------------
     #
-    # A straight cabinet whose front is one door over the open part and a fixed panel over the
-    # `blind_width` part, which sits behind the neighbouring run. Door Opening Direction "left"
-    # puts the door on the left and the blind part on the right; "right" swaps them.
+    # A straight cabinet whose front is one door over the open part and a fixed panel over the blind
+    # part, which sits behind the neighbouring run. The blind panel is always 50 mm wider than the
+    # door. Door Opening Direction "left" puts the door on the left and the blind part on the right;
+    # "right" swaps them. The door hinges on the blind side, so it opens away from the open end.
+    BLIND_EXTRA = 50.0 # how much wider the blind panel is than the door
+
+    def self.blind_door_width(params, width)
+      (width - (2 * params['door_reveal'].to_f) - params['door_gap'].to_f - BLIND_EXTRA) / 2.0
+    end
+
     def self.blind_split(params, dims)
       reveal = params['door_reveal'].to_f
       gap = params['door_gap'].to_f
-      blind = params['blind_width'].to_f.clamp(MIN_BLIND, [dims.width - MIN_BLIND, MIN_BLIND].max)
-      open = dims.width - blind
+      door = blind_door_width(params, dims.width)
+      blind = door + BLIND_EXTRA
       if params['door_opening_direction'].to_s != 'right' # blind on the right
-        { door: [reveal, open - (gap / 2.0)], blind: [open + (gap / 2.0), dims.width - reveal] }
+        { door: [reveal, reveal + door], blind: [reveal + door + gap, dims.width - reveal] }
       else
-        { door: [blind + (gap / 2.0), dims.width - reveal], blind: [reveal, blind - (gap / 2.0)] }
+        { door: [reveal + blind + gap, dims.width - reveal], blind: [reveal, reveal + blind] }
       end
     end
     private_class_method :blind_split
-    MIN_BLIND = 50.0
 
     def self.blind_panel(params, dims)
       from, to = blind_split(params, dims)[:blind]
@@ -530,7 +540,7 @@ module KitchenCabinetMaster
     def self.blind_doors(params, dims, base_z)
       from, to = blind_split(params, dims)[:door]
       reveal = params['door_reveal'].to_f
-      hinge_left = params['door_opening_direction'].to_s != 'right'
+      hinge_left = params['door_opening_direction'].to_s == 'right' # blind on the left: the hinge is on the left, next to it
       door_w = to - from
       [Door.new(
         role: 'door_1', name: 'Door 1', extent: [dims.thick, door_w, dims.height - (2 * reveal)].map { |v| round2(v) },
@@ -581,6 +591,29 @@ module KitchenCabinetMaster
     end
     private_class_method :drawer_boxes
 
+    # Two doors one above the other, both full width, hinged on the same side (a built-in fridge-freezer):
+    # `front_zone` is the height of the top door.
+    def self.stacked_doors(params, dims, base_z)
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      clear = door_distance(params)
+      top = params['front_zone'].to_f
+      top = dims.height * 0.35 unless top.positive? && top < dims.height - 200.0
+      width = dims.width - (2 * reveal)
+      hinge_left = params['door_opening_direction'].to_s != 'right'
+      spans = [[reveal, dims.height - top - gap - reveal], [dims.height - top, top - reveal]] # bottom door, top door
+      spans.each_with_index.map do |(z, height), index|
+        Door.new(
+          role: "door_#{index + 1}", name: "Door #{index + 1}", extent: [dims.thick, width, height].map { |v| round2(v) },
+          offset: [dims.depth + clear, reveal, base_z + z].map { |v| round2(v) },
+          hinge: hinge_left ? 'left' : 'right',
+          pivot: [dims.depth + clear + dims.thick, hinge_left ? reveal : reveal + width, base_z].map { |v| round2(v) },
+          rotation: 0.0
+        )
+      end
+    end
+    private_class_method :stacked_doors
+
     # The height and bottom (above the carcass bottom) of the doors: the full height, or, with a
     # front zone, only what is left under the drawers, or only the zone at the top over an open niche.
     def self.door_span(params, dims)
@@ -626,6 +659,8 @@ module KitchenCabinetMaster
         stack << { kind: kind, z: z, height: height }
         z += height + APPLIANCE_GAP
       end
+      return { bottom: bottom, door: nil, stack: stack, shelves: shelves, rail: nil } unless params['door_count'].to_i.positive?
+
       { bottom: bottom, door: dims.height - (z + dims.thick), stack: stack, shelves: shelves, rail: z }
     end
     private_class_method :appliance_stack
@@ -644,7 +679,7 @@ module KitchenCabinetMaster
         key = "appliance_#{item[:kind]}_#{counts[item[:kind]]}"
         body_w = [dims.inner_w - 4.0, 560.0].min
         body_d = [dims.interior_d - 30.0, item[:kind] == :oven ? 550.0 : 350.0].min
-        plate_w = dims.width - 8.0
+        plate_w = [dims.width - 8.0, 595.0].min # a wider unit leaves the sides of the oven open
         out << panel("#{key}_body", "#{label} Body", [body_d, body_w, item[:height] - 4.0],
                      [front - body_d, (dims.width - body_w) / 2.0, item[:z] + 2.0])
         out << panel("#{key}_front", "#{label} Front", [6.0, plate_w, item[:height]],
@@ -659,14 +694,17 @@ module KitchenCabinetMaster
     def self.front_zone(params, dims)
       zone = params['front_zone'].to_f
       bottom = params['bottom_zone'].to_f
-      return nil unless params['door_count'].to_i.positive?
+      return nil if params['door_stacked'] == true # two stacked doors use front_zone for the top door's height
 
-      # An oven housing: drawers at the bottom, the door at the top, an open niche between.
+      # An oven housing: drawers at the bottom, the door at the top, an open niche between. (A base unit
+      # with a built-in oven has no door: the oven stands over its drawer and the top panel closes it.)
       if bottom.positive? && bottom < dims.height && params['drawer_count'].to_i.positive?
         stack = appliance_stack(params, dims, bottom)
         return stack if stack
+        return nil unless params['door_count'].to_i.positive?
         return { bottom: bottom, door: (zone.positive? && zone + bottom < dims.height ? zone : nil) }
       end
+      return nil unless params['door_count'].to_i.positive?
       return nil unless zone.positive? && zone < dims.height
 
       params['drawer_count'].to_i.positive? ? { drawers: zone } : { door: zone }

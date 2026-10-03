@@ -271,6 +271,7 @@ module KitchenCabinetMaster
       hide_wall_handles = on.call(raw['hide_wall_handles'])
       show_names = on.call(raw['show_cabinet_names'])
       hide_base_handles = on.call(raw['hide_base_handles'])
+      hide_tall_handles = on.call(raw['hide_tall_handles'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -289,9 +290,10 @@ module KitchenCabinetMaster
                                             'show_wall_opening_direction' => show_wall_symbol,
                                             'hide_wall_handles' => hide_wall_handles,
                                             'hide_base_handles' => hide_base_handles,
+                                            'hide_tall_handles' => hide_tall_handles,
                                             'show_cabinet_names' => show_names)
             CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles,
-                                              hide_base_handles)
+                                              hide_base_handles, hide_tall_handles)
             CabinetGenerator.sync_name_label_for(model, cabinet)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.
@@ -408,7 +410,7 @@ module KitchenCabinetMaster
       # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
       # also say how wide the blind part is): the shape travels with the cabinet.
       raw = raw.merge('appliance_set' => (cabinet && cabinet['appliances'] ? (raw['appliance_set'].to_s.empty? ? cabinet['appliances'] : raw['appliance_set']) : ''),
-                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'], 'bottom_zone' => cabinet && cabinet['zone_bottom'])
+                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => zone_height_for(raw, cabinet), 'door_stacked' => cabinet && cabinet['stacked'] == true, 'bottom_zone' => cabinet && cabinet['zone_bottom'])
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
 
@@ -426,6 +428,17 @@ module KitchenCabinetMaster
       [params, nil]
     end
     private_class_method :prepare
+
+    # The height of a zone (a fridge housing's door, the drawers over a door, the top door of a stacked
+    # pair): what the panel sent when the catalog entry lets it be adjusted ("zone_label"), else the
+    # catalog's own value.
+    def self.zone_height_for(raw, cabinet)
+      return nil unless cabinet
+
+      sent = ValidationManager.to_float(raw['front_zone'])
+      cabinet['zone_label'] && sent && sent.positive? ? sent : cabinet['zone']
+    end
+    private_class_method :zone_height_for
 
     # One Undo step. Any error rolls the whole operation back, so a failed
     # insert or update never leaves half-built geometry behind.

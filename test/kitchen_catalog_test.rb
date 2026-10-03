@@ -21,7 +21,8 @@ class KitchenCatalogTest < Minitest::Test
     { 'catalog_id' => CATALOG, 'cabinet_category' => category, 'cabinet_type' => entry['id'], 'width' => width.to_s,
       'depth' => entry['defaults']['depth'].to_s, 'height' => entry['defaults']['height'].to_s, 'toe_kick_height' => '100',
       'door_opening_direction' => 'left', 'corner_style' => entry['corner'].to_s, 'blind_width' => entry['blind'],
-      'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'shelf_count' => entry['shelves'].to_s }
+      'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'door_stacked' => entry['stacked'] == true,
+      'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s }
   end
 
   def each_entry
@@ -89,8 +90,8 @@ class KitchenCatalogTest < Minitest::Test
     layout = CabinetLayout.compute(result.params.merge('door_count' => 1, 'drawer_count' => 2))
     door = layout.doors.first
     top_drawer = layout.drawers.last
-    assert_in_delta 860.0 - Defaults.params['door_reveal'], door.extent[2], 0.05, 'the door is the top zone'
-    assert_in_delta 100.0 + 2160.0 - 860.0, door.offset[2], 0.05
+    assert_in_delta 825.0 - Defaults.params['door_reveal'], door.extent[2], 0.05, 'the door takes what the oven leaves (595 mm oven)'
+    assert_in_delta 100.0 + 2160.0 - 825.0, door.offset[2], 0.05
     assert_operator top_drawer.offset[2] + top_drawer.extent[2], :<=, 100.0 + 700.0, 'the drawers stay in the bottom zone'
     niche_height = door.offset[2] - (top_drawer.offset[2] + top_drawer.extent[2])
     assert_operator niche_height, :>, 550.0, 'about 600 mm of open niche for the oven'
@@ -145,5 +146,74 @@ class KitchenCatalogTest < Minitest::Test
     assert_includes ids, 'base_sink_1door'
     two = CatalogManager.cabinet(CATALOG, 'base', 'base_drawer_2door')
     assert_equal [2, 1], [two['doors'], two['drawers']]
+  end
+
+  def unit(category, id, width = nil, extra = {})
+    entry = CatalogManager.cabinet(CATALOG, category, id)
+    raw = raw_for(category, entry, width || entry['defaults']['width']).merge(extra)
+    result = ValidationManager.validate(raw, door_count: entry['doors'].to_i, drawer_count: entry['drawers'].to_i)
+    layout = CabinetLayout.compute(result.params.merge('door_count' => entry['doors'].to_i, 'drawer_count' => entry['drawers'].to_i))
+    [result, layout]
+  end
+
+  def test_the_diagonal_corner_units_are_in_the_base_and_wall_lists
+    assert_includes CatalogManager.cabinets(CATALOG, 'base').map { |e| e['id'] }, 'base_corner_diagonal'
+    assert_includes CatalogManager.cabinets(CATALOG, 'wall').map { |e| e['id'] }, 'wall_corner_diagonal'
+    assert_empty CatalogManager.cabinets(CATALOG, 'corner'), 'no separate Corner list'
+    refute_includes CatalogManager.catalogs.find { |c| c['id'] == CATALOG }['features'], 'corner'
+    _, base = unit('base', 'base_corner_diagonal')
+    assert_equal 1, base.doors.length
+    assert_equal 45.0, base.doors.first.rotation, 'a diagonal door'
+    _, wall = unit('wall', 'wall_corner_diagonal')
+    assert_equal 0.0, wall.base_z, 'the wall one hangs'
+    assert_equal 45.0, wall.doors.first.rotation
+  end
+
+  def test_a_fridge_housing_has_a_panel_where_the_door_closes_in_two_widths_and_an_adjustable_door
+    assert_equal [600, 900], CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge')['widths']
+    result, layout = unit('tall', 'tall_fridge', 900)
+    assert_empty result.errors
+    door = layout.doors.first
+    rail = layout.panels.find { |p| p.role == 'door_rail' }
+    assert rail, 'a panel under the door'
+    assert_in_delta 2160.0 - 500.0 - 18.0, rail.offset[2], 0.01
+    assert_in_delta door.offset[2] - 100.0, rail.offset[2] + rail.extent[2], 0.01 + Defaults.params['door_reveal'], 'the door closes onto it'
+    _, taller = unit('tall', 'tall_fridge', 600, 'front_zone' => 800)
+    assert_in_delta 800.0 - Defaults.params['door_reveal'], taller.doors.first.extent[2], 0.01, 'the door height can be adjusted'
+  end
+
+  def test_the_built_in_fridge_has_one_full_door_or_two_stacked_doors
+    _, one = unit('tall', 'tall_fridge_builtin_1door')
+    assert_equal 1, one.doors.length
+    assert_in_delta 2160.0 - (2 * Defaults.params['door_reveal']), one.doors.first.extent[2], 0.01, 'one full-height door'
+    result, two = unit('tall', 'tall_fridge_builtin_2door')
+    assert_empty result.errors
+    bottom, top = two.doors
+    assert_equal bottom.extent[1], top.extent[1], 'both are full width'
+    assert_in_delta 700.0 - Defaults.params['door_reveal'], top.extent[2], 0.01, 'the top door is 700 high'
+    assert_operator bottom.offset[2] + bottom.extent[2], :<, top.offset[2], 'the doors do not touch'
+    assert_equal bottom.hinge, top.hinge, 'hinged on the same side'
+    _, shorter = unit('tall', 'tall_fridge_builtin_2door', 600, 'front_zone' => 500)
+    assert_in_delta 500.0 - Defaults.params['door_reveal'], shorter.doors.last.extent[2], 0.01, 'the top door height can be adjusted'
+  end
+
+  def test_a_base_unit_with_a_built_in_oven_has_a_drawer_below_and_no_door
+    assert_equal [600, 900], CatalogManager.cabinet(CATALOG, 'base', 'base_oven')['widths']
+    [600, 900].each do |width|
+      result, layout = unit('base', 'base_oven', width)
+      assert_empty result.errors.map { |e| e['message'] }, width.to_s
+      assert_empty layout.doors
+      assert_equal 1, layout.drawers.length
+      assert_equal 2, layout.appliances.length, 'an oven: body and front'
+      assert layout.appliances.all? { |a| a.offset[2] + a.extent[2] <= 780.0 - 18.0 }, 'it fits under the top panel'
+      assert_operator layout.appliances.find { |a| a.role.end_with?('front') }.extent[1], :<=, 595.0
+    end
+    result, = unit('base', 'base_oven', 600, 'appliance_set' => 'double_oven')
+    assert_includes result.errors.map { |e| e['field'] }, 'oven_height', 'two ovens do not fit in a base unit'
+    assert_equal ['oven'], CatalogManager.cabinet(CATALOG, 'base', 'base_oven')['appliance_sets']
+  end
+
+  def test_tall_handles_have_their_own_tick_that_starts_on
+    assert_equal false, Defaults.params['hide_tall_handles']
   end
 end
