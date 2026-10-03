@@ -104,7 +104,7 @@ module KitchenCabinetMaster
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
         v = case position
             when 'bottom' then vertical + half_v
-            when 'hand' then (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(half_v, [door_h - half_v, half_v].max)
+            when 'hand' then hand_height(door, door_h, half_v, vertical)
             else door_h - vertical - half_v
             end
         return { 'u' => door_w / 2.0, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
@@ -126,11 +126,19 @@ module KitchenCabinetMaster
           when 'custom' then settings['custom_z']
           when 'top' then door_h - vertical - half_v
           when 'bottom' then vertical + half_v
-          when 'hand' then (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(half_v, [door_h - half_v, half_v].max)
+          when 'hand' then hand_height(door, door_h, half_v, vertical)
           else door_h / 2.0
           end
 
       { 'u' => u, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
+    end
+
+    # Hand height on a tall unit's door, kept a handle-offset clear of the door's edges, so on a door that
+    # lies wholly above or below it (the lower door of a fridge) the handle sits near its edge, not on the gap.
+    def self.hand_height(door, door_h, half_v, margin)
+      low = half_v + margin
+      high = [door_h - half_v - margin, low].max
+      (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(low, high)
     end
 
     # By unit type (and a blank, from older cabinets): a base or corner unit's handle
