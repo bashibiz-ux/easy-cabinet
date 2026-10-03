@@ -106,13 +106,13 @@ module KitchenCabinetMaster
       end
 
       u = if door.hinge == 'center'
-            (door_w / 2.0) - half_u
+            door_w / 2.0
           else
             case position
             when 'custom' then settings['custom_x']
             when 'left' then side + half_u
             when 'right' then door_w - side - half_u
-            when 'center' then (door_w / 2.0) - half_u
+            when 'center' then door_w / 2.0
             else free_edge_is_high ? door_w - side - half_u : side + half_u
             end
           end

@@ -109,6 +109,7 @@ module KitchenCabinetMaster
         if role == CARCASS_ROLE then instance.visible = visibility['carcass'] != false
         elsif role == TOE_KICK_ROLE then instance.visible = visibility['toe_kick'] != false
         elsif role == INDICATOR_ROLE then instance.visible = doors_visible && show_floor_symbol
+        elsif role == APPLIANCES_ROLE then apply_appliance_visibility(instance, visibility)
         elsif role.start_with?(DOOR_PREFIX) || role.start_with?(DRAWER_PREFIX)
           instance.visible = doors_visible
           symbol = index_by_role(instance.definition.entities)[DOOR_SYMBOL_ROLE]
@@ -190,8 +191,9 @@ module KitchenCabinetMaster
       sync_carcass(model, root, top, layout, carcass_mat, visibility['carcass'] != false)
       sync_toe_kick(model, root, top, layout, ToeKick.material_name(params, door_mat, carcass_mat), visibility['toe_kick'] != false)
       sync_doors(model, root, top, params, layout, door_mat, doors_visible)
-      sync_drawers(model, root, top, params, layout, door_mat, doors_visible)
+      sync_drawers(model, root, top, params, layout, door_mat, doors_visible, carcass_mat)
       sync_indicator(model, root, top, params, layout, doors_visible)
+      sync_appliances(model, root, top, params, layout)
       sync_name_label(model, root, top, params, layout)
       layout
     end
@@ -240,17 +242,18 @@ module KitchenCabinetMaster
 
     # Drawer fronts are built exactly like doors (same overlay container, same
     # handle placement code) but close/open by sliding, not swinging.
-    def self.sync_drawers(model, root, top, params, layout, material, visible)
+    def self.sync_drawers(model, root, top, params, layout, material, visible, carcass_material = nil)
       depth = params['depth'].to_f
       transform = ->(drawer, fraction) { DrawerAnimation.transformation(drawer, depth, fraction) }
-      sync_openables(model, root, top, params, layout.drawers, DRAWER_PREFIX, material, visible, transform)
+      boxes = { materials: carcass_material || material, panels: layout.drawer_boxes || {} }
+      sync_openables(model, root, top, params, layout.drawers, DRAWER_PREFIX, material, visible, transform, boxes)
     end
     private_class_method :sync_drawers
 
     # Shared by doors and drawers: each is a small container (its own panel plus
     # an optional handle) whose closed-vs-open placement is worked out by
     # `transform` (rotation for a door, sliding for a drawer).
-    def self.sync_openables(model, root, top, params, items, prefix, material, visible, transform)
+    def self.sync_openables(model, root, top, params, items, prefix, material, visible, transform, boxes = nil)
       entities = root.definition.entities
       leftovers = top.select { |role, _| role.start_with?(prefix) }
       bundle = CatalogManager.handle_bundle(params['handle_id'])
@@ -267,7 +270,7 @@ module KitchenCabinetMaster
         container = door_container(model, entities, existing, item, root.name, transformation)
         DoorAnimation.set_open(container, true) if was_open && !existing
         container.visible = visible
-        sync_door_contents(model, container, item, params, material, bundle)
+        sync_door_contents(model, container, item, params, material, bundle, boxes)
       end
 
       leftovers.each_value { |surplus| discard_instance(model, surplus) }
@@ -292,17 +295,27 @@ module KitchenCabinetMaster
 
     # Inside the container the door panel sits at the origin (the container itself
     # carries the door's position), and the handle sits on the panel's front face.
-    def self.sync_door_contents(model, container, door, params, material, bundle)
+    def self.sync_door_contents(model, container, door, params, material, bundle, boxes = nil)
       entities = container.definition.entities
       panel = CabinetLayout::Panel.new(role: DOOR_PANEL_ROLE, name: "#{door.name} Panel", extent: door.extent,
                                        offset: [0, 0, 0])
       reconcile(model, entities, [panel], material, scope: ->(role) { role == DOOR_PANEL_ROLE }) do |_item, _existing|
         Geom::Transformation.new
       end
+      sync_drawer_box(model, entities, door, boxes) if door.role.start_with?(DRAWER_PREFIX)
       sync_handle(model, entities, door, params, bundle)
       sync_door_symbol(model, container, door, params)
     end
     private_class_method :sync_door_contents
+
+    # The inner box of a drawer: inside its container, so it slides out with the front.
+    def self.sync_drawer_box(model, entities, drawer, boxes)
+      panels = boxes ? Array(boxes[:panels][drawer.role]) : []
+      reconcile(model, entities, panels, boxes ? boxes[:materials] : nil, scope: ->(role) { role.include?('_box_') }) do |panel, _existing|
+        Geom::Transformation.new(panel.offset.map(&:mm))
+      end
+    end
+    private_class_method :sync_drawer_box
 
     # The dashed opening-direction lines ON the door. They are a small container
     # inside the door, so they swing with it. Every hinged door has them (a drawer
@@ -398,6 +411,44 @@ module KitchenCabinetMaster
     end
     private_class_method :rebuild_indicator
 
+    # ---- the appliances of an oven housing -------------------------------------------
+
+    APPLIANCES_ROLE = 'appliances'
+    APPLIANCE_STEEL = 'Appliance Steel'
+    APPLIANCE_GLASS = 'Appliance Glass'
+
+    # The ovens and microwave as plain boxes (a steel body and a dark front), in a container of their
+    # own, shown or hidden by the Show appliances / Show oven / Show microwave ticks.
+    def self.sync_appliances(model, root, top, params, layout)
+      items = layout.appliances || []
+      existing = top[APPLIANCES_ROLE]
+      if items.empty?
+        discard_instance(model, existing) if existing
+        return
+      end
+
+      container = ensure_container(model, root, top, APPLIANCES_ROLE, 'Appliances', layout.base_z)
+      entities = container.definition.entities
+      have = index_by_role(entities)
+      items.each do |item|
+        definition = PanelGenerator.definition(model, item.extent)
+        instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
+        instance.name = item.name
+        glass = item.role.end_with?('_front')
+        MaterialManager.apply(instance, glass ? APPLIANCE_GLASS : APPLIANCE_STEEL, model, glass ? '#1d2127' : '#aeb4bd')
+      end
+      have.each_value { |surplus| discard_instance(model, surplus) }
+      apply_appliance_visibility(container, params['visibility_settings'] || {})
+    end
+    private_class_method :sync_appliances
+
+    def self.apply_appliance_visibility(container, visibility)
+      container.visible = visibility['appliances'] == true
+      index_by_role(container.definition.entities).each do |role, instance|
+        instance.visible = role.include?('_micro_') ? visibility['microwave'] != false : visibility['oven'] != false
+      end
+    end
+
     # ---- the cabinet's name, flat on its top ---------------------------------------
 
     NAME_ROLE = 'name_label'
@@ -417,13 +468,16 @@ module KitchenCabinetMaster
         return
       end
 
-      depth = CabinetLayout.corner?(params) ? params['width'].to_f : params['depth'].to_f
+      depth = CabinetLayout.corner?(params) ? CabinetLayout.corner_extent(params) : params['depth'].to_f
       width = params['width'].to_f
       z = layout.top_z + label_lift(model, params) + 0.2
-      signature = [name, z.round(2), depth, width, 'along-width'].join('|')
+      # A base unit's name goes on the strip along its FRONT edge (where the front top rail is), so it
+      # stays in view from the front and from straight above; everything else is centred.
+      front = params['cabinet_category'].to_s == 'base'
+      signature = [name, z.round(2), depth, width, 'along-width', front].join('|')
       container = ensure_container(model, root, top, NAME_ROLE, 'Cabinet Name', 0)
       unless container.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature
-        rebuild_name_label(model, container, name, depth, width, z)
+        rebuild_name_label(model, container, name, depth, width, z, front)
         container.set_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY, signature)
       end
       container.visible = true
@@ -441,7 +495,7 @@ module KitchenCabinetMaster
     end
     private_class_method :label_lift
 
-    def self.rebuild_name_label(model, container, name, depth, width, z)
+    def self.rebuild_name_label(model, container, name, depth, width, z, front = false)
       entities = container.definition.entities
       entities.clear!
       group = entities.add_group
@@ -455,10 +509,12 @@ module KitchenCabinetMaster
       # turn it a quarter so it runs along Y (the width) and its letters stand towards the back
       group.transform!(Geom::Transformation.rotation(group.bounds.center, Geom::Vector3d.new(0, 0, 1), Math::PI / 2.0))
       bounds = group.bounds
-      scale = [1.0, (width.mm * 0.8) / [bounds.height, 1.0.mm].max, (depth.mm * 0.6) / [bounds.width, 1.0.mm].max].min
+      across = front ? [Defaults::RAIL_DEPTH * 0.7, depth * 0.6].min : depth * 0.6
+      scale = [1.0, (width.mm * 0.8) / [bounds.height, 1.0.mm].max, across.mm / [bounds.width, 1.0.mm].max].min
       group.transform!(Geom::Transformation.scaling(bounds.center, scale)) if scale < 1.0
       bounds = group.bounds
-      middle = Geom::Point3d.new(depth.mm / 2.0, width.mm / 2.0, z.mm)
+      x = front ? depth - (Defaults::RAIL_DEPTH / 2.0) : depth / 2.0
+      middle = Geom::Point3d.new(x.mm, width.mm / 2.0, z.mm)
       group.transform!(Geom::Transformation.translation(middle - bounds.center))
       group.name = 'Name'
       MaterialManager.apply(group, NAME_MATERIAL, model, '#1c1c1c')

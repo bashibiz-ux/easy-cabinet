@@ -18,6 +18,8 @@ module KitchenCabinetMaster
       'material_thickness'    => { label: 'Panel thickness', min: 6.0, max: 50.0 },
       'back_thickness'        => { label: 'Back panel thickness', min: 3.0, max: 25.0 },
       'carcass_raise'         => { label: 'Carcass bottom raise', min: 0.0, max: 1000.0 },
+      'oven_height'           => { label: 'Oven height', min: 300.0, max: 900.0 },
+      'micro_height'          => { label: 'Microwave height', min: 200.0, max: 600.0 },
       'door_gap'              => { label: 'Door gap', min: 0.0, max: 10.0 },
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
       'door_distance'         => { label: 'Door distance', min: 0.0, max: 50.0 },
@@ -75,6 +77,12 @@ module KitchenCabinetMaster
       # A corner-type catalog entry says what shape it is (see CabinetManager.prepare).
       style = raw['corner_style'].to_s
       out['corner_style'] = style if Defaults::CORNER_STYLES.include?(style)
+      second_length = to_float(raw['leg2_length'])
+      out['leg2_length'] = second_length if second_length && second_length > 0 && out['corner_style'] == 'l_shape'
+      second_depth = to_float(raw['leg2_depth'])
+      out['leg2_depth'] = second_depth if second_depth && second_depth > 0 && out['corner_style'] == 'l_shape'
+      set = raw['appliance_set'].to_s
+      out['appliance_set'] = Defaults::APPLIANCE_SETS.include?(set) ? set : ''
       zone = to_float(raw['front_zone'])
       out['front_zone'] = zone if zone && zone >= 0
       bottom = to_float(raw['bottom_zone'])
@@ -272,6 +280,7 @@ module KitchenCabinetMaster
       return unless (zone.positive? || bottom.positive?) && door_count.to_i.positive? && (bad & %w[height door_gap door_reveal]).empty? && out['height']
 
       if bottom.positive? && drawer_count.to_i.positive?
+        check_appliances(out, bottom, errors)
         each = (bottom - out['door_reveal'] - (out['door_gap'] / 2.0) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
         errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
         niche = out['height'] - bottom - zone - (2 * out['door_gap'])
@@ -286,6 +295,20 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :check_zone
+
+    # The appliances of an oven housing, stacked on shelves above the drawers, must leave room for a door.
+    def self.check_appliances(out, bottom, errors)
+      kinds = { 'oven' => [:oven], 'double_oven' => %i[oven oven], 'oven_micro' => %i[oven micro] }[out['appliance_set']]
+      return unless kinds && out['oven_height'] && out['micro_height'] && out['material_thickness']
+
+      t = out['material_thickness']
+      used = bottom + kinds.sum { |kind| t + (kind == :oven ? out['oven_height'] : out['micro_height']) + 4.0 } + t
+      door = out['height'] - used
+      return if door >= MIN_DOOR_SIZE + out['door_reveal']
+
+      errors << error('oven_height', "The appliances do not fit: they leave only #{fmt(door.round(1))} mm for the door above them (needs #{fmt(MIN_DOOR_SIZE + out['door_reveal'])}). Choose smaller appliances or a taller unit.")
+    end
+    private_class_method :check_appliances
 
     # A cabinet type has doors OR drawers, never both, so this and check_doors
     # never both fire for the same cabinet in practice.
@@ -322,9 +345,7 @@ module KitchenCabinetMaster
       end
 
       if Defaults.corner_style(out) == 'l_shape'
-        if out['width'] - out['depth'] < MIN_L_ARM
-          errors << error('depth', "Depth is too large for a #{fmt(out['width'])} mm wide L-shaped corner unit: each arm needs at least #{fmt(MIN_L_ARM)} mm of door beyond the depth.")
-        end
+        check_l_shape(out, errors)
         return
       end
 
@@ -340,6 +361,27 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :check_corner
+
+    # An L-shaped corner: each leg's depth must leave room for the other leg's door (the same rules the
+    # L-corner builder script uses: a leg's depth stays under the other leg's length less a panel).
+    def self.check_l_shape(out, errors)
+      t = out['material_thickness']
+      la = out['width']
+      da = out['depth']
+      lb = out['leg2_length'].to_f.positive? ? out['leg2_length'] : la
+      db = out['leg2_depth'].to_f.positive? ? out['leg2_depth'] : da
+      if da >= lb - t
+        errors << error('depth', "Leg 1 depth (#{fmt(da)} mm) must be less than leg 2 length (#{fmt(lb)} mm) minus a panel.")
+      elsif lb - da < MIN_L_ARM
+        errors << error('depth', "Leg 2 needs at least #{fmt(MIN_L_ARM)} mm of door beyond leg 1's depth.")
+      end
+      if db >= la - t
+        errors << error('leg2_depth', "Leg 2 depth (#{fmt(db)} mm) must be less than leg 1 length (#{fmt(la)} mm) minus a panel.")
+      elsif la - db < MIN_L_ARM
+        errors << error('leg2_depth', "Leg 1 needs at least #{fmt(MIN_L_ARM)} mm of door beyond leg 2's depth.")
+      end
+    end
+    private_class_method :check_l_shape
 
     # A blind corner: a door over the open part and a fixed panel over the blind part.
     def self.check_blind(out, errors, bad)

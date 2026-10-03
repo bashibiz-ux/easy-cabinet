@@ -7,6 +7,11 @@ module KitchenCabinetMaster
   module Defaults
     # Toe-kick material choices that follow another part instead of naming a material.
     CORNER_STYLES = %w[diagonal l_shape blind].freeze
+    APPLIANCE_SETS = %w[oven double_oven oven_micro].freeze # what an oven housing can hold
+    OVEN_HEIGHT = 595.0   # a standard built-in oven
+    MICRO_HEIGHT = 380.0  # a standard built-in microwave
+    DRAWER_BOX_THICKNESS = 18.0 # the boards of a drawer's inner box
+    DRAWER_SLIDE_GAP = 13.0     # room each side of the box for the runners
     SAME_AS_DOOR    = '__door__'
     SAME_AS_CARCASS = '__carcass__'
     SAME_AS_CABINET = '__cabinet__' # stored by older versions; it means "same as door material"
@@ -150,6 +155,11 @@ module KitchenCabinetMaster
       'corner_style' => '',        # a corner unit's shape: diagonal, l_shape or blind (blank = an ordinary cabinet)
       'front_zone' => 0.0,          # drawers over a door: the height of the drawer zone at the top; a door alone: the door's height at the top (0 = full height)
       'bottom_zone' => 0.0,         # an oven housing: the height of the drawers at the bottom (the door is front_zone at the top, the niche between)
+      'appliance_set' => '',       # an oven housing: oven, double_oven or oven_micro
+      'oven_height' => 595.0,
+      'micro_height' => 380.0,
+      'leg2_length' => 0.0,         # an L-shaped corner: the second leg's length and depth (0 = the same as the first)
+      'leg2_depth' => 0.0,
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
       'hide_base_handles' => false, # base units' handles hidden (a tick in Visibility)
@@ -173,7 +183,7 @@ module KitchenCabinetMaster
       'toe_kick_material'      => SAME_AS_DOOR,
       'toe_kick_piece_length'  => 2000.0,
 
-      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true }
+      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true }
     }.freeze
 
     # A filler: a flat board beside a cabinet, on its wall side, with its front face

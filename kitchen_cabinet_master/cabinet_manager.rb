@@ -264,7 +264,7 @@ module KitchenCabinetMaster
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
       on = ->(value) { [true, 'true', 1, '1'].include?(value) }
-      visibility = %w[carcass door toe_kick].to_h { |key| [key, on.call(raw[key])] }
+      visibility = %w[carcass door toe_kick appliances oven microwave].to_h { |key| [key, on.call(raw[key])] }
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
@@ -407,7 +407,8 @@ module KitchenCabinetMaster
       cabinet = CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
       # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
       # also say how wide the blind part is): the shape travels with the cabinet.
-      raw = raw.merge('corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'], 'bottom_zone' => cabinet && cabinet['zone_bottom'])
+      raw = raw.merge('appliance_set' => (cabinet && cabinet['appliances'] ? (raw['appliance_set'].to_s.empty? ? cabinet['appliances'] : raw['appliance_set']) : ''),
+                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => cabinet && cabinet['zone'], 'bottom_zone' => cabinet && cabinet['zone_bottom'])
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
 

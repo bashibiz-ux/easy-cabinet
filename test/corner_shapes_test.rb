@@ -45,8 +45,8 @@ class CornerShapesTest < Minitest::Test
   def test_the_l_has_two_arms_with_a_door_on_each_front
     layout = CabinetLayout.compute(params)
     roles = layout.panels.map(&:role)
-    %w[left_side right_side front_return inner_front_1 inner_front_2 back bottom top shelf_1].each { |r| assert_includes roles, r } if params['shelf_count'].to_i.positive?
-    %w[left_side right_side front_return inner_front_1 inner_front_2 back bottom top].each { |r| assert_includes roles, r }
+    %w[right_side front_return back back_2 bottom top].each { |r| assert_includes roles, r }
+    refute_includes roles, 'inner_front_1', 'the doors are the front; the legs have no inner panels'
     assert_equal 6, layout.panels.find { |p| p.role == 'bottom' }.points.length, 'the bottom is L-shaped'
     assert_equal 2, layout.doors.length
     one, two = layout.doors.map { |d| plan_box(d) }
@@ -68,7 +68,7 @@ class CornerShapesTest < Minitest::Test
   def test_a_wall_l_unit_hangs_and_keeps_its_doors_full_height
     layout = CabinetLayout.compute(params('cabinet_category' => 'wall', 'toe_kick_height' => 0.0, 'depth' => 320.0, 'carcass_raise' => 100.0))
     assert_equal 0.0, layout.base_z
-    assert_equal 680.0, layout.panels.find { |p| p.role == 'left_side' }.extent[2]
+    assert_equal 680.0, layout.panels.find { |p| p.role == 'right_side' }.extent[2]
     assert_equal 780.0 - 2 * Defaults.params['door_reveal'], layout.doors.first.extent[2]
   end
 
@@ -86,6 +86,24 @@ class CornerShapesTest < Minitest::Test
     flipped = CabinetLayout.compute(p.merge('door_opening_direction' => 'right'))
     assert_operator flipped.panels.find { |x| x.role == 'blind_front' }.offset[1], :<, flipped.doors.first.offset[1], 'blind on the left'
     assert_equal [560.0 + 2.0 + 18.0, 1000.0, 880.0], CabinetLayout.envelope(p), 'a blind corner is a straight cabinet'
+  end
+
+  def test_the_two_legs_can_differ_in_length_and_depth
+    p = params('width' => 1000.0, 'depth' => 560.0, 'leg2_length' => 800.0, 'leg2_depth' => 400.0)
+    assert_equal [800.0, 1000.0, 880.0], CabinetLayout.envelope(p), 'x reaches leg 2''s length, y leg 1''s'
+    layout = CabinetLayout.compute(p)
+    bottom = layout.panels.find { |x| x.role == 'bottom' }.points
+    assert_equal [800.0 - 18.0, 400.0], bottom[2], 'leg 2 ends at its side panel, the notch is leg 2''s depth'
+    assert_equal [560.0, 400.0], bottom[3], 'the inside corner is at (leg 1 depth, leg 2 depth)'
+    assert_equal [560.0, 1000.0 - 18.0], bottom[4]
+    one, two = layout.doors.map { |d| plan_box(d) }
+    refute overlap?(one, two)
+    assert_in_delta 1000.0 - Defaults.params['door_reveal'], one[3], 0.01, 'door A reaches leg 1''s end'
+    assert_in_delta 800.0 - Defaults.params['door_reveal'], two[1], 0.01, 'door B reaches leg 2''s end'
+    side_one = layout.panels.find { |x| x.role == 'right_side' }
+    side_two = layout.panels.find { |x| x.role == 'front_return' }
+    assert_equal [560.0, 18.0], side_one.extent.first(2), 'leg 1''s end panel is as deep as leg 1'
+    assert_equal [18.0, 400.0], side_two.extent.first(2), 'leg 2''s end panel is as deep as leg 2'
   end
 
   def test_the_sizes_are_checked

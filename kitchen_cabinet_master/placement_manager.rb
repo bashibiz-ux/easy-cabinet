@@ -28,7 +28,7 @@ module KitchenCabinetMaster
     def self.target_for_new(model, params)
       corner = CabinetLayout.corner?(params)
       target_row(model, params, CabinetLayout.envelope(params),
-                 turn: corner ? CORNER_TURN_DEGREES : nil, own_width: params['width'].to_f,
+                 turn: corner ? CORNER_TURN_DEGREES : nil, own_width: corner ? CabinetLayout.envelope(params)[0] : params['width'].to_f,
                  z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0,
                  wall: params['cabinet_category'].to_s == 'wall', base: params['cabinet_category'].to_s == 'base')
     end

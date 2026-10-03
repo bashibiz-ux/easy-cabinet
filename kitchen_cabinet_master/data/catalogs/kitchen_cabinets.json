@@ -157,6 +157,26 @@
         }
       },
       {
+        "id": "base_drawer_2door",
+        "name": "Base - 1 drawer over 2 doors",
+        "code": "BDU",
+        "doors": 2,
+        "drawers": 1,
+        "shelves": 1,
+        "widths": [
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "zone": 180,
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_sink",
         "name": "Base - sink, 2 doors",
         "code": "BS",
@@ -170,6 +190,24 @@
         ],
         "defaults": {
           "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_sink_1door",
+        "name": "Base - sink, 1 door",
+        "code": "BS",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          400,
+          450,
+          500,
+          600
+        ],
+        "defaults": {
+          "width": 600,
           "depth": 560,
           "height": 780
         }
@@ -432,6 +470,7 @@
         ],
         "zone": 860,
         "zone_bottom": 700,
+        "appliances": "oven",
         "defaults": {
           "width": 600,
           "depth": 560,

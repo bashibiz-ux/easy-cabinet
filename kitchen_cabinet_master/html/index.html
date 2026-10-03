@@ -192,6 +192,34 @@
             <div class="input"><input id="height" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
+        <!-- An oven housing holds one oven, two ovens, or an oven and a microwave; the heights are the appliances' sizes. -->
+        <div id="applianceFields" hidden>
+          <label class="field">
+            <span class="label">Appliances</span>
+            <div class="input"><select id="applianceSet"></select></div>
+          </label>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Oven Height</span>
+              <div class="input"><input id="ovenHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field" id="microHeightField">
+              <span class="label">Microwave Height</span>
+              <div class="input"><input id="microHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+        </div>
+        <!-- An L-shaped corner unit has a second leg of its own: Width and Depth are leg 1. -->
+        <div class="grid-2" id="legFields" hidden>
+          <label class="field">
+            <span class="label">Leg 2 Length</span>
+            <div class="input"><input id="leg2Length" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Leg 2 Depth</span>
+            <div class="input"><input id="leg2Depth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+          </label>
+        </div>
         <label class="field narrow" id="carcassRaiseField" hidden>
           <span class="label">Carcass bottom raise upward</span>
           <div class="input"><input id="carcassRaise" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
@@ -393,6 +421,9 @@
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
         <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
+        <label class="check"><input type="checkbox" id="showAppliances"><span>Show appliances (oven and microwave)</span></label>
+        <label class="check"><input type="checkbox" id="showOven" checked><span>Show oven</span></label>
+        <label class="check"><input type="checkbox" id="showMicro" checked><span>Show microwave</span></label>
         <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
         <label class="check"><input type="checkbox" id="hideBaseHandles"><span>Show base unit handles</span></label>
         <label class="check"><input type="checkbox" id="hideWallHandles"><span>Show wall unit handles</span></label>

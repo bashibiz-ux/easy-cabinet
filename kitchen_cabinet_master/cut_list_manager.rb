@@ -94,6 +94,7 @@ module KitchenCabinetMaster
       end
       fronts = layout.doors + layout.drawers
       fronts.each { |item| out << board(item.name, item.extent, door, owner) }
+      (layout.drawer_boxes || {}).each_value { |panels| panels.each { |p| out << board(p.name, p.extent, carcass, owner) } }
 
       id = stored['handle_id'].to_s
       if !id.empty? && fronts.any?

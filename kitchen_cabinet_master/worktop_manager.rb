@@ -132,7 +132,7 @@ module KitchenCabinetMaster
     def self.corner_slab(run, front, thickness)
       width = run[:length]
       returned = run[:items].first[:return_depth] || width
-      return l_slab(width, returned, front, thickness) if run[:items].first[:corner_style] == 'l_shape'
+      return l_slab(run[:items].first, front, thickness) if run[:items].first[:corner_style] == 'l_shape'
       cut = [returned + (front * SQRT2), width].min
       points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
       { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
@@ -141,10 +141,15 @@ module KitchenCabinetMaster
 
     # An L-shaped corner unit has an L-shaped worktop: two arms as deep as the unit (plus the
     # front overhang) along the walls.
-    def self.l_slab(width, returned, front, thickness)
-      arm = [returned + front, width].min
-      points = [[0.0, 0.0], [0.0, width], [arm, width], [arm, arm], [width, arm], [width, 0.0]]
-      { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points }
+    def self.l_slab(item, front, thickness)
+      la = item[:width]                                               # leg 1: along Y (its length) ...
+      da = item[:return_depth] || la                                  # ... and how deep it is
+      lb = item[:leg2_length].to_f.positive? ? item[:leg2_length] : la # leg 2: along X
+      db = item[:leg2_depth].to_f.positive? ? item[:leg2_depth] : da
+      a = [da + front, lb].min
+      b = [db + front, la].min
+      points = [[0.0, 0.0], [0.0, la], [a, la], [a, b], [lb, b], [lb, 0.0]]
+      { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: points }
     end
     private_class_method :l_slab
 
@@ -269,7 +274,8 @@ module KitchenCabinetMaster
         corner = !filler && CabinetLayout.corner?(stored)
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
-          corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f, ref: item }
+          corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
+          leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item }
       end
     end
 
