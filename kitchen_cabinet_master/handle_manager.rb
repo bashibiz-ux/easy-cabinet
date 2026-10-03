@@ -96,6 +96,11 @@ module KitchenCabinetMaster
       # offset from), regardless of the chosen position; marked by hinge 'center'.
       # A horizontal handle can be centred across the door instead of sitting at its
       # free edge: still at the top of the door, `vertical` (the offset) below the edge.
+      # A lift-up door is taken hold of along its bottom edge: the handle is centred there.
+      if door.hinge == 'top'
+        return { 'u' => door_w / 2.0, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
+      end
+
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
         v = case position
             when 'bottom' then vertical + half_v

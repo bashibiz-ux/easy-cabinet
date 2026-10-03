@@ -90,7 +90,7 @@ module KitchenCabinetMaster
 
       out = layout.panels.map do |panel|
         shaped = panel.points && !panel.points.empty?
-        board(panel.name + (shaped ? ' (shaped)' : ''), panel.extent, carcass, owner)
+        board(panel.name + (shaped ? ' (shaped)' : ''), panel.extent, panel.front ? door : carcass, owner) # a front panel is cut from the door material
       end
       fronts = layout.doors + layout.drawers
       fronts.each { |item| out << board(item.name, item.extent, door, owner) }

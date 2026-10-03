@@ -122,6 +122,25 @@
         }
       },
       {
+        "id": "base_3drawer_graded",
+        "name": "Base - 3 drawers, small-small-big",
+        "code": "BD",
+        "doors": 0,
+        "drawers": 3,
+        "shelves": 0,
+        "widths": [
+          600,
+          800,
+          900
+        ],
+        "pattern": "1,1,2",
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_4drawer",
         "name": "Base - 4 drawers",
         "code": "BD",
@@ -295,6 +314,9 @@
           900
         ],
         "zone_bottom": 140,
+        "bottom_label": "Drawer Height",
+        "top_front": 40,
+        "top_front_label": "Top Panel Height",
         "appliances": "oven",
         "appliance_sets": [
           "oven"
@@ -525,6 +547,8 @@
         "widths": [
           600
         ],
+        "fridge": 1780,
+        "fridge_label": "Fridge Door Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -540,8 +564,9 @@
         "widths": [
           600
         ],
-        "stacked": true,
-        "zone": 700,
+        "fridge": 1780,
+        "fridge_label": "Fridge Door Height",
+        "zone": 1100,
         "zone_label": "Top Door Height",
         "defaults": {
           "width": 600,
@@ -561,6 +586,7 @@
         ],
         "zone": 860,
         "zone_bottom": 700,
+        "bottom_label": "Drawer Zone Height",
         "appliances": "oven",
         "defaults": {
           "width": 600,

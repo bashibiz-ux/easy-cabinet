@@ -47,12 +47,31 @@ module KitchenCabinetMaster
       Geom::Transformation.rotation(pivot, Geom::Vector3d.new(0, 0, 1), degrees * Math::PI / 180.0) * translation
     end
 
+    # A lift-up door ('top' hinge) turns about the horizontal line along its top edge, so its bottom edge
+    # swings up and out; every other door about the vertical hinge line.
     def self.swing(spec, angle, fraction)
+      angle = angle_for(spec, angle)
+      if spec.hinge == 'top'
+        return Geom::Transformation.rotation(Geom::Point3d.new(*spec.pivot.map(&:mm)), Geom::Vector3d.new(0, 1, 0),
+                                             -angle * fraction * Math::PI / 180.0)
+      end
+
       Geom::Transformation.rotation(
         Geom::Point3d.new(*spec.pivot.map(&:mm)),
         Geom::Vector3d.new(0, 0, 1),
         swing_radians(spec.hinge, spec.rotation, angle, fraction)
       )
+    end
+
+    LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
+
+    # How far a door really opens: the panel's Opening Angle, but never less than the door's own `swing`
+    # (an L corner's doors open wide to show the inside) and, for a lift-up door, never more than it can.
+    def self.angle_for(spec, angle)
+      angle = angle.to_f
+      angle = [angle, spec.swing.to_f].max if spec.respond_to?(:swing) && spec.swing
+      angle = [angle, LIFT_MAX_ANGLE].min if spec.hinge == 'top'
+      angle
     end
 
     # Signed rotation in radians. Pure maths, no SketchUp objects.
@@ -188,18 +207,20 @@ module KitchenCabinetMaster
     # them showing the movement. (The other symbol, on the door itself, is
     # door_symbol_segments; the two are switched on and off independently.)
     def self.indicator_segments(doors, angle, base_z)
-      doors.flat_map { |door| plan_indicator(door, angle, base_z) }
+      doors.reject { |door| door.hinge == 'top' }.flat_map { |door| plan_indicator(door, angle, base_z) } # a lift-up door has no plan line
     end
 
     # A short text that changes whenever the indicator would look different.
     # Base Z is left out on purpose: the indicator container moves with the toe
     # kick, so a change of toe-kick height must not rebuild the lines.
     def self.indicator_signature(doors, angle, base_z)
-      shapes = doors.map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2)] }
+      shapes = doors.reject { |d| d.hinge == 'top' }
+                    .map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2), angle_for(d, angle)] }
       shapes.push(angle.to_f).inspect
     end
 
     def self.plan_indicator(door, angle, base_z)
+      angle = angle_for(door, angle)
       px, py, = door.pivot
       thickness, width, = door.extent
       z = -base_z # the cabinet's floor (its Z = 0), relative to the container that sits at base Z
@@ -231,6 +252,11 @@ module KitchenCabinetMaster
     def self.door_symbol_segments(door)
       thickness, width, height = door.extent
       x = thickness + ELEVATION_STANDOFF
+      if door.hinge == 'top' # a lift-up door: from the middle of the top edge to the bottom corners
+        apex = [x, width / 2.0, height]
+        return [[apex, [x, 0.0, 0.0]], [apex, [x, width, 0.0]]]
+      end
+
       hinge_y = door.hinge == 'left' ? 0.0 : width
       free_y = width - hinge_y
       apex = [x, hinge_y, height / 2.0]

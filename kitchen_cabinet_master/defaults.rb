@@ -10,9 +10,8 @@ module KitchenCabinetMaster
     APPLIANCE_SETS = %w[oven double_oven oven_micro].freeze # what an oven housing can hold
     OVEN_HEIGHT = 595.0   # a standard built-in oven
     MICRO_HEIGHT = 380.0  # a standard built-in microwave
-    DRAWER_BOX_THICKNESS = 18.0 # the boards of a drawer's inner box
-    DRAWER_SLIDE_GAP = 10.0     # room each side of the box for the runners
-    DRAWER_BOX_SETBACK = 52.0   # the box is this much shorter than the carcass is deep
+    DRAWER_SLIDE_GAP = 13.0     # a drawer's inner box sits this far clear of the carcass on each side
+    DRAWER_BACK_GAP = 46.0      # and its back is this far from the wall behind the cabinet
     SAME_AS_DOOR    = '__door__'
     SAME_AS_CARCASS = '__carcass__'
     SAME_AS_CABINET = '__cabinet__' # stored by older versions; it means "same as door material"
@@ -160,7 +159,12 @@ module KitchenCabinetMaster
       'bottom_zone' => 0.0,         # an oven housing: the height of the drawers at the bottom (the door is front_zone at the top, the niche between)
       'appliance_set' => '',       # an oven housing: oven, double_oven or oven_micro
       'oven_height' => 595.0,
+      'oven2_height' => 595.0,      # a second oven (two ovens): its own height
       'micro_height' => 380.0,
+      'fridge' => false,            # a built-in fridge: drawn behind the doors, with a lift-up door over it
+      'fridge_height' => 0.0,       # the height of the fridge doors from the carcass bottom (0 = the whole unit)
+      'top_front' => 0.0,           # a fixed front panel across the top (over a built-in oven): its height (0 = none)
+      'drawer_pattern' => '',       # drawer fronts of unequal height, listed from the top down: "1,1,2"
       'leg2_length' => 0.0,         # an L-shaped corner: the second leg's length and depth (0 = the same as the first)
       'leg2_depth' => 0.0,
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
@@ -187,7 +191,7 @@ module KitchenCabinetMaster
       'toe_kick_material'      => SAME_AS_DOOR,
       'toe_kick_piece_length'  => 2000.0,
 
-      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true }
+      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true, 'fridge' => true }
     }.freeze
 
     # A filler: a flat board beside a cabinet, on its wall side, with its front face

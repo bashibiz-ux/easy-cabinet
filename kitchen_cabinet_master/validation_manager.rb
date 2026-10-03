@@ -19,6 +19,7 @@ module KitchenCabinetMaster
       'back_thickness'        => { label: 'Back panel thickness', min: 3.0, max: 25.0 },
       'carcass_raise'         => { label: 'Carcass bottom raise', min: 0.0, max: 1000.0 },
       'oven_height'           => { label: 'Oven height', min: 300.0, max: 900.0 },
+      'oven2_height'          => { label: 'Second oven height', min: 300.0, max: 900.0 },
       'micro_height'          => { label: 'Microwave height', min: 200.0, max: 600.0 },
       'door_gap'              => { label: 'Door gap', min: 0.0, max: 10.0 },
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
@@ -90,6 +91,13 @@ module KitchenCabinetMaster
       out['bottom_zone'] = bottom if bottom && bottom >= 0
       blind = to_float(raw['blind_width'])
       out['blind_width'] = blind if blind && blind >= 0
+      out['fridge'] = truthy?(raw['fridge'])
+      fridge = to_float(raw['fridge_height'])
+      out['fridge_height'] = fridge if fridge && fridge >= 0
+      top_front = to_float(raw['top_front'])
+      out['top_front'] = top_front if top_front && top_front >= 0
+      pattern = raw['drawer_pattern'].to_s.strip
+      out['drawer_pattern'] = pattern if pattern.match?(/\A\d+(\.\d+)?(,\d+(\.\d+)?)*\z/)
     end
     private_class_method :check_identity
 
@@ -278,13 +286,14 @@ module KitchenCabinetMaster
     def self.check_zone(out, door_count, drawer_count, errors, bad)
       zone = out['front_zone'].to_f
       bottom = out['bottom_zone'].to_f
+      return check_fridge(out, door_count, errors, bad) if out['fridge']
       return check_stacked(out, errors, bad) if out['door_stacked'] && door_count.to_i == 2
       return unless (zone.positive? || bottom.positive?) && (door_count.to_i.positive? || (bottom.positive? && drawer_count.to_i.positive?)) &&
                     (bad & %w[height door_gap door_reveal]).empty? && out['height']
 
       if bottom.positive? && drawer_count.to_i.positive?
         check_appliances(out, bottom, errors, door_count.to_i.positive?)
-        each = (bottom - out['door_reveal'] - (out['door_gap'] / 2.0) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
+        each = (bottom - (2 * out['door_reveal']) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
         errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
         niche = out['height'] - bottom - zone - (2 * out['door_gap'])
         errors << error('height', "The niche between the drawers and the door would be only #{fmt(niche.round(1))} mm high.") if zone.positive? && niche < 100.0
@@ -313,25 +322,66 @@ module KitchenCabinetMaster
     end
     private_class_method :check_stacked
 
-    # The appliances of an oven housing, stacked on shelves above the drawers, must leave room for a door.
+    # The appliances of an oven housing, stacked on shelves above the drawers, must leave room for a door
+    # (or, with no door, for the top panel or the fixed panel over them).
     def self.check_appliances(out, bottom, errors, with_door = true)
-      kinds = { 'oven' => [:oven], 'double_oven' => %i[oven oven], 'oven_micro' => %i[oven micro] }[out['appliance_set']]
-      return unless kinds && out['oven_height'] && out['micro_height'] && out['material_thickness']
+      heights = { 'oven' => [out['oven_height']], 'double_oven' => [out['oven_height'], out['oven2_height']],
+                  'oven_micro' => [out['oven_height'], out['micro_height']] }[out['appliance_set']]
+      return unless heights && heights.all? && out['material_thickness']
 
       t = out['material_thickness']
-      stacked = bottom + kinds.sum { |kind| t + (kind == :oven ? out['oven_height'] : out['micro_height']) + 4.0 }
-      unless with_door # a built-in oven with no door: the appliances must fit under the top panel
-        room = out['height'] - t - stacked
-        errors << error('oven_height', "The appliances do not fit: they need #{fmt((-room).round(1))} mm more height under the top panel. Choose a smaller appliance set or a taller unit.") if room.negative?
+      ends = (bottom - t) + heights.sum { |height| t + height + 4.0 } # where the appliances (and their air gap) end
+      unless with_door # a built-in oven with no door: the appliances must fit under the top panel or the panel over them
+        limit = out['height'] - (out['top_front'].to_f.positive? ? out['top_front'] : t)
+        room = limit - ends
+        what = out['top_front'].to_f.positive? ? 'the panel over them' : 'the top panel'
+        errors << error('oven_height', "The appliances do not fit: they need #{fmt((-room).round(1))} mm more height under #{what}. Choose a smaller appliance set or a taller unit.") if room.negative?
         return
       end
 
-      door = out['height'] - (stacked + t)
-      return if door >= MIN_DOOR_SIZE + out['door_reveal']
+      door = out['height'] - (ends + out['door_reveal']) - out['door_reveal']
+      return if door >= MIN_DOOR_SIZE
 
-      errors << error('oven_height', "The appliances do not fit: they leave only #{fmt(door.round(1))} mm for the door above them (needs #{fmt(MIN_DOOR_SIZE + out['door_reveal'])}). Choose smaller appliances or a taller unit.")
+      errors << error('oven_height', "The appliances do not fit: they leave only #{fmt(door.round(1))} mm for the door above them (needs #{fmt(MIN_DOOR_SIZE)}). Choose smaller appliances or a taller unit.")
     end
     private_class_method :check_appliances
+
+    # A built-in fridge: the fridge doors (one, or two stacked) up to `fridge_height`, and a lift-up door over
+    # them unless the fridge height is the whole unit.
+    def self.check_fridge(out, door_count, errors, bad)
+      return unless (bad & %w[height width door_gap door_reveal]).empty? && out['height'] && out['width']
+
+      reveal = out['door_reveal']
+      errors << error('width', "The doors would be only #{fmt((out['width'] - (2 * reveal)).round(1))} mm wide (minimum #{fmt(MIN_DOOR_SIZE)} mm).") if out['width'] - (2 * reveal) < MIN_DOOR_SIZE
+      full = out['height']
+      fridge = out['fridge_height'].to_f
+      fridge = full unless fridge.positive?
+      if fridge > full
+        errors << error('height', "The fridge door height (#{fmt(fridge)} mm) cannot be more than the unit height (#{fmt(full)} mm).")
+        return
+      end
+      if fridge < 400.0
+        errors << error('height', 'The fridge door must be at least 400 mm high.')
+        return
+      end
+      lift = full - fridge
+      if lift.positive? && lift < CabinetLayout::FRIDGE_MIN_LIFT
+        errors << error('height', "The lift-up door above the fridge would be only #{fmt(lift.round(1))} mm high (minimum #{fmt(CabinetLayout::FRIDGE_MIN_LIFT)} mm; make the fridge door as tall as the unit for none).")
+        return
+      end
+
+      span = fridge - (2 * reveal)
+      if door_count.to_i >= 2
+        top = out['front_zone'].to_f
+        bottom = span - out['door_gap'] - top
+        if top.positive? && (top < MIN_DOOR_SIZE || bottom < MIN_DOOR_SIZE)
+          errors << error('height', "The two fridge doors would be #{fmt(top.round(1))} and #{fmt(bottom.round(1))} mm high (each needs at least #{fmt(MIN_DOOR_SIZE)} mm).")
+        end
+      elsif span < MIN_DOOR_SIZE
+        errors << error('height', "The fridge door would be only #{fmt(span.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
+      end
+    end
+    private_class_method :check_fridge
 
     # A cabinet type has doors OR drawers, never both, so this and check_doors
     # never both fire for the same cabinet in practice.
@@ -424,6 +474,7 @@ module KitchenCabinetMaster
       return unless door_count.to_i.positive?
 
       count = door_count.to_i
+      return if out['fridge'] # see check_fridge
       return if out['door_stacked'] && count == 2 # two doors one above the other: see check_stacked
 
       if Defaults.corner_style(out).nil? && (bad & %w[width door_gap door_reveal]).empty? && out['width']

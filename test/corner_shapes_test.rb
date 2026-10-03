@@ -129,14 +129,39 @@ class CornerShapesTest < Minitest::Test
     p = params('width' => 900.0, 'depth' => 580.0, 'leg2_length' => 900.0, 'leg2_depth' => 580.0, 'door_gap' => 1.5, 'door_reveal' => 2.0)
     layout = CabinetLayout.compute(p)
     one, two = layout.doors
-    assert_equal [18.0, 900.0 - 580.0 - 3.0, 780.0 - 3.0], one.extent, 'shutter on leg 2 of the script'
-    assert_equal [18.0, 900.0 - 580.0 - 3.0 - 18.0 - 4.0, 780.0 - 3.0], two.extent, 'shutter on leg 1 of the script'
+    # Door 1 is the door of Leg 1 (Width x Depth), as the script's first shutter: Leg 1 Length - Leg 2 Depth
+    # - 2 gaps - a panel - 4 mm. Door 2 is the second shutter: Leg 2 Length - Leg 1 Depth - 2 gaps.
+    assert_equal [18.0, 900.0 - 580.0 - 3.0 - 18.0 - 4.0, 780.0 - 3.0], one.extent, 'shutter 1 of the script (leg 1)'
+    assert_equal [18.0, 900.0 - 580.0 - 3.0, 780.0 - 3.0], two.extent, 'shutter 2 of the script (leg 2)'
     assert_in_delta 100.0 + 1.5, one.offset[2], 1e-9, 'a 1.5 mm gap under the doors'
     assert_in_delta 580.0 + 2.0, one.offset[0], 1e-9, 'a 2 mm stand-off from the carcass'
-    assert_in_delta 580.0 + 1.5, one.offset[1], 1e-9
+    assert_in_delta 580.0 + 1.5 + 18.0 + 4.0, one.offset[1], 1e-9, 'door 1 starts a panel and 4 mm past the notch'
+    assert_in_delta 900.0 - 1.5, one.offset[1] + one.extent[1], 1e-9, 'and reaches the end of leg 1'
     assert_in_delta 580.0 + 2.0, two.offset[1], 1e-9
-    assert_in_delta 900.0 - 1.5, two.offset[0], 1e-9, 'door B runs from the far end back towards the notch'
-    assert_in_delta 580.0 + 1.5 + 18.0 + 4.0, two.offset[0] - two.extent[1], 1e-9, 'it starts a panel and 4 mm past the notch'
+    assert_in_delta 900.0 - 1.5, two.offset[0], 1e-9, 'door 2 runs from the far end back towards the notch'
+    assert_in_delta 580.0 + 1.5, two.offset[0] - two.extent[1], 1e-9, 'it starts a gap from leg 1'
+  end
+
+  def test_the_l_doors_open_wide_enough_to_see_inside
+    layout = CabinetLayout.compute(params)
+    layout.doors.each { |d| assert_equal 120.0, d.swing }
+    assert_nil CabinetLayout.compute(params('corner_style' => 'diagonal', 'door_count' => 1)).doors.first.swing
+  end
+
+  def test_the_blind_panel_is_the_colour_of_the_door
+    layout = CabinetLayout.compute(params('corner_style' => 'blind', 'door_count' => 1))
+    assert layout.panels.find { |x| x.role == 'blind_front' }.front, 'it takes the door material'
+    refute layout.panels.find { |x| x.role == 'left_side' }.front
+  end
+
+  def test_the_thin_back_runs_9_mm_into_the_groove_of_the_right_side_panel
+    [6.0, 9.0].each do |back|
+      layout = CabinetLayout.compute(params('width' => 1000.0, 'back_thickness' => back))
+      leg1 = layout.panels.find { |x| x.role == 'back' }
+      side = layout.panels.find { |x| x.role == 'right_side' }
+      assert_in_delta side.offset[1] + 9.0, leg1.offset[1] + leg1.extent[1], 1e-9, "back #{back}: 9 mm into the side panel"
+      assert_operator leg1.offset[1] + leg1.extent[1], :<, side.offset[1] + side.extent[1], 'and not through it'
+    end
   end
 
   def test_the_left_back_panel_is_always_an_18_mm_panel_flush_with_the_wall

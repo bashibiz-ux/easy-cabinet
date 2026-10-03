@@ -264,7 +264,7 @@ module KitchenCabinetMaster
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
       on = ->(value) { [true, 'true', 1, '1'].include?(value) }
-      visibility = %w[carcass door toe_kick appliances oven microwave].to_h { |key| [key, on.call(raw[key])] }
+      visibility = %w[carcass door toe_kick appliances oven microwave fridge].to_h { |key| [key, on.call(raw[key])] }
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
@@ -410,7 +410,12 @@ module KitchenCabinetMaster
       # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
       # also say how wide the blind part is): the shape travels with the cabinet.
       raw = raw.merge('appliance_set' => (cabinet && cabinet['appliances'] ? (raw['appliance_set'].to_s.empty? ? cabinet['appliances'] : raw['appliance_set']) : ''),
-                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => zone_height_for(raw, cabinet), 'door_stacked' => cabinet && cabinet['stacked'] == true, 'bottom_zone' => cabinet && cabinet['zone_bottom'])
+                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => zone_height_for(raw, cabinet), 'door_stacked' => cabinet && cabinet['stacked'] == true,
+                      'bottom_zone' => adjustable(raw, cabinet, 'bottom_zone', 'bottom_label', 'zone_bottom'),
+                      'top_front' => adjustable(raw, cabinet, 'top_front', 'top_front_label', 'top_front'),
+                      'fridge' => !!(cabinet && cabinet['fridge']),
+                      'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
+                      'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
 
@@ -439,6 +444,16 @@ module KitchenCabinetMaster
       cabinet['zone_label'] && sent && sent.positive? ? sent : cabinet['zone']
     end
     private_class_method :zone_height_for
+
+    # A measurement that a catalog entry lets the panel adjust (the entry has `label_key`): what the panel
+    # sent in raw[key], else the entry's own value (`catalog_key`).
+    def self.adjustable(raw, cabinet, key, label_key, catalog_key)
+      return nil unless cabinet
+
+      sent = ValidationManager.to_float(raw[key])
+      cabinet[label_key] && sent && sent.positive? ? sent : cabinet[catalog_key]
+    end
+    private_class_method :adjustable
 
     # One Undo step. Any error rolls the whole operation back, so a failed
     # insert or update never leaves half-built geometry behind.

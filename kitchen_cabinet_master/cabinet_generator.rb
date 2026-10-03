@@ -192,7 +192,7 @@ module KitchenCabinetMaster
       # single snapshot stays correct for the whole pass.
       top = index_by_role(root.definition.entities)
 
-      sync_carcass(model, root, top, layout, carcass_mat, visibility['carcass'] != false)
+      sync_carcass(model, root, top, layout, carcass_mat, visibility['carcass'] != false, door_mat)
       sync_toe_kick(model, root, top, layout, ToeKick.material_name(params, door_mat, carcass_mat), visibility['toe_kick'] != false)
       sync_doors(model, root, top, params, layout, door_mat, doors_visible)
       sync_drawers(model, root, top, params, layout, door_mat, doors_visible, carcass_mat)
@@ -205,9 +205,9 @@ module KitchenCabinetMaster
 
     # The Carcass container sits at Z = toe-kick height, so everything inside it
     # moves up with the toe kick.
-    def self.sync_carcass(model, root, top, layout, material, visible)
+    def self.sync_carcass(model, root, top, layout, material, visible, door_material = nil)
       carcass = ensure_container(model, root, top, CARCASS_ROLE, 'Carcass', layout.base_z)
-      reconcile(model, carcass.definition.entities, layout.panels, material) do |panel, _existing|
+      reconcile(model, carcass.definition.entities, layout.panels, material, front_material: door_material) do |panel, _existing|
         Geom::Transformation.new(panel.offset.map(&:mm))
       end
       carcass.visible = visible
@@ -422,11 +422,27 @@ module KitchenCabinetMaster
     # ---- the appliances of an oven housing -------------------------------------------
 
     APPLIANCES_ROLE = 'appliances'
-    APPLIANCE_STEEL = 'Appliance Steel'
-    APPLIANCE_GLASS = 'Appliance Glass'
+    # What a part of an appliance is made of, by the end of its role: [material name, colour].
+    APPLIANCE_FINISHES = {
+      'body' => ['Appliance Body', '#8a919b'],
+      'glass' => ['Appliance Glass', '#1d2127'],
+      'panel' => ['Appliance Control Panel', '#2a2e35'],
+      'display' => ['Appliance Display', '#2f8fb0'],
+      'steel' => ['Appliance Steel', '#aeb4bd']
+    }.freeze
+    FRIDGE_FINISHES = { 'body' => ['Appliance White', '#eceff2'] }.freeze
 
-    # The ovens and microwave as plain boxes (a steel body and a dark front), in a container of their
-    # own, shown or hidden by the Show appliances / Show oven / Show microwave ticks.
+    # The material of an appliance part (a fridge's body is white; plates, handles, knobs and fronts are steel).
+    def self.appliance_finish(role)
+      kind = role.split('_')[1]
+      suffix = role.sub(/\Aappliance_[a-z]+_\d+_/, '')
+      suffix = suffix.sub(/_\d+\z/, '') # knob_1, post_2 ...
+      suffix = 'steel' unless APPLIANCE_FINISHES.key?(suffix)
+      (kind == 'fridge' && FRIDGE_FINISHES[suffix]) || APPLIANCE_FINISHES[suffix]
+    end
+
+    # The ovens, microwave and fridge, built from plain boxes, in a container of their own, shown or
+    # hidden by the Show appliances / Show oven / Show microwave / Show fridge ticks.
     def self.sync_appliances(model, root, top, params, layout)
       items = layout.appliances || []
       existing = top[APPLIANCES_ROLE]
@@ -442,8 +458,8 @@ module KitchenCabinetMaster
         definition = PanelGenerator.definition(model, item.extent)
         instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
         instance.name = item.name
-        glass = item.role.end_with?('_front')
-        MaterialManager.apply(instance, glass ? APPLIANCE_GLASS : APPLIANCE_STEEL, model, glass ? '#1d2127' : '#aeb4bd')
+        material_name, color = appliance_finish(item.role)
+        MaterialManager.apply(instance, material_name, model, color)
       end
       have.each_value { |surplus| discard_instance(model, surplus) }
       apply_appliance_visibility(container, params['visibility_settings'] || {})
@@ -453,7 +469,8 @@ module KitchenCabinetMaster
     def self.apply_appliance_visibility(container, visibility)
       container.visible = visibility['appliances'] == true
       index_by_role(container.definition.entities).each do |role, instance|
-        instance.visible = role.include?('_micro_') ? visibility['microwave'] != false : visibility['oven'] != false
+        key = role.include?('_micro_') ? 'microwave' : (role.include?('_fridge_') ? 'fridge' : 'oven')
+        instance.visible = visibility[key] != false
       end
     end
 
@@ -566,7 +583,7 @@ module KitchenCabinetMaster
     # returns the transformation for an item, given the instance that already
     # exists for it (or nil). `scope` limits which existing instances may be
     # erased as surplus.
-    def self.reconcile(model, entities, items, material_name, scope: nil, visible: nil)
+    def self.reconcile(model, entities, items, material_name, scope: nil, visible: nil, front_material: nil)
       leftovers = index_by_role(entities)
       leftovers = leftovers.select { |role, _| scope.call(role) } if scope
 
@@ -575,7 +592,9 @@ module KitchenCabinetMaster
         instance = place_item(model, entities, existing, item, yield(item, existing))
         instance.name = item.name
         instance.visible = visible unless visible.nil?
-        MaterialManager.apply(instance, material_name, model)
+        # A panel that is part of the front (a blind corner's fixed panel) is the door's colour.
+        front = front_material && item.respond_to?(:front) && item.front
+        MaterialManager.apply(instance, front ? front_material : material_name, model)
       end
 
       leftovers.each_value { |surplus| discard_instance(model, surplus) }

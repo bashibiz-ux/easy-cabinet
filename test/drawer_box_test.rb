@@ -24,9 +24,17 @@ class DrawerBoxTest < Minitest::Test
     layout = CabinetLayout.compute(params)
     assert_equal %w[drawer_1 drawer_2], layout.drawer_boxes.keys
     boxes = layout.drawer_boxes['drawer_1']
-    assert_equal %w[left right bottom back], boxes.map { |p| p.role.split('_box_').last }
+    assert_equal %w[left right bottom back front], boxes.map { |p| p.role.split('_box_').last }
     thin = boxes.flat_map { |p| p.extent.min }
     assert_equal [18.0], thin.uniq, 'every board is 18 mm thick'
+  end
+
+  def test_the_boards_are_as_thick_as_the_panel_thickness
+    layout = CabinetLayout.compute(params('material_thickness' => 12.0))
+    boxes = layout.drawer_boxes['drawer_1']
+    assert_equal [12.0], boxes.map { |p| p.extent.min }.uniq
+    front = boxes.find { |p| p.role.end_with?('front') }
+    assert_in_delta(-12.0, front.offset[0], 1e-9, 'the inner front is right behind the drawer front')
   end
 
   def test_the_box_sits_behind_its_front_and_inside_the_carcass
@@ -76,18 +84,20 @@ class DrawerBoxTest < Minitest::Test
       right = boxes.find { |b| b.role.end_with?('right') }
       bottom = boxes.find { |b| b.role.end_with?('bottom') }
       back = boxes.find { |b| b.role.end_with?('back') }
-      assert_equal 528.0, left.extent[0], 'the box is 52 mm shorter than the carcass is deep'
-      assert_in_delta 580.0 + clear - 528.0, 580.0 + clear + left.offset[0], 1e-6, 'its back is 54 mm from the wall'
-      assert_in_delta 28.0, 1.5 + left.offset[1], 1e-6, 'left side 28 mm in (10 mm clear of the carcass side)'
-      assert_in_delta 554.0, 1.5 + right.offset[1], 1e-6, 'right side ends 10 mm clear of the right panel'
-      assert_in_delta 508.0, bottom.extent[1], 1e-6, 'the bottom runs between the sides'
+      assert_equal 536.0, left.extent[0], 'from the front to 46 mm off the wall'
+      assert_in_delta 46.0, 580.0 + clear + left.offset[0], 1e-6, 'its back is 46 mm from the wall'
+      assert_in_delta 31.0, 1.5 + left.offset[1], 1e-6, 'left side 31 mm in (13 mm clear of the carcass side)'
+      assert_in_delta 551.0, 1.5 + right.offset[1], 1e-6, 'right side ends 13 mm clear of the right panel'
+      assert_in_delta 502.0, bottom.extent[1], 1e-6, 'the bottom runs between the sides'
       assert_equal 18.0, bottom.extent[2]
       assert_in_delta expected_heights[i], left.extent[2], 1e-6, "drawer #{i + 1} side height"
       front_z = drawer.offset[2] - base
       first_bottom = 38.0 # 20 mm above the carcass bottom panel
       assert_in_delta(i.zero? ? first_bottom : front_z + 20.0, front_z + left.offset[2], 1e-6, "drawer #{i + 1} bottom")
       assert_in_delta expected_heights[i] - 18.0, back.extent[2], 1e-6, 'the back stands on the bottom'
-      assert_equal [18.0, 508.0], back.extent.first(2)
+      assert_equal [18.0, 502.0], back.extent.first(2)
+      front = boxes.find { |b| b.role.end_with?('front') }
+      assert_equal [18.0, 502.0, expected_heights[i] - 18.0], front.extent, 'the inner front is as tall as the back'
     end
   end
 end

@@ -180,11 +180,11 @@
         </label>
         <div class="grid-3 cabinet-only">
           <label class="field">
-            <span class="label">Width</span>
+            <span class="label" id="widthLabel">Width</span>
             <div class="input"><input id="width" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
           <label class="field">
-            <span class="label">Depth</span>
+            <span class="label" id="depthLabel">Depth</span>
             <div class="input"><input id="depth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
           <label class="field">
@@ -200,8 +200,12 @@
           </label>
           <div class="grid-2">
             <label class="field">
-              <span class="label">Oven Height</span>
+              <span class="label" id="ovenHeightLabel">Oven Height</span>
               <div class="input"><input id="ovenHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field" id="oven2HeightField">
+              <span class="label">Upper Oven Height</span>
+              <div class="input"><input id="ovenHeight2" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
             <label class="field" id="microHeightField">
               <span class="label">Microwave Height</span>
@@ -214,7 +218,20 @@
           <span class="label" id="zoneLabel">Door Height</span>
           <div class="input"><input id="zoneHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <!-- An L-shaped corner unit has a second leg of its own: Width and Depth are leg 1. -->
+        <!-- The drawer zone of an oven housing, the panel over a built-in oven, the doors of a built-in fridge: their heights can be adjusted. -->
+        <label class="field narrow" id="bottomField" hidden>
+          <span class="label" id="bottomLabel">Drawer Height</span>
+          <div class="input"><input id="bottomHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field narrow" id="topFrontField" hidden>
+          <span class="label" id="topFrontLabel">Top Panel Height</span>
+          <div class="input"><input id="topFrontHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="field narrow" id="fridgeField" hidden>
+          <span class="label" id="fridgeLabel">Fridge Door Height</span>
+          <div class="input"><input id="fridgeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <!-- An L-shaped corner unit has a second leg of its own: Width and Depth are leg 1 (its length and its depth). -->
         <div class="grid-2" id="legFields" hidden>
           <label class="field">
             <span class="label">Leg 2 Length</span>
@@ -426,9 +443,10 @@
         <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
         <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
         <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
-        <label class="check"><input type="checkbox" id="showAppliances"><span>Show appliances (oven and microwave)</span></label>
+        <label class="check"><input type="checkbox" id="showAppliances"><span>Show appliances (oven, microwave and fridge)</span></label>
         <label class="check"><input type="checkbox" id="showOven" checked><span>Show oven</span></label>
         <label class="check"><input type="checkbox" id="showMicro" checked><span>Show microwave</span></label>
+        <label class="check"><input type="checkbox" id="showFridge" checked><span>Show fridge</span></label>
         <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
         <label class="check"><input type="checkbox" id="hideBaseHandles"><span>Show base unit handles</span></label>
         <label class="check"><input type="checkbox" id="hideTallHandles"><span>Show tall unit handles</span></label>

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.38.0';
+  const APP_VERSION = '0.39.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -49,6 +49,10 @@
     appliance_set: 'applianceSet',
     front_zone: 'zoneHeight',
     oven_height: 'ovenHeight',
+    oven2_height: 'ovenHeight2',
+    bottom_zone: 'bottomHeight',
+    top_front: 'topFrontHeight',
+    fridge_height: 'fridgeHeight',
     micro_height: 'microHeight',
     wall_bottom_thickness: 'wbThickness',
     wall_bottom_length: 'wbLength',
@@ -507,7 +511,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'microHeight', 'zoneHeight', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -743,6 +747,10 @@
       appliance_set: isApplianceCabinet() ? $('applianceSet').value : '',
       front_zone: hasZoneField() ? mmv('zoneHeight') : '',
       oven_height: mmv('ovenHeight'),
+      oven2_height: mmv('ovenHeight2'),
+      bottom_zone: hasBottomField() ? mmv('bottomHeight') : '',
+      top_front: hasTopFrontField() ? mmv('topFrontHeight') : '',
+      fridge_height: hasFridgeField() ? mmv('fridgeHeight') : '',
       micro_height: mmv('microHeight'),
       shelf_count: $('shelves').value,
       carcass_material: $('carcassMaterial').value,
@@ -763,7 +771,8 @@
         toe_kick: $('visToe').checked,
         appliances: $('showAppliances').checked,
         oven: $('showOven').checked,
-        microwave: $('showMicro').checked
+        microwave: $('showMicro').checked,
+        fridge: $('showFridge').checked
       }
     };
   }
@@ -785,14 +794,19 @@
     setText('leg2Length', Number(p.leg2_length) > 0 ? Number(p.leg2_length) : Number(p.width));
     setText('leg2Depth', Number(p.leg2_depth) > 0 ? Number(p.leg2_depth) : Number(p.depth));
     setSoft($('legFields'), p.corner_style !== 'l_shape');
+    setLegLabels(p.corner_style === 'l_shape');
     // An oven housing: which appliances, and how tall they are.
     if (p.appliance_set) {
       setSelect('applianceSet', p.appliance_set);
       setText('ovenHeight', Number(p.oven_height) || 595);
+      setText('ovenHeight2', Number(p.oven2_height) || 595);
       setText('microHeight', Number(p.micro_height) || 380);
     }
     syncApplianceFields(!!p.appliance_set);
     if (p.front_zone > 0 && hasZoneField()) setText('zoneHeight', p.front_zone);
+    if (p.bottom_zone > 0 && hasBottomField()) setText('bottomHeight', p.bottom_zone);
+    if (p.top_front > 0 && hasTopFrontField()) setText('topFrontHeight', p.top_front);
+    if (p.fridge_height > 0 && hasFridgeField()) setText('fridgeHeight', p.fridge_height);
     syncZoneField();
     Object.entries(SELECT_PARAMS).forEach(([key, id]) => {
       if (key in p) setSelect(id, p[key]);
@@ -812,6 +826,7 @@
       if ('appliances' in v) $('showAppliances').checked = !!v.appliances;
       if ('oven' in v) $('showOven').checked = !!v.oven;
       if ('microwave' in v) $('showMicro').checked = !!v.microwave;
+      if ('fridge' in v) $('showFridge').checked = !!v.fridge;
     }
     syncHandlePosition();
     syncWidthPreset();
@@ -955,10 +970,31 @@
     return !!(cabinet && cabinet.zone_label) && categoryKind() === 'cabinet';
   }
 
+  // The same for the drawer zone of an oven housing, the panel over a built-in oven and the doors of a built-in fridge.
+  function hasCatalogField(key) {
+    const cabinet = currentCabinet();
+    return !!(cabinet && cabinet[key]) && categoryKind() === 'cabinet';
+  }
+  const hasBottomField = () => hasCatalogField('bottom_label');
+  const hasTopFrontField = () => hasCatalogField('top_front_label');
+  const hasFridgeField = () => hasCatalogField('fridge_label');
+
   function syncZoneField() {
     const cabinet = currentCabinet();
     setSoft($('zoneField'), !hasZoneField());
     if (cabinet && cabinet.zone_label) $('zoneLabel').textContent = cabinet.zone_label;
+    setSoft($('bottomField'), !hasBottomField());
+    if (cabinet && cabinet.bottom_label) $('bottomLabel').textContent = cabinet.bottom_label;
+    setSoft($('topFrontField'), !hasTopFrontField());
+    if (cabinet && cabinet.top_front_label) $('topFrontLabel').textContent = cabinet.top_front_label;
+    setSoft($('fridgeField'), !hasFridgeField());
+    if (cabinet && cabinet.fridge_label) $('fridgeLabel').textContent = cabinet.fridge_label;
+  }
+
+  // An L-shaped corner is described by its two legs: Width and Depth are Leg 1's length and depth.
+  function setLegLabels(isL) {
+    $('widthLabel').textContent = isL ? 'Leg 1 Length' : 'Width';
+    $('depthLabel').textContent = isL ? 'Leg 1 Depth' : 'Depth';
   }
 
   // The appliance choices an entry offers (a base unit with a built-in oven holds one oven only).
@@ -972,6 +1008,8 @@
   function syncApplianceFields(show) {
     setSoft($('applianceFields'), !show);
     setSoft($('microHeightField'), $('applianceSet').value !== 'oven_micro');
+    setSoft($('oven2HeightField'), $('applianceSet').value !== 'double_oven');
+    $('ovenHeightLabel').textContent = $('applianceSet').value === 'double_oven' ? 'Lower Oven Height' : 'Oven Height';
   }
 
   function applyCabinetDefaults() {
@@ -985,11 +1023,16 @@
     setText('leg2Length', d.leg2_length || d.width);
     setText('leg2Depth', d.leg2_depth || d.depth);
     setSoft($('legFields'), cabinet.corner !== 'l_shape');
+    setLegLabels(cabinet.corner === 'l_shape');
     fillApplianceChoices(cabinet);
     setSelect('applianceSet', cabinet.appliances || 'oven');
     if (cabinet.zone_label) setText('zoneHeight', cabinet.zone);
+    if (cabinet.bottom_label) setText('bottomHeight', cabinet.zone_bottom);
+    if (cabinet.top_front_label) setText('topFrontHeight', cabinet.top_front);
+    if (cabinet.fridge_label) setText('fridgeHeight', cabinet.fridge);
     syncZoneField();
     setText('ovenHeight', 595);
+    setText('ovenHeight2', 595);
     setText('microHeight', 380);
     syncApplianceFields(!!cabinet.appliances);
     setText('height', d.height);
@@ -1013,6 +1056,7 @@
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
     setSoft($('toeNote'), true);
     setSoft($('legFields'), !(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape'));
+    setLegLabels(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape');
     syncApplianceFields(isApplianceCabinet());
     syncZoneField();
     setSoft($('carcassRaiseField'), !(kind === 'cabinet' && $('category').value === 'wall'));
@@ -1523,7 +1567,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet', 'widthPreset']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1742,8 +1786,10 @@
         return;
       }
     }
-    // The carcass raise is for every wall unit, unless one wall unit is selected: then it is only that one's.
-    if (GLOBAL_FIELDS[el.id] && !(el.id === 'carcassRaise' && state.selectedKind === 'cabinet')) {
+    // The carcass raise and the handle's orientation are for every cabinet, unless one cabinet is selected:
+    // then the change is only that cabinet's.
+    const OWN_WHEN_SELECTED = ['carcassRaise', 'handleOrientation', 'handleHPlace'];
+    if (GLOBAL_FIELDS[el.id] && !(OWN_WHEN_SELECTED.includes(el.id) && state.selectedKind === 'cabinet')) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
       // A different handle bundle brings its own lengths, finishes and positions
@@ -1769,6 +1815,7 @@
         appliances: $('showAppliances').checked,
         oven: $('showOven').checked,
         microwave: $('showMicro').checked,
+        fridge: $('showFridge').checked,
         opening_direction: $('showDirection').checked, // the plan symbol on the floor
         wall_opening_direction: $('showWallDirection').checked, // a wall unit's plan symbol on the floor
         hide_wall_handles: !$('hideWallHandles').checked, // the tick says Show
@@ -1811,6 +1858,7 @@
     $('showAppliances').checked = v.appliances === true;
     $('showOven').checked = v.oven !== false;
     $('showMicro').checked = v.microwave !== false;
+    $('showFridge').checked = v.fridge !== false;
     syncThicknessPresets();
     updateChips();
   }
@@ -1954,7 +2002,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }
