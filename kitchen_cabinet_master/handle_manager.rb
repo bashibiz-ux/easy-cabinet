@@ -97,9 +97,12 @@ module KitchenCabinetMaster
       # A horizontal handle can be centred across the door instead of sitting at its
       # free edge: still at the top of the door, `vertical` (the offset) below the edge.
       # A lift-up door is taken hold of along its bottom edge: the handle is centred there.
+      # A horizontal bar is centred there; a vertical one sits near the side edge, like a wall unit's.
       if door.hinge == 'top'
-        return { 'u' => door_w / 2.0, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
+        u = horizontal ? door_w / 2.0 : [door_w - side - half_u, half_u].max
+        return { 'u' => u, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
       end
+      position = 'top' if door.hinge == 'center' && position == 'hand' # a drawer is not at "hand height": its handle is at its top
 
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
         v = case position
@@ -130,12 +133,17 @@ module KitchenCabinetMaster
           else door_h / 2.0
           end
 
+      if door.hinge == 'center' # a drawer front: a vertical handle is centred on it, and no handle runs off it
+        v = door_h / 2.0 unless horizontal
+        v = door_h >= 2 * half_v ? v.clamp(half_v, door_h - half_v) : door_h / 2.0
+      end
       { 'u' => u, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
     end
 
     # Hand height on a tall unit's door, kept a handle-offset clear of the door's edges, so on a door that
     # lies wholly above or below it (the lower door of a fridge) the handle sits near its edge, not on the gap.
     def self.hand_height(door, door_h, half_v, margin)
+      margin += 25.0 # clearly away from the gap between two doors
       low = half_v + margin
       high = [door_h - half_v - margin, low].max
       (Defaults::TALL_HANDLE_HEIGHT - door.offset[2].to_f).clamp(low, high)
