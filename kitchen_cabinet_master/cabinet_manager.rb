@@ -20,6 +20,7 @@ module KitchenCabinetMaster
       when 'rotate' then rotate(raw)
       when 'apply_all' then apply_all(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
+      when 'customize' then customize
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -52,6 +53,16 @@ module KitchenCabinetMaster
     end
     private_class_method :insert
 
+    # Opens the Customize window for the selected cabinet.
+    def self.customize
+      root = SelectionManager.selected_cabinet(Sketchup.active_model)
+      return Response.fail('Select a cabinet in the model to customize it. (Customize works on cabinets.)') unless root
+
+      CustomizeManager.open(root)
+      Response.ok("Customize window opened for #{root.name}.")
+    end
+    private_class_method :customize
+
     # A cabinet placed after a blind corner stands 50 mm off the blind panel: that gap gets a filler (as tall as the
     # cabinet, flush with its doors). The filler is made after the cabinet and, when it comes first in the row, the
     # cabinet is renumbered after it so the next cabinet still carries on from the cabinet.
@@ -72,6 +83,9 @@ module KitchenCabinetMaster
 
       params, failure = prepare(raw)
       return failure if failure
+
+      # What was changed in the Customize window stays through an Update.
+      params['custom_overrides'] = ValidationManager.clean_overrides(AttributeManager.read(root)['custom_overrides'])
 
       # A wider cabinet takes its space from the one next to it in the row, which
       # gets narrower (see RowResizer). Anything else it would run into refuses the edit.

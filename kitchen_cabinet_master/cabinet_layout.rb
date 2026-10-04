@@ -131,10 +131,41 @@ module KitchenCabinetMaster
       panels << top_front_panel(params, dims) if params['top_front'].to_f.positive?
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
-      Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
-                 drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
-                 appliances: appliance_boxes(params, dims, front_zone(params, dims)))
+      apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
+                                 drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
+                                 appliances: appliance_boxes(params, dims, front_zone(params, dims))), params)
     end
+
+    # What the user changed in the Customize window (see Customizer): per part key, a size for the axes that were
+    # changed and a move from where it belongs. Applied last, so everything built on the layout sees it.
+    def self.apply_overrides(layout, params)
+      overrides = params['custom_overrides']
+      return layout unless overrides.is_a?(Hash) && !overrides.empty?
+
+      tweak = lambda do |item|
+        change = overrides[item.role]
+        next unless change.is_a?(Hash)
+
+        size = Array(change['extent'])
+        move = Array(change['move']).map(&:to_f)
+        move += [0.0] * (3 - move.length)
+        if item.respond_to?(:points) && item.points && !item.points.empty? # a shaped board: only its thickness and its place change
+          thickness = size[2].to_f.positive? ? size[2].to_f : item.extent[2]
+          item.points = item.points.map { |x, y| [round2(x + move[0]), round2(y + move[1])] }
+          item.extent = [item.extent[0], item.extent[1], round2(thickness)]
+          item.offset = [item.offset[0], item.offset[1], round2(item.offset[2] + move[2])]
+        else
+          item.extent = (0..2).map { |axis| round2(size[axis].to_f.positive? ? size[axis].to_f : item.extent[axis]) }
+          item.offset = (0..2).map { |axis| round2(item.offset[axis] + move[axis]) }
+        end
+        item.pivot = (0..2).map { |axis| round2(item.pivot[axis] + move[axis]) } if item.respond_to?(:pivot) && item.pivot
+      end
+
+      (layout.panels + layout.doors + layout.drawers + layout.appliances.to_a).each(&tweak)
+      (layout.drawer_boxes || {}).each_value { |boards| boards.each(&tweak) }
+      layout
+    end
+    private_class_method :apply_overrides
 
     # The fixed panels of a front zone. Each one is flush with the carcass front, and the door (or the
     # drawer fronts) next to it covers its edge, stopping a door reveal short of the panel's far edge.
@@ -942,7 +973,7 @@ module KitchenCabinetMaster
         part(key, 'handle_1', 'Fridge Freezer Handle', [d, y, split - 40.0 - 300.0], [30.0, 22.0, 300.0]),
         part(key, 'handle_2', 'Fridge Handle', [d, y, split + 40.0], [30.0, 22.0, 450.0])
       ]
-      Layout.new(base_z: 0.0, top_z: round2(h), panels: [], doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts)
+      apply_overrides(Layout.new(base_z: 0.0, top_z: round2(h), panels: [], doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts), params)
     end
     private_class_method :freestanding_layout
     # nil for a unit that is not a fridge; otherwise

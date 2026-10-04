@@ -163,6 +163,7 @@ module KitchenCabinetMaster
       'oven_height' => 595.0,
       'oven2_height' => 595.0,      # a second oven (two ovens): its own height
       'micro_height' => 380.0,
+      'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
       'freestanding' => false,      # a freestanding fridge: just the appliance, no carcass
       'lower_mode' => '',           # an oven housing's lower part: drawers, door or drawer_door (a small drawer over a door); '' = by the catalog

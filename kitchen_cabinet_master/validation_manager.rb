@@ -91,6 +91,7 @@ module KitchenCabinetMaster
       out['bottom_zone'] = bottom if bottom && bottom >= 0
       blind = to_float(raw['blind_width'])
       out['blind_width'] = blind if blind && blind >= 0
+      out['custom_overrides'] = clean_overrides(raw['custom_overrides'])
       out['fridge'] = truthy?(raw['fridge'])
       out['fridge_lift'] = raw.key?('fridge_lift') ? truthy?(raw['fridge_lift']) : true
       out['freestanding'] = truthy?(raw['freestanding'])
@@ -112,6 +113,23 @@ module KitchenCabinetMaster
       out['drawer_pattern'] = pattern if pattern.match?(/\A\d+(\.\d+)?(,\d+(\.\d+)?)*\z/)
     end
     private_class_method :check_identity
+
+    # The Customize window's changes, cleaned: part key => { 'extent' => [x, y, z] (nil = unchanged), 'move' => [dx, dy, dz] }.
+    def self.clean_overrides(raw)
+      return {} unless raw.is_a?(Hash)
+
+      raw.each_with_object({}) do |(key, value), out|
+        next unless key.to_s.match?(/\A[a-z0-9_]+\z/) && value.is_a?(Hash)
+
+        sizes = Array(value['extent']).first(3).map { |v| (n = to_float(v)) && n.positive? && n <= 6000 ? n : nil }
+        moves = Array(value['move']).first(3).map { |v| (n = to_float(v)) && n.abs <= 6000 ? n : 0.0 }
+        sizes += [nil] * (3 - sizes.length)
+        moves += [0.0] * (3 - moves.length)
+        next if sizes.compact.empty? && moves.all?(&:zero?)
+
+        out[key.to_s] = { 'extent' => sizes, 'move' => moves }
+      end
+    end
 
     def self.check_numbers(raw, out, errors)
       wall = out['cabinet_category'] == 'wall'

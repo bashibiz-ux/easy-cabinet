@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customize</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --panel: #ffffff; --line: #d5dbe3; --text: #1f2a37; --muted: #6b7686;
+    --accent: #2f6fde; --accent-text: #ffffff; --view: #eef1f6; --danger: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b2028; --panel: #242b35; --line: #38414f; --text: #e6ebf2; --muted: #98a3b3; --view: #1a1f27; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.35 "Segoe UI", system-ui, sans-serif; }
+  .app { display: grid; grid-template-rows: auto 1fr auto; height: 100%; }
+  header { display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .size { color: var(--muted); }
+  header .sp { flex: 1; }
+  main { display: grid; grid-template-columns: 220px minmax(260px, 1fr) 270px; min-height: 0; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; grid-template-rows: 150px minmax(220px, 1fr) auto; overflow: auto; } }
+  .list, .editor { background: var(--panel); overflow: auto; padding: 8px; }
+  .list { border-right: 1px solid var(--line); }
+  .editor { border-left: 1px solid var(--line); }
+  .list h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 10px 4px 4px; }
+  .list button { display: block; width: 100%; text-align: left; padding: 4px 8px; margin: 1px 0; border: 1px solid transparent; background: transparent;
+    color: var(--text); border-radius: 5px; cursor: pointer; font: inherit; }
+  .list button:hover { background: var(--bg); }
+  .list button.sel { background: var(--accent); color: var(--accent-text); }
+  .list button .dot { color: #e08a00; margin-left: 4px; }
+  .stage { position: relative; background: var(--view); min-width: 0; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  canvas.drag { cursor: grabbing; }
+  .views { position: absolute; left: 8px; top: 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .toggles { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap; background: color-mix(in srgb, var(--panel) 88%, transparent);
+    padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); }
+  .toggles label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  .hint { position: absolute; right: 8px; top: 8px; max-width: 45%; text-align: right; color: var(--muted); font-size: 11px; background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 3px 6px; border-radius: 5px; }
+  .btn { border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 4px 9px; border-radius: 5px; cursor: pointer; font: inherit; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .editor h2 { font-size: 14px; margin: 2px 0 2px; }
+  .editor .sub { color: var(--muted); margin-bottom: 8px; }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 10px; padding: 8px; }
+  legend { padding: 0 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .row { display: grid; grid-template-columns: 1fr 90px; gap: 6px; align-items: center; margin: 4px 0; }
+  .row input, select { width: 100%; padding: 4px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--text); font: inherit; }
+  .row input:disabled { opacity: .5; }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 6px; }
+  .pad .btn { padding: 5px 2px; text-align: center; }
+  footer { display: flex; gap: 10px; align-items: center; padding: 6px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+  #status { flex: 1; color: var(--muted); }
+  #status.error { color: var(--danger); }
+  .empty { color: var(--muted); padding: 10px 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 id="title">Customize</h1>
+    <span class="size" id="size"></span>
+    <span class="sp"></span>
+    <button class="btn danger" id="resetAll" type="button">Reset every part</button>
+  </header>
+
+  <main>
+    <nav class="list" id="list" aria-label="Parts"></nav>
+
+    <section class="stage" id="stage">
+      <canvas id="view" aria-label="3D view of the cabinet"></canvas>
+      <div class="views">
+        <button class="btn" data-view="front" type="button">Front</button>
+        <button class="btn" data-view="back" type="button">Back</button>
+        <button class="btn" data-view="left" type="button">Left</button>
+        <button class="btn" data-view="right" type="button">Right</button>
+        <button class="btn" data-view="top" type="button">Top</button>
+        <button class="btn" data-view="iso" type="button">3D</button>
+        <button class="btn" id="fit" type="button">Fit</button>
+      </div>
+      <div class="toggles" id="toggles">
+        <label><input type="checkbox" data-group="carcass" checked>Carcass</label>
+        <label><input type="checkbox" data-group="door" checked>Doors</label>
+        <label><input type="checkbox" data-group="drawer" checked>Drawer fronts</label>
+        <label><input type="checkbox" data-group="drawer_box" checked>Drawer boxes</label>
+        <label><input type="checkbox" data-group="appliance" checked>Appliances</label>
+        <label><input type="checkbox" id="ghost" checked>See through fronts</label>
+        <label><input type="checkbox" id="isolate">Selected only</label>
+      </div>
+      <div class="hint">Drag: orbit &middot; Shift+drag or right-drag: move view &middot; Wheel: zoom &middot; Click a part to select it</div>
+    </section>
+
+    <aside class="editor" id="editor">
+      <div class="empty" id="noSel">Click a part in the picture, or choose one from the list, to change it.</div>
+      <div id="form" hidden>
+        <h2 id="partName"></h2>
+        <div class="sub" id="partInfo"></div>
+
+        <fieldset>
+          <legend>Size (mm)</legend>
+          <div class="row"><label for="sx">Depth (front to back)</label><input id="sx" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="sy">Width (left to right)</label><input id="sy" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="sz">Height (up and down)</label><input id="sz" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="st" id="stLabel">Thickness</label><input id="st" type="text" inputmode="decimal"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Move (mm from where it belongs)</legend>
+          <div class="row"><label for="mx">Forward (+) / back (-)</label><input id="mx" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="my">Right (+) / left (-)</label><input id="my" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="mz">Up (+) / down (-)</label><input id="mz" type="text" inputmode="decimal"></div>
+          <div class="row"><label for="step">Step of the arrows</label>
+            <select id="step"><option>1</option><option>5</option><option selected>10</option><option>50</option><option>100</option></select></div>
+          <div class="pad" aria-label="Move the part">
+            <button class="btn" data-move="0,-1,0" type="button">&larr; Left</button>
+            <button class="btn" data-move="0,0,1" type="button">&uarr; Up</button>
+            <button class="btn" data-move="0,1,0" type="button">Right &rarr;</button>
+            <button class="btn" data-move="-1,0,0" type="button">Back</button>
+            <button class="btn" data-move="0,0,-1" type="button">&darr; Down</button>
+            <button class="btn" data-move="1,0,0" type="button">Front</button>
+          </div>
+        </fieldset>
+        <button class="btn" id="resetPart" type="button">Put this part back</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <div id="status" role="status" aria-live="polite">Loading...</div>
+  </footer>
+</div>
+<script src="customize.js"></script>
+</body>
+</html>
