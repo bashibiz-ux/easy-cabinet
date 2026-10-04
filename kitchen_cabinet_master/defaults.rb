@@ -12,6 +12,8 @@ module KitchenCabinetMaster
     MICRO_HEIGHT = 380.0  # a standard built-in microwave
     DRAWER_SLIDE_GAP = 13.0     # a drawer's inner box sits this far clear of the carcass on each side
     DRAWER_BACK_GAP = 46.0      # and its back is this far from the wall behind the cabinet
+    DRAWER_BOTTOM_LIFT = 10.0   # the bottom board of a drawer box is raised this far (the front and back boards start above it)
+    LOWER_MODES = %w[drawers door drawer_door].freeze # the lower part of an oven housing
     SAME_AS_DOOR    = '__door__'
     SAME_AS_CARCASS = '__carcass__'
     SAME_AS_CABINET = '__cabinet__' # stored by older versions; it means "same as door material"
@@ -161,6 +163,11 @@ module KitchenCabinetMaster
       'oven_height' => 595.0,
       'oven2_height' => 595.0,      # a second oven (two ovens): its own height
       'micro_height' => 380.0,
+      'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
+      'freestanding' => false,      # a freestanding fridge: just the appliance, no carcass
+      'lower_mode' => '',           # an oven housing's lower part: drawers, door or drawer_door (a small drawer over a door); '' = by the catalog
+      'lower_drawers' => 2,
+      'small_drawer' => 180.0,
       'fridge' => false,            # a built-in fridge: drawn behind the doors, with a lift-up door over it
       'fridge_height' => 0.0,       # the height of the fridge doors from the carcass bottom (0 = the whole unit)
       'top_front' => 0.0,           # a fixed front panel across the top (over a built-in oven): its height (0 = none)

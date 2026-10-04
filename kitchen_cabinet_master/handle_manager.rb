@@ -65,6 +65,8 @@ module KitchenCabinetMaster
       return errors unless errors.empty?
 
       layout.doors.each do |door|
+        next if door.handle == false # this door has no handle
+
         problem = fit_problem(door, settings(params, bundle), bundle)
         return [problem] if problem
       end
@@ -81,6 +83,8 @@ module KitchenCabinetMaster
       door_h = door.extent[2]
       length = settings['length']
       horizontal = settings['orientation'] == 'horizontal' && bundle['profile'] == 'bar'
+      # A lift-up door and a drawer front always take a horizontal handle, whatever orientation is chosen.
+      horizontal = true if %w[top center].include?(door.hinge) && bundle['profile'] == 'bar'
 
       # A knob is round (its length is the diameter); a bar is `length` long and `section` wide.
       half_along = length / 2.0
@@ -97,10 +101,8 @@ module KitchenCabinetMaster
       # A horizontal handle can be centred across the door instead of sitting at its
       # free edge: still at the top of the door, `vertical` (the offset) below the edge.
       # A lift-up door is taken hold of along its bottom edge: the handle is centred there.
-      # A horizontal bar is centred there; a vertical one sits near the side edge, like a wall unit's.
       if door.hinge == 'top'
-        u = horizontal ? door_w / 2.0 : [door_w - side - half_u, half_u].max
-        return { 'u' => u, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
+        return { 'u' => door_w / 2.0, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
       end
       position = 'top' if door.hinge == 'center' && position == 'hand' # a drawer is not at "hand height": its handle is at its top
 
@@ -110,6 +112,7 @@ module KitchenCabinetMaster
             when 'hand' then hand_height(door, door_h, half_v, vertical)
             else door_h - vertical - half_v
             end
+        v = grip_height(door, door_h, half_v, vertical) || v
         return { 'u' => door_w / 2.0, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true }
       end
 
@@ -133,6 +136,7 @@ module KitchenCabinetMaster
           else door_h / 2.0
           end
 
+      v = grip_height(door, door_h, half_v, vertical) || v
       if door.hinge == 'center' # a drawer front: a vertical handle is centred on it, and no handle runs off it
         v = door_h / 2.0 unless horizontal
         v = door_h >= 2 * half_v ? v.clamp(half_v, door_h - half_v) : door_h / 2.0
@@ -152,6 +156,14 @@ module KitchenCabinetMaster
     # By unit type (and a blank, from older cabinets): a base or corner unit's handle
     # sits near the top of its door, a wall unit's near the bottom, and a tall unit's
     # at hand height ('hand', about 1050 mm above the floor). Anything else is as chosen.
+    # A handle next to the gap between two doors: near the top edge ('top') or the bottom edge ('bottom') of the door.
+    def self.grip_height(door, door_h, half_v, margin)
+      case door.respond_to?(:grip) && door.grip
+      when 'top' then door_h - margin - half_v
+      when 'bottom' then margin + half_v
+      end
+    end
+
     def self.resolved_position(position, category)
       return position unless position.to_s.empty? || position == 'auto'
 

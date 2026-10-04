@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.39.2';
+  const APP_VERSION = '0.40.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -53,6 +53,9 @@
     bottom_zone: 'bottomHeight',
     top_front: 'topFrontHeight',
     fridge_height: 'fridgeHeight',
+    lower_mode: 'lowerMode',
+    lower_drawers: 'lowerDrawers',
+    small_drawer: 'smallDrawer',
     micro_height: 'microHeight',
     wall_bottom_thickness: 'wbThickness',
     wall_bottom_length: 'wbLength',
@@ -511,7 +514,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -751,6 +754,10 @@
       bottom_zone: hasBottomField() ? mmv('bottomHeight') : '',
       top_front: hasTopFrontField() ? mmv('topFrontHeight') : '',
       fridge_height: hasFridgeField() ? mmv('fridgeHeight') : '',
+      fridge_lift: $('liftUp').checked,
+      lower_mode: hasLowerField() ? $('lowerMode').value : '',
+      lower_drawers: $('lowerDrawers').value,
+      small_drawer: mmv('smallDrawer'),
       micro_height: mmv('microHeight'),
       shelf_count: $('shelves').value,
       carcass_material: $('carcassMaterial').value,
@@ -807,6 +814,12 @@
     if (p.bottom_zone > 0 && hasBottomField()) setText('bottomHeight', p.bottom_zone);
     if (p.top_front > 0 && hasTopFrontField()) setText('topFrontHeight', p.top_front);
     if (p.fridge_height > 0 && hasFridgeField()) setText('fridgeHeight', p.fridge_height);
+    $('liftUp').checked = p.fridge_lift !== false;
+    if (hasLowerField()) {
+      setSelect('lowerMode', p.lower_mode || 'drawers');
+      setText('lowerDrawers', Number(p.lower_drawers) || Number(p.drawer_count) || 2);
+      setText('smallDrawer', Number(p.small_drawer) || 180);
+    }
     syncZoneField();
     Object.entries(SELECT_PARAMS).forEach(([key, id]) => {
       if (key in p) setSelect(id, p[key]);
@@ -978,6 +991,7 @@
   const hasBottomField = () => hasCatalogField('bottom_label');
   const hasTopFrontField = () => hasCatalogField('top_front_label');
   const hasFridgeField = () => hasCatalogField('fridge_label');
+  const hasLowerField = () => hasCatalogField('lower');
 
   function syncZoneField() {
     const cabinet = currentCabinet();
@@ -988,7 +1002,11 @@
     setSoft($('topFrontField'), !hasTopFrontField());
     if (cabinet && cabinet.top_front_label) $('topFrontLabel').textContent = cabinet.top_front_label;
     setSoft($('fridgeField'), !hasFridgeField());
+    setSoft($('liftField'), !hasFridgeField());
     if (cabinet && cabinet.fridge_label) $('fridgeLabel').textContent = cabinet.fridge_label;
+    setSoft($('lowerField'), !hasLowerField());
+    setSoft($('lowerDrawersField'), !hasLowerField() || $('lowerMode').value !== 'drawers');
+    setSoft($('smallDrawerField'), !hasLowerField() || $('lowerMode').value !== 'drawer_door');
   }
 
   // An L-shaped corner is described by its two legs: Width and Depth are Leg 1's length and depth.
@@ -1030,6 +1048,12 @@
     if (cabinet.bottom_label) setText('bottomHeight', cabinet.zone_bottom);
     if (cabinet.top_front_label) setText('topFrontHeight', cabinet.top_front);
     if (cabinet.fridge_label) setText('fridgeHeight', cabinet.fridge);
+    $('liftUp').checked = true;
+    if (cabinet.lower) {
+      setSelect('lowerMode', 'drawers');
+      setText('lowerDrawers', cabinet.drawers || 2);
+      setText('smallDrawer', 180);
+    }
     syncZoneField();
     setText('ovenHeight', 595);
     setText('ovenHeight2', 595);
@@ -1567,7 +1591,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet', 'widthPreset']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1919,6 +1943,7 @@
     await restorePresets();
     updateCategoryUi();
     await refreshCabinets();
+    try { await call('get_selection'); } catch (_) { /* nothing selected, or an older Ruby side */ } // what is selected in the model opens in the panel
 
     if (m.version !== APP_VERSION) {
       setStatus('error', `SketchUp is still running an older version of the Ruby code (${m.version || 'unknown'}; this panel is ${APP_VERSION}). Close SketchUp completely and reopen it to finish the update.`);
@@ -1952,6 +1977,7 @@
       await refreshCabinets();
     });
     $('applianceSet').addEventListener('change', () => syncApplianceFields(true));
+    $('lowerMode').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
       // Choosing another cabinet fills the fields for the next Insert; it does not change the
       // cabinet selected in the model (select it again, or press Update, to change it).
@@ -1964,9 +1990,12 @@
         setText('width', Number($('widthPreset').value));
         // A standard width comes with the standard depth and height of the cabinet
         // (560 deep, 780 high for a base unit).
-        const standard = (currentCabinet() || {}).defaults || {};
-        setText('depth', standard.depth);
-        setText('height', standard.height);
+        // (not when a cabinet is selected: its own depth and height stay, and it follows the new width live)
+        if (!state.selectedKind) {
+          const standard = (currentCabinet() || {}).defaults || {};
+          setText('depth', standard.depth);
+          setText('height', standard.height);
+        }
       }
       drawPreview();
     });

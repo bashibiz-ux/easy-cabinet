@@ -36,7 +36,9 @@ module KitchenCabinetMaster
     # `pivot` = [x of the front face, -, z of the top edge]) or 'center' (a drawer front).
     # `swing` is a smaller opening angle a door needs to be at least (an L corner's doors must open wide
     # enough to see inside); nil = just the Opening Angle of the panel.
-    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, keyword_init: true)
+    # `handle` false = this door gets no handle (an L corner has one handle, on its narrower door); `grip` 'top' or
+    # 'bottom' puts the handle next to that edge (the two doors of a fridge have theirs next to the gap between them).
+    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, keyword_init: true)
     Layout = Struct.new(:base_z, :top_z, :panels, :doors, :drawers, :toe_kick, :drawer_boxes, :appliances, keyword_init: true)
     # `return_depth` is only meaningful for a corner unit: how far its shortened
     # right-side panel and front-return panel extend (see corner geometry
@@ -65,6 +67,7 @@ module KitchenCabinetMaster
     # params - validated parameter Hash (millimetres)
     def self.compute(params)
       dims = dimensions(params)
+      return freestanding_layout(params, dims) if params['freestanding'] == true
       category = params['cabinet_category'].to_s
       style = corner_style(params)
 
@@ -150,6 +153,11 @@ module KitchenCabinetMaster
         end
         rail_z = zone[:rail] || (dims.height - zone[:door] - reveal if zone[:door])
         out << panel('niche_rail', 'Niche Rail', shelf, [dims.interior_start, dims.thick, rail_z]) if rail_z
+        if params['lower_mode'] == 'drawer_door' # a rail between the small drawer and the door under it
+          door_h = zone[:bottom] - (2 * reveal) - params['door_gap'].to_f - params['small_drawer'].to_f
+          out << panel('lower_rail', 'Lower Rail', shelf, [dims.interior_start, dims.thick,
+                                                          reveal + door_h + (params['door_gap'].to_f / 2.0) - (dims.thick / 2.0)])
+        end
         out
       elsif zone[:drawers]
         mid = dims.height - zone[:drawers] - (params['door_gap'].to_f / 2.0) - (dims.thick / 2.0)
@@ -188,7 +196,7 @@ module KitchenCabinetMaster
     def self.envelope(params)
       thick = params['material_thickness'].to_f
       category = params['cabinet_category'].to_s
-      base_z = category == 'wall' ? 0.0 : params['toe_kick_height'].to_f
+      base_z = category == 'wall' || params['freestanding'] == true ? 0.0 : params['toe_kick_height'].to_f
       # A corner unit's outer footprint is a square sized by Width in both
       # directions; its own Depth instead controls the internal return panels.
       square = corner?(params)
@@ -362,6 +370,7 @@ module KitchenCabinetMaster
       return l_doors(params, dims, base_z) if style == 'l_shape'
       return blind_doors(params, dims, base_z) if style == 'blind'
       return fridge_doors(params, dims, base_z) if params['fridge'] == true
+      return oven_doors(params, dims, base_z) if lower_door?(params)
       return stacked_doors(params, dims, base_z) if params['door_stacked'] == true && count == 2
 
       gap = params['door_gap'].to_f
@@ -469,7 +478,9 @@ module KitchenCabinetMaster
         # The left back (along the Y=0 wall, leg 2) is always a full 18 mm panel, flush with the wall,
         # whatever the back panel thickness; leg 1's thin back (along the X=0 wall) starts beside it.
         panel('back_2', 'Left Back Panel', [l[:lb] - t, t, dims.height], [0, 0, 0]),
-        panel('back', 'Back Panel Leg 1', [dims.back, l[:la] - (2 * t) + dims.groove, dims.height], [dims.recess, t, 0]),
+        # The thin back runs dims.groove (9 mm) into the groove of the panel at each end: the left back panel and the
+        # right side panel.
+        panel('back', 'Back Panel Leg 1', [dims.back, l[:la] - (2 * t) + (2 * dims.groove), dims.height], [dims.recess, t - dims.groove, 0]),
         Panel.new(role: 'bottom', name: 'Bottom Panel', points: l_footprint(params, dims, 0.0, 0.0),
                   extent: [nil, nil, round2(t)], offset: [0, 0, 0])
       ]
@@ -532,7 +543,7 @@ module KitchenCabinetMaster
       x_from = l[:da] + gap
       x_to = l[:lb] - gap
 
-      [
+      doors = [
         Door.new(role: 'door_1', name: 'Door 1', extent: [t, y_to - y_from, height].map { |v| round2(v) },
                  offset: [l[:da] + clear, y_from, base_z + gap].map { |v| round2(v) },
                  hinge: outer ? 'right' : 'left',
@@ -545,6 +556,11 @@ module KitchenCabinetMaster
                  pivot: [outer ? x_to : x_from, l[:db] + clear + t, base_z].map { |v| round2(v) }, rotation: 90.0,
                  swing: L_DOOR_SWING)
       ]
+      # One handle, on the narrower door.
+      wider = doors.max_by { |door| door.extent[1] }
+      wider.handle = false unless doors.first.extent[1] == doors.last.extent[1]
+      doors.last.handle = false if doors.first.extent[1] == doors.last.extent[1]
+      doors
     end
     L_DOOR_SWING = 120.0 # an L corner's doors open at least this wide, so the inside can be seen
     private_class_method :l_doors
@@ -611,6 +627,7 @@ module KitchenCabinetMaster
       reveal = params['door_reveal'].to_f
       gap = params['door_gap'].to_f
       base = params['cabinet_category'].to_s == 'wall' ? 0.0 : params['toe_kick_height'].to_f
+      lift = Defaults::DRAWER_BOTTOM_LIFT # the bottom board (with the front and back boards on it) is raised this far
       length = dims.depth + door_distance(params) - Defaults::DRAWER_BACK_GAP # from the back of the front to 46 mm off the wall
       width = dims.inner_w - (2 * slide)
       drawers.each do |drawer|
@@ -618,7 +635,7 @@ module KitchenCabinetMaster
         bottom = [front_z + 20.0, dims.thick + 20.0].max
         top = [front_z + drawer.extent[2] - 50.0, dims.height - dims.thick - 50.0 - gap].min
         height = top - bottom
-        next if length < 100.0 || width < 100.0 || height < 40.0
+        next if length < 100.0 || width < 100.0 || height < 40.0 || height - t - lift < 10.0
 
         y0 = (dims.thick - reveal) + slide
         z0 = bottom - front_z
@@ -628,9 +645,9 @@ module KitchenCabinetMaster
         boxes[drawer.role] = [
           name.call('left', 'Side', [length, t, height], [-length, y0, z0]),
           name.call('right', 'Side', [length, t, height], [-length, y0 + width - t, z0]),
-          name.call('bottom', 'Bottom', [length, width - (2 * t), t], [-length, y0 + t, z0]),
-          name.call('back', 'Back', [t, width - (2 * t), height - t], [-length, y0 + t, z0 + t]),
-          name.call('front', 'Front', [t, width - (2 * t), height - t], [-t, y0 + t, z0 + t])
+          name.call('bottom', 'Bottom', [length, width - (2 * t), t], [-length, y0 + t, z0 + lift]),
+          name.call('back', 'Back', [t, width - (2 * t), height - t - lift], [-length, y0 + t, z0 + t + lift]),
+          name.call('front', 'Front', [t, width - (2 * t), height - t - lift], [-t, y0 + t, z0 + t + lift])
         ]
       end
       boxes
@@ -826,9 +843,92 @@ module KitchenCabinetMaster
     # top edge. Two doors (a fridge-freezer) are stacked, `front_zone` being the top one's height.
     FRIDGE_MIN_LIFT = 100.0 # the least height a lift-up door above the fridge can have
 
+    # ---- the lower part of an oven housing: drawers, a door, or a small drawer over a door ------------
+    LOWER_DOOR_MODES = %w[door drawer_door].freeze
+
+    def self.lower_door?(params)
+      LOWER_DOOR_MODES.include?(params['lower_mode'].to_s)
+    end
+    private_class_method :lower_door?
+
+    # The doors of an oven housing whose lower part has a door: the lower door (alone, or under a small drawer) and the
+    # door over the appliances. All hinge the same way.
+    def self.oven_doors(params, dims, base_z)
+      zone = front_zone(params, dims)
+      return [] unless zone && zone[:bottom]
+
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      clear = door_distance(params)
+      width = dims.width - (2 * reveal)
+      hinge_left = params['door_opening_direction'].to_s != 'right'
+      lower = zone[:bottom] - (2 * reveal) # what the lower part shares
+      lower -= gap + params['small_drawer'].to_f if params['lower_mode'] == 'drawer_door'
+      spans = [[reveal, lower]]
+      if zone[:door]
+        height, z = door_span(params, dims)
+        spans << [z, height]
+      end
+      spans.each_with_index.map do |(z, height), index|
+        Door.new(
+          role: "door_#{index + 1}", name: "Door #{index + 1}", extent: [dims.thick, width, height].map { |v| round2(v) },
+          offset: [dims.depth + clear, reveal, base_z + z].map { |v| round2(v) },
+          hinge: hinge_left ? 'left' : 'right',
+          pivot: [dims.depth + clear + dims.thick, hinge_left ? reveal : reveal + width, base_z].map { |v| round2(v) },
+          rotation: 0.0
+        )
+      end
+    end
+    private_class_method :oven_doors
+
+    # The one small drawer at the top of the lower part, over its door.
+    def self.small_drawer(params, dims, base_z)
+      zone = front_zone(params, dims)
+      return [] unless zone && zone[:bottom]
+
+      reveal = params['door_reveal'].to_f
+      height = params['small_drawer'].to_f
+      [Door.new(
+        role: 'drawer_1', name: 'Drawer 1', extent: [dims.thick, dims.width - (2 * reveal), height].map { |v| round2(v) },
+        offset: [dims.depth + door_distance(params), reveal, base_z + zone[:bottom] - reveal - height].map { |v| round2(v) },
+        hinge: 'center', pivot: [dims.depth, reveal, base_z].map { |v| round2(v) }, rotation: 0.0
+      )]
+    end
+    private_class_method :small_drawer
+
+    # ---- a freestanding fridge: no carcass, just the fridge itself ----------------------------------------
+    # Width x depth x height as entered. A white body on a dark plinth, a steel door each for the freezer (below)
+    # and the fridge (above), and a vertical handle on each next to the gap between them.
+    def self.freestanding_layout(params, dims)
+      w = dims.width
+      d = dims.depth
+      h = dims.height
+      plinth = 25.0
+      body_h = h - plinth
+      freezer = (body_h * 0.3).round
+      door_t = 22.0
+      key = 'appliance_fridge_1_free'
+      split = plinth + freezer
+      right_hinge = params['door_opening_direction'].to_s == 'right'
+      y = right_hinge ? 25.0 : w - 25.0 - 22.0 # the handles are at the free edge
+      parts = [
+        part(key, 'panel', 'Fridge Plinth', [30.0, 20.0, 0.0], [d - 60.0, w - 40.0, plinth]),
+        part(key, 'body', 'Fridge Body', [0.0, 0.0, plinth], [d - door_t, w, body_h]),
+        part(key, 'plate_1', 'Fridge Freezer Door', [d - door_t, 0.0, plinth], [door_t, w, freezer - 2.0]),
+        part(key, 'plate_2', 'Fridge Door', [d - door_t, 0.0, split + 2.0], [door_t, w, h - split - 2.0]),
+        part(key, 'handle_1', 'Fridge Freezer Handle', [d, y, split - 40.0 - 300.0], [30.0, 22.0, 300.0]),
+        part(key, 'handle_2', 'Fridge Handle', [d, y, split + 40.0], [30.0, 22.0, 450.0])
+      ]
+      Layout.new(base_z: 0.0, top_z: round2(h), panels: [], doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts)
+    end
+    private_class_method :freestanding_layout
     # nil for a unit that is not a fridge; otherwise
     # { spans: [[z, height], ...] bottom door first, lift: [z, height] or nil, shelf_z: shelf lower edge or nil,
-    #   split: z between two doors or nil, body: [bottom, top] of the fridge itself }
+    #   split: z between two doors or nil, body: [bottom, top] of the fridge itself, top_end: where the top fridge door ends }
+    #
+    # `fridge_height` is the height of the (bottom) fridge door and `front_zone` the top door's, both as entered. The
+    # doors together reach F; above F is the lift-up door (`fridge_lift`, on by default) or, with it switched off,
+    # the top door simply carries on to the top. Either way a shelf stands over the fridge at F.
     def self.fridge_layout(params, dims)
       return nil unless params['fridge'] == true && params['door_count'].to_i.positive?
 
@@ -836,28 +936,35 @@ module KitchenCabinetMaster
       reveal = params['door_reveal'].to_f
       gap = params['door_gap'].to_f
       full = dims.height
-      f = params['fridge_height'].to_f
-      f = full unless f.positive? && f <= full
-      lifted = full - f >= FRIDGE_MIN_LIFT
-      f = full unless lifted
-      door_top = f - reveal
-
-      span = door_top - reveal # what the fridge doors share
-      if params['door_count'].to_i >= 2
+      two = params['door_count'].to_i >= 2
+      first = params['fridge_height'].to_f
+      if two
+        bottom = first.positive? ? first : 675.0
         top = params['front_zone'].to_f
-        top = (span - gap) * 0.62 unless top.positive? && top < span - gap - 50.0
-        bottom = span - gap - top
-        spans = [[reveal, bottom], [reveal + bottom + gap, top]]
+        top = 1100.0 unless top.positive?
+        f = reveal + bottom + gap + top + reveal
+      else
+        bottom = first.positive? ? first : 1780.0
+        f = bottom + (2 * reveal)
+      end
+      f = [f, full].min
+      lifted = params['fridge_lift'] != false && full - f >= FRIDGE_MIN_LIFT
+      shelved = full - f >= (2 * t) # room for a shelf over the fridge
+
+      end_z = (lifted ? f : full) - reveal # where the top fridge door ends
+      if two
+        low = reveal + bottom + gap
+        spans = [[reveal, bottom], [low, end_z - low]]
         split = reveal + bottom + (gap / 2.0)
       else
-        spans = [[reveal, span]]
+        spans = [[reveal, end_z - reveal]]
         split = nil
       end
 
-      shelf_z = lifted ? f - t : nil
-      lift = lifted ? [door_top + gap, full - reveal - door_top - gap] : nil
-      { spans: spans, lift: lift, shelf_z: shelf_z, split: split,
-        body: [t, (lifted ? shelf_z : full - t) - APPLIANCE_GAP] }
+      shelf_z = shelved ? f - t : nil
+      lift = lifted ? [f - reveal + gap, full - reveal - (f - reveal + gap)] : nil
+      { spans: spans, lift: lift, shelf_z: shelf_z, split: split, top_end: end_z, f: f,
+        body: [t, (shelf_z || (full - t)) - APPLIANCE_GAP] }
     end
     private_class_method :fridge_layout
 
@@ -880,12 +987,14 @@ module KitchenCabinetMaster
       x = dims.depth + clear
 
       doors = fridge[:spans].each_with_index.map do |(z, height), index|
+        # two doors: both handles next to the gap between them
+        grip = fridge[:spans].length > 1 ? (index.zero? ? 'top' : 'bottom') : nil
         Door.new(
           role: "door_#{index + 1}", name: "Door #{index + 1}", extent: [dims.thick, width, height].map { |v| round2(v) },
           offset: [x, reveal, base_z + z].map { |v| round2(v) },
           hinge: hinge_left ? 'left' : 'right',
           pivot: [x + dims.thick, hinge_left ? reveal : reveal + width, base_z].map { |v| round2(v) },
-          rotation: 0.0
+          rotation: 0.0, grip: grip
         )
       end
       if fridge[:lift]
@@ -933,7 +1042,7 @@ module KitchenCabinetMaster
 
       # An oven housing: drawers at the bottom, the door at the top, an open niche between. (A base unit
       # with a built-in oven has no door: the oven stands over its drawer and the top panel closes it.)
-      if bottom.positive? && bottom < dims.height && params['drawer_count'].to_i.positive?
+      if bottom.positive? && bottom < dims.height && (params['drawer_count'].to_i.positive? || lower_door?(params))
         stack = appliance_stack(params, dims, bottom)
         return stack if stack
         return nil unless params['door_count'].to_i.positive?
@@ -955,6 +1064,7 @@ module KitchenCabinetMaster
     def self.drawer_panels(params, dims, base_z)
       count = params['drawer_count'].to_i
       return [] unless count.positive?
+      return small_drawer(params, dims, base_z) if params['lower_mode'] == 'drawer_door'
 
       gap = params['door_gap'].to_f
       reveal = params['door_reveal'].to_f

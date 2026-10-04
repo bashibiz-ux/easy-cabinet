@@ -37,7 +37,8 @@ class FakeCabinet < Sketchup::ComponentInstance
     env = KitchenCabinetMaster::CabinetLayout.envelope(params)
     @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
                'cabinet_category' => params['cabinet_category'], 'top_z' => env[2],
-               'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2] }
+               'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2],
+               'corner_style' => params['corner_style'].to_s, 'door_opening_direction' => params['door_opening_direction'].to_s }
   end
 
   def attribute_dictionary(_name, _create = false) = @attrs
@@ -96,6 +97,34 @@ class PlacementTest < Minitest::Test
   def assert_point(expected, actual, msg)
     assert_in_delta expected[0], actual.x, 0.01, "#{msg} (x)"
     assert_in_delta expected[1], actual.y, 0.01, "#{msg} (y)"
+  end
+
+  def insert_params(p)
+    _entities, transformation = PlacementManager.target_for_new(@model, p)
+    cabinet = FakeCabinet.new(transformation, p, @parent, @sequence += 1)
+    @entities.add(cabinet)
+    SelectionManager.selected = cabinet
+    cabinet
+  end
+
+  # A cabinet after a blind corner is turned towards the blind side and 50 mm beyond the blind panel's face.
+  def test_a_cabinet_after_a_blind_corner_turns_towards_the_blind_side_and_stands_50_mm_off_the_panel
+    blind = insert_params(params('base', 1000.0).merge('corner_style' => 'blind', 'door_opening_direction' => 'left'))
+    front = blind.get_attribute('kcm', 'envelope_depth') # 560 + door distance + door thickness
+    nxt = insert('base', 600.0)
+    assert_point [front + 50.0, 1000.0], nxt.transformation.origin, 'blind on the right: it starts 50 mm past the front of the corner unit'
+    assert_in_delta(-1.0, nxt.transformation.xaxis.y, 1e-9, 'its front faces back along the row')
+    assert_in_delta 1.0, nxt.transformation.yaxis.x, 1e-9, 'and its row runs out along the next wall'
+  end
+
+  def test_a_cabinet_after_a_blind_corner_with_the_blind_part_on_the_left_turns_the_other_way
+    blind = insert_params(params('base', 1000.0).merge('corner_style' => 'blind', 'door_opening_direction' => 'right'))
+    front = blind.get_attribute('kcm', 'envelope_depth')
+    nxt = insert('base', 600.0)
+    assert_point [front + 50.0 + 600.0, 0.0], nxt.transformation.origin, 'its width runs back towards the corner unit'
+    assert_in_delta 1.0, nxt.transformation.xaxis.y, 1e-9, 'its front faces along the row'
+    assert_in_delta(-1.0, nxt.transformation.yaxis.x, 1e-9)
+    assert_point [front + 50.0, 600.0 * 0], at(nxt, 0, 600.0), 'the near end of it is 50 mm past the panel'
   end
 
   def test_first_corner_with_nothing_selected_goes_at_the_origin_unturned

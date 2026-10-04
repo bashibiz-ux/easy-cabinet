@@ -548,7 +548,7 @@
           600
         ],
         "fridge": 1780,
-        "fridge_label": "Fridge Door Height",
+        "fridge_label": "Door Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -564,8 +564,8 @@
         "widths": [
           600
         ],
-        "fridge": 1780,
-        "fridge_label": "Fridge Door Height",
+        "fridge": 675,
+        "fridge_label": "Bottom Door Height",
         "zone": 1100,
         "zone_label": "Top Door Height",
         "defaults": {
@@ -586,12 +586,31 @@
         ],
         "zone": 860,
         "zone_bottom": 700,
-        "bottom_label": "Drawer Zone Height",
+        "bottom_label": "Lower Part Height",
+        "lower": true,
         "appliances": "oven",
         "defaults": {
           "width": 600,
           "depth": 560,
           "height": 2160
+        }
+      },
+      {
+        "id": "tall_fridge_free",
+        "name": "Tall - freestanding fridge",
+        "code": "FF",
+        "doors": 0,
+        "shelves": 0,
+        "widths": [
+          600,
+          700,
+          900
+        ],
+        "freestanding": true,
+        "defaults": {
+          "width": 600,
+          "depth": 650,
+          "height": 1850
         }
       }
     ]

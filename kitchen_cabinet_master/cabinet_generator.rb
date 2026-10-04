@@ -329,10 +329,7 @@ module KitchenCabinetMaster
       entities = container.definition.entities
       existing = index_by_role(entities)[DOOR_SYMBOL_ROLE]
 
-      if door.hinge == 'center'
-        discard_instance(model, existing) if existing
-        return
-      end
+
 
       unless existing
         definition = AttributeManager.mark_managed(model.definitions.add("#{container.definition.name} Opening Symbol"))
@@ -357,7 +354,7 @@ module KitchenCabinetMaster
 
     def self.sync_handle(model, entities, door, params, bundle)
       existing = index_by_role(entities)[HANDLE_ROLE]
-      unless bundle
+      unless bundle && door.handle != false # no handle on this door (an L corner has one, on its narrower door)
         discard_instance(model, existing) if existing
         return
       end
@@ -390,13 +387,14 @@ module KitchenCabinetMaster
     def self.sync_indicator(model, root, top, params, layout, doors_visible)
       angle = params['door_opening_angle'].to_f
 
-      if layout.doors.empty?
+      moving = layout.doors + layout.drawers # doors swing, drawers slide out: both have a plan symbol
+      if moving.empty?
         discard_instance(model, top[INDICATOR_ROLE]) if top[INDICATOR_ROLE]
         return
       end
 
       container = ensure_container(model, root, top, INDICATOR_ROLE, 'Opening Indicator', layout.base_z)
-      signature = DoorAnimation.indicator_signature(layout.doors, angle, layout.base_z)
+      signature = DoorAnimation.indicator_signature(moving, angle, layout.base_z)
 
       unless container.get_attribute(AttributeManager::DICTIONARY, SIGNATURE_KEY) == signature
         rebuild_indicator(container, layout, angle)
@@ -413,7 +411,7 @@ module KitchenCabinetMaster
     def self.rebuild_indicator(container, layout, angle)
       entities = container.definition.entities
       entities.clear!
-      DoorAnimation.indicator_segments(layout.doors, angle, layout.base_z).each do |from, to|
+      DoorAnimation.indicator_segments(layout.doors + layout.drawers, angle, layout.base_z).each do |from, to|
         entities.add_cline(from.map(&:mm), to.map(&:mm), '-')
       end
     end
@@ -435,7 +433,7 @@ module KitchenCabinetMaster
     # The material of an appliance part (a fridge's body is white; plates, handles, knobs and fronts are steel).
     def self.appliance_finish(role)
       kind = role.split('_')[1]
-      suffix = role.sub(/\Aappliance_[a-z]+_\d+_/, '')
+      suffix = role.sub(/\Aappliance_[a-z]+_\d+_(?:free_)?/, '')
       suffix = suffix.sub(/_\d+\z/, '') # knob_1, post_2 ...
       suffix = 'steel' unless APPLIANCE_FINISHES.key?(suffix)
       (kind == 'fridge' && FRIDGE_FINISHES[suffix]) || APPLIANCE_FINISHES[suffix]
@@ -466,11 +464,13 @@ module KitchenCabinetMaster
     end
     private_class_method :sync_appliances
 
+    # A freestanding fridge is the unit itself, so it is always shown; the rest follow Show appliances and its own tick.
     def self.apply_appliance_visibility(container, visibility)
-      container.visible = visibility['appliances'] == true
-      index_by_role(container.definition.entities).each do |role, instance|
+      parts = index_by_role(container.definition.entities)
+      container.visible = visibility['appliances'] == true || parts.keys.any? { |role| role.include?('_free_') }
+      parts.each do |role, instance|
         key = role.include?('_micro_') ? 'microwave' : (role.include?('_fridge_') ? 'fridge' : 'oven')
-        instance.visible = visibility[key] != false
+        instance.visible = role.include?('_free_') || visibility[key] != false
       end
     end
 

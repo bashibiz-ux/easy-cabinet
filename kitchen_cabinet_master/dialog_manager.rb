@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   #                  KCM.receive({ event, data })                        (push, no id)
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
-    CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all].freeze
+    CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all get_selection].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick apply_toe_kicks update_part delete_part].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
@@ -20,6 +20,7 @@ module KitchenCabinetMaster
       def show
         if @dialog
           @dialog.visible? ? @dialog.bring_to_front : @dialog.show
+          SelectionManager.push_selection # what is selected in the model opens in the panel
         else
           @dialog = build_dialog
           @dialog.show

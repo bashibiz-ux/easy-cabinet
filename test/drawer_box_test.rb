@@ -56,6 +56,22 @@ class DrawerBoxTest < Minitest::Test
     assert_operator left.offset[2] + left.extent[2], :<, drawer.extent[2], 'under the top of the front'
   end
 
+  def test_a_vertical_handle_choice_still_gives_drawers_and_lift_up_doors_a_horizontal_handle
+    bundle = { 'profile' => 'bar', 'section' => 10.0 }
+    settings = { 'length' => 128.0, 'orientation' => 'vertical', 'position' => 'auto', 'category' => 'base',
+                 'side_offset' => 25.0, 'vertical_offset' => 25.0, 'horizontal_place' => 'edge' }
+    drawer = CabinetLayout.compute(params('drawer_count' => 1, 'height' => 200.0)).drawers.first
+    spot = HandleManager.placement(drawer, settings, bundle)
+    assert spot['horizontal'], 'a drawer front takes a horizontal handle'
+    lift = CabinetLayout::Door.new(role: 'door_2', name: 'Lift', extent: [18.0, 600.0, 300.0], offset: [0, 0, 0], hinge: 'top', pivot: [0, 0, 300.0], rotation: 0.0)
+    assert HandleManager.placement(lift, settings, bundle)['horizontal']
+    grip = ->(where) { CabinetLayout::Door.new(role: 'door_1', name: 'D', extent: [18.0, 600.0, 700.0], offset: [0, 0, 100.0], hinge: 'left', pivot: [0, 0, 0], rotation: 0.0, grip: where) }
+    top = HandleManager.placement(grip.call('top'), settings.merge('category' => 'tall', 'orientation' => 'horizontal'), bundle)
+    bottom = HandleManager.placement(grip.call('bottom'), settings.merge('category' => 'tall', 'orientation' => 'horizontal'), bundle)
+    assert_in_delta 700.0 - 25.0 - 5.0, top['v'], 1e-9, 'next to the top edge'
+    assert_in_delta 25.0 + 5.0, bottom['v'], 1e-9, 'next to the bottom edge'
+  end
+
   def test_a_drawer_too_small_for_a_box_gets_none
     layout = CabinetLayout.compute(params('width' => 150.0))
     assert_empty layout.drawer_boxes
@@ -94,10 +110,12 @@ class DrawerBoxTest < Minitest::Test
       front_z = drawer.offset[2] - base
       first_bottom = 38.0 # 20 mm above the carcass bottom panel
       assert_in_delta(i.zero? ? first_bottom : front_z + 20.0, front_z + left.offset[2], 1e-6, "drawer #{i + 1} bottom")
-      assert_in_delta expected_heights[i] - 18.0, back.extent[2], 1e-6, 'the back stands on the bottom'
+      assert_in_delta bottom.offset[2], left.offset[2] + 10.0, 1e-6, 'the bottom board is lifted 10 mm'
+      assert_in_delta expected_heights[i] - 18.0 - 10.0, back.extent[2], 1e-6, 'the back stands on the bottom, reduced from below'
+      assert_in_delta bottom.offset[2] + 18.0, back.offset[2], 1e-6
       assert_equal [18.0, 502.0], back.extent.first(2)
       front = boxes.find { |b| b.role.end_with?('front') }
-      assert_equal [18.0, 502.0, expected_heights[i] - 18.0], front.extent, 'the inner front is as tall as the back'
+      assert_equal [18.0, 502.0, expected_heights[i] - 28.0], front.extent, 'the inner front is as tall as the back'
     end
   end
 end

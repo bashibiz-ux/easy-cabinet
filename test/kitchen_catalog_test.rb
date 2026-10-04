@@ -23,7 +23,7 @@ class KitchenCatalogTest < Minitest::Test
       'door_opening_direction' => 'left', 'corner_style' => entry['corner'].to_s, 'blind_width' => entry['blind'],
       'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'door_stacked' => entry['stacked'] == true,
       'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s,
-      'fridge' => !!entry['fridge'], 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s }
+      'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s }
   end
 
   def each_entry
@@ -205,23 +205,27 @@ class KitchenCatalogTest < Minitest::Test
     assert_empty result.errors.map { |e| e['message'] }
     assert_equal 2, one.doors.length, 'the fridge door and the lift-up door'
     door, lift = one.doors
-    assert_in_delta 1780.0 - (2 * reveal), door.extent[2], 0.01, 'the fridge door is 1780 high (less the reveals)'
+    assert_in_delta 1780.0, door.extent[2], 0.01, 'the fridge door is 1780 high, as entered'
     assert_equal 'top', lift.hinge, 'the upper door lifts up'
     assert_in_delta 2160.0 - reveal, lift.offset[2] - 100.0 + lift.extent[2], 0.01, 'it covers the top'
     assert_in_delta door.offset[2] + door.extent[2] + gap, lift.offset[2], 0.01, 'a door gap above the fridge door'
     assert_in_delta lift.offset[2] + lift.extent[2], lift.pivot[2], 0.01, 'hinged on its top edge'
     shelf = one.panels.find { |p| p.role == 'fridge_shelf' }
-    assert_in_delta 1780.0, shelf.offset[2] + shelf.extent[2], 0.01, 'the shelf under the lift-up door'
+    assert_in_delta 1780.0 + (2 * reveal), shelf.offset[2] + shelf.extent[2], 0.01, 'the shelf under the lift-up door'
     assert_in_delta 560.0, shelf.offset[0] + shelf.extent[0], 0.01, 'flush with the carcass front'
 
     _, taller = unit('tall', 'tall_fridge_builtin_1door', 600, 'fridge_height' => 1900)
-    assert_in_delta 1900.0 - (2 * reveal), taller.doors.first.extent[2], 0.01, 'the fridge door height can be adjusted'
-    _, whole = unit('tall', 'tall_fridge_builtin_1door', 600, 'fridge_height' => 2160)
-    assert_equal 1, whole.doors.length, 'as tall as the unit: no lift-up door'
-    assert_in_delta 2160.0 - (2 * reveal), whole.doors.first.extent[2], 0.01
-    assert_nil whole.panels.find { |p| p.role == 'fridge_shelf' }
+    assert_in_delta 1900.0, taller.doors.first.extent[2], 0.01, 'the fridge door height can be adjusted'
+    # no lift-up door: only a shelf over the fridge, and the door carries on to the top
+    result, plain = unit('tall', 'tall_fridge_builtin_1door', 600, 'fridge_lift' => false)
+    assert_empty result.errors
+    assert_equal 1, plain.doors.length
+    assert_in_delta 2160.0 - (2 * reveal), plain.doors.first.extent[2], 0.01, 'the door reaches the top'
+    shelf_off = plain.panels.find { |p| p.role == 'fridge_shelf' }
+    assert_in_delta 1780.0 + (2 * reveal), shelf_off.offset[2] + shelf_off.extent[2], 0.01, 'with the shelf where the fridge ends'
     refuse, = unit('tall', 'tall_fridge_builtin_1door', 600, 'fridge_height' => 2100)
-    assert_includes refuse.errors.map { |e| e['field'] }, 'height', 'a 60 mm lift-up door is refused'
+    assert_includes refuse.errors.map { |e| e['field'] }, 'fridge_height', 'a 56 mm lift-up door is refused'
+    assert_empty unit('tall', 'tall_fridge_builtin_1door', 600, 'fridge_height' => 2100, 'fridge_lift' => false)[0].errors
   end
 
   def test_the_two_door_fridge_has_stacked_doors_and_a_lift_up_door
@@ -235,12 +239,18 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator bottom.offset[2] + bottom.extent[2], :<, top.offset[2], 'the doors do not touch'
     assert_equal bottom.hinge, top.hinge, 'hinged on the same side'
     assert_equal 'top', lift.hinge
-    assert_in_delta 1780.0 - reveal, top.offset[2] - 100.0 + top.extent[2], 0.01, 'the top door ends where the fridge door height says'
+    assert_in_delta 675.0, bottom.extent[2], 0.01, 'the bottom door is as entered'
+    assert_equal %w[top bottom], [bottom.grip, top.grip], 'both handles next to the gap between the doors'
     _, shorter = unit('tall', 'tall_fridge_builtin_2door', 600, 'front_zone' => 500)
     assert_in_delta 500.0, shorter.doors[1].extent[2], 0.01, 'the top door height can be adjusted'
-    _, lower = unit('tall', 'tall_fridge_builtin_2door', 600, 'fridge_height' => 1600)
-    assert_in_delta 1600.0 - reveal, lower.doors[1].offset[2] - 100.0 + lower.doors[1].extent[2], 0.01, 'the fridge door height can be adjusted'
+    _, lower = unit('tall', 'tall_fridge_builtin_2door', 600, 'fridge_height' => 500)
+    assert_in_delta 500.0, lower.doors[0].extent[2], 0.01, 'the bottom door height can be adjusted'
     assert_in_delta 2160.0 - reveal, lower.doors[2].offset[2] - 100.0 + lower.doors[2].extent[2], 0.01, 'and the lift-up door covers the rest'
+    _, no_lift = unit('tall', 'tall_fridge_builtin_2door', 600, 'fridge_lift' => false)
+    assert_equal 2, no_lift.doors.length
+    assert_in_delta 2160.0 - reveal, no_lift.doors[1].offset[2] - 100.0 + no_lift.doors[1].extent[2], 0.01, 'without it the top door carries on to the top'
+    assert_in_delta 675.0, no_lift.doors[0].extent[2], 0.01
+    assert no_lift.panels.find { |p| p.role == 'fridge_shelf' }, 'and a shelf stands over the fridge'
   end
 
   def test_the_fridge_is_drawn_behind_the_doors
@@ -256,6 +266,59 @@ class KitchenCatalogTest < Minitest::Test
     _, single = unit('tall', 'tall_fridge_builtin_1door')
     assert_equal ['appliance_fridge_1_plate_1'], single.appliances.map(&:role).grep(/plate/)
     assert_equal true, Defaults.params['visibility_settings']['fridge'], 'the fridge has its own tick'
+  end
+
+  # The lower part of an oven housing: drawers, a door, or a small drawer over a door.
+  def lower_unit(mode, count = 2, extra = {})
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_oven')
+    doors = mode == 'drawers' ? 1 : 2
+    drawers = { 'drawers' => count, 'door' => 0, 'drawer_door' => 1 }[mode]
+    raw = raw_for('tall', entry, 600).merge('lower_mode' => mode, 'lower_drawers' => count).merge(extra)
+    result = ValidationManager.validate(raw, door_count: doors, drawer_count: drawers)
+    [result, CabinetLayout.compute(result.params.merge('door_count' => doors, 'drawer_count' => drawers))]
+  end
+
+  def test_the_lower_part_of_the_oven_housing_is_drawers_a_door_or_a_small_drawer_over_a_door
+    reveal = Defaults.params['door_reveal']
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_oven')
+    assert entry['lower']
+    result, drawers = lower_unit('drawers', 3)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal [3, 1], [drawers.drawers.length, drawers.doors.length]
+    result, door = lower_unit('door')
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal [0, 2], [door.drawers.length, door.doors.length]
+    lower, upper = door.doors
+    assert_in_delta 700.0 - (2 * reveal), lower.extent[2], 0.01, 'one door under the first shelf'
+    assert_in_delta 700.0 - reveal, lower.offset[2] - 100.0 + lower.extent[2], 0.01, 'covering its edge, a reveal short of the top'
+    assert_operator upper.offset[2], :>, 700.0, 'the other door is above the appliances'
+    assert door.panels.find { |p| p.role == 'oven_shelf_1' }
+    result, mixed = lower_unit('drawer_door', 1, 'small_drawer' => 200)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal [1, 2], [mixed.drawers.length, mixed.doors.length]
+    small = mixed.drawers.first
+    assert_in_delta 200.0, small.extent[2], 0.01, 'the small drawer is as entered'
+    assert_in_delta 700.0 - reveal, small.offset[2] - 100.0 + small.extent[2], 0.01
+    assert_operator mixed.doors.first.offset[2] + mixed.doors.first.extent[2], :<, small.offset[2], 'the door is under the drawer'
+    assert mixed.panels.find { |p| p.role == 'lower_rail' }
+    refuse, = lower_unit('drawer_door', 1, 'small_drawer' => 650)
+    assert_includes refuse.errors.map { |e| e['field'] }, 'small_drawer'
+  end
+
+  def test_a_freestanding_fridge_is_only_the_appliance
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge_free')
+    assert_equal [600, 700, 900], entry['widths']
+    result, layout = unit('tall', 'tall_fridge_free')
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_empty layout.panels
+    assert_empty layout.doors
+    assert_equal 0.0, layout.base_z, 'it stands on the floor'
+    assert_equal 1850.0, layout.top_z
+    roles = layout.appliances.map(&:role)
+    assert_includes roles, 'appliance_fridge_1_free_body'
+    assert_equal 2, roles.grep(/plate/).length
+    assert_equal 2, roles.grep(/handle/).length
+    assert_equal [0.0, 1850.0, 1850.0], [layout.appliances.map { |a| a.offset[2] }.min, layout.appliances.map { |a| a.offset[2] + a.extent[2] }.max, layout.top_z]
   end
 
   def test_three_drawers_small_small_big

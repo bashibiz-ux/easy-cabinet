@@ -207,7 +207,10 @@ module KitchenCabinetMaster
     # them showing the movement. (The other symbol, on the door itself, is
     # door_symbol_segments; the two are switched on and off independently.)
     def self.indicator_segments(doors, angle, base_z)
-      doors.reject { |door| door.hinge == 'top' }.flat_map { |door| plan_indicator(door, angle, base_z) } # a lift-up door has no plan line
+      shown = doors.reject { |door| door.hinge == 'top' } # a lift-up door has no plan line
+      # one arrow per drawer column (stacked drawers share it)
+      shown = shown.reject.with_index { |door, i| door.hinge == 'center' && shown.first(i).any? { |o| o.hinge == 'center' && o.offset[1] == door.offset[1] && o.extent[1] == door.extent[1] } }
+      shown.flat_map { |door| plan_indicator(door, angle, base_z) }
     end
 
     # A short text that changes whenever the indicator would look different.
@@ -219,7 +222,20 @@ module KitchenCabinetMaster
       shapes.push(angle.to_f).inspect
     end
 
+    # A drawer's plan symbol: an arrow from the middle of its front straight out, the way it slides.
+    DRAWER_ARROW = 250.0
+    def self.drawer_arrow(door, base_z)
+      x = door.offset[0] + door.extent[0]
+      y = door.offset[1] + (door.extent[1] / 2.0)
+      z = -base_z
+      tip = x + DRAWER_ARROW
+      [[[x, y, z], [tip, y, z]], [[tip, y, z], [tip - 45.0, y - 30.0, z]], [[tip, y, z], [tip - 45.0, y + 30.0, z]]]
+    end
+    private_class_method :drawer_arrow
+
     def self.plan_indicator(door, angle, base_z)
+      return drawer_arrow(door, base_z) if door.hinge == 'center'
+
       angle = angle_for(door, angle)
       px, py, = door.pivot
       thickness, width, = door.extent
@@ -255,6 +271,11 @@ module KitchenCabinetMaster
       if door.hinge == 'top' # a lift-up door: from the middle of the top edge to the bottom corners
         apex = [x, width / 2.0, height]
         return [[apex, [x, 0.0, 0.0]], [apex, [x, width, 0.0]]]
+      end
+
+      if door.hinge == 'center' # a drawer front: a V pointing down from the top corners, the way a drawer is drawn on an elevation
+        apex = [x, width / 2.0, 0.0]
+        return [[apex, [x, 0.0, height]], [apex, [x, width, height]]]
       end
 
       hinge_y = door.hinge == 'left' ? 0.0 : width

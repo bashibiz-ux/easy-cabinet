@@ -97,9 +97,10 @@ module KitchenCabinetMaster
       (layout.drawer_boxes || {}).each_value { |panels| panels.each { |p| out << board(p.name, p.extent, carcass, owner) } }
 
       id = stored['handle_id'].to_s
-      if !id.empty? && fronts.any?
+      handled = fronts.count { |item| item.handle != false }
+      if !id.empty? && handled.positive?
         name = handle_name.call(id) || id
-        out << { part: "Handle #{name}", size: [stored['handle_length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: fronts.length }
+        out << { part: "Handle #{name}", size: [stored['handle_length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: handled }
       end
       out
     end

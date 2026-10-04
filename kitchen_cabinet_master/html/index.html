@@ -227,6 +227,24 @@
           <span class="label" id="topFrontLabel">Top Panel Height</span>
           <div class="input"><input id="topFrontHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <!-- An oven housing's lower part: drawers, a door, or a small drawer over a door. -->
+        <label class="field" id="lowerField" hidden>
+          <span class="label">Lower Part</span>
+          <div class="input"><select id="lowerMode">
+            <option value="drawers">Drawers</option>
+            <option value="door">Door</option>
+            <option value="drawer_door">One small drawer and a door</option>
+          </select></div>
+        </label>
+        <label class="field narrow" id="lowerDrawersField" hidden>
+          <span class="label">Number of Drawers</span>
+          <div class="input"><input id="lowerDrawers" type="text" inputmode="numeric" autocomplete="off"></div>
+        </label>
+        <label class="field narrow" id="smallDrawerField" hidden>
+          <span class="label">Small Drawer Height</span>
+          <div class="input"><input id="smallDrawer" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <label class="check" id="liftField" hidden><input type="checkbox" id="liftUp" checked><span>Lift-up door above the fridge</span></label>
         <label class="field narrow" id="fridgeField" hidden>
           <span class="label" id="fridgeLabel">Fridge Door Height</span>
           <div class="input"><input id="fridgeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>

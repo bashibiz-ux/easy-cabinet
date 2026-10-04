@@ -124,7 +124,11 @@ module KitchenCabinetMaster
         elsif selected
           width = selected.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
           slot = selected.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, width.mm + gap, 0))
-          turn ? turned(slot, turn, own_width.to_f.mm) : slot
+          if turn
+            turned(slot, turn, own_width.to_f.mm)
+          else
+            beside_blind(selected, params) || slot
+          end
         else
           Geom::Transformation.new
         end
@@ -165,6 +169,32 @@ module KitchenCabinetMaster
       cabinets = model.active_entities.grep(Sketchup::ComponentInstance).select { |i| AttributeManager.cabinet?(i) }
       cabinets.each_with_index.max_by { |i, index| [i.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
+
+    BLIND_CLEARANCE_MM = 50.0 # a cabinet after a blind corner stands this far from the blind panel
+
+    # What follows a blind corner is turned towards its blind side, so the row carries on along the wall there, and
+    # starts 50 mm beyond the blind panel (measured from the front of the corner unit). nil when `selected` is not a
+    # blind corner. The blind part is at the right end with Door Opening Direction "left", else at the left end.
+    def self.beside_blind(selected, params)
+      dictionary = AttributeManager::DICTIONARY
+      return nil unless selected.get_attribute(dictionary, 'corner_style') == 'blind'
+
+      right_end = selected.get_attribute(dictionary, 'door_opening_direction').to_s != 'right'
+      width = selected.get_attribute(dictionary, 'width').to_f
+      shift = selected.get_attribute(dictionary, 'envelope_depth').to_f + BLIND_CLEARANCE_MM
+      axis = Geom::Vector3d.new(0, 0, 1)
+      if right_end
+        # its back on the wall at the right end, running out along the next wall, clear of the blind panel
+        selected.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, width.mm, 0)) *
+          Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), axis, CORNER_TURN_DEGREES * Math::PI / 180.0) *
+          Geom::Transformation.translation(Geom::Vector3d.new(0, shift.mm, 0))
+      else
+        # turned the other way at the left end: its own width then runs backwards, so it starts a width further out
+        selected.transformation * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), axis, -CORNER_TURN_DEGREES * Math::PI / 180.0) *
+          Geom::Transformation.translation(Geom::Vector3d.new(0, -(shift + params['width'].to_f).mm, 0))
+      end
+    end
+    private_class_method :beside_blind
 
     # `slot` moved to the far end of its own width, then turned by `degrees` about
     # the new origin. For -90 the item's back ends up on the far side of its slot.

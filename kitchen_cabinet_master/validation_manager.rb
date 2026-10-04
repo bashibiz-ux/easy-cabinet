@@ -92,6 +92,18 @@ module KitchenCabinetMaster
       blind = to_float(raw['blind_width'])
       out['blind_width'] = blind if blind && blind >= 0
       out['fridge'] = truthy?(raw['fridge'])
+      out['fridge_lift'] = raw.key?('fridge_lift') ? truthy?(raw['fridge_lift']) : true
+      out['freestanding'] = truthy?(raw['freestanding'])
+      mode = raw['lower_mode'].to_s
+      out['lower_mode'] = mode if Defaults::LOWER_MODES.include?(mode)
+      drawers = to_float(raw['lower_drawers'])
+      out['lower_drawers'] = drawers.round.clamp(1, 6) if drawers
+      small = to_float(raw['small_drawer'])
+      if small && small >= 80.0 && small <= 600.0
+        out['small_drawer'] = small
+      elsif small && !raw['small_drawer'].to_s.strip.empty?
+        errors << error('small_drawer', 'The small drawer must be between 80 and 600 mm high.')
+      end
       fridge = to_float(raw['fridge_height'])
       out['fridge_height'] = fridge if fridge && fridge >= 0
       top_front = to_float(raw['top_front'])
@@ -288,13 +300,22 @@ module KitchenCabinetMaster
       bottom = out['bottom_zone'].to_f
       return check_fridge(out, door_count, errors, bad) if out['fridge']
       return check_stacked(out, errors, bad) if out['door_stacked'] && door_count.to_i == 2
-      return unless (zone.positive? || bottom.positive?) && (door_count.to_i.positive? || (bottom.positive? && drawer_count.to_i.positive?)) &&
+      lower = out['lower_mode'].to_s
+      housing = bottom.positive? && (drawer_count.to_i.positive? || %w[door drawer_door].include?(lower))
+      return unless (zone.positive? || bottom.positive?) && (door_count.to_i.positive? || housing) &&
                     (bad & %w[height door_gap door_reveal]).empty? && out['height']
 
-      if bottom.positive? && drawer_count.to_i.positive?
+      if housing
         check_appliances(out, bottom, errors, door_count.to_i.positive?)
-        each = (bottom - (2 * out['door_reveal']) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
-        errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
+        if lower == 'drawer_door'
+          door_h = bottom - (2 * out['door_reveal']) - out['door_gap'] - out['small_drawer'].to_f
+          errors << error('small_drawer', "The door under the small drawer would be only #{fmt(door_h.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).") if door_h < MIN_DOOR_SIZE
+        elsif drawer_count.to_i.positive?
+          each = (bottom - (2 * out['door_reveal']) - ((drawer_count.to_i - 1) * out['door_gap'])) / drawer_count.to_i
+          errors << error('height', "Each drawer front would be only #{fmt(each.round(1))} mm high (minimum #{fmt(MIN_DRAWER_HEIGHT)} mm).") if each < MIN_DRAWER_HEIGHT
+        elsif bottom - (2 * out['door_reveal']) < MIN_DOOR_SIZE
+          errors << error('height', "The lower door would be only #{fmt((bottom - (2 * out['door_reveal'])).round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
+        end
         niche = out['height'] - bottom - zone - (2 * out['door_gap'])
         errors << error('height', "The niche between the drawers and the door would be only #{fmt(niche.round(1))} mm high.") if zone.positive? && niche < 100.0
       elsif drawer_count.to_i.positive?
@@ -346,40 +367,43 @@ module KitchenCabinetMaster
     end
     private_class_method :check_appliances
 
-    # A built-in fridge: the fridge doors (one, or two stacked) up to `fridge_height`, and a lift-up door over
-    # them unless the fridge height is the whole unit.
+    # A built-in fridge: `fridge_height` is the (bottom) fridge door's height and `front_zone` the top door's (two doors).
+    # With the lift-up door on, it needs room above the doors; with it off, the top door carries on to the top.
     def self.check_fridge(out, door_count, errors, bad)
       return unless (bad & %w[height width door_gap door_reveal]).empty? && out['height'] && out['width']
 
       reveal = out['door_reveal']
+      gap = out['door_gap']
       errors << error('width', "The doors would be only #{fmt((out['width'] - (2 * reveal)).round(1))} mm wide (minimum #{fmt(MIN_DOOR_SIZE)} mm).") if out['width'] - (2 * reveal) < MIN_DOOR_SIZE
       full = out['height']
-      fridge = out['fridge_height'].to_f
-      fridge = full unless fridge.positive?
-      if fridge > full
-        errors << error('height', "The fridge door height (#{fmt(fridge)} mm) cannot be more than the unit height (#{fmt(full)} mm).")
-        return
-      end
-      if fridge < 400.0
-        errors << error('height', 'The fridge door must be at least 400 mm high.')
-        return
-      end
-      lift = full - fridge
-      if lift.positive? && lift < CabinetLayout::FRIDGE_MIN_LIFT
-        errors << error('height', "The lift-up door above the fridge would be only #{fmt(lift.round(1))} mm high (minimum #{fmt(CabinetLayout::FRIDGE_MIN_LIFT)} mm; make the fridge door as tall as the unit for none).")
-        return
-      end
-
-      span = fridge - (2 * reveal)
-      if door_count.to_i >= 2
-        top = out['front_zone'].to_f
-        bottom = span - out['door_gap'] - top
-        if top.positive? && (top < MIN_DOOR_SIZE || bottom < MIN_DOOR_SIZE)
-          errors << error('height', "The two fridge doors would be #{fmt(top.round(1))} and #{fmt(bottom.round(1))} mm high (each needs at least #{fmt(MIN_DOOR_SIZE)} mm).")
+      first = out['fridge_height'].to_f
+      two = door_count.to_i >= 2
+      if two
+        bottom = first.positive? ? first : 675.0
+        top = out['front_zone'].to_f.positive? ? out['front_zone'] : 1100.0
+        f = (2 * reveal) + bottom + gap + top
+        if top < MIN_DOOR_SIZE || bottom < MIN_DOOR_SIZE
+          errors << error('fridge_height', "The two fridge doors would be #{fmt(top.round(1))} and #{fmt(bottom.round(1))} mm high (each needs at least #{fmt(MIN_DOOR_SIZE)} mm).")
+          return
         end
-      elsif span < MIN_DOOR_SIZE
-        errors << error('height', "The fridge door would be only #{fmt(span.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
+      else
+        bottom = first.positive? ? first : 1780.0
+        f = bottom + (2 * reveal)
+        if bottom < MIN_DOOR_SIZE
+          errors << error('fridge_height', "The fridge door would be only #{fmt(bottom.round(1))} mm high (minimum #{fmt(MIN_DOOR_SIZE)} mm).")
+          return
+        end
       end
+      if f > full
+        errors << error('fridge_height', "The fridge door#{'s' if two} (#{fmt(f.round(1))} mm with the gaps) cannot be taller than the unit (#{fmt(full)} mm).")
+        return
+      end
+      return unless out['fridge_lift'] != false
+
+      lift = full - f
+      return if lift >= CabinetLayout::FRIDGE_MIN_LIFT
+
+      errors << error('fridge_height', "The lift-up door above the fridge would be only #{fmt(lift.round(1))} mm high (minimum #{fmt(CabinetLayout::FRIDGE_MIN_LIFT)} mm). Make the fridge door#{'s' if two} shorter, or switch the lift-up door off.")
     end
     private_class_method :check_fridge
 

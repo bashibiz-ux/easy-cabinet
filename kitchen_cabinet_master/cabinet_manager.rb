@@ -19,6 +19,7 @@ module KitchenCabinetMaster
       when 'toggle' then toggle_all
       when 'rotate' then rotate(raw)
       when 'apply_all' then apply_all(raw)
+      when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -414,10 +415,19 @@ module KitchenCabinetMaster
                       'bottom_zone' => adjustable(raw, cabinet, 'bottom_zone', 'bottom_label', 'zone_bottom'),
                       'top_front' => adjustable(raw, cabinet, 'top_front', 'top_front_label', 'top_front'),
                       'fridge' => !!(cabinet && cabinet['fridge']),
+                      'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
+      if cabinet && cabinet['lower'] # an oven housing: its lower part is drawers, a door, or a small drawer over a door
+        mode = Defaults::LOWER_MODES.include?(raw['lower_mode'].to_s) ? raw['lower_mode'].to_s : 'drawers'
+        number = ValidationManager.to_float(raw['lower_drawers'])
+        number = number ? number.round.clamp(1, 6) : cabinet['drawers'].to_i
+        raw = raw.merge('lower_mode' => mode, 'lower_drawers' => number)
+        door_count += 1 unless mode == 'drawers'
+        drawer_count = { 'drawers' => number, 'door' => 0, 'drawer_door' => 1 }[mode]
+      end
 
       result = ValidationManager.validate(raw, door_count: door_count, drawer_count: drawer_count)
       errors = result.errors + catalog_errors(raw, result, cabinet)

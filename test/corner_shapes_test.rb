@@ -154,6 +154,15 @@ class CornerShapesTest < Minitest::Test
     refute layout.panels.find { |x| x.role == 'left_side' }.front
   end
 
+  def test_the_l_has_one_handle_on_its_narrower_door
+    layout = CabinetLayout.compute(params('width' => 1000.0, 'depth' => 560.0, 'leg2_length' => 800.0, 'leg2_depth' => 400.0))
+    narrow, wide = layout.doors.sort_by { |d| d.extent[1] }
+    refute_equal false, narrow.handle, 'the narrower door has the handle'
+    assert_equal false, wide.handle, 'the wider one has none'
+    same = CabinetLayout.compute(params).doors # equal legs: door 1 is narrower by the step back
+    assert_equal [nil, false].sort_by(&:to_s), same.map(&:handle).sort_by(&:to_s) if same.first.extent[1] == same.last.extent[1]
+  end
+
   def test_the_thin_back_runs_9_mm_into_the_groove_of_the_right_side_panel
     [6.0, 9.0].each do |back|
       layout = CabinetLayout.compute(params('width' => 1000.0, 'back_thickness' => back))
@@ -172,7 +181,8 @@ class CornerShapesTest < Minitest::Test
       assert_equal [0.0, 0.0, 0.0], left.offset, 'flush with the wall, not set in'
       leg1 = layout.panels.find { |x| x.role == 'back' }
       assert_equal back, leg1.extent[0], 'the other back keeps the back panel thickness'
-      assert_equal 18.0, leg1.offset[1], 'and starts beside the left panel'
+      assert_equal 18.0 - 9.0, leg1.offset[1], 'and starts 9 mm into the left panel' if back < 18.0
+      assert_equal 18.0, leg1.offset[1], 'and starts beside the left panel' if back >= 18.0
     end
   end
 end
