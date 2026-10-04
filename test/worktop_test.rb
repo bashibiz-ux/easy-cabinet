@@ -55,6 +55,22 @@ class WorktopTest < Minitest::Test
     assert_equal [2, 1], runs.map { |r| r[:items].length }.sort.reverse
   end
 
+  # An L corner's worktop is as deep as the cabinets beside it and has both fronts rounded.
+  def test_an_l_corner_worktop_is_as_deep_as_its_neighbour_with_rounded_fronts
+    l = item(y: 600, width: 1000.0, depth: 1000.0, corner: true, return_depth: 560.0).merge(corner_style: 'l_shape', leg2_length: 1000.0, leg2_depth: 560.0)
+    neighbour = item(y: 0, width: 600.0, depth: 580.0) # 560 deep with its doors: its slab reaches 580 + the front overhang
+    runs = Worktop.runs([neighbour, l])
+    corner = runs.find { |run| run[:corner] }
+    assert_equal 580.0, corner[:neighbor_depth]
+    slab = Worktop.slab(corner, settings('worktop_front' => 20.0, 'worktop_thickness' => 20.0))
+    assert_equal [[0.0, 0.0], [0.0, 1000.0], [600.0, 1000.0], [600.0, 600.0], [1000.0, 600.0], [1000.0, 0.0]], slab[:points], 'both arms 580 + 20 deep'
+    assert_equal [2, 3], slab[:round_edge], 'the two fronts are rounded'
+    alone = Worktop.runs([l]).first
+    assert_nil alone[:neighbor_depth]
+    own = Worktop.slab(alone, settings('worktop_front' => 20.0))
+    assert_equal 580.0, own[:points][2][0], 'with no neighbour: its own depth and the overhang'
+  end
+
   def test_a_small_gap_is_still_one_worktop
     assert_equal 1, Worktop.runs([item(y: 0), item(y: 700)]).length # 100 mm
   end

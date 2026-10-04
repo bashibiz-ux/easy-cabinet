@@ -227,6 +227,44 @@
           <span class="label" id="topFrontLabel">Top Panel Height</span>
           <div class="input"><input id="topFrontHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <!-- A tall unit: one full door or two split doors (the lower one's height can be adjusted). -->
+        <label class="field" id="doorSplitField" hidden>
+          <span class="label">Doors</span>
+          <div class="input"><select id="doorSplit">
+            <option value="full">One full door</option>
+            <option value="split">Two split doors</option>
+          </select></div>
+        </label>
+        <label class="field narrow" id="splitField" hidden>
+          <span class="label" id="splitLabel">Lower Door Height</span>
+          <div class="input"><input id="splitHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
+        <!-- A unit of drawers: the height of each drawer front (top to bottom); leave one blank and it takes its share. -->
+        <div id="drawerHeightsField" hidden>
+          <span class="label">Drawer heights (top to bottom; blank = automatic)</span>
+          <div class="grid-3">
+            <label class="field" id="drawerH1Field"><span class="label">Drawer 1</span><div class="input"><input id="drawerH1" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+            <label class="field" id="drawerH2Field"><span class="label">Drawer 2</span><div class="input"><input id="drawerH2" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+            <label class="field" id="drawerH3Field"><span class="label">Drawer 3</span><div class="input"><input id="drawerH3" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+            <label class="field" id="drawerH4Field"><span class="label">Drawer 4</span><div class="input"><input id="drawerH4" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+            <label class="field" id="drawerH5Field"><span class="label">Drawer 5</span><div class="input"><input id="drawerH5" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+            <label class="field" id="drawerH6Field"><span class="label">Drawer 6</span><div class="input"><input id="drawerH6" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
+          </div>
+        </div>
+        <!-- A sink cabinet: one or two bowls, with or without a drainer, turned a quarter at a time. -->
+        <div id="sinkFields" hidden>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Sink Bowls</span>
+              <div class="input"><select id="sinkBowls"><option value="1">One bowl</option><option value="2">Two bowls</option></select></div>
+            </label>
+            <label class="field">
+              <span class="label">Turn Sink</span>
+              <div class="input"><select id="sinkRotation"><option value="0">0 degrees</option><option value="90">90 degrees</option><option value="180">180 degrees</option><option value="270">270 degrees</option></select></div>
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="sinkTray"><span>With drainer tray</span></label>
+        </div>
         <!-- A blind corner's blind panel: its width (the door takes the rest). -->
         <label class="field narrow" id="blindField" hidden>
           <span class="label" id="blindLabel">Blind Panel Width</span>
@@ -475,6 +513,16 @@
             <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
             <label class="check"><input type="checkbox" id="visDoor" checked><span>Doors</span></label>
             <label class="check"><input type="checkbox" id="visToe" checked><span>Toe kick</span></label>
+            <label class="check"><input type="checkbox" id="visWorktop" checked><span>Worktop</span></label>
+            <label class="check"><input type="checkbox" id="visSplash" checked><span>Back splash</span></label>
+          </div>
+        </div>
+        <div class="vis-group">
+          <h3 class="vis-title">Fixtures</h3>
+          <div class="vis-list">
+            <label class="check"><input type="checkbox" id="showSink" checked><span>Sink</span></label>
+            <label class="check"><input type="checkbox" id="showHob" checked><span>Hob</span></label>
+            <label class="check"><input type="checkbox" id="showHood" checked><span>Hood</span></label>
           </div>
         </div>
         <div class="vis-group">

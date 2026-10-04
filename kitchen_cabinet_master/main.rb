@@ -15,7 +15,7 @@ module KitchenCabinetMaster
   remove_const(:CODE_FILES) if const_defined?(:CODE_FILES)
   CODE_FILES = %w[
     response defaults attribute_manager validation_manager material_manager catalog_manager
-    cabinet_layout customizer toe_kick part_layout door_animation drawer_animation handle_manager
+    cabinet_layout fixtures customizer toe_kick part_layout door_animation drawer_animation handle_manager
     panel_generator cabinet_generator part_generator selection_manager snap_manager
     naming_manager placement_manager tag_manager cabinet_manager part_manager worktop_manager wall_bottom_manager cut_list_manager preset_manager customize_manager dialog_manager
   ].freeze

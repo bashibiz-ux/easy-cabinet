@@ -162,7 +162,9 @@ module KitchenCabinetMaster
           'end_panel_defaults' => Defaults.end_panel_params,
           'toe_kick_defaults' => Defaults.toe_kick_params,
           'worktop_defaults'  => Worktop::DEFAULTS,
-          'warnings'        => CatalogManager.warnings
+          'warnings'        => CatalogManager.warnings,
+          'show_worktop'    => WorktopManager.shown?(Sketchup.active_model, 'worktop'),
+          'show_backsplash' => WorktopManager.shown?(Sketchup.active_model, 'backsplash')
         }
       end
 

@@ -60,6 +60,49 @@ class RoundedPolygonTest < Minitest::Test
     assert_operator solid, :>, 0.0, 'a positive volume means the faces point outwards'
   end
 
+  # An L worktop: its two front edges (points 2 to 3 and 3 to 4) rounded.
+  L_SHAPE = [[0.0, 0.0], [0.0, 1000.0], [600.0, 1000.0], [600.0, 600.0], [1000.0, 600.0], [1000.0, 0.0]].freeze
+
+  def l_faces(radius = 10.0, edges = [2, 3]) = PG.rounded_polygon_faces(L_SHAPE, 20.0, radius, edges)
+
+  def test_an_l_with_two_rounded_fronts_is_a_closed_solid
+    edges = Hash.new(0)
+    l_faces.each { |face| face.each_with_index { |p, i| edges[[key(p), key(face[(i + 1) % face.length])].sort] += 1 } }
+    assert_empty edges.reject { |_e, n| n == 2 }.keys
+  end
+
+  def test_the_l_faces_are_flat_and_point_outwards_and_the_rounding_takes_a_little_off
+    l_faces.each do |face|
+      next if face.length < 4
+
+      a, b, c = face
+      normal = cross(sub(b, a), sub(c, a))
+      length = Math.sqrt(dot(normal, normal))
+      next if length < 1e-9
+
+      face.each { |p| assert_in_delta 0.0, dot(sub(p, a), normal) / length, 1e-6 }
+    end
+    area = L_SHAPE.each_with_index.sum { |(x, y), i| nx, ny = L_SHAPE[(i + 1) % 6]; (x * ny) - (nx * y) }.abs / 2.0
+    solid = fan_volume(l_faces)
+    assert_operator solid, :>, 0.0
+    assert_operator solid, :<, area * 20.0
+    assert_operator solid, :>, (area * 20.0) - (1000.0 * 20.0 * 10.0), 'only the edges lose material'
+    assert_in_delta area * 20.0, fan_volume(l_faces(0.0)), 1e-3, 'a square edge gives the plain L'
+  end
+
+  def test_the_two_fronts_meet_in_the_inside_corner
+    top = l_faces.find { |face| face.all? { |p| (p[2] - 20.0).abs < 1e-9 } }
+    corner = top.min_by { |p| ((p[0] - 590.0)**2) + ((p[1] - 590.0)**2) }
+    assert_in_delta 590.0, corner[0], 1e-6, 'the top face is pulled in by the radius at the corner of both fronts'
+    assert_in_delta 590.0, corner[1], 1e-6
+  end
+
+  def test_holes_make_a_name_of_their_own
+    assert_equal '', PG.hole_suffix(nil)
+    assert_equal '', PG.hole_suffix([])
+    refute_equal PG.hole_suffix([[1.0, 2.0, 3.0, 4.0]]), PG.hole_suffix([[1.0, 2.0, 3.0, 5.0]])
+  end
+
   private
 
   def sub(a, b) = [a[0] - b[0], a[1] - b[1], a[2] - b[2]]

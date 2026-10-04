@@ -163,6 +163,16 @@ module KitchenCabinetMaster
       'oven_height' => 595.0,
       'oven2_height' => 595.0,      # a second oven (two ovens): its own height
       'micro_height' => 380.0,
+      'door_split' => false,        # a tall unit: two doors one above the other (split_height = the lower door's height)
+      'split_height' => 0.0,
+      'drawer_heights' => '',       # the height of each drawer front, listed from the top down; a blank one takes its share, e.g. 200,,
+      'sink' => false,              # a sink in the cabinet (and its opening in the worktop)
+      'sink_bowls' => 1,
+      'sink_tray' => false,         # with a drainer
+      'sink_rotation' => 0,         # turned 0, 90, 180 or 270 degrees
+      'hob' => false,               # a built-in hob on the cabinet (and its opening in the worktop)
+      'hood' => false,              # a hood under a wall cabinet
+      'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
       'freestanding' => false,      # a freestanding fridge: just the appliance, no carcass
@@ -199,7 +209,7 @@ module KitchenCabinetMaster
       'toe_kick_material'      => SAME_AS_DOOR,
       'toe_kick_piece_length'  => 2000.0,
 
-      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true, 'fridge' => true }
+      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true, 'fridge' => true, 'sink' => true, 'hob' => true, 'hood' => true }
     }.freeze
 
     # A filler: a flat board beside a cabinet, on its wall side, with its front face

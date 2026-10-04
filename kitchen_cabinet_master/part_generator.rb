@@ -59,12 +59,13 @@ module KitchenCabinetMaster
     private_class_method :place
 
     def self.place_board(model, entities, top, board, material)
+      holes = board.holes # openings through a worktop (a sink, a hob)
       definition =
         if board.points && board.round.to_f.positive? && board.round_edge
-          PanelGenerator.rounded_polygon_definition(model, board.points, board.extent[2], board.round, board.round_edge)
-        elsif board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2])
-        elsif board.round.to_f.positive? then PanelGenerator.rounded_definition(model, board.extent, board.round)
-        else PanelGenerator.definition(model, board.extent)
+          PanelGenerator.rounded_polygon_definition(model, board.points, board.extent[2], board.round, board.round_edge, holes)
+        elsif board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2], holes)
+        elsif board.round.to_f.positive? then PanelGenerator.rounded_definition(model, board.extent, board.round, holes)
+        else PanelGenerator.definition(model, board.extent, holes)
         end
       transformation = Geom::Transformation.new(board.offset.map(&:mm))
       instance = place_instance(model, entities, top[board.role], board.role, definition, transformation)

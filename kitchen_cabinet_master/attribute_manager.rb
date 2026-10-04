@@ -10,7 +10,7 @@ module KitchenCabinetMaster
     DICTIONARY  = 'KitchenCabinetMaster'
     COUNTER_KEY = 'id_counter'
     ID_PREFIX   = 'CABINET_'
-    JSON_KEYS   = %w[handle_settings shelf_settings visibility_settings toe_kick_turns custom_overrides board_extent board_points].freeze
+    JSON_KEYS   = %w[handle_settings shelf_settings visibility_settings toe_kick_turns custom_overrides board_extent board_points board_holes board_round_edge].freeze
 
     # Writes every key/value pair. Call inside model.start_operation / commit_operation.
     def self.write(entity, params)

@@ -25,7 +25,7 @@ module KitchenCabinetMaster
     # then just [0, 0, z] since the outline's own coordinates are already absolute.
     # `front` marks a panel that is part of the FRONT (a blind corner's fixed panel, the panel over a
     # built-in oven): it takes the door material, not the carcass one.
-    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, keyword_init: true)
+    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, :holes, keyword_init: true)
     # A door is a panel plus a hinge. `pivot` is the vertical hinge axis in cabinet
     # coordinates (on the door's FRONT face edge, so the door never swings back
     # into the carcass, even at wide opening angles).
@@ -410,6 +410,7 @@ module KitchenCabinetMaster
       return blind_doors(params, dims, base_z) if style == 'blind'
       return fridge_doors(params, dims, base_z) if params['fridge'] == true
       return oven_doors(params, dims, base_z) if lower_door?(params)
+      return split_doors(params, dims, base_z) if params['door_split'] == true
       return stacked_doors(params, dims, base_z) if params['door_stacked'] == true && count == 2
 
       gap = params['door_gap'].to_f
@@ -810,6 +811,7 @@ module KitchenCabinetMaster
       end
       fridge = fridge_layout(params, dims)
       out.concat(fridge_parts(dims, fridge)) if fridge
+      out.concat(Fixtures.parts(params, dims)) # the sink, the hob, the hood
       out
     end
     private_class_method :appliance_boxes
@@ -903,6 +905,36 @@ module KitchenCabinetMaster
     # The fridge door covers the front of the shelf under the lift-up door, a door reveal short of its
     # top edge. Two doors (a fridge-freezer) are stacked, `front_zone` being the top one's height.
     FRIDGE_MIN_LIFT = 100.0 # the least height a lift-up door above the fridge can have
+
+    # ---- a tall unit's doors in two halves ------------------------------------------------------------
+    # `split_height` is the height of the lower doors, the upper ones take the rest; each column of the unit (one door,
+    # or two side by side) is split at the same line, and the handles sit next to the gap between them. The lower
+    # doors are numbered first, then the upper ones.
+    def self.split_doors(params, dims, base_z)
+      count = params['door_count'].to_i
+      reveal = params['door_reveal'].to_f
+      gap = params['door_gap'].to_f
+      clear = door_distance(params)
+      door_w = (dims.width - (2 * reveal) - ((count - 1) * gap)) / count
+      lower = params['split_height'].to_f.positive? ? params['split_height'].to_f : 1000.0
+      upper = dims.height - (2 * reveal) - gap - lower
+
+      [[reveal, lower, 'bottom'], [reveal + lower + gap, upper, 'top']].each_with_index.flat_map do |(z, height, edge), row|
+        (0...count).map do |index|
+          hinge_left = count == 1 ? params['door_opening_direction'].to_s != 'right' : index < count / 2.0
+          y = reveal + (index * (door_w + gap))
+          number = (row * count) + index + 1
+          Door.new(
+            role: "door_#{number}", name: "Door #{number}", extent: [dims.thick, door_w, height].map { |v| round2(v) },
+            offset: [dims.depth + clear, y, base_z + z].map { |v| round2(v) },
+            hinge: hinge_left ? 'left' : 'right',
+            pivot: [dims.depth + clear + dims.thick, hinge_left ? y : y + door_w, base_z].map { |v| round2(v) },
+            rotation: 0.0, grip: edge == 'bottom' ? 'top' : 'bottom'
+          )
+        end
+      end
+    end
+    private_class_method :split_doors
 
     # ---- the lower part of an oven housing: drawers, a door, or a small drawer over a door ------------
     LOWER_DOOR_MODES = %w[door drawer_door].freeze
@@ -1163,6 +1195,15 @@ module KitchenCabinetMaster
     def self.drawer_heights(params, count, total)
       weights = params['drawer_pattern'].to_s.split(',').map(&:to_f)
       weights = [1.0] * count unless weights.length == count && weights.all?(&:positive?)
+      # Heights typed for single drawers (top down; a blank has none): those drawers are as typed, the rest share what is left.
+      typed = params['drawer_heights'].to_s.split(',', -1).first(count).map { |text| text.strip.to_f }
+      typed += [0.0] * (count - typed.length)
+      if typed.any?(&:positive?)
+        free_weight = (0...count).sum { |i| typed[i].positive? ? 0.0 : weights[i] }
+        rest = [total - typed.sum, 0.0].max
+        return (0...count).map { |i| typed[i].positive? ? typed[i] : rest * weights[i] / free_weight }.reverse # the first drawer is the lowest
+      end
+
       weights = weights.reverse # the first drawer is the lowest
       sum = weights.sum
       weights.map { |weight| total * weight / sum }
@@ -1180,3 +1221,6 @@ module KitchenCabinetMaster
     private_class_method :round2
   end
 end
+
+# The sink, hob and hood parts (loaded here too so the layout works wherever it is loaded alone, as in the tests).
+require_relative 'fixtures'

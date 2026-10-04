@@ -62,8 +62,10 @@ module KitchenCabinetMaster
 
       slab = params['part_kind'] == 'worktop'
       points = params['board_points'].is_a?(Array) ? params['board_points'] : nil
-      edge = params['board_round_edge'].to_s.empty? ? nil : params['board_round_edge'].to_i
-      worktop(params['board_extent'], points, slab ? 'Worktop' : 'Back Splash', params['board_round'].to_f, edge, params)
+      edge = params['board_round_edge']
+      edge = edge.to_s.empty? ? nil : edge.to_i unless edge.is_a?(Array)
+      holes = params['board_holes'].is_a?(Array) ? params['board_holes'] : nil
+      worktop(params['board_extent'], points, slab ? 'Worktop' : 'Back Splash', params['board_round'].to_f, edge, params, holes)
     end
 
     # A TOE KICK is a run of equal pieces laid end to end along Y, standing on the
@@ -101,9 +103,10 @@ module KitchenCabinetMaster
     # A WORKTOP slab: one board of extent [depth, length, thickness] at its own origin
     # (PartManager / WorktopManager put the part's root on top of the carcass).
     # `round` rounds the front-top edge (mm, 0 = square); a corner's polygon is not rounded.
-    def self.worktop(extent, points = nil, name = 'Worktop', round = 0.0, round_edge = nil, params = nil)
+    def self.worktop(extent, points = nil, name = 'Worktop', round = 0.0, round_edge = nil, params = nil, holes = nil)
       board = CabinetLayout::Panel.new(role: 'board', name: name, extent: extent.map { |v| round2(v) }, offset: [0.0, 0.0, 0.0],
-                                       points: points&.map { |x, y| [round2(x), round2(y)] }, round: round.to_f, round_edge: round_edge)
+                                       points: points&.map { |x, y| [round2(x), round2(y)] }, round: round.to_f, round_edge: round_edge,
+                                       holes: holes&.map { |hole| hole.map { |v| round2(v) } })
       with_overrides(Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: []), params)
     end
 

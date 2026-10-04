@@ -180,7 +180,7 @@ module KitchenCabinetMaster
 
     def self.sync(model, root, params)
       name_parts(model, root)
-      layout = CabinetLayout.compute(params)
+      layout = CabinetLayout.compute(with_rise(model, params))
       door_mat = door_material(params)
       carcass_mat = carcass_material(params, door_mat)
       visibility = params['visibility_settings'] || {}
@@ -464,13 +464,42 @@ module KitchenCabinetMaster
     end
     private_class_method :sync_appliances
 
-    # A freestanding fridge is the unit itself, so it is always shown; the rest follow Show appliances and its own tick.
+    # Which tick shows an appliance part: Show sink, Show hob, Show hood (always on view, whatever Show appliances says),
+    # a freestanding fridge (always shown: it is the unit itself), or Show oven / microwave / fridge under Show appliances.
+    FIXTURE_KINDS = { '_sink_' => 'sink', '_hob_' => 'hob', '_hood_' => 'hood' }.freeze
+
     def self.apply_appliance_visibility(container, visibility)
       parts = index_by_role(container.definition.entities)
-      container.visible = visibility['appliances'] == true || parts.keys.any? { |role| role.include?('_free_') }
-      parts.each do |role, instance|
-        key = role.include?('_micro_') ? 'microwave' : (role.include?('_fridge_') ? 'fridge' : 'oven')
-        instance.visible = role.include?('_free_') || visibility[key] != false
+      shown = lambda do |role|
+        kind = FIXTURE_KINDS.find { |marker, _| role.include?(marker) }
+        if kind then visibility[kind[1]] != false
+        elsif role.include?('_free_') then true
+        else
+          visibility['appliances'] == true &&
+            visibility[role.include?('_micro_') ? 'microwave' : (role.include?('_fridge_') ? 'fridge' : 'oven')] != false
+        end
+      end
+      container.visible = parts.keys.any?(&shown)
+      parts.each { |role, instance| instance.visible = shown.call(role) }
+    end
+
+    # The sink and hob sit on the worktop: the layout needs how far its top stands over the carcass (nothing without one).
+    def self.with_rise(model, params)
+      return params unless params['sink'] == true || params['hob'] == true
+
+      params.merge('worktop_rise' => label_lift(model, params))
+    end
+    private_class_method :with_rise
+
+    # Puts the sinks and hobs back at the height of the worktop (after it was applied, changed or removed).
+    def self.sync_fixtures(model)
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        next unless AttributeManager.cabinet?(item)
+
+        params = AttributeManager.read(item)
+        next unless params && (params['sink'] == true || params['hob'] == true)
+
+        sync_appliances(model, item, index_by_role(item.definition.entities), params, CabinetLayout.compute(with_rise(model, params)))
       end
     end
 

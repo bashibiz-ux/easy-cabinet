@@ -271,20 +271,43 @@ module KitchenCabinetMaster
       cancel_timer
       return if @dirty.empty?
 
-      pending = @dirty.values
+      pending = @dirty.values.select(&:valid?)
       @dirty = {}
+      moved = []
       pending.each do |entity|
-        next unless entity.valid?
+        next if rescale(entity) # stretched by hand: rebuilt at its new size
 
-        begin
-          next if rescale(entity)
-
-          snap(entity) if enabled?
-        rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Could not snap #{entity.name}: #{e.class}: #{e.message}"
-          notify("Could not snap #{entity.name}: #{e.message}")
-        end
+        moved << entity
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not resize #{entity.name}: #{e.class}: #{e.message}"
+        notify("Could not resize #{entity.name}: #{e.message}")
       end
+      return unless enabled? && !moved.empty?
+
+      # Several cabinets moved together (a selected group) snap as ONE body, so they keep their places to each other.
+      if moved.length > 1 && moved.all? { |entity| right_angled?(entity.transformation) }
+        begin
+          snap_group(moved)
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Could not snap the group: #{e.class}: #{e.message}"
+          notify("Could not snap the cabinets: #{e.message}")
+        end
+        return
+      end
+
+      moved.each do |entity|
+        snap(entity)
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not snap #{entity.name}: #{e.class}: #{e.message}"
+        notify("Could not snap #{entity.name}: #{e.message}")
+      end
+    end
+
+    # The box around several boxes ({ min:, max: } each, any unit).
+    def self.union(boxes)
+      dims = boxes.first[:min].length
+      { min: (0...dims).map { |axis| boxes.map { |box| box[:min][axis] }.min },
+        max: (0...dims).map { |axis| boxes.map { |box| box[:max][axis] }.max } }
     end
 
     # ---- scaling by hand -------------------------------------------------------------
@@ -398,6 +421,63 @@ module KitchenCabinetMaster
       notify("#{entity.name} snapped to #{what}.")
     end
     private_class_method :snap
+
+    # The cabinets that were moved together, snapped as one body: the box round all of them goes to the nearest
+    # cabinet that was not moved (and to the wall behind, and the floor), and every one of them moves by the same
+    # amount. Cabinets already standing against each other in the group stay as they were.
+    def self.snap_group(entities)
+      threshold = SNAP_DISTANCE_MM.mm
+      others = PlacementManager.existing_boxes(entities.first.parent.entities, exclude: entities).map { |other| extent(other) }
+      boxes = entities.map { |entity| own_box(entity) }
+      whole = union(boxes.map { |box| extent(box) })
+      side = delta(whole, others, threshold)
+      shift = side || [0.0, 0.0, 0.0]
+
+      # The wall behind: the closest one any of the cabinets finds, measured from where the side snap put them.
+      walls = collect_walls(entities.first.model, nil)
+      wall = nil
+      entities.each_with_index do |entity, index|
+        found = wall_delta(mover_info(entity, boxes[index], shift), walls, threshold)
+        wall = found if found && (wall.nil? || Math.hypot(*found) < Math.hypot(*wall))
+      end
+      shift = [shift[0] + wall[0], shift[1] + wall[1], shift[2]] if wall
+
+      # Nothing set the height: a group standing on the floor drops to it (a group with a wall unit in it does not).
+      standing = entities.reject { |entity| hangs?(entity) }
+      if standing.length == entities.length
+        floor = floor_delta(whole[:min][2], shift[2], false, threshold)
+        shift[2] = floor if floor
+      end
+
+      if shift.all? { |v| v.abs < 1e-6 }
+        entities.each { |entity| remember(entity) }
+        return
+      end
+
+      move_all(entities, shift)
+      to_wall = wall&.any? { |v| v.abs > 1e-6 }
+      what = [('the next cabinet' if side), ('the wall' if to_wall), ('the floor' if shift[2].abs > 1e-6 && side.nil?)].compact.join(' and ')
+      notify("#{entities.length} cabinets snapped to #{what.empty? ? 'their neighbours' : what} together.")
+    end
+    private_class_method :snap_group
+
+    def self.move_all(entities, shift)
+      model = entities.first.model
+      @busy = true
+      model.start_operation('Snap Cabinets', true, false, true)
+      begin
+        move = Geom::Transformation.translation(Geom::Vector3d.new(shift[0], shift[1], shift[2].to_f))
+        entities.each { |entity| entity.transform!(move) }
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @busy = false
+      end
+      entities.each { |entity| remember(entity) }
+    end
+    private_class_method :move_all
 
     # Moves `entity` by `shift` ([dx, dy], inches) as a transparent operation, so
     # it joins the Move that just finished: one Undo takes back both.

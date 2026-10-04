@@ -35,6 +35,20 @@ class SnapTest < Minitest::Test
     assert_shift [0.0, -40.0], snap(moved, [fixed])
   end
 
+  # Cabinets moved together snap as one body: the box round them all goes to the cabinet that stayed.
+  def test_a_group_moved_together_snaps_as_one_body
+    first = box(0, 640, 560, 600)   # a row of two moved together, 40 mm clear of the fixed cabinet
+    second = box(0, 1240, 560, 450)
+    whole = Snap.union([first, second])
+    assert_equal [0, 640], whole[:min]
+    assert_equal [560, 1690], whole[:max]
+    shift = snap(whole, [fixed])
+    assert_shift [0.0, -40.0], shift
+    # Moved by that one shift, they still touch each other and now touch the fixed cabinet.
+    assert_in_delta 600.0, first[:min][1] + shift[1], 1e-9
+    assert_in_delta second[:min][1] + shift[1], first[:max][1] + shift[1], 1e-9
+  end
+
   def test_a_cabinet_pushed_into_the_next_one_snaps_back_out
     moved = box(0, 570, 560, 600) # overlaps it by 30 mm
     assert_shift [0.0, 30.0], snap(moved, [fixed])

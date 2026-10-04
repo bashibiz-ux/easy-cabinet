@@ -92,6 +92,20 @@ module KitchenCabinetMaster
       blind = to_float(raw['blind_width'])
       out['blind_width'] = blind if blind && blind >= 0
       out['custom_overrides'] = clean_overrides(raw['custom_overrides'])
+      out['door_split'] = truthy?(raw['door_split'])
+      split = to_float(raw['split_height'])
+      out['split_height'] = split if split && split >= 0
+      heights = raw['drawer_heights'].to_s.strip
+      out['drawer_heights'] = heights if heights.match?(/\A(\d+(\.\d+)?)?(,(\d+(\.\d+)?)?)*\z/)
+      out['sink'] = truthy?(raw['sink'])
+      out['sink_bowls'] = to_float(raw['sink_bowls']) == 2.0 ? 2 : 1
+      out['sink_tray'] = truthy?(raw['sink_tray'])
+      turn = to_float(raw['sink_rotation'])
+      out['sink_rotation'] = [0, 90, 180, 270].include?(turn.to_i) ? turn.to_i : 0 if turn
+      out['hob'] = truthy?(raw['hob'])
+      out['hood'] = truthy?(raw['hood'])
+      rise = to_float(raw['worktop_rise'])
+      out['worktop_rise'] = rise if rise && rise >= 0 && rise <= 200
       out['fridge'] = truthy?(raw['fridge'])
       out['fridge_lift'] = raw.key?('fridge_lift') ? truthy?(raw['fridge_lift']) : true
       out['freestanding'] = truthy?(raw['freestanding'])
@@ -290,11 +304,13 @@ module KitchenCabinetMaster
       end
 
       check_shelves(out, errors, bad)
+      check_fixtures(out, errors, bad)
       check_corner(out, errors, bad)
       check_zone(out, door_count, drawer_count, errors, bad)
 
       check_doors(out, door_count, errors, bad)
       check_drawers(out, drawer_count, errors, bad)
+      check_drawer_heights(out, drawer_count, errors, bad)
     end
     private_class_method :cross_check
 
@@ -311,6 +327,49 @@ module KitchenCabinetMaster
     private_class_method :check_shelves
 
     MIN_DRAWER_HEIGHT = 80.0
+
+    # Two doors one above the other (a tall unit): `split_height` is the lower door's height, the upper one takes the rest.
+    def self.check_split(out, errors, bad)
+      return unless (bad & %w[height door_gap door_reveal]).empty? && out['height']
+
+      lower = out['split_height'].to_f.positive? ? out['split_height'] : 1000.0
+      upper = out['height'] - (2 * out['door_reveal']) - out['door_gap'] - lower
+      return if lower >= MIN_DOOR_SIZE && upper >= MIN_DOOR_SIZE
+
+      errors << error('split_height', "The two doors would be #{fmt(lower.round(1))} and #{fmt(upper.round(1))} mm high (each needs at least #{fmt(MIN_DOOR_SIZE)} mm).")
+    end
+    private_class_method :check_split
+
+    # The height typed for each drawer ("200,,150": top down, a blank takes its share) must fit the unit.
+    def self.check_drawer_heights(out, drawer_count, errors, bad)
+      list = out['drawer_heights'].to_s.split(',', -1).first(drawer_count.to_i).map { |text| text.strip.to_f }
+      return unless drawer_count.to_i.positive? && list.any?(&:positive?) && (bad & %w[height door_gap door_reveal]).empty? && out['height']
+      return if out['front_zone'].to_f.positive? || out['bottom_zone'].to_f.positive? # only a unit of drawers alone
+
+      count = drawer_count.to_i
+      total = out['height'] - (2 * out['door_reveal']) - ((count - 1) * out['door_gap'])
+      fixed = list.select(&:positive?)
+      free = count - fixed.length
+      too_small = fixed.find { |height| height < 50.0 }
+      if too_small
+        errors << error('drawer_heights', "A drawer front must be at least 50 mm high (#{fmt(too_small)} was typed).")
+      elsif total - fixed.sum < free * MIN_DRAWER_HEIGHT
+        errors << error('drawer_heights', "The drawers are too high for the unit: #{fmt(fixed.sum.round(1))} mm typed leaves #{fmt((total - fixed.sum).round(1))} mm for #{free} more (each needs #{fmt(MIN_DRAWER_HEIGHT)}).")
+      end
+    end
+    private_class_method :check_drawer_heights
+
+    # A sink must lie inside its cabinet, whatever way it is turned.
+    def self.check_fixtures(out, errors, bad)
+      return unless out['sink'] && (bad & %w[width depth material_thickness back_thickness]).empty? && out['width'] && out['depth']
+
+      dims = CabinetLayout.send(:dimensions, out.merge('door_count' => 0, 'drawer_count' => 0))
+      plan = Fixtures.sink_plan(out, dims)
+      return if plan.nil? || plan[:fits]
+
+      errors << error('sink_bowls', 'That sink does not fit this cabinet. Use one bowl, no drainer or a wider cabinet, or turn the sink.')
+    end
+    private_class_method :check_fixtures
 
     # A front zone (drawers over a door, or a door over an open niche) must leave sensible sizes.
     def self.check_zone(out, door_count, drawer_count, errors, bad)
@@ -530,6 +589,7 @@ module KitchenCabinetMaster
         end
       end
 
+      return check_split(out, errors, bad) if out['door_split']
       return unless (bad & %w[height door_reveal]).empty? && out['height'] && !out['front_zone'].to_f.positive? && !out['bottom_zone'].to_f.positive?
 
       door_height = out['height'] - (2 * out['door_reveal'])
@@ -707,6 +767,8 @@ module KitchenCabinetMaster
       [true, 'true', '1', 1, 'on', 'yes'].include?(value)
     end
     private_class_method :truthy?
+
+    def self.truthy_value?(value) = truthy?(value)
 
     def self.stringify_keys(hash)
       return {} unless hash.is_a?(Hash)

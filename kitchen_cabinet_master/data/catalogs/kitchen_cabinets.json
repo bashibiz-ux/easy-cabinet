@@ -208,6 +208,9 @@
           1000,
           1200
         ],
+        "sink": true,
+        "sink_bowls": 1,
+        "sink_tray": true,
         "defaults": {
           "width": 900,
           "depth": 560,
@@ -226,6 +229,27 @@
           500,
           600
         ],
+        "sink": true,
+        "sink_bowls": 1,
+        "sink_tray": false,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_hob",
+        "name": "Base - hob unit, 2 drawers",
+        "code": "BH",
+        "doors": 0,
+        "drawers": 2,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "hob": true,
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -387,6 +411,23 @@
         }
       },
       {
+        "id": "wall_hood",
+        "name": "Wall - hood cabinet",
+        "code": "WH",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "hood": true,
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 360
+        }
+      },
+      {
         "id": "wall_short",
         "name": "Wall - short, 2 doors",
         "code": "WS",
@@ -471,6 +512,8 @@
           450,
           600
         ],
+        "split": 1000,
+        "split_label": "Lower Door Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -487,6 +530,8 @@
           600,
           900
         ],
+        "split": 1000,
+        "split_label": "Lower Door Height",
         "defaults": {
           "width": 900,
           "depth": 560,
@@ -502,6 +547,8 @@
         "widths": [
           900
         ],
+        "split": 1000,
+        "split_label": "Lower Door Height",
         "defaults": {
           "width": 900,
           "depth": 560,

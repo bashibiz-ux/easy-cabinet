@@ -51,6 +51,14 @@ module KitchenCabinetMaster
       lines.group_by { |item| line_key(item) }.each_value do |group|
         chain(group.sort_by { |item| along(item) }).each { |run| found << run }
       end
+      # A corner's worktop is as deep as the cabinets beside it (the nearest straight unit).
+      found.each do |run|
+        next unless run[:corner]
+
+        item = run[:items].first
+        nearest = lines.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
+        run[:neighbor_depth] = nearest[:depth] if nearest
+      end
       found
     end
 
@@ -120,7 +128,7 @@ module KitchenCabinetMaster
       front = params['worktop_front'].to_f
       ends = params['worktop_end'].to_f
       thickness = params['worktop_thickness'].to_f
-      return corner_slab(run, front, thickness) if run[:corner]
+      return corner_slab(run, front, thickness, run[:neighbor_depth]) if run[:corner]
 
       total = run[:length] + (2 * ends)
       to ||= total
@@ -129,10 +137,10 @@ module KitchenCabinetMaster
 
     # The corner's outline: back wall and side wall edges square, the front-right corner
     # cut along the diagonal that the door runs along, pushed out by the front overhang.
-    def self.corner_slab(run, front, thickness)
+    def self.corner_slab(run, front, thickness, neighbor_depth = nil)
       width = run[:length]
       returned = run[:items].first[:return_depth] || width
-      return l_slab(run[:items].first, front, thickness) if run[:items].first[:corner_style] == 'l_shape'
+      return l_slab(run[:items].first, front, thickness, neighbor_depth) if run[:items].first[:corner_style] == 'l_shape'
       cut = [returned + (front * SQRT2), width].min
       points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
       { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
@@ -141,15 +149,16 @@ module KitchenCabinetMaster
 
     # An L-shaped corner unit has an L-shaped worktop: two arms as deep as the unit (plus the
     # front overhang) along the walls.
-    def self.l_slab(item, front, thickness)
+    def self.l_slab(item, front, thickness, neighbor_depth = nil)
       la = item[:width]                                               # leg 1: along Y (its length) ...
       da = item[:return_depth] || la                                  # ... and how deep it is
       lb = item[:leg2_length].to_f.positive? ? item[:leg2_length] : la # leg 2: along X
       db = item[:leg2_depth].to_f.positive? ? item[:leg2_depth] : da
-      a = [da + front, lb].min
-      b = [db + front, la].min
+      # As deep as the cabinets next to it (their doors included), with the same front overhang, and its two fronts rounded.
+      a = [(neighbor_depth || da) + front, lb].min
+      b = [(neighbor_depth || db) + front, la].min
       points = [[0.0, 0.0], [0.0, la], [a, la], [a, b], [lb, b], [lb, 0.0]]
-      { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: points }
+      { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: [2, 3] } # the fronts: points 2 to 3 and 3 to 4
     end
     private_class_method :l_slab
 
@@ -214,6 +223,7 @@ module KitchenCabinetMaster
           existing.each { |item| PartGenerator.remove(model, item) }
           built = runs.sum { |run| build(model, run, params) }
           CabinetGenerator.sync_all_names(model) # the names sit on top of the worktop
+          CabinetGenerator.sync_fixtures(model)  # and so do the sinks and hobs
           built
         end
       end
@@ -231,6 +241,7 @@ module KitchenCabinetMaster
         with_operation(model, 'Remove Worktop') do
           existing.each { |item| PartGenerator.remove(model, item) }
           CabinetGenerator.sync_all_names(model)
+          CabinetGenerator.sync_fixtures(model)
         end
       end
       SelectionManager.push_selection(model)
@@ -249,6 +260,7 @@ module KitchenCabinetMaster
       runs = Worktop.runs(items_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each { |run| build(model, run, params) }
+      CabinetGenerator.sync_fixtures(model)
     end
 
     # Every slab and back splash piece in the model.
@@ -275,7 +287,8 @@ module KitchenCabinetMaster
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
           corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
-          leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item }
+          leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item,
+          cutouts: filler ? [] : Fixtures.cutouts(stored) }
       end
     end
 
@@ -292,7 +305,7 @@ module KitchenCabinetMaster
         lift = run[:top].mm - placed.origin.z
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
-        make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge])
+        make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge], holes_for(run, placed, slab))
         Worktop.splash(run, slab, params).each do |piece|
           up = placed * Geom::Transformation.translation(Geom::Vector3d.new(piece[:offset][0].mm, piece[:offset][1].mm, piece[:offset][2].mm))
           make_part(model, 'backsplash', piece[:extent], nil, up, params)
@@ -301,7 +314,43 @@ module KitchenCabinetMaster
       spans.length
     end
 
-    def self.make_part(model, kind, extent, points, transformation, params, round_edge = nil)
+    # The openings this piece needs over its cabinets' sinks and hobs, as [x0, x1, y0, y1] in the piece's own frame. One
+    # that does not lie wholly inside the piece (a cut between pieces runs through it) is left out.
+    def self.holes_for(run, placed, slab)
+      return [] if run[:corner] || slab[:points]
+
+      to_slab = placed.inverse
+      holes = []
+      run[:items].each do |item|
+        item[:cutouts].to_a.each do |x0, x1, y0, y1|
+          corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map do |x, y|
+            point = to_slab * (item[:ref].transformation * Geom::Point3d.new(x.mm, y.mm, 0))
+            [point.x.to_mm, point.y.to_mm]
+          end
+          xs = corners.map(&:first)
+          ys = corners.map(&:last)
+          next unless xs.min > 1.0 && xs.max < slab[:extent][0] - 1.0 && ys.min > 1.0 && ys.max < slab[:extent][1] - 1.0
+
+          holes << [xs.min, xs.max, ys.min, ys.max].map { |v| (v * 100).round / 100.0 }
+        end
+      end
+      holes
+    end
+
+    # Whether the worktop pieces / back splash pieces are shown (the Worktop and Back splash ticks in Visibility). Kept on
+    # the model, so a piece built later follows it.
+    def self.shown?(model, kind)
+      key = kind == 'worktop' ? 'show_worktop' : 'show_backsplash'
+      model.get_attribute(AttributeManager::DICTIONARY, key, true) != false
+    end
+
+    def self.set_shown(model, worktop, backsplash)
+      model.set_attribute(AttributeManager::DICTIONARY, 'show_worktop', worktop ? true : false)
+      model.set_attribute(AttributeManager::DICTIONARY, 'show_backsplash', backsplash ? true : false)
+      pieces_in(model).each { |item| item.visible = AttributeManager.part_kind(item) == 'worktop' ? worktop : backsplash }
+    end
+
+    def self.make_part(model, kind, extent, points, transformation, params, round_edge = nil, holes = nil)
       stored = params.dup
       stored['part_kind'] = kind
       stored['part_id'] = AttributeManager.next_part_id(model)
@@ -315,9 +364,11 @@ module KitchenCabinetMaster
       stored['board_points'] = points
       stored['board_round'] = round
       stored['board_round_edge'] = round_edge
-      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', round, round_edge, stored)
+      stored['board_holes'] = holes || []
+      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', round, round_edge, stored, holes)
       root = PartGenerator.build(model, model.entities, stored, transformation, layout)
       TagManager.assign(model, root, TagManager::WORKTOP)
+      root.visible = shown?(model, kind)
       root
     end
     private_class_method :make_part

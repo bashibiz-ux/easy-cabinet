@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.41.1';
+  const APP_VERSION = '0.42.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -54,6 +54,9 @@
     top_front: 'topFrontHeight',
     fridge_height: 'fridgeHeight',
     blind_width: 'blindWidth',
+    split_height: 'splitHeight',
+    drawer_heights: 'drawerH1',
+    sink_bowls: 'sinkBowls',
     lower_mode: 'lowerMode',
     lower_drawers: 'lowerDrawers',
     small_drawer: 'smallDrawer',
@@ -537,7 +540,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -778,6 +781,12 @@
       top_front: hasTopFrontField() ? mmv('topFrontHeight') : '',
       fridge_height: hasFridgeField() ? mmv('fridgeHeight') : '',
       fridge_lift: $('liftUp').checked,
+      door_split: hasSplitField() && $('doorSplit').value === 'split',
+      split_height: hasSplitField() ? mmv('splitHeight') : '',
+      drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
+      sink_bowls: $('sinkBowls').value,
+      sink_tray: $('sinkTray').checked,
+      sink_rotation: $('sinkRotation').value,
       blind_width: hasBlindField() ? mmv('blindWidth') : '',
       lower_mode: hasLowerField() ? $('lowerMode').value : '',
       lower_drawers: $('lowerDrawers').value,
@@ -803,9 +812,20 @@
         appliances: $('showAppliances').checked,
         oven: $('showOven').checked,
         microwave: $('showMicro').checked,
-        fridge: $('showFridge').checked
+        fridge: $('showFridge').checked,
+        sink: $('showSink').checked,
+        hob: $('showHob').checked,
+        hood: $('showHood').checked
       }
     };
+  }
+
+  // The drawer heights typed, top to bottom, as one list ("300,,": a blank one is left to share).
+  function collectDrawerHeights() {
+    const count = Math.min(6, Number((currentCabinet() || {}).drawers) || 0);
+    const list = [];
+    for (let i = 1; i <= count; i += 1) list.push(String(mmv(`drawerH${i}`)).trim());
+    return list.some((v) => v !== '') ? list.join(',') : '';
   }
 
   function applyParams(stored) {
@@ -839,6 +859,17 @@
     if (p.top_front > 0 && hasTopFrontField()) setText('topFrontHeight', p.top_front);
     if (p.fridge_height > 0 && hasFridgeField()) setText('fridgeHeight', p.fridge_height);
     $('liftUp').checked = p.fridge_lift !== false;
+    if (hasSplitField()) {
+      $('doorSplit').value = p.door_split ? 'split' : 'full';
+      setText('splitHeight', Number(p.split_height) || (currentCabinet() || {}).split || 1000);
+    }
+    const typedHeights = String(p.drawer_heights || '').split(',');
+    for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
+    if (p.sink) {
+      $('sinkBowls').value = String(p.sink_bowls || 1);
+      $('sinkTray').checked = p.sink_tray === true;
+      $('sinkRotation').value = String(p.sink_rotation || 0);
+    }
     if (p.blind_width > 0 && hasBlindField()) setText('blindWidth', p.blind_width);
     if (hasLowerField()) {
       setSelect('lowerMode', p.lower_mode || 'drawers');
@@ -865,6 +896,9 @@
       if ('oven' in v) $('showOven').checked = !!v.oven;
       if ('microwave' in v) $('showMicro').checked = !!v.microwave;
       if ('fridge' in v) $('showFridge').checked = !!v.fridge;
+      if ('sink' in v) $('showSink').checked = !!v.sink;
+      if ('hob' in v) $('showHob').checked = !!v.hob;
+      if ('hood' in v) $('showHood').checked = !!v.hood;
     }
     syncHandlePosition();
     syncWidthPreset();
@@ -1018,6 +1052,13 @@
   const hasFridgeField = () => hasCatalogField('fridge_label');
   const hasLowerField = () => hasCatalogField('lower');
   const hasBlindField = () => hasCatalogField('blind_label');
+  const hasSplitField = () => hasCatalogField('split_label');
+  const hasSinkField = () => hasCatalogField('sink');
+  // A unit of drawers alone can have each drawer front's height set.
+  function hasDrawerHeights() {
+    const cabinet = currentCabinet();
+    return !!(cabinet && cabinet.drawers > 0 && !cabinet.zone && !cabinet.zone_bottom && !cabinet.lower && !cabinet.fridge) && categoryKind() === 'cabinet';
+  }
 
   function syncZoneField() {
     const cabinet = currentCabinet();
@@ -1030,6 +1071,12 @@
     setSoft($('fridgeField'), !hasFridgeField());
     setSoft($('liftField'), !hasFridgeField());
     if (cabinet && cabinet.fridge_label) $('fridgeLabel').textContent = cabinet.fridge_label;
+    setSoft($('doorSplitField'), !hasSplitField());
+    setSoft($('splitField'), !hasSplitField() || $('doorSplit').value !== 'split');
+    if (cabinet && cabinet.split_label) $('splitLabel').textContent = cabinet.split_label;
+    setSoft($('sinkFields'), !hasSinkField());
+    setSoft($('drawerHeightsField'), !hasDrawerHeights());
+    for (let i = 1; i <= 6; i += 1) setSoft($(`drawerH${i}Field`), !hasDrawerHeights() || i > ((cabinet || {}).drawers || 0));
     setSoft($('blindField'), !hasBlindField());
     if (cabinet && cabinet.blind_label) $('blindLabel').textContent = cabinet.blind_label;
     setSoft($('lowerField'), !hasLowerField());
@@ -1077,6 +1124,13 @@
     if (cabinet.top_front_label) setText('topFrontHeight', cabinet.top_front);
     if (cabinet.fridge_label) setText('fridgeHeight', cabinet.fridge);
     $('liftUp').checked = true;
+    if (cabinet.split_label) { $('doorSplit').value = 'full'; setText('splitHeight', cabinet.split); }
+    for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, '');
+    if (cabinet.sink) {
+      $('sinkBowls').value = String(cabinet.sink_bowls || 1);
+      $('sinkTray').checked = cabinet.sink_tray === true;
+      $('sinkRotation').value = '0';
+    }
     if (cabinet.blind_label) setText('blindWidth', cabinet.blind);
     if (cabinet.lower) {
       setSelect('lowerMode', 'drawers');
@@ -1620,7 +1674,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1869,6 +1923,11 @@
         oven: $('showOven').checked,
         microwave: $('showMicro').checked,
         fridge: $('showFridge').checked,
+        sink: $('showSink').checked,
+        hob: $('showHob').checked,
+        hood: $('showHood').checked,
+        worktop: $('visWorktop').checked,
+        backsplash: $('visSplash').checked,
         opening_direction: $('showDirection').checked, // the plan symbol on the floor
         wall_opening_direction: $('showWallDirection').checked, // a wall unit's plan symbol on the floor
         hide_wall_handles: !$('hideWallHandles').checked, // the tick says Show
@@ -1912,6 +1971,9 @@
     $('showOven').checked = v.oven !== false;
     $('showMicro').checked = v.microwave !== false;
     $('showFridge').checked = v.fridge !== false;
+    $('showSink').checked = v.sink !== false;
+    $('showHob').checked = v.hob !== false;
+    $('showHood').checked = v.hood !== false;
     syncThicknessPresets();
     updateChips();
   }
@@ -1962,6 +2024,8 @@
     fillSelect($('epSide'), m.end_panel_sides);
     loadMaterials(m.materials);
     applyDefaults(m.defaults);
+    $('visWorktop').checked = m.show_worktop !== false; // what the model has hidden
+    $('visSplash').checked = m.show_backsplash !== false;
     applyFillerDefaults(m.filler_defaults);
     applyEndPanelDefaults(m.end_panel_defaults);
     applyToeKickDefaults(m.toe_kick_defaults);
@@ -2007,6 +2071,7 @@
     });
     $('applianceSet').addEventListener('change', () => syncApplianceFields(true));
     $('lowerMode').addEventListener('change', syncZoneField);
+    $('doorSplit').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
       // Choosing another cabinet fills the fields for the next Insert; it does not change the
       // cabinet selected in the model (select it again, or press Update, to change it).
@@ -2060,7 +2125,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }

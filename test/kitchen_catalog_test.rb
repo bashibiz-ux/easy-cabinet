@@ -23,6 +23,7 @@ class KitchenCatalogTest < Minitest::Test
       'door_opening_direction' => 'left', 'corner_style' => entry['corner'].to_s, 'blind_width' => entry['blind'],
       'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'door_stacked' => entry['stacked'] == true,
       'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s,
+      'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true, 'hood' => entry['hood'] == true,
       'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s }
   end
 
@@ -332,6 +333,111 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 2, roles.grep(/plate/).length
     assert_equal 2, roles.grep(/handle/).length
     assert_equal [0.0, 1850.0, 1850.0], [layout.appliances.map { |a| a.offset[2] }.min, layout.appliances.map { |a| a.offset[2] + a.extent[2] }.max, layout.top_z]
+  end
+
+  def test_a_tall_unit_has_one_full_door_or_two_split_doors_with_the_lower_one_adjustable
+    reveal = Defaults.params['door_reveal']
+    gap = Defaults.params['door_gap']
+    _, full = unit('tall', 'tall_1door', 600)
+    assert_equal 1, full.doors.length
+    result, split = unit('tall', 'tall_1door', 600, 'door_split' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal 2, split.doors.length
+    lower, upper = split.doors
+    assert_in_delta 1000.0, lower.extent[2], 0.01, 'the lower door is 1000 high to start'
+    assert_in_delta 2160.0 - (2 * reveal) - gap - 1000.0, upper.extent[2], 0.01, 'the upper one takes the rest'
+    assert_equal %w[top bottom], [lower.grip, upper.grip], 'handles next to the gap'
+    assert_in_delta 2160.0 - reveal, upper.offset[2] - 100.0 + upper.extent[2], 0.01
+    _, other = unit('tall', 'tall_1door', 600, 'door_split' => true, 'split_height' => 800)
+    assert_in_delta 800.0, other.doors.first.extent[2], 0.01, 'adjustable'
+    _, pair = unit('tall', 'tall_2door', 900, 'door_split' => true)
+    assert_equal 4, pair.doors.length, 'two columns of two'
+    assert_equal pair.doors[0].extent[2], pair.doors[1].extent[2]
+    refute_equal pair.doors[0].hinge, pair.doors[1].hinge, 'the columns open apart'
+    too_tall, = unit('tall', 'tall_1door', 600, 'door_split' => true, 'split_height' => 2140)
+    assert_includes too_tall.errors.map { |e| e['field'] }, 'split_height'
+  end
+
+  def test_each_drawer_can_have_its_own_height
+    reveal = Defaults.params['door_reveal']
+    gap = Defaults.params['door_gap']
+    _, auto = unit('base', 'base_3drawer', 600)
+    _, typed = unit('base', 'base_3drawer', 600, 'drawer_heights' => '300,,')
+    bottom, middle, top = typed.drawers.map { |d| d.extent[2] }
+    assert_in_delta 300.0, top, 0.01, 'the first one typed is the top drawer'
+    assert_in_delta middle, bottom, 0.01, 'the others share what is left'
+    assert_in_delta 780.0 - (2 * reveal) - (2 * gap), bottom + middle + top, 0.02, 'together they still fill the front'
+    assert_operator top, :>, auto.drawers.last.extent[2]
+    _, low = unit('base', 'base_3drawer', 600, 'drawer_heights' => ',150,')
+    assert_in_delta 150.0, low.drawers[1].extent[2], 0.01
+    assert_equal 3, typed.drawer_boxes.length, 'each drawer keeps its box'
+    refuse, = unit('base', 'base_3drawer', 600, 'drawer_heights' => '700,,')
+    assert_includes refuse.errors.map { |e| e['field'] }, 'drawer_heights'
+  end
+
+  def test_the_sink_cabinets_have_a_sink_with_an_opening_in_the_worktop
+    result, layout = unit('base', 'base_sink', 900)
+    assert_empty result.errors.map { |e| e['message'] }
+    roles = layout.appliances.map(&:role)
+    %w[appliance_sink_1_bowl_1_floor appliance_sink_1_rim_1 appliance_sink_1_tap_body appliance_sink_1_tray].each { |role| assert_includes roles, role }
+    assert_equal 1, roles.grep(/bowl_\d_floor/).length, 'one bowl and a drainer to start'
+    floor = layout.appliances.find { |a| a.role.end_with?('bowl_1_floor') }
+    rim = layout.appliances.find { |a| a.role.end_with?('rim_1') }
+    assert_in_delta 780.0 + 20.0 - 180.0, floor.offset[2], 0.01, 'the bowl hangs from the top of the worktop'
+    assert_in_delta 780.0 + 20.0, rim.offset[2], 0.01, 'the rim lies on it'
+    params = result.params.merge('door_count' => 2, 'drawer_count' => 0)
+    cuts = Fixtures.cutouts(params)
+    assert_equal 1, cuts.length
+    x0, x1, y0, y1 = cuts.first
+    assert_operator x0, :>, 10.0
+    assert_operator x1, :<, 560.0
+    assert_operator y0, :>, 18.0
+    assert_operator y1, :<, 900.0 - 18.0
+    assert_in_delta 420.0, x1 - x0, 0.01, 'the opening is the size of the sink'
+
+    # two bowls, no drainer; and turned a quarter: its length then runs front to back
+    two, = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)
+    assert_empty two.errors
+    two_layout = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)[1]
+    assert_equal 2, two_layout.appliances.map(&:role).grep(/bowl_\d_floor/).length
+    refute two_layout.appliances.map(&:role).include?('appliance_sink_1_tray')
+    flat = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2)).first
+    turned = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true, 'sink_rotation' => 90)[0].params.merge('door_count' => 2))
+    refute_empty turned
+    assert_operator flat[3] - flat[2], :>, flat[1] - flat[0], 'un-turned it is longer across than deep'
+    across = turned.first[3] - turned.first[2]
+    along = turned.first[1] - turned.first[0]
+    assert_operator along, :>, across, 'turned, its length runs front to back'
+    assert_operator along, :<, flat[3] - flat[2], 'as far as the depth of the cabinet allows'
+
+    # a sink that does not fit is refused
+    narrow, = unit('base', 'base_sink_1door', 400, 'sink_bowls' => 2)
+    assert_includes narrow.errors.map { |e| e['field'] }, 'sink_bowls'
+    fine, = unit('base', 'base_sink_1door', 400)
+    assert_empty fine.errors.map { |e| e['message'] }
+  end
+
+  def test_the_hob_unit_has_a_hob_and_an_opening
+    [600, 900].each do |width|
+      result, layout = unit('base', 'base_hob', width)
+      assert_empty result.errors.map { |e| e['message'] }
+      glass = layout.appliances.find { |a| a.role == 'appliance_hob_1_glass' }
+      assert glass, 'the hob'
+      assert_in_delta [width - 20.0, 860.0].min, glass.extent[1], 0.01, 'as wide as the unit allows (860 at most)'
+      assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_ring/ }, 'cooking zones'
+      cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 2)).first
+      assert_in_delta glass.extent[1] - 20.0, cut[3] - cut[2], 0.01, 'the opening is a little smaller than the glass'
+    end
+    assert_equal true, Defaults.params['visibility_settings'].values_at('sink', 'hob', 'hood').all?
+  end
+
+  def test_the_hood_cabinet_has_a_hood_under_it
+    result, layout = unit('wall', 'wall_hood', 600)
+    assert_empty result.errors.map { |e| e['message'] }
+    hood = layout.appliances.select { |a| a.role.start_with?('appliance_hood_1') }
+    assert_equal 3, hood.length
+    assert hood.all? { |a| a.offset[2] < 0.0 }, 'below the cabinet'
+    assert_equal 360.0, layout.top_z
   end
 
   def test_three_drawers_small_small_big

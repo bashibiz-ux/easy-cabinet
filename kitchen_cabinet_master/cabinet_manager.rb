@@ -40,6 +40,7 @@ module KitchenCabinetMaster
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
           built = CabinetGenerator.build(model, entities, params, transformation)
           fill_blind_gap(model, entities, built, params)
+          WorktopManager.refresh(model) if params['sink'] || params['hob'] # an existing worktop gets its opening
           built
         end
       end
@@ -120,6 +121,7 @@ module KitchenCabinetMaster
           params['cabinet_name'] = NamingManager.for_update(root, params)
           CabinetGenerator.update(model, root, params)
           root.transformation = placed unless placed.equal?(root.transformation)
+          WorktopManager.refresh(model) if params['sink'] || params['hob'] # its opening in the worktop follows
           RowResizer.apply(model, squeeze) if squeeze
           # Its filler, end panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
@@ -298,7 +300,7 @@ module KitchenCabinetMaster
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
       on = ->(value) { [true, 'true', 1, '1'].include?(value) }
-      visibility = %w[carcass door toe_kick appliances oven microwave fridge].to_h { |key| [key, on.call(raw[key])] }
+      visibility = %w[carcass door toe_kick appliances oven microwave fridge sink hob hood].to_h { |key| [key, on.call(raw[key])] }
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
@@ -311,12 +313,17 @@ module KitchenCabinetMaster
       instances = model.entities.grep(Sketchup::ComponentInstance)
       cabinets = instances.select { |instance| AttributeManager.cabinet?(instance) }
       toe_kicks = instances.select { |instance| AttributeManager.part_kind(instance) == 'toe_kick' }
-      if cabinets.empty? && toe_kicks.empty?
+      worktops = WorktopManager.pieces_in(model)
+      if cabinets.empty? && toe_kicks.empty? && worktops.empty?
         return Response.ok('No cabinets in the model yet. New cabinets will use these settings.')
       end
 
       SelectionManager.suspend do
         with_operation(model, 'Change Cabinet Visibility') do
+          # The worktop and its back splash (kept on the model, so pieces built later follow the ticks).
+          show_worktop = raw.key?('worktop') ? on.call(raw['worktop']) : WorktopManager.shown?(model, 'worktop')
+          show_splash = raw.key?('backsplash') ? on.call(raw['backsplash']) : WorktopManager.shown?(model, 'backsplash')
+          WorktopManager.set_shown(model, show_worktop, show_splash)
           cabinets.each do |cabinet|
             AttributeManager.write(cabinet, 'visibility_settings' => visibility,
                                             'show_opening_direction' => show_floor_symbol,
@@ -450,6 +457,11 @@ module KitchenCabinetMaster
                       'bottom_zone' => adjustable(raw, cabinet, 'bottom_zone', 'bottom_label', 'zone_bottom'),
                       'top_front' => adjustable(raw, cabinet, 'top_front', 'top_front_label', 'top_front'),
                       'fridge' => !!(cabinet && cabinet['fridge']),
+                      'door_split' => !!(cabinet && cabinet['split'] && ValidationManager.truthy_value?(raw['door_split'])),
+                      'split_height' => adjustable(raw, cabinet, 'split_height', 'split_label', 'split'),
+                      'sink' => !!(cabinet && cabinet['sink']),
+                      'hob' => !!(cabinet && cabinet['hob']),
+                      'hood' => !!(cabinet && cabinet['hood']),
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)

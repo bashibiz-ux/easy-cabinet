@@ -11,9 +11,10 @@ module KitchenCabinetMaster
     NAME_PREFIX = 'Panel '
 
     # size - [x, y, z] in millimetres (depth, width, height)
-    def self.definition(model, size)
+    # `holes` ([[x0, x1, y0, y1], ...] in mm, in the top face) are openings cut right through it (a worktop's sink or hob).
+    def self.definition(model, size, holes = nil)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
-      name = format('%<prefix>s%<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz)
+      name = format('%<prefix>s%<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz) + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -21,7 +22,27 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_box(definition.entities, dx.mm, dy.mm, dz.mm)
+      cut_holes(definition.entities, holes, dz)
       definition
+    end
+
+    # A name part that tells slabs with different openings apart.
+    def self.hole_suffix(holes)
+      return '' if holes.nil? || holes.empty?
+
+      ' h' + holes.map { |hole| hole.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('.') }.join('_')
+    end
+
+    # Cuts each hole (a rectangle in the top face, at height `top` mm) through to the bottom. A hole that cannot be
+    # cut is skipped rather than failing the whole worktop.
+    def self.cut_holes(entities, holes, top)
+      Array(holes).each do |x0, x1, y0, y1|
+        z = top.mm
+        face = entities.add_face([x0.mm, y0.mm, z], [x1.mm, y0.mm, z], [x1.mm, y1.mm, z], [x0.mm, y1.mm, z])
+        face.pushpull(face.normal.z.positive? ? -z : z)
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not cut an opening: #{e.message}"
+      end
     end
 
     # A solid extruded from an arbitrary flat outline in the X-Y plane, `points`
@@ -30,10 +51,10 @@ module KitchenCabinetMaster
     # CabinetLayout.corner_footprint). Named after its own points, so two
     # shelves of the same corner cabinet (identical shape, different height)
     # share one definition.
-    def self.polygon_definition(model, points, thickness)
+    def self.polygon_definition(model, points, thickness, holes = nil)
       key = points.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
       thick = (thickness.to_f * 100).round / 100.0
-      name = format('%sCorner %s t%g', NAME_PREFIX, key, thick)
+      name = format('%sCorner %s t%g', NAME_PREFIX, key, thick) + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -41,6 +62,7 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_polygon(definition.entities, points, thick.mm)
+      cut_holes(definition.entities, holes, thick)
       definition
     end
 
@@ -49,10 +71,10 @@ module KitchenCabinetMaster
     # its size and radius, so equal pieces share one definition.
     ROUND_STEPS = 8
 
-    def self.rounded_definition(model, size, radius)
+    def self.rounded_definition(model, size, radius, holes = nil)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
       r = [[radius.to_f, dz].min, dx].min
-      name = format('%<prefix>sRounded %<x>g x %<y>g x %<z>g r%<r>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: r)
+      name = format('%<prefix>sRounded %<x>g x %<y>g x %<z>g r%<r>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: r) + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -60,17 +82,18 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_rounded(definition.entities, dx, dy, dz, r)
+      cut_holes(definition.entities, holes, dz)
       definition
     end
 
     # A flat slab with an outline of `points` whose top edge number `edge` (the one from
     # points[edge] to the next point) is rounded with `radius`. Named after its points,
     # thickness, radius and edge, so equal slabs share one definition.
-    def self.rounded_polygon_definition(model, points, thickness, radius, edge)
+    def self.rounded_polygon_definition(model, points, thickness, radius, edge, holes = nil)
       key = points.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
       thick = (thickness.to_f * 100).round / 100.0
       r = [radius.to_f, thick].min
-      name = format('%sCorner %s t%g r%g e%d', NAME_PREFIX, key, thick, r, edge)
+      name = format('%sCorner %s t%g r%g e%s', NAME_PREFIX, key, thick, r, Array(edge).join('.')) + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -80,6 +103,7 @@ module KitchenCabinetMaster
       rounded_polygon_faces(points, thick, r, edge).each do |corners|
         definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] })
       end
+      cut_holes(definition.entities, holes, thick)
       definition
     end
 
@@ -87,6 +111,8 @@ module KitchenCabinetMaster
     # the edge's profile (square at the bottom, a quarter circle at the top) is swept along the
     # edge, and the two faces next to it follow the profile so the solid stays closed.
     def self.rounded_polygon_faces(points, thickness, radius, edge)
+      return rounded_orthogonal_faces(points, thickness, radius, edge) if edge.is_a?(Array) # several edges (an L worktop's two fronts)
+
       count = points.length
       area = points.each_with_index.sum { |(x, y), i| nx, ny = points[(i + 1) % count]; (x * ny) - (nx * y) }
       a = points[edge]
@@ -144,6 +170,60 @@ module KitchenCabinetMaster
       (0...(profile.length - 1)).each { |k| faces << [ring_a[k], ring_b[k], ring_b[k + 1], ring_a[k + 1]] }
       outwards(faces)
     end
+
+    # The same for an outline whose corners are all right angles (an L), with a list of edges to round. Each ring of
+    # the profile moves the corners of the rounded edges in, along the inward direction of every rounded edge that
+    # meets there, so the front of an L keeps its inside corner square in plan and round in section.
+    def self.rounded_orthogonal_faces(points, thickness, radius, edges)
+      count = points.length
+      area = points.each_with_index.sum { |(x, y), i| nx, ny = points[(i + 1) % count]; (x * ny) - (nx * y) }
+      outward = lambda do |i|
+        along = unit2([points[(i + 1) % count][0] - points[i][0], points[(i + 1) % count][1] - points[i][1]])
+        area.positive? ? [along[1], -along[0]] : [-along[1], along[0]]
+      end
+      profile = [[0.0, 0.0], [0.0, thickness - radius]]
+      (1..ROUND_STEPS).each do |step|
+        angle = (Math::PI / 2.0) * step / ROUND_STEPS
+        profile << [radius - (radius * Math.cos(angle)), thickness - radius + (radius * Math.sin(angle))]
+      end
+      profile = [[0.0, 0.0], [0.0, thickness]] if radius <= 0.0
+
+      rings = profile.map do |off, z|
+        points.each_with_index.map do |(x, y), i|
+          moved = edges.select { |e| i == e || i == (e + 1) % count }
+          [x - moved.sum { |e| outward.call(e)[0] * off }, y - moved.sum { |e| outward.call(e)[1] * off }, z]
+        end
+      end
+
+      faces = []
+      faces << orient(points.map { |x, y| [x, y, 0.0] }) { |n| n[2].negative? }
+      faces << orient(rings.last.dup) { |n| n[2].positive? }
+      rings.each_cons(2) do |low, high|
+        count.times do |i|
+          j = (i + 1) % count
+          face = [low[i], low[j], high[j], high[i]].each_with_object([]) { |p, kept| kept << p unless kept.last == p }
+          face.pop if face.length > 1 && face.first == face.last
+          next if face.length < 3
+
+          out = outward.call(i)
+          faces << orient(face) { |n| ((n[0] * out[0]) + (n[1] * out[1])) > 1e-9 || (n[0].abs < 1e-9 && n[1].abs < 1e-9) }
+        end
+      end
+      faces
+    end
+
+    # `face` turned round if the test on its normal says it faces the wrong way.
+    def self.orient(face)
+      normal = [0.0, 0.0, 0.0]
+      face.each_with_index do |p, i|
+        q = face[(i + 1) % face.length]
+        normal[0] += (p[1] - q[1]) * (p[2] + q[2])
+        normal[1] += (p[2] - q[2]) * (p[0] + q[0])
+        normal[2] += (p[0] - q[0]) * (p[1] + q[1])
+      end
+      yield(normal) ? face : face.reverse
+    end
+    private_class_method :orient
 
     # Removes a definition this extension created once nothing uses it any more.
     def self.discard_if_unused(model, definition)
