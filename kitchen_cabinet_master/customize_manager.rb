@@ -11,6 +11,7 @@ module KitchenCabinetMaster
   #   Ruby -> window : KCM.receive({ id, ok, message, data })
   module CustomizeManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.Customize'
+    PART_KINDS = %w[filler end_panel toe_kick worktop backsplash].freeze # what, besides a cabinet, can be customized
 
     class << self
       # Shows the window for `root` (a cabinet instance).
@@ -78,14 +79,18 @@ module KitchenCabinetMaster
       end
 
       def cabinet_valid?
-        @root && @root.valid? && AttributeManager.cabinet?(@root)
+        @root && @root.valid? && (AttributeManager.cabinet?(@root) || PART_KINDS.include?(AttributeManager.part_kind(@root)))
+      end
+
+      def cabinet?
+        AttributeManager.cabinet?(@root)
       end
 
       # What the window draws and lists.
       def snapshot
         params = AttributeManager.read(@root)
-        { 'name' => @root.name, 'width' => params['width'], 'depth' => params['depth'], 'height' => params['height'],
-          'parts' => Customizer.parts(params) }
+        parts = cabinet? ? Customizer.parts(params) : Customizer.part_parts(params)
+        { 'name' => @root.name, 'width' => params['width'], 'depth' => params['depth'], 'height' => params['height'], 'parts' => parts || [] }
       end
 
       def push_snapshot
@@ -95,6 +100,8 @@ module KitchenCabinetMaster
       # Puts `overrides` on the cabinet and rebuilds it, checked by the same rules as an Update (a handle that no
       # longer fits a changed door is refused). One Undo step.
       def apply(overrides, done)
+        return apply_to_part(overrides, done) unless cabinet?
+
         model = Sketchup.active_model
         stored = AttributeManager.read(@root)
         params, errors = CabinetManager.send(:restyle_params, model, stored, 'custom_overrides' => overrides)
@@ -107,6 +114,26 @@ module KitchenCabinetMaster
           begin
             CabinetGenerator.update(model, @root, params)
             PartManager.follow_door(model, @root)
+            model.commit_operation
+          rescue StandardError
+            model.abort_operation
+            raise
+          end
+        end
+        Response.ok(done, snapshot)
+      end
+
+      # A filler, end panel, toe kick or worktop piece: its board is rebuilt from what it stored, with the changes.
+      def apply_to_part(overrides, done)
+        model = Sketchup.active_model
+        params = AttributeManager.read(@root).merge('custom_overrides' => overrides)
+        layout = PartLayout.layout_for(params)
+        return Response.fail('This part was made by an older version and cannot be customized. Apply the worktop again first.') unless layout
+
+        SelectionManager.suspend do
+          model.start_operation('Customize Part', true)
+          begin
+            PartGenerator.update(model, @root, params, layout)
             model.commit_operation
           rescue StandardError
             model.abort_operation

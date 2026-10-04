@@ -131,41 +131,49 @@ module KitchenCabinetMaster
       panels << top_front_panel(params, dims) if params['top_front'].to_f.positive?
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
+      # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
+      custom = params['custom_overrides']
+      drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
                                  drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
-                                 appliances: appliance_boxes(params, dims, front_zone(params, dims))), params)
+                                 appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
 
     # What the user changed in the Customize window (see Customizer): per part key, a size for the axes that were
     # changed and a move from where it belongs. Applied last, so everything built on the layout sees it.
-    def self.apply_overrides(layout, params)
+    # `drawers: false` leaves the drawer fronts alone (compute has already changed them, so that the drawer boxes,
+    # built from them, follow).
+    def self.apply_overrides(layout, params, drawers: true)
       overrides = params['custom_overrides']
       return layout unless overrides.is_a?(Hash) && !overrides.empty?
 
-      tweak = lambda do |item|
-        change = overrides[item.role]
-        next unless change.is_a?(Hash)
-
-        size = Array(change['extent'])
-        move = Array(change['move']).map(&:to_f)
-        move += [0.0] * (3 - move.length)
-        if item.respond_to?(:points) && item.points && !item.points.empty? # a shaped board: only its thickness and its place change
-          thickness = size[2].to_f.positive? ? size[2].to_f : item.extent[2]
-          item.points = item.points.map { |x, y| [round2(x + move[0]), round2(y + move[1])] }
-          item.extent = [item.extent[0], item.extent[1], round2(thickness)]
-          item.offset = [item.offset[0], item.offset[1], round2(item.offset[2] + move[2])]
-        else
-          item.extent = (0..2).map { |axis| round2(size[axis].to_f.positive? ? size[axis].to_f : item.extent[axis]) }
-          item.offset = (0..2).map { |axis| round2(item.offset[axis] + move[axis]) }
-        end
-        item.pivot = (0..2).map { |axis| round2(item.pivot[axis] + move[axis]) } if item.respond_to?(:pivot) && item.pivot
-      end
-
-      (layout.panels + layout.doors + layout.drawers + layout.appliances.to_a).each(&tweak)
+      tweak = ->(item) { tweak_item(item, overrides[item.role]) }
+      (layout.panels + layout.doors + (drawers ? layout.drawers : []) + layout.appliances.to_a).each(&tweak)
       (layout.drawer_boxes || {}).each_value { |boards| boards.each(&tweak) }
       layout
     end
     private_class_method :apply_overrides
+
+    # Changes one board (a Panel or a Door): `change` = { 'extent' => [x, y, z] (nil = unchanged), 'move' => [dx, dy, dz] }.
+    # Also used for fillers, end panels, toe kicks and worktops (PartLayout). Returns true when something changed.
+    def self.tweak_item(item, change)
+      return false unless change.is_a?(Hash)
+
+      size = Array(change['extent'])
+      move = Array(change['move']).map(&:to_f)
+      move += [0.0] * (3 - move.length)
+      if item.respond_to?(:points) && item.points && !item.points.empty? # a shaped board: only its thickness and its place change
+        thickness = size[2].to_f.positive? ? size[2].to_f : item.extent[2]
+        item.points = item.points.map { |x, y| [round2(x + move[0]), round2(y + move[1])] }
+        item.extent = [item.extent[0], item.extent[1], round2(thickness)]
+        item.offset = [item.offset[0], item.offset[1], round2(item.offset[2] + move[2])]
+      else
+        item.extent = (0..2).map { |axis| round2(size[axis].to_f.positive? ? size[axis].to_f : item.extent[axis]) }
+        item.offset = (0..2).map { |axis| round2(item.offset[axis] + move[axis]) }
+      end
+      item.pivot = (0..2).map { |axis| round2(item.pivot[axis] + move[axis]) } if item.respond_to?(:pivot) && item.pivot
+      true
+    end
 
     # The fixed panels of a front zone. Each one is flush with the carcass front, and the door (or the
     # drawer fronts) next to it covers its edge, stopping a door reveal short of the panel's far edge.
@@ -681,15 +689,16 @@ module KitchenCabinetMaster
       base = params['cabinet_category'].to_s == 'wall' ? 0.0 : params['toe_kick_height'].to_f
       lift = Defaults::DRAWER_BOTTOM_LIFT # the bottom board (with the front and back boards on it) is raised this far
       length = dims.depth + door_distance(params) - Defaults::DRAWER_BACK_GAP # from the back of the front to 46 mm off the wall
-      width = dims.inner_w - (2 * slide)
       drawers.each do |drawer|
+        # across the width of its own front, which is the cabinet's less the reveals unless the front was resized
+        y0 = (dims.thick - reveal) + slide
+        width = drawer.extent[1] - (2 * y0)
         front_z = drawer.offset[2] - base # the front's bottom, above the carcass bottom
         bottom = [front_z + 20.0, dims.thick + 20.0].max
         top = [front_z + drawer.extent[2] - 50.0, dims.height - dims.thick - 50.0 - gap].min
         height = top - bottom
         next if length < 100.0 || width < 100.0 || height < 40.0 || height - t - lift < 10.0
 
-        y0 = (dims.thick - reveal) + slide
         z0 = bottom - front_z
         name = lambda do |role, label, extent, offset|
           panel("#{drawer.role}_box_#{role}", "Drawer Box #{label}", extent, offset)

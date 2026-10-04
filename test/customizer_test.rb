@@ -9,7 +9,7 @@ module KitchenCabinetMaster
   DATA_DIR = 'unused'
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager validation_manager cabinet_layout customizer].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager validation_manager cabinet_layout customizer toe_kick part_layout].each { |f| require File.join(plugin, f) }
 
 class CustomizerTest < Minitest::Test
   include KitchenCabinetMaster
@@ -66,6 +66,82 @@ class CustomizerTest < Minitest::Test
     assert_in_delta plain.pivot[1] + 10.0, door.pivot[1], 1e-9
     boxed = CabinetLayout.compute(params('custom_overrides' => { 'drawer_1_box_left' => { 'extent' => [300.0, nil, nil], 'move' => [0.0, 0.0, 0.0] } }))
     assert_equal 300.0, boxed.drawer_boxes['drawer_1'].find { |item| item.role.end_with?('left') }.extent[0]
+  end
+
+  def test_a_resized_drawer_front_resizes_its_box
+    plain = CabinetLayout.compute(params)
+    box = ->(layout, role) { layout.drawer_boxes['drawer_1'].find { |item| item.role.end_with?(role) } }
+    narrow = CabinetLayout.compute(params('custom_overrides' => { 'drawer_1' => { 'extent' => [nil, 400.0, nil], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_equal 400.0, narrow.drawers.first.extent[1]
+    # the box keeps the same clearances from the sides of the front: 13 mm clear of the carcass less the reveal gap
+    assert_in_delta box.call(plain, 'bottom').extent[1] - 196.0, box.call(narrow, 'bottom').extent[1], 1e-6, 'the box is 196 mm narrower'
+    assert_in_delta box.call(plain, 'left').offset[1], box.call(narrow, 'left').offset[1], 1e-6, 'and starts at the same side'
+    short = CabinetLayout.compute(params('custom_overrides' => { 'drawer_1' => { 'extent' => [nil, nil, 160.0], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_operator box.call(short, 'left').extent[2], :<, box.call(plain, 'left').extent[2], 'a lower front gives a lower box'
+    lifted = CabinetLayout.compute(params('custom_overrides' => { 'drawer_2' => { 'extent' => [nil, nil, nil], 'move' => [0.0, 0.0, 20.0] } }))
+    assert_equal plain.drawer_boxes['drawer_2'].map(&:offset), lifted.drawer_boxes['drawer_2'].map(&:offset), 'a box moves with its front (it is inside the same container)'
+    own = CabinetLayout.compute(params('custom_overrides' => { 'drawer_1' => { 'extent' => [nil, 400.0, nil], 'move' => [0.0, 0.0, 0.0] },
+                                                               'drawer_1_box_left' => { 'extent' => [300.0, nil, nil], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_equal 300.0, box.call(own, 'left').extent[0], 'a change to one board of the box still applies on top'
+  end
+
+  # An entity that keeps attributes like SketchUp does (hashes and arrays become JSON strings).
+  class FakeEntity
+    def initialize = @attrs = {}
+    def set_attribute(_dictionary, key, value) = @attrs[key] = value
+    def attribute_dictionary(_name, _create = false) = @attrs.empty? ? nil : Dict.new(@attrs)
+    Dict = Struct.new(:hash) do
+      def each_pair(&block) = hash.each_pair(&block)
+      def [](key) = hash[key]
+    end
+  end
+
+  def test_the_changes_survive_being_stored_on_the_cabinet
+    entity = FakeEntity.new
+    change = { 'left_side' => { 'extent' => [nil, nil, 500.0], 'move' => [0.0, 0.0, 50.0] } }
+    AttributeManager.write(entity, 'custom_overrides' => change, 'board_extent' => [1.0, 2.0, 3.0], 'board_points' => [[0.0, 0.0], [1.0, 1.0]])
+    stored = AttributeManager.read(entity)
+    assert_equal change, stored['custom_overrides']
+    assert_equal [[0.0, 0.0], [1.0, 1.0]], stored['board_points']
+    assert_equal change, ValidationManager.clean_overrides(stored['custom_overrides'])
+  end
+
+  def part_params(kind, extra = {})
+    { 'part_kind' => kind, 'thickness' => 18.0, 'height' => 720.0, 'width' => 50.0, 'depth' => 560.0, 'target_base_z' => 100.0,
+      'target_flush_x' => 580.0, 'toe_kick_height' => 100.0, 'toe_kick_thickness' => 18.0, 'toe_kick_piece_length' => 1000.0,
+      'toe_kick_pieces' => 2, 'toe_kick_recess' => 50.0, 'target_depth' => 560.0, 'custom_overrides' => {} }.merge(extra)
+  end
+
+  def test_a_filler_an_end_panel_and_a_toe_kick_can_be_customized
+    filler = Customizer.part_parts(part_params('filler'))
+    assert_equal ['board'], filler.map { |item| item['key'] }
+    assert_equal [18.0, 50.0, 720.0], filler.first['size']
+    changed = PartLayout.layout_for(part_params('filler', 'custom_overrides' => { 'board' => { 'extent' => [nil, 80.0, nil], 'move' => [0.0, 5.0, 0.0] } }))
+    assert_equal [18.0, 80.0, 720.0], changed.board.extent
+    assert_equal 5.0, changed.board.offset[1]
+    taller = PartLayout.layout_for(part_params('filler', 'custom_overrides' => { 'board' => { 'extent' => [nil, nil, 900.0], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_equal 1000.0, taller.top_z, 'the top follows the new height'
+
+    panel = PartLayout.layout_for(part_params('end_panel', 'thickness' => 18.0, 'depth' => 560.0, 'custom_overrides' => { 'board' => { 'extent' => [600.0, nil, nil], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_equal 600.0, panel.board.extent[0]
+
+    kicks = Customizer.part_parts(part_params('toe_kick'))
+    assert_equal %w[toe_kick_1 toe_kick_2], kicks.map { |item| item['key'] }
+    moved = PartLayout.layout_for(part_params('toe_kick', 'custom_overrides' => { 'toe_kick_2' => { 'extent' => [nil, 400.0, nil], 'move' => [0.0, 0.0, 0.0] } }))
+    assert_equal 400.0, moved.toe_kick.last.extent[1]
+    assert_equal 1000.0, moved.toe_kick.first.extent[1]
+  end
+
+  def test_a_worktop_piece_is_rebuilt_from_what_it_recorded_and_an_old_one_is_not
+    slab = part_params('worktop', 'board_extent' => [580.0, 1800.0, 20.0], 'board_points' => nil, 'board_round' => 10.0, 'board_round_edge' => '',
+                                  'custom_overrides' => { 'board' => { 'extent' => [nil, nil, 30.0], 'move' => [0.0, 0.0, 0.0] } })
+    layout = PartLayout.layout_for(slab)
+    assert_equal [580.0, 1800.0, 30.0], layout.board.extent
+    assert_equal 10.0, layout.board.round
+    assert_nil PartLayout.layout_for(part_params('worktop')), 'a worktop from before pieces recorded their shape'
+    shaped = PartLayout.layout_for(part_params('worktop', 'board_extent' => [900.0, 900.0, 20.0], 'board_points' => [[0, 0], [0, 900], [900, 0]], 'board_round' => 0.0,
+                                                          'custom_overrides' => { 'board' => { 'extent' => [nil, nil, nil], 'move' => [10.0, 0.0, 0.0] } }))
+    assert_equal [10.0, 0.0], shaped.board.points.first
   end
 
   def test_a_shaped_board_changes_only_its_thickness_and_place

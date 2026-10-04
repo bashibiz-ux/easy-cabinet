@@ -282,9 +282,9 @@
         <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
 
         <div hidden><input id="gap" type="text" autocomplete="off"></div>
-        <!-- Opens a window for the selected cabinet: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
-        <div class="btn-row one cabinet-only">
-          <button class="btn" type="button" data-action="customize" title="A window to change the size of any board of the selected cabinet and to move it">Customize...</button>
+        <!-- Opens a window for the selected cabinet, filler, end panel or toe kick: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
+        <div class="btn-row one">
+          <button class="btn" type="button" data-action="customize" title="A window to change the size of any board of the selected item and to move it">Customize...</button>
         </div>
 
         <!-- Filler: shown when Cabinet Category = Filler. A single board beside a cabinet. -->
@@ -408,6 +408,9 @@
           <button class="btn primary" type="button" data-action="apply_worktop">Apply Worktop</button>
           <button class="btn" type="button" data-action="remove_worktop">Remove</button>
         </div>
+        <div class="btn-row one">
+          <button class="btn" type="button" data-action="customize" title="Select a worktop piece in the model first: a window to change the size of the piece and to move it. Applying the worktop again rebuilds it and drops these changes.">Customize...</button>
+        </div>
 
       </div>
     </section>
@@ -465,21 +468,46 @@
     <!-- Visibility -->
     <section class="card" id="sec-visibility" data-feature="visibility">
       <button class="card-head" type="button" aria-expanded="true">Visibility</button>
-      <div class="card-body checks">
-        <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
-        <label class="check"><input type="checkbox" id="visDoor" checked><span>Door</span></label>
-        <label class="check"><input type="checkbox" id="visToe" checked><span>Toe Kick</span></label>
-        <label class="check"><input type="checkbox" id="showDirection"><span>Door opening direction on the floor</span></label>
-        <label class="check"><input type="checkbox" id="showAppliances"><span>Show appliances (oven, microwave and fridge)</span></label>
-        <label class="check"><input type="checkbox" id="showOven" checked><span>Show oven</span></label>
-        <label class="check"><input type="checkbox" id="showMicro" checked><span>Show microwave</span></label>
-        <label class="check"><input type="checkbox" id="showFridge" checked><span>Show fridge</span></label>
-        <label class="check"><input type="checkbox" id="showNames"><span>Show cabinet names on top</span></label>
-        <label class="check"><input type="checkbox" id="hideBaseHandles"><span>Show base unit handles</span></label>
-        <label class="check"><input type="checkbox" id="hideTallHandles"><span>Show tall unit handles</span></label>
-        <label class="check"><input type="checkbox" id="hideWallHandles"><span>Show wall unit handles</span></label>
-        <label class="check"><input type="checkbox" id="showWallDirection"><span>Wall unit door opening direction on the floor</span></label>
-        <label class="check"><input type="checkbox" id="showDoorSymbol"><span>Door opening direction on the door</span></label>
+      <div class="card-body vis">
+        <div class="vis-group">
+          <h3 class="vis-title">Parts</h3>
+          <div class="vis-list">
+            <label class="check"><input type="checkbox" id="visCarcass" checked><span>Carcass</span></label>
+            <label class="check"><input type="checkbox" id="visDoor" checked><span>Doors</span></label>
+            <label class="check"><input type="checkbox" id="visToe" checked><span>Toe kick</span></label>
+          </div>
+        </div>
+        <div class="vis-group">
+          <h3 class="vis-title">Appliances</h3>
+          <div class="vis-list">
+            <label class="check wide"><input type="checkbox" id="showAppliances"><span>Show appliances</span></label>
+            <label class="check sub"><input type="checkbox" id="showOven" checked><span>Oven</span></label>
+            <label class="check sub"><input type="checkbox" id="showMicro" checked><span>Microwave</span></label>
+            <label class="check sub"><input type="checkbox" id="showFridge" checked><span>Fridge</span></label>
+          </div>
+        </div>
+        <div class="vis-group">
+          <h3 class="vis-title">Handles</h3>
+          <div class="vis-list">
+            <label class="check"><input type="checkbox" id="hideBaseHandles"><span>Base unit handles</span></label>
+            <label class="check"><input type="checkbox" id="hideTallHandles"><span>Tall unit handles</span></label>
+            <label class="check"><input type="checkbox" id="hideWallHandles"><span>Wall unit handles</span></label>
+          </div>
+        </div>
+        <div class="vis-group">
+          <h3 class="vis-title">Opening direction</h3>
+          <div class="vis-list">
+            <label class="check wide"><input type="checkbox" id="showDoorSymbol"><span>On the door and drawer front</span></label>
+            <label class="check wide"><input type="checkbox" id="showDirection"><span>On the floor (base and tall units)</span></label>
+            <label class="check wide"><input type="checkbox" id="showWallDirection"><span>On the floor (wall units)</span></label>
+          </div>
+        </div>
+        <div class="vis-group">
+          <h3 class="vis-title">Labels</h3>
+          <div class="vis-list">
+            <label class="check wide"><input type="checkbox" id="showNames"><span>Cabinet names on top</span></label>
+          </div>
+        </div>
       </div>
     </section>
 

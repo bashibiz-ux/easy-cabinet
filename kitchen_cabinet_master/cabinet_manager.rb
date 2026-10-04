@@ -55,8 +55,12 @@ module KitchenCabinetMaster
 
     # Opens the Customize window for the selected cabinet.
     def self.customize
-      root = SelectionManager.selected_cabinet(Sketchup.active_model)
-      return Response.fail('Select a cabinet in the model to customize it. (Customize works on cabinets.)') unless root
+      model = Sketchup.active_model
+      root = SelectionManager.selected_cabinet(model) || SelectionManager.selected_part(model)
+      kinds = CustomizeManager::PART_KINDS
+      unless root && (AttributeManager.cabinet?(root) || kinds.include?(AttributeManager.part_kind(root)))
+        return Response.fail('Select a cabinet, filler, end panel, toe kick or worktop in the model to customize it.')
+      end
 
       CustomizeManager.open(root)
       Response.ok("Customize window opened for #{root.name}.")

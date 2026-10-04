@@ -416,3 +416,11 @@ h1 {
 .cutlist th:first-child, .cutlist td:first-child, .cutlist th:nth-child(5), .cutlist td:nth-child(5) { text-align: left; }
 .cutlist th { font-weight: 600; opacity: .8; }
 .btn-row.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+/* ---- visibility: ticks in groups ---------------------------------------- */
+.vis { display: block; }
+.vis-group { margin: 0 0 10px; padding: 0 0 8px; border-bottom: 1px solid var(--line); }
+.vis-group:last-child { margin-bottom: 0; border-bottom: 0; padding-bottom: 0; }
+.vis-title { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.vis-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; }
+.vis-list .check.wide { grid-column: 1 / -1; }
+.vis-list .check.sub { margin-left: 22px; }

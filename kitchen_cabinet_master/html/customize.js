@@ -7,14 +7,14 @@
    * The picture is drawn here with plain canvas maths (no libraries, so it works offline). */
 
   const $ = (id) => document.getElementById(id);
-  const GROUP_NAMES = { carcass: 'Carcass', door: 'Doors', drawer: 'Drawer fronts', drawer_box: 'Drawer boxes', appliance: 'Appliances' };
-  const GROUP_COLORS = { carcass: '#c6cad1', door: '#e7d8bb', drawer: '#e2d0ad', drawer_box: '#d3b685', appliance: '#9aa3ae' };
+  const GROUP_NAMES = { carcass: 'Carcass', part: 'Board', door: 'Doors', drawer: 'Drawer fronts', drawer_box: 'Drawer boxes', appliance: 'Appliances' };
+  const GROUP_COLORS = { carcass: '#c6cad1', part: '#d6c7a6', door: '#e7d8bb', drawer: '#e2d0ad', drawer_box: '#d3b685', appliance: '#9aa3ae' };
   const DARK_PARTS = /glass|_panel|display/;
 
   const state = {
     name: '', parts: [], selected: null, hover: null,
     yaw: -35, pitch: 24, zoom: 1, pan: [0, 0],
-    groups: { carcass: true, door: true, drawer: true, drawer_box: true, appliance: true },
+    groups: { carcass: true, part: true, door: true, drawer: true, drawer_box: true, appliance: true },
     ghost: true, isolate: false,
     pending: new Map(), seq: 0, faces: [], busy: false
   };

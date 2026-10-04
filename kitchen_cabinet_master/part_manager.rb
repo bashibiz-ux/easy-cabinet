@@ -479,7 +479,7 @@ module KitchenCabinetMaster
       errors = result.errors.dup
 
       stored = AttributeManager.read(root)
-      %w[target_id target_depth target_door_material target_carcass_material toe_kick_from].each { |key| params[key] = stored[key] }
+      %w[target_id target_depth target_door_material target_carcass_material toe_kick_from custom_overrides].each { |key| params[key] = stored[key] }
       errors.concat(toe_kick_fit_errors(model, params)) if errors.empty?
       return [nil, nil, Response.fail(summary(errors), errors)] unless errors.empty?
 
@@ -653,7 +653,7 @@ module KitchenCabinetMaster
       params, failure = prepare_filler(raw, door_material_of(stored))
       return failure if failure
 
-      %w[target_id target_width target_depth target_base_z target_category target_flush_x side].each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_depth target_base_z target_category target_flush_x side custom_overrides].each { |key| params[key] = stored[key] }
       params['part_id'] = AttributeManager.part_id(root)
       layout = PartLayout.filler(params)
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.filler_name(params))
@@ -697,7 +697,7 @@ module KitchenCabinetMaster
       params, failure = prepare_end_panel(raw, door, carcass)
       return failure if failure
 
-      %w[target_id target_width target_base_z target_door_material target_carcass_material].each { |key| params[key] = stored[key] }
+      %w[target_id target_width target_base_z target_door_material target_carcass_material custom_overrides].each { |key| params[key] = stored[key] }
 
       layout = PartLayout.end_panel(params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']

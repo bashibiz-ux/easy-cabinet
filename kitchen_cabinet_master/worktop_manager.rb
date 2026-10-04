@@ -309,7 +309,13 @@ module KitchenCabinetMaster
       stored['width'] = extent[1]
       stored['depth'] = extent[0]
       slab = kind == 'worktop'
-      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0, round_edge)
+      round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0
+      # What the piece is made of, kept so that it can be rebuilt (the Customize window changes its board).
+      stored['board_extent'] = extent
+      stored['board_points'] = points
+      stored['board_round'] = round
+      stored['board_round_edge'] = round_edge
+      layout = PartLayout.worktop(extent, points, slab ? 'Worktop' : 'Back Splash', round, round_edge, stored)
       root = PartGenerator.build(model, model.entities, stored, transformation, layout)
       TagManager.assign(model, root, TagManager::WORKTOP)
       root
