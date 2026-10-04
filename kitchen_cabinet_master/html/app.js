@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.42.0';
+  const APP_VERSION = '0.43.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -503,6 +503,27 @@
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
   const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' };
 
+  // Removing a cabinet from your own catalog says which one.
+  const CATALOG_PAYLOAD = {
+    remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value })
+  };
+
+  // Saving to or removing from your own catalogs changes the list of models.
+  async function catalogsChanged(data, action) {
+    if (!Array.isArray(data.catalogs)) return;
+    state.meta.catalogs = data.catalogs;
+    const wanted = catalog.value;
+    fillSelect(catalog, state.meta.catalogs, { placeholder: 'Select a model...' });
+    if (!state.meta.catalogs.some((c) => c.id === wanted)) {
+      catalog.value = '';
+      applyCatalogFeatures();
+      await refreshCabinets();
+    } else if (action === 'remove_from_catalog') {
+      await refreshCabinets({ keepValues: true });
+    }
+    lockActions();
+  }
+
   function serverAction(action) {
     const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
     if (isPart && action === 'update') return 'update_part';
@@ -608,7 +629,19 @@
     const previous = el.value;
     el.innerHTML = '';
     if (placeholder) el.append(new Option(placeholder, ''));
-    list(items).forEach((item) => el.append(new Option(item.name, item.id)));
+    const groups = {};
+    list(items).forEach((item) => {
+      let parent = el;
+      if (item.group) {
+        if (!groups[item.group]) {
+          groups[item.group] = document.createElement('optgroup');
+          groups[item.group].label = item.group;
+          el.append(groups[item.group]);
+        }
+        parent = groups[item.group];
+      }
+      parent.append(new Option(item.name, item.id));
+    });
     if ([...el.options].some((o) => o.value === previous)) el.value = previous;
   }
 
@@ -685,6 +718,8 @@
   function lockActions() {
     const insert = document.querySelector('[data-action="insert"]');
     if (insert) insert.disabled = state.busy || !currentCatalog();
+    const remove = removeFromCatalog;
+    if (remove) remove.disabled = state.busy || !(currentCatalog() || {}).custom || !cabinet.value; // only your own catalogs
   }
 
   function currentCabinet() {
@@ -784,6 +819,7 @@
       door_split: hasSplitField() && $('doorSplit').value === 'split',
       split_height: hasSplitField() ? mmv('splitHeight') : '',
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
+      drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
       sink_tray: $('sinkTray').checked,
       sink_rotation: $('sinkRotation').value,
@@ -863,6 +899,7 @@
       $('doorSplit').value = p.door_split ? 'split' : 'full';
       setText('splitHeight', Number(p.split_height) || (currentCabinet() || {}).split || 1000);
     }
+    if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {
@@ -993,6 +1030,7 @@
     if (!keepValues) applyCabinetDefaults();
     else { fillWidthPreset((currentCabinet() || {}).widths); fillApplianceChoices(currentCabinet()); syncZoneField(); }
     drawPreview();
+    lockActions();
   }
 
   // The Standard Width list: a fixed size fills the Width field; Width can still be
@@ -1057,7 +1095,14 @@
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
     const cabinet = currentCabinet();
-    return !!(cabinet && cabinet.drawers > 0 && !cabinet.zone && !cabinet.zone_bottom && !cabinet.lower && !cabinet.fridge) && categoryKind() === 'cabinet';
+    return !!(cabinet && cabinet.drawers > 0 && !cabinet.doors && !cabinet.zone && !cabinet.zone_bottom && !cabinet.lower && !cabinet.fridge && !cabinet.corner && !cabinet.freestanding) && categoryKind() === 'cabinet';
+  }
+  // How many drawers the unit has: what the Number of Drawers field says (1 to 6), else the catalog's number.
+  function drawerCount() {
+    const cabinet = currentCabinet() || {};
+    if (!hasDrawerHeights()) return cabinet.drawers || 0;
+    const n = Math.round(Number(String($('drawerCount').value).replace(',', '.')));
+    return n >= 1 ? Math.min(n, 6) : (cabinet.drawers || 1);
   }
 
   function syncZoneField() {
@@ -1075,8 +1120,12 @@
     setSoft($('splitField'), !hasSplitField() || $('doorSplit').value !== 'split');
     if (cabinet && cabinet.split_label) $('splitLabel').textContent = cabinet.split_label;
     setSoft($('sinkFields'), !hasSinkField());
+    setSoft($('drawerCountField'), !hasDrawerHeights());
     setSoft($('drawerHeightsField'), !hasDrawerHeights());
-    for (let i = 1; i <= 6; i += 1) setSoft($(`drawerH${i}Field`), !hasDrawerHeights() || i > ((cabinet || {}).drawers || 0));
+    for (let i = 1; i <= 6; i += 1) setSoft($(`drawerH${i}Field`), !hasDrawerHeights() || i > drawerCount());
+    const single = !!(cabinet && cabinet.sink_single);
+    setSoft($('sinkBowlsField'), single);
+    setSoft($('sinkTurnField'), single || !$('sinkTray').checked); // a turn only matters for the side the drainer is on
     setSoft($('blindField'), !hasBlindField());
     if (cabinet && cabinet.blind_label) $('blindLabel').textContent = cabinet.blind_label;
     setSoft($('lowerField'), !hasLowerField());
@@ -1126,6 +1175,7 @@
     $('liftUp').checked = true;
     if (cabinet.split_label) { $('doorSplit').value = 'full'; setText('splitHeight', cabinet.split); }
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, '');
+    setText('drawerCount', cabinet.drawers || 1);
     if (cabinet.sink) {
       $('sinkBowls').value = String(cabinet.sink_bowls || 1);
       $('sinkTray').checked = cabinet.sink_tray === true;
@@ -1643,11 +1693,12 @@
     }
     try {
       const kind = formKind(action);
-      const payload = kind ? COLLECTORS[kind]() : {};
+      const payload = kind ? COLLECTORS[kind]() : (CATALOG_PAYLOAD[action] ? CATALOG_PAYLOAD[action]() : {});
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
         if (action === 'get_cut_list') renderCutList(res.data || {});
+        if (action === 'save_to_catalog' || action === 'remove_from_catalog') await catalogsChanged(res.data || {}, action);
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
@@ -2072,12 +2123,15 @@
     $('applianceSet').addEventListener('change', () => syncApplianceFields(true));
     $('lowerMode').addEventListener('change', syncZoneField);
     $('doorSplit').addEventListener('change', syncZoneField);
+    $('drawerCount').addEventListener('input', syncZoneField);
+    $('sinkTray').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
       // Choosing another cabinet fills the fields for the next Insert; it does not change the
       // cabinet selected in the model (select it again, or press Update, to change it).
       if (state.selectedKind) { state.liveHold = true; clearTimeout(state.liveTimer); }
       applyCabinetDefaults();
       drawPreview();
+      lockActions();
     });
     $('widthPreset').addEventListener('change', () => {
       if ($('widthPreset').value !== 'custom') {

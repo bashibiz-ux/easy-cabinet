@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'json'
 
 module KitchenCabinetMaster
@@ -14,6 +15,12 @@ module KitchenCabinetMaster
     USER_DIR_NAME = 'KitchenCabinetMaster_Data'
     REQUIRED_DEFAULTS = %w[width depth height].freeze
     LEGACY_FILES = ['catalogs/sample_catalog.json'].freeze
+    DEFAULT_CUSTOM_NAME = 'My cabinets'
+    # The measurements a catalog entry lets the panel adjust: entry key => [the key that switches it on, stored parameter].
+    ADJUSTABLE = {
+      'zone' => %w[zone_label front_zone], 'zone_bottom' => %w[bottom_label bottom_zone], 'top_front' => %w[top_front_label top_front],
+      'fridge' => %w[fridge_label fridge_height], 'split' => %w[split_label split_height], 'blind' => %w[blind_label blind_width]
+    }.freeze
 
     # What a catalog can switch on in the panel. A catalog lists the ones it offers
     # under `features`; anything not listed stays greyed out while it is selected.
@@ -30,7 +37,7 @@ module KitchenCabinetMaster
       # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]
       def catalogs
         data[:catalogs].values.map do |c|
-          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']),
+          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']), 'custom' => c['custom'] == true,
             'features' => features_of(c), 'handle_bundles' => c['handle_bundles'].is_a?(Array) ? c['handle_bundles'] : nil }
         end
       end
@@ -75,6 +82,82 @@ module KitchenCabinetMaster
 
       def reload!
         @data = nil
+      end
+
+      # Where your own catalogs are kept (tests point this at a temporary folder).
+      attr_writer :user_root_override
+
+      # The cabinets you save from the model go into catalogs of your own: a file in your KitchenCabinetMaster_Data
+      # folder, listed beside the bundled catalogs. Saving a cabinet under a name the catalog already has replaces it.
+      # `entry` is a catalog entry (see entry_from); returns [catalog id, cabinet id].
+      def save_custom(catalog_name, category, entry)
+        root = user_root
+        raise 'There is no folder to keep your own catalogs in.' unless root
+
+        name = catalog_name.to_s.strip
+        name = DEFAULT_CUSTOM_NAME if name.empty?
+        catalog_id = "custom_#{slug(name)}"
+        path = File.join(root, 'catalogs', "#{catalog_id}.json")
+        stored = File.file?(path) ? read_json(path) : nil
+        stored = { 'id' => catalog_id, 'name' => name, 'custom' => true, 'categories' => {} } unless stored.is_a?(Hash) && stored['categories'].is_a?(Hash)
+        list = (stored['categories'][category.to_s] ||= [])
+        entry = entry.merge('id' => slug(entry['name']))
+        list.reject! { |item| item['id'] == entry['id'] }
+        list << entry
+        write_custom(path, stored)
+        [catalog_id, entry['id']]
+      end
+
+      # Takes a cabinet out of one of your own catalogs; the catalog file goes when it is empty. Returns true if found.
+      def remove_custom(catalog_id, category, cabinet_id)
+        found = catalog(catalog_id)
+        root = user_root
+        return false unless found && found['custom'] == true && root
+
+        path = File.join(root, 'catalogs', "#{found['id']}.json")
+        stored = File.file?(path) ? read_json(path) : nil
+        list = stored.is_a?(Hash) ? stored.dig('categories', category.to_s) : nil
+        return false unless list.is_a?(Array) && list.any? { |item| item['id'] == cabinet_id.to_s }
+
+        list.reject! { |item| item['id'] == cabinet_id.to_s }
+        if stored['categories'].values.all?(&:empty?)
+          File.delete(path)
+          reload!
+        else
+          write_custom(path, stored)
+        end
+        true
+      end
+
+      # A catalog entry for a cabinet in the model, from the parameters stored on it: the entry it was made from
+      # (`base`, nil when its catalog is gone), with the cabinet's own size, doors, drawers, shelves and the
+      # adjustable heights it has now as the starting values.
+      def entry_from(stored, base, name)
+        entry = (base || {}).dup
+        entry['name'] = name.to_s.strip
+        entry['code'] = (base && base['code']) || stored['name_code'].to_s
+        unless base && base['lower'] # an oven housing's doors and drawers follow its lower part
+          entry['doors'] = stored['door_count'].to_i
+          entry['drawers'] = stored['drawer_count'].to_i
+        end
+        entry['shelves'] = stored['shelf_count'].to_i
+        defaults = { 'width' => stored['width'], 'depth' => stored['depth'], 'height' => stored['height'] }
+        %w[leg2_length leg2_depth].each { |key| defaults[key] = stored[key] if stored[key].is_a?(Numeric) }
+        entry['defaults'] = defaults.transform_values { |v| v.to_f }
+        entry['widths'] = (base['widths'] + [stored['width']]).compact.uniq.sort if base && base['widths'].is_a?(Array)
+        ADJUSTABLE.each do |catalog_key, (label_key, stored_key)|
+          value = stored[stored_key].to_f
+          entry[catalog_key] = value if entry[label_key] && value.positive?
+        end
+        if entry['sink'] && !entry['sink_single']
+          entry['sink_bowls'] = stored['sink_bowls'].to_i == 2 ? 2 : 1
+          entry['sink_tray'] = stored['sink_tray'] == true
+        end
+        entry
+      end
+
+      def slug(text)
+        text.to_s.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/\A_+|_+\z/, '')[0, 60].then { |s| s.empty? ? 'cabinet' : s }
       end
 
       private
@@ -189,7 +272,20 @@ module KitchenCabinetMaster
         }
       end
 
+      def read_json(path)
+        JSON.parse(File.read(path, encoding: 'UTF-8'))
+      rescue JSON::ParserError, SystemCallError
+        nil
+      end
+
+      def write_custom(path, stored)
+        FileUtils.mkdir_p(File.dirname(path))
+        File.write(path, "#{JSON.pretty_generate(stored)}\n", encoding: 'UTF-8')
+        reload!
+      end
+
       def user_root
+        return @user_root_override if @user_root_override
         return nil unless defined?(Sketchup) && Sketchup.respond_to?(:find_support_file)
 
         plugins = Sketchup.find_support_file('Plugins')

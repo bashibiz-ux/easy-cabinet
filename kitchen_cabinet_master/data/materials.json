@@ -1,15 +1,1012 @@
 {
   "materials": [
-    { "name": "Shutter - Light Beige", "color": "#E6DCC8", "kinds": ["panel", "toe_kick"] },
-    { "name": "Carcass - Light Gray",  "color": "#D3D3D3", "kinds": ["panel", "toe_kick"] },
-    { "name": "White",           "color": "#FFFFFF", "kinds": ["panel", "toe_kick"] },
-    { "name": "White Melamine",  "color": "#F2F2EE", "kinds": ["panel", "toe_kick"] },
-    { "name": "Light Oak",       "color": "#C9A46A", "kinds": ["panel", "toe_kick"] },
-    { "name": "Walnut",          "color": "#6B4A32", "kinds": ["panel", "toe_kick"] },
-    { "name": "Anthracite Grey", "color": "#3A3E42", "kinds": ["panel", "toe_kick"] },
-    { "name": "Matt Black",      "color": "#1C1C1E", "kinds": ["panel", "toe_kick"] },
-    { "name": "PVC Black",       "color": "#141414", "kinds": ["toe_kick"] },
-    { "name": "PVC White",       "color": "#ECECEA", "kinds": ["toe_kick"] },
-    { "name": "Aluminium",       "color": "#B9BEC4", "kinds": ["toe_kick"] }
+    {
+      "name": "White",
+      "color": "#FFFFFF",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "White Melamine",
+      "color": "#F2F2EE",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Shutter - Light Beige",
+      "color": "#E6DCC8",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Cream",
+      "color": "#F3EBD3",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Ivory",
+      "color": "#EFE7D0",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Magnolia",
+      "color": "#EDE4D3",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Warm White",
+      "color": "#F4EFE6",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Chalk White",
+      "color": "#F7F7F2",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Linen",
+      "color": "#E9E1D2",
+      "category": "Plain colours - Whites",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Carcass - Light Gray",
+      "color": "#D3D3D3",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Light Grey",
+      "color": "#C8C9CB",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Dove Grey",
+      "color": "#B4B4B2",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Stone Grey",
+      "color": "#9C9A94",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Mid Grey",
+      "color": "#8A8D90",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Slate Grey",
+      "color": "#5F666D",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Anthracite Grey",
+      "color": "#3A3E42",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Graphite",
+      "color": "#2E3033",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Matt Black",
+      "color": "#1C1C1E",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Jet Black",
+      "color": "#0E0E0F",
+      "category": "Plain colours - Greys and blacks",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Navy Blue",
+      "color": "#1F2A44",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Midnight Blue",
+      "color": "#16213A",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Petrol Blue",
+      "color": "#2C5560",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Sky Blue",
+      "color": "#A9C6DA",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Duck Egg",
+      "color": "#BFD6D2",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Sage Green",
+      "color": "#A3B09A",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Olive Green",
+      "color": "#6E7550",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Forest Green",
+      "color": "#2F4A38",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Mint",
+      "color": "#C9E2D0",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Teal",
+      "color": "#2F6F73",
+      "category": "Plain colours - Blues and greens",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Mustard",
+      "color": "#C9A227",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Terracotta",
+      "color": "#B9623F",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Burgundy",
+      "color": "#5B1F2A",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Dusty Pink",
+      "color": "#D9B4B0",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Blush",
+      "color": "#EBD2CC",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Coral",
+      "color": "#E0705A",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Taupe",
+      "color": "#9B8B7E",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Mocha",
+      "color": "#7A6252",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Red",
+      "color": "#B3262D",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Yellow",
+      "color": "#E8C93A",
+      "category": "Plain colours - Warm colours",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Light Oak",
+      "color": "#C9A46A",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Natural Oak",
+      "color": "#B98E55",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Bleached Oak",
+      "color": "#DCC9A6",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Whitewashed Oak",
+      "color": "#E3D8C4",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Honey Oak",
+      "color": "#C28A3E",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Golden Oak",
+      "color": "#B27A2F",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Ash",
+      "color": "#D6BE94",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Birch",
+      "color": "#E0C99B",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Maple",
+      "color": "#E4C690",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Beech",
+      "color": "#D2A872",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Pine",
+      "color": "#D9B067",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Sandy Oak",
+      "color": "#CDB48A",
+      "category": "Wood - Oak and light woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Walnut",
+      "color": "#6B4A32",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Dark Walnut",
+      "color": "#4A3224",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "American Walnut",
+      "color": "#5C4030",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Smoked Oak",
+      "color": "#5A4634",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Dark Oak",
+      "color": "#4F3A28",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Wenge",
+      "color": "#2D211A",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Ebony",
+      "color": "#241B16",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Mahogany",
+      "color": "#6D3426",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Rosewood",
+      "color": "#5E2E26",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Chestnut",
+      "color": "#7A4E2D",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Cherry",
+      "color": "#9A5A3A",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Teak",
+      "color": "#9B6B3C",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Zebrano",
+      "color": "#B58A55",
+      "category": "Wood - Walnut and dark woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Grey Oak",
+      "color": "#9E9588",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Driftwood",
+      "color": "#B1A596",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Weathered Oak",
+      "color": "#8F8576",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Black Oak",
+      "color": "#2C2926",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Cashmere Oak",
+      "color": "#BDAE98",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Truffle Oak",
+      "color": "#8A7766",
+      "category": "Wood - Grey and painted woods",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Concrete",
+      "color": "#A5A5A2",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Light Concrete",
+      "color": "#BDBDB8",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Dark Concrete",
+      "color": "#6E6E6B",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Marble White",
+      "color": "#ECEAE6",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Marble Grey",
+      "color": "#B7B7B7",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Granite Black",
+      "color": "#2B2B2D",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Granite Grey",
+      "color": "#7C7C7E",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Quartz White",
+      "color": "#F0EFEC",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Slate",
+      "color": "#4D5256",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Sandstone",
+      "color": "#C8B79B",
+      "category": "Stone and concrete",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Aluminium",
+      "color": "#B9BEC4",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Brushed Steel",
+      "color": "#A9ADB2",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Stainless Steel",
+      "color": "#C4C7CA",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Brass",
+      "color": "#B89A4B",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Brushed Brass",
+      "color": "#A88B45",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Copper",
+      "color": "#B26E4A",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Gunmetal",
+      "color": "#4A4F55",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Matt Black Metal",
+      "color": "#1F1F21",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Chrome",
+      "color": "#D8DADD",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "Gold",
+      "color": "#C9A24A",
+      "category": "Metal",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "PVC Black",
+      "color": "#141414",
+      "category": "PVC and edging",
+      "kinds": [
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "PVC White",
+      "color": "#ECECEA",
+      "category": "PVC and edging",
+      "kinds": [
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "PVC Grey",
+      "color": "#7B7E80",
+      "category": "PVC and edging",
+      "kinds": [
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss White",
+      "color": "#FAFAFA",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Black",
+      "color": "#0A0A0B",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Grey",
+      "color": "#8D9094",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Cream",
+      "color": "#F1E9D2",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Navy",
+      "color": "#1B2640",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Green",
+      "color": "#2F5A44",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gloss Red",
+      "color": "#A8232B",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Satin White",
+      "color": "#F1F1EE",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Satin Grey",
+      "color": "#A3A6A9",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Satin Sage",
+      "color": "#A9B5A0",
+      "category": "V-Ray ready - Gloss and satin",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Chrome",
+      "color": "#E4E6E8",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Brushed Steel",
+      "color": "#AEB2B6",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Brass",
+      "color": "#C2A24E",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Copper",
+      "color": "#B8714C",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Gunmetal",
+      "color": "#50555B",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Black Metal",
+      "color": "#202022",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ]
+    },
+    {
+      "name": "VR Clear Glass",
+      "color": "#DCEBF0",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "alpha": 0.25
+    },
+    {
+      "name": "VR Frosted Glass",
+      "color": "#E6EEF0",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "alpha": 0.55
+    },
+    {
+      "name": "VR Smoked Glass",
+      "color": "#3A4247",
+      "category": "V-Ray ready - Metal and glass",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "alpha": 0.45
+    }
   ]
 }

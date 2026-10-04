@@ -10,12 +10,13 @@ module KitchenCabinetMaster
   module MaterialManager
     PRESETS_FILE = File.join(DATA_DIR, 'materials.json')
     FALLBACK_COLOR = [200, 200, 200].freeze
+    IN_MODEL = 'In this model'
 
     # Options for the HTML dropdowns:
     #   { 'panel' => [...], 'toe_kick' => [...] }
     # Each entry: { 'id' => name, 'name' => label, 'color' => '#RRGGBB' or nil }
     def self.options(model)
-      existing = model.materials.map { |m| entry(m.name, hex(m.color)) }
+      existing = model.materials.map { |m| entry(m.name, hex(m.color), IN_MODEL) }
 
       panel = merge(existing, presets_for('panel'))
       toe_kick = merge(existing, presets_for('toe_kick'))
@@ -56,6 +57,8 @@ module KitchenCabinetMaster
 
       material = model.materials.add(name)
       material.color = hex_to_color(color)
+      alpha = preset && preset['alpha']
+      material.alpha = alpha.to_f if alpha.is_a?(Numeric)
       material
     end
 
@@ -93,20 +96,26 @@ module KitchenCabinetMaster
     def self.presets_for(kind)
       presets
         .select { |p| Array(p['kinds']).include?(kind) }
-        .map { |p| entry(p['name'], p['color']) }
+        .map { |p| entry(p['name'], p['color'], p['category']) }
     end
     private_class_method :presets_for
 
-    # Union by name; existing model materials win over presets with the same name.
+    # Union by name. A material that is in the model and also a preset keeps the preset's category; the ones only in
+    # the model come first, under "In this model"; the presets follow in the order of the file, category by category.
     def self.merge(existing, presets)
       by_name = {}
-      (presets + existing).each { |item| by_name[item['id']] = item }
-      by_name.values.sort_by { |item| item['name'].downcase }
+      presets.each { |item| by_name[item['id']] = item }
+      existing.each do |item|
+        known = by_name[item['id']]
+        by_name[item['id']] = known ? known.merge('color' => item['color'] || known['color']) : item
+      end
+      mine, listed = by_name.values.partition { |item| item['group'] == IN_MODEL }
+      mine.sort_by { |item| item['name'].downcase } + listed
     end
     private_class_method :merge
 
-    def self.entry(name, color)
-      { 'id' => name, 'name' => name, 'color' => color }
+    def self.entry(name, color, group = nil)
+      { 'id' => name, 'name' => name, 'color' => color, 'group' => group }
     end
     private_class_method :entry
 

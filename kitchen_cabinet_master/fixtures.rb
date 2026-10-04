@@ -2,7 +2,7 @@
 
 module KitchenCabinetMaster
   # The things that are fitted into a cabinet and its worktop: a sink (one or two bowls, with or without a drainer
-  # tray, turned any quarter turn), a built-in hob, and the hood of a hood cabinet. Pure maths, no SketchUp objects:
+  # tray, turned half a turn), a built-in hob, and the hood of a hood cabinet. Pure maths, no SketchUp objects:
   # `parts` gives the boards they are drawn from (in the carcass frame, like the appliances), and `cutouts` the
   # openings the worktop needs over them. All numbers are millimetres in the cabinet's frame: X depth (0 at the wall),
   # Y width, Z up from the carcass bottom.
@@ -23,7 +23,7 @@ module KitchenCabinetMaster
     #   tap_u    where the tap stands along the sink (see `place`)
     #   fits     true when it lies inside the carcass
     # The sink is worked out un-turned, its length along Y (the bowls, then the drainer on the right), and then turned
-    # about its middle by `sink_rotation` (0, 90, 180 or 270 degrees, anticlockwise seen from above).
+    # about its middle by `sink_rotation` (0 or 180 degrees; the sideways turns still work here).
     def self.sink_plan(params, dims)
       return nil unless params['sink'] == true
 

@@ -101,7 +101,7 @@ module KitchenCabinetMaster
       out['sink_bowls'] = to_float(raw['sink_bowls']) == 2.0 ? 2 : 1
       out['sink_tray'] = truthy?(raw['sink_tray'])
       turn = to_float(raw['sink_rotation'])
-      out['sink_rotation'] = [0, 90, 180, 270].include?(turn.to_i) ? turn.to_i : 0 if turn
+      out['sink_rotation'] = turn.to_i == 180 ? 180 : 0 if turn
       out['hob'] = truthy?(raw['hob'])
       out['hood'] = truthy?(raw['hood'])
       rise = to_float(raw['worktop_rise'])

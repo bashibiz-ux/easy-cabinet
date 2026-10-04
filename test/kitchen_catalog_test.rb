@@ -402,7 +402,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 2, two_layout.appliances.map(&:role).grep(/bowl_\d_floor/).length
     refute two_layout.appliances.map(&:role).include?('appliance_sink_1_tray')
     flat = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2)).first
-    turned = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true, 'sink_rotation' => 90)[0].params.merge('door_count' => 2))
+    turned = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2, 'sink_rotation' => 90)) # the maths can still turn a quarter
     refute_empty turned
     assert_operator flat[3] - flat[2], :>, flat[1] - flat[0], 'un-turned it is longer across than deep'
     across = turned.first[3] - turned.first[2]

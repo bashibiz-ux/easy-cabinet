@@ -169,7 +169,7 @@ module KitchenCabinetMaster
       'sink' => false,              # a sink in the cabinet (and its opening in the worktop)
       'sink_bowls' => 1,
       'sink_tray' => false,         # with a drainer
-      'sink_rotation' => 0,         # turned 0, 90, 180 or 270 degrees
+      'sink_rotation' => 0,         # turned 0 or 180 degrees
       'hob' => false,               # a built-in hob on the cabinet (and its opening in the worktop)
       'hood' => false,              # a hood under a wall cabinet
       'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)

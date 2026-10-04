@@ -21,6 +21,8 @@ module KitchenCabinetMaster
       when 'apply_all' then apply_all(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
+      when 'save_to_catalog' then save_to_catalog(raw)
+      when 'remove_from_catalog' then remove_from_catalog(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -67,6 +69,63 @@ module KitchenCabinetMaster
       Response.ok("Customize window opened for #{root.name}.")
     end
     private_class_method :customize
+
+    # Keeps the selected cabinets in a catalog of your own, so they can be inserted again like any catalog cabinet.
+    # The panel may send `catalog_name` and `cabinet_name`; without them a small box asks.
+    def self.save_to_catalog(raw)
+      raw = {} unless raw.is_a?(Hash)
+      model = Sketchup.active_model
+      roots = selected_cabinets(model)
+      return Response.fail('Select the cabinets in the model that you want to keep in a catalog.') if roots.empty?
+
+      catalog_name = raw['catalog_name'].to_s.strip
+      cabinet_name = raw['cabinet_name'].to_s.strip
+      if catalog_name.empty? && defined?(UI) && UI.respond_to?(:inputbox)
+        suggestion = roots.length == 1 ? suggested_name(roots.first) : ''
+        fields = roots.length == 1 ? ['Catalog', 'Cabinet name'] : ['Catalog']
+        answer = UI.inputbox(fields, [CatalogManager::DEFAULT_CUSTOM_NAME, suggestion].first(fields.length), 'Save to my catalog')
+        return Response.fail('Nothing was saved.') unless answer
+
+        catalog_name = answer[0].to_s.strip
+        cabinet_name = answer[1].to_s.strip if roots.length == 1
+      end
+
+      saved = roots.map do |root|
+        stored = AttributeManager.read(root)
+        base = CatalogManager.cabinet(stored['catalog_id'], stored['cabinet_category'], stored['cabinet_type'])
+        name = roots.length == 1 && !cabinet_name.empty? ? cabinet_name : suggested_name(root)
+        ids = CatalogManager.save_custom(catalog_name, stored['cabinet_category'], CatalogManager.entry_from(stored, base, name))
+        { 'catalog_id' => ids[0], 'cabinet_type' => ids[1], 'cabinet_category' => stored['cabinet_category'] }
+      end
+      Response.ok("#{saved.length} cabinet#{'s' if saved.length > 1} saved to the catalog \"#{catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name}\".",
+                  saved.last.merge('catalogs' => CatalogManager.catalogs))
+    end
+    private_class_method :save_to_catalog
+
+    def self.remove_from_catalog(raw)
+      raw = {} unless raw.is_a?(Hash)
+      removed = CatalogManager.remove_custom(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
+      return Response.fail('Only a cabinet in one of your own catalogs can be removed.') unless removed
+
+      Response.ok('Removed from the catalog. Cabinets already in the model stay as they are.', { 'catalogs' => CatalogManager.catalogs })
+    end
+    private_class_method :remove_from_catalog
+
+    # The cabinets selected in the model (one, or several picked together).
+    def self.selected_cabinets(model)
+      list = model.selection.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) }
+      list = [SelectionManager.selected_cabinet(model)].compact if list.empty?
+      list
+    end
+    private_class_method :selected_cabinets
+
+    def self.suggested_name(root)
+      stored = AttributeManager.read(root)
+      base = CatalogManager.cabinet(stored['catalog_id'], stored['cabinet_category'], stored['cabinet_type'])
+      label = (base && base['name']) || root.name
+      "#{label} #{fmt(stored['width'].to_f)} x #{fmt(stored['height'].to_f)}"
+    end
+    private_class_method :suggested_name
 
     # A cabinet placed after a blind corner stands 50 mm off the blind panel: that gap gets a filler (as tall as the
     # cabinet, flush with its doors). The filler is made after the cabinet and, when it comes first in the row, the
@@ -465,8 +524,13 @@ module KitchenCabinetMaster
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
+      raw = raw.merge('sink_bowls' => 1, 'sink_rotation' => 0) if cabinet && cabinet['sink_single'] # a narrow sink: one bowl, not turned
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
+      if cabinet && drawers_only?(cabinet) # a unit of drawers alone (also the hob unit): how many is the panel's to say
+        number = ValidationManager.to_float(raw['drawer_number'])
+        drawer_count = number.round.clamp(1, 6) if number
+      end
       if cabinet && cabinet['lower'] # an oven housing: its lower part is drawers, a door, or a small drawer over a door
         mode = Defaults::LOWER_MODES.include?(raw['lower_mode'].to_s) ? raw['lower_mode'].to_s : 'drawers'
         number = ValidationManager.to_float(raw['lower_drawers'])
@@ -490,6 +554,13 @@ module KitchenCabinetMaster
       [params, nil]
     end
     private_class_method :prepare
+
+    # A catalog entry that is drawers and nothing else: no doors, no zone over a door, no oven or fridge housing.
+    def self.drawers_only?(cabinet)
+      cabinet['drawers'].to_i.positive? && cabinet['doors'].to_i.zero? && !cabinet['zone'] && !cabinet['zone_bottom'] &&
+        !cabinet['lower'] && !cabinet['fridge'] && !cabinet['corner'] && !cabinet['freestanding']
+    end
+    private_class_method :drawers_only?
 
     # The height of a zone (a fridge housing's door, the drawers over a door, the top door of a stacked
     # pair): what the panel sent when the catalog entry lets it be adjusted ("zone_label"), else the

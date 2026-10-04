@@ -230,6 +230,7 @@
           600
         ],
         "sink": true,
+        "sink_single": true,
         "sink_bowls": 1,
         "sink_tray": false,
         "defaults": {
@@ -418,7 +419,9 @@
         "shelves": 0,
         "widths": [
           600,
-          900
+          700,
+          900,
+          1000
         ],
         "hood": true,
         "defaults": {
