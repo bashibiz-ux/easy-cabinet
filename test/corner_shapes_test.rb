@@ -2,6 +2,7 @@
 
 # L-shaped and blind corner units. Run:  ruby test/corner_shapes_test.rb
 
+require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
@@ -83,6 +84,29 @@ class CornerShapesTest < Minitest::Test
       assert_in_delta width - (2 * reveal) - gap, door.extent[1] + blind.extent[1], 0.02, 'together they fill the width'
       assert_in_delta door.offset[1] + door.extent[1] + gap, blind.offset[1], 0.02, 'a door gap between them'
     end
+  end
+
+  def test_the_blind_panel_has_its_own_width_and_the_door_takes_the_rest
+    gap = Defaults.params['door_gap']
+    reveal = Defaults.params['door_reveal']
+    [[1000.0, 630.0], [1200.0, 630.0], [1000.0, 500.0]].each do |width, blind_width|
+      layout = CabinetLayout.compute(params('corner_style' => 'blind', 'width' => width, 'door_count' => 1, 'blind_width' => blind_width))
+      door = layout.doors.first
+      blind = layout.panels.find { |x| x.role == 'blind_front' }
+      assert_in_delta blind_width, blind.extent[1], 0.02, "#{width}: the blind panel is #{blind_width}"
+      assert_in_delta width - (2 * reveal) - gap - blind_width, door.extent[1], 0.02, 'the door is resized to fit'
+    end
+    catalog_entry = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/catalogs/kitchen_cabinets.json', __dir__)))['categories']
+    %w[base wall].each do |category|
+      entry = catalog_entry[category].find { |e| e['corner'] == 'blind' }
+      assert_equal 630, entry['blind'], "#{category}: the blind panel starts at 630"
+      assert entry['blind_label']
+    end
+    base = { 'catalog_id' => 'c', 'cabinet_category' => 'base', 'cabinet_type' => 'x', 'toe_kick_height' => '100', 'door_opening_direction' => 'left',
+             'corner_style' => 'blind', 'depth' => '560', 'height' => '780' }
+    assert_empty ValidationManager.validate(base.merge('width' => '1000', 'blind_width' => '630'), door_count: 1).errors
+    narrow = ValidationManager.validate(base.merge('width' => '650', 'blind_width' => '630'), door_count: 1)
+    assert_includes narrow.errors.map { |e| e['field'] }, 'blind_width', 'a blind panel that leaves the door under 50 mm is refused'
   end
 
   def test_a_blind_corner_door_hinges_on_the_blind_side_and_swaps_with_the_direction

@@ -25,7 +25,14 @@ module KitchenCabinetMaster
     CORNER_TURN_DEGREES = -90.0
 
     # Returns [entities, transformation] for a new CABINET.
+    class << self
+      # After target_for_new: where the 50 mm gap beside a blind corner is, so a filler can fill it: :before the new
+      # cabinet (blind part on the right) or :after it (on the left); nil when there is none.
+      attr_reader :blind_gap
+    end
+
     def self.target_for_new(model, params)
+      @blind_gap = nil
       corner = CabinetLayout.corner?(params)
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: corner ? CabinetLayout.envelope(params)[0] : params['width'].to_f,
@@ -180,6 +187,7 @@ module KitchenCabinetMaster
       return nil unless selected.get_attribute(dictionary, 'corner_style') == 'blind'
 
       right_end = selected.get_attribute(dictionary, 'door_opening_direction').to_s != 'right'
+      @blind_gap = right_end ? :before : :after
       width = selected.get_attribute(dictionary, 'width').to_f
       shift = selected.get_attribute(dictionary, 'envelope_depth').to_f + BLIND_CLEARANCE_MM
       axis = Geom::Vector3d.new(0, 0, 1)

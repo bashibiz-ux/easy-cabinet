@@ -65,6 +65,24 @@ module KitchenCabinetMaster
     end
     private_class_method :insert_filler
 
+    # A filler `width` wide beside a cabinet that is already built (the gap after a blind corner), at `offset` along the
+    # cabinet's own Y axis (negative: before it). As tall as the cabinet, flush with its doors, in its door material.
+    # Call inside an operation; selects nothing. Returns the filler, or nil when it could not be made.
+    def self.add_filler_beside(model, entities, target, offset, width)
+      target_params = AttributeManager.read(target)
+      raw = { 'width' => width, 'thickness' => Defaults.filler_params['thickness'], 'height' => target_params['height'] }
+      params, failure = prepare_filler(raw, door_material_of(target_params))
+      return nil if failure
+
+      params.merge!(filler_target(target, target_params))
+      params['side'] = offset.negative? ? 'left' : 'right'
+      transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, offset.mm, 0))
+      params['part_id'] = AttributeManager.next_part_id(model)
+      params['sequence'] = AttributeManager.next_sequence(model)
+      params['part_name'] = NamingManager.unique_name(entities, NamingManager.filler_name(params))
+      PartGenerator.build(model, entities, params, transformation, PartLayout.filler(params))
+    end
+
     # What a filler needs from the cabinet it goes against. `target_flush_x` is the
     # door front: the carcass depth plus the door clearance and door thickness (a
     # corner unit is a square with nothing standing proud of it).

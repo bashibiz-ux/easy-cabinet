@@ -37,7 +37,9 @@ module KitchenCabinetMaster
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
-          CabinetGenerator.build(model, entities, params, transformation)
+          built = CabinetGenerator.build(model, entities, params, transformation)
+          fill_blind_gap(model, entities, built, params)
+          built
         end
       end
 
@@ -49,6 +51,19 @@ module KitchenCabinetMaster
       )
     end
     private_class_method :insert
+
+    # A cabinet placed after a blind corner stands 50 mm off the blind panel: that gap gets a filler (as tall as the
+    # cabinet, flush with its doors). The filler is made after the cabinet and, when it comes first in the row, the
+    # cabinet is renumbered after it so the next cabinet still carries on from the cabinet.
+    def self.fill_blind_gap(model, entities, root, params)
+      gap = PlacementManager.blind_gap
+      return unless gap
+
+      width = PlacementManager::BLIND_CLEARANCE_MM
+      PartManager.add_filler_beside(model, entities, root, gap == :before ? -width : params['width'].to_f, width)
+      AttributeManager.write(root, 'sequence' => AttributeManager.next_sequence(model)) if gap == :before
+    end
+    private_class_method :fill_blind_gap
 
     def self.update(raw)
       model = Sketchup.active_model
@@ -326,7 +341,9 @@ module KitchenCabinetMaster
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
-          CabinetGenerator.build(model, entities, params, transformation)
+          built = CabinetGenerator.build(model, entities, params, transformation)
+          fill_blind_gap(model, entities, built, params)
+          built
         end
       end
 
@@ -411,7 +428,7 @@ module KitchenCabinetMaster
       # A catalog entry can be a corner shape ("corner": "l_shape" / "blind" / "diagonal"; blind ones
       # also say how wide the blind part is): the shape travels with the cabinet.
       raw = raw.merge('appliance_set' => (cabinet && cabinet['appliances'] ? (raw['appliance_set'].to_s.empty? ? cabinet['appliances'] : raw['appliance_set']) : ''),
-                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => cabinet && cabinet['blind'], 'front_zone' => zone_height_for(raw, cabinet), 'door_stacked' => cabinet && cabinet['stacked'] == true,
+                      'corner_style' => cabinet && cabinet['corner'].to_s, 'blind_width' => adjustable(raw, cabinet, 'blind_width', 'blind_label', 'blind'), 'front_zone' => zone_height_for(raw, cabinet), 'door_stacked' => cabinet && cabinet['stacked'] == true,
                       'bottom_zone' => adjustable(raw, cabinet, 'bottom_zone', 'bottom_label', 'zone_bottom'),
                       'top_front' => adjustable(raw, cabinet, 'top_front', 'top_front_label', 'top_front'),
                       'fridge' => !!(cabinet && cabinet['fridge']),

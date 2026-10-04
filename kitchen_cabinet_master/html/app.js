@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.40.0';
+  const APP_VERSION = '0.40.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -53,6 +53,7 @@
     bottom_zone: 'bottomHeight',
     top_front: 'topFrontHeight',
     fridge_height: 'fridgeHeight',
+    blind_width: 'blindWidth',
     lower_mode: 'lowerMode',
     lower_drawers: 'lowerDrawers',
     small_drawer: 'smallDrawer',
@@ -514,7 +515,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -755,6 +756,7 @@
       top_front: hasTopFrontField() ? mmv('topFrontHeight') : '',
       fridge_height: hasFridgeField() ? mmv('fridgeHeight') : '',
       fridge_lift: $('liftUp').checked,
+      blind_width: hasBlindField() ? mmv('blindWidth') : '',
       lower_mode: hasLowerField() ? $('lowerMode').value : '',
       lower_drawers: $('lowerDrawers').value,
       small_drawer: mmv('smallDrawer'),
@@ -815,6 +817,7 @@
     if (p.top_front > 0 && hasTopFrontField()) setText('topFrontHeight', p.top_front);
     if (p.fridge_height > 0 && hasFridgeField()) setText('fridgeHeight', p.fridge_height);
     $('liftUp').checked = p.fridge_lift !== false;
+    if (p.blind_width > 0 && hasBlindField()) setText('blindWidth', p.blind_width);
     if (hasLowerField()) {
       setSelect('lowerMode', p.lower_mode || 'drawers');
       setText('lowerDrawers', Number(p.lower_drawers) || Number(p.drawer_count) || 2);
@@ -992,6 +995,7 @@
   const hasTopFrontField = () => hasCatalogField('top_front_label');
   const hasFridgeField = () => hasCatalogField('fridge_label');
   const hasLowerField = () => hasCatalogField('lower');
+  const hasBlindField = () => hasCatalogField('blind_label');
 
   function syncZoneField() {
     const cabinet = currentCabinet();
@@ -1004,6 +1008,8 @@
     setSoft($('fridgeField'), !hasFridgeField());
     setSoft($('liftField'), !hasFridgeField());
     if (cabinet && cabinet.fridge_label) $('fridgeLabel').textContent = cabinet.fridge_label;
+    setSoft($('blindField'), !hasBlindField());
+    if (cabinet && cabinet.blind_label) $('blindLabel').textContent = cabinet.blind_label;
     setSoft($('lowerField'), !hasLowerField());
     setSoft($('lowerDrawersField'), !hasLowerField() || $('lowerMode').value !== 'drawers');
     setSoft($('smallDrawerField'), !hasLowerField() || $('lowerMode').value !== 'drawer_door');
@@ -1049,6 +1055,7 @@
     if (cabinet.top_front_label) setText('topFrontHeight', cabinet.top_front);
     if (cabinet.fridge_label) setText('fridgeHeight', cabinet.fridge);
     $('liftUp').checked = true;
+    if (cabinet.blind_label) setText('blindWidth', cabinet.blind);
     if (cabinet.lower) {
       setSelect('lowerMode', 'drawers');
       setText('lowerDrawers', cabinet.drawers || 2);

@@ -296,6 +296,8 @@
           1200
         ],
         "corner": "blind",
+        "blind": 630,
+        "blind_label": "Blind Panel Width",
         "defaults": {
           "width": 1000,
           "depth": 560,
@@ -448,6 +450,8 @@
           1000
         ],
         "corner": "blind",
+        "blind": 630,
+        "blind_label": "Blind Panel Width",
         "defaults": {
           "width": 800,
           "depth": 320,

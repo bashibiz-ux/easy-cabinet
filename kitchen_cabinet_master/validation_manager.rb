@@ -484,9 +484,13 @@ module KitchenCabinetMaster
     def self.check_blind(out, errors, bad)
       return unless Defaults.corner_style(out) == 'blind' && (bad & %w[width]).empty? && out['width']
 
-      door = (out['width'] - (2 * out['door_reveal']) - out['door_gap'] - 50.0) / 2.0
+      blind = out['blind_width'].to_f
+      room = out['width'] - (2 * out['door_reveal']) - out['door_gap']
+      door = blind.positive? ? room - blind : (room - 50.0) / 2.0
       if door < MIN_DOOR_SIZE
-        errors << error('width', "A blind corner is too narrow: its door would be only #{fmt(door.round(1))} mm wide (the blind panel is always 50 mm wider than the door; minimum door #{fmt(MIN_DOOR_SIZE)} mm).")
+        errors << error(blind.positive? ? 'blind_width' : 'width', "The blind corner's door would be only #{fmt(door.round(1))} mm wide (minimum #{fmt(MIN_DOOR_SIZE)} mm). Make the blind panel narrower or the unit wider.")
+      elsif blind.positive? && blind < MIN_DOOR_SIZE
+        errors << error('blind_width', "The blind panel must be at least #{fmt(MIN_DOOR_SIZE)} mm wide.")
       end
     end
     private_class_method :check_blind

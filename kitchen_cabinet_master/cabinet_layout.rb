@@ -572,15 +572,19 @@ module KitchenCabinetMaster
     # "right" swaps them. The door hinges on the blind side, so it opens away from the open end.
     BLIND_EXTRA = 50.0 # how much wider the blind panel is than the door
 
+    # The blind panel is `blind_width` wide (630 mm to start; adjustable) and the door takes the rest of the width.
+    # A corner unit saved before that has no blind_width: its panel is 50 mm wider than its door.
     def self.blind_door_width(params, width)
-      (width - (2 * params['door_reveal'].to_f) - params['door_gap'].to_f - BLIND_EXTRA) / 2.0
+      blind = params['blind_width'].to_f
+      room = width - (2 * params['door_reveal'].to_f) - params['door_gap'].to_f
+      blind.positive? ? room - blind : (room - BLIND_EXTRA) / 2.0
     end
 
     def self.blind_split(params, dims)
       reveal = params['door_reveal'].to_f
       gap = params['door_gap'].to_f
       door = blind_door_width(params, dims.width)
-      blind = door + BLIND_EXTRA
+      blind = params['blind_width'].to_f.positive? ? params['blind_width'].to_f : door + BLIND_EXTRA
       if params['door_opening_direction'].to_s != 'right' # blind on the right
         { door: [reveal, reveal + door], blind: [reveal + door + gap, dims.width - reveal] }
       else
