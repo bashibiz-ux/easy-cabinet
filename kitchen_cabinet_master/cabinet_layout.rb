@@ -378,7 +378,7 @@ module KitchenCabinetMaster
       door_w = (dims.width - (2 * reveal) - ((count - 1) * gap)) / count
       door_h, door_z = door_span(params, dims)
 
-      (0...count).map do |index|
+      doors = (0...count).map do |index|
         hinge_left = count == 1 ? params['door_opening_direction'].to_s != 'right' : index < count / 2.0
         y = reveal + (index * (door_w + gap))
         Door.new(
@@ -390,8 +390,25 @@ module KitchenCabinetMaster
           rotation: 0.0
         )
       end
+      lift_up!(doors.last) if lift_up_over_appliances?(params, dims)
+      doors
     end
     private_class_method :door_panels
+
+    # With two ovens, or an oven and a microwave, the door over the appliances is a lift-up door.
+    def self.lift_up_over_appliances?(params, dims)
+      zone = front_zone(params, dims)
+      !!(zone && zone[:bottom] && zone[:door] && %w[double_oven oven_micro].include?(params['appliance_set'].to_s))
+    end
+    private_class_method :lift_up_over_appliances?
+
+    # Turns a door into a lift-up door: hinged on its top edge (the pivot is the front face, at the top).
+    def self.lift_up!(door)
+      door.hinge = 'top'
+      door.pivot = [door.pivot[0], door.offset[1], door.offset[2] + door.extent[2]].map { |v| round2(v) }
+      door
+    end
+    private_class_method :lift_up!
 
     # A CORNER unit's one door runs diagonally between the shortened right-side
     # panel and the front-return panel (see the panel list in `compute` and
@@ -873,7 +890,7 @@ module KitchenCabinetMaster
         height, z = door_span(params, dims)
         spans << [z, height]
       end
-      spans.each_with_index.map do |(z, height), index|
+      doors = spans.each_with_index.map do |(z, height), index|
         Door.new(
           role: "door_#{index + 1}", name: "Door #{index + 1}", extent: [dims.thick, width, height].map { |v| round2(v) },
           offset: [dims.depth + clear, reveal, base_z + z].map { |v| round2(v) },
@@ -882,6 +899,8 @@ module KitchenCabinetMaster
           rotation: 0.0
         )
       end
+      lift_up!(doors.last) if zone[:door] && lift_up_over_appliances?(params, dims)
+      doors
     end
     private_class_method :oven_doors
 

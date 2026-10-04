@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.40.1';
+  const APP_VERSION = '0.40.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -188,17 +188,26 @@
     if (name === 'cabinet_selected') {
       state.selectedKind = 'cabinet';
       loadCabinet(data);
+      focusSection('sec-cabinet', data.cabinet_id);
     } else if (name === 'part_selected') {
       // A worktop has its own section: show its values there and leave the item list alone.
       if (data.part_kind === 'wall_bottom') {
+        // Clicking a wall bottom panel opens the Wall Bottom Panel section with its values.
         state.selectedKind = null;
         setBadge(data.part_name);
+        if (data.wall_bottom_thickness) setText('wbThickness', data.wall_bottom_thickness);
+        if (data.wall_bottom_length !== undefined) setText('wbLength', data.wall_bottom_length);
+        if (data.wall_bottom_setback !== undefined) setText('wbSetback', data.wall_bottom_setback);
+        if (data.material) setSelect('wbMaterial', data.material);
+        updateChips();
+        focusSection('sec-wallbottom', data.part_id || data.part_name);
         return;
       }
       if (data.part_kind === 'worktop' || data.part_kind === 'backsplash') {
         state.selectedKind = 'worktop';
         setBadge(data.part_name);
         applyWorktopDefaults(data);
+        focusSection('sec-worktop', data.part_id || data.part_name);
         return;
       }
       const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
@@ -217,13 +226,26 @@
       // Filler, End Panel and Toe Kick are Cabinet Category choices: show the matching fields.
       setSelect('category', kind);
       updateCategoryUi();
+      focusSection('sec-cabinet', data.part_id || data.part_name);
     } else if (name === 'cabinet_cleared') {
       state.selectedKind = null;
+      state.focusKey = null;
       setBadge(null);
     } else if (name === 'snap') {
       // A moved cabinet was snapped to a neighbour and / or the wall (or could not be).
       setStatus('ok', data.message);
     }
+  }
+
+  // Clicking an item in the model opens the section that edits it, ready to edit (the sections are an accordion).
+  // Only when it is a different item than the one already open, so editing is never interrupted.
+  function focusSection(id, key) {
+    if (state.focusKey === key) return;
+    state.focusKey = key;
+    const card = $(id);
+    if (!card) return;
+    toggleCard(card, true);
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   function applyToeKickDefaults(d) {

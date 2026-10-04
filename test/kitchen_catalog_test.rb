@@ -133,6 +133,19 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta 380.0 - 4.0, micro.extent[2], 0.01, 'the microwave is 380 high'
   end
 
+  def test_with_two_ovens_or_an_oven_and_a_microwave_the_top_door_lifts_up
+    _, one = oven_unit('oven')
+    assert_equal %w[left], one.doors.map(&:hinge), 'one oven: an ordinary door'
+    %w[double_oven oven_micro].each do |set|
+      _, layout = oven_unit(set)
+      door = layout.doors.first
+      assert_equal 'top', door.hinge, "#{set}: the door over the appliances lifts up"
+      assert_in_delta door.offset[2] + door.extent[2], door.pivot[2], 0.01, 'hinged on its top edge'
+    end
+    _, mixed = lower_unit('door', 1, 'appliance_set' => 'double_oven')
+    assert_equal %w[left top], mixed.doors.map(&:hinge), 'the lower door stays an ordinary door'
+  end
+
   def test_the_housing_follows_the_size_of_the_oven
     _, small = oven_unit('oven', 'oven_height' => '450')
     _, large = oven_unit('oven', 'oven_height' => '600')
