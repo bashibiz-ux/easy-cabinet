@@ -1333,6 +1333,327 @@
       "alpha": 0.45,
       "roughness": 0.05,
       "metalness": 0.0
+    },
+    {
+      "name": "EGGER H1145 Bardolino Oak",
+      "color": "#B79A74",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h1145_bardolino_oak.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H1180 Halifax Oak Natural",
+      "color": "#C9AA7C",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h1180_halifax_oak_natural.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H1181 Halifax Oak Tobacco",
+      "color": "#8A6A47",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h1181_halifax_oak_tobacco.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H1176 Halifax Oak White",
+      "color": "#DDD3C3",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h1176_halifax_oak_white.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3303 Hamilton Oak",
+      "color": "#A98F72",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3303_hamilton_oak.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3309 Gladstone Oak Sand",
+      "color": "#C8B48F",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3309_gladstone_oak_sand.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3170 Kendal Oak",
+      "color": "#BC9C6E",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3170_kendal_oak.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3133 Davos Oak Truffle",
+      "color": "#7C6A58",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3133_davos_oak_truffle.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3331 Nebraska Oak Natural",
+      "color": "#C0A27A",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3331_nebraska_oak_natural.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3332 Nebraska Oak Grey",
+      "color": "#9A9185",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3332_nebraska_oak_grey.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H1137 Sorano Oak Black-Brown",
+      "color": "#4C3E33",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h1137_sorano_oak_black_brown.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER H3730 Hickory Natural",
+      "color": "#B8946A",
+      "category": "EGGER - Woodgrain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0,
+      "texture": "egger_h3730_hickory_natural.png",
+      "size": 600
+    },
+    {
+      "name": "EGGER W1000 Premium White",
+      "color": "#F4F4F1",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER W980 Platinum White",
+      "color": "#EFEFEA",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U104 Alabaster White",
+      "color": "#EDE9DE",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U108 Vanilla Yellow",
+      "color": "#E8D9A4",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U113 Almond Beige",
+      "color": "#D6C3A6",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U201 Pebble Grey",
+      "color": "#B7B1A6",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U702 Cashmere Grey",
+      "color": "#BDB3A6",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U708 Light Grey",
+      "color": "#C4C5C6",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U727 Stone Grey",
+      "color": "#A9A59E",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U732 Dust Grey",
+      "color": "#8E8C88",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U741 Lava Grey",
+      "color": "#5E5E5C",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U763 Pearl Grey",
+      "color": "#BDBFC1",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U960 Onyx Grey",
+      "color": "#3A3B3D",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U961 Graphite Grey",
+      "color": "#2F3133",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
+    },
+    {
+      "name": "EGGER U999 Black",
+      "color": "#121212",
+      "category": "EGGER - Plain decors",
+      "kinds": [
+        "panel",
+        "toe_kick"
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
     }
   ]
 }

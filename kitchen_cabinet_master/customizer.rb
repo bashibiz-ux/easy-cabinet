@@ -63,6 +63,7 @@ module KitchenCabinetMaster
         entry = board(item, 'appliance', z)
         entry['color'] = AppliancePieces.finish(item.role)[1] # what it looks like in the picture
         entry['shape'] = item.shape if item.respond_to?(:shape) && item.shape
+        (entry['path'] = item.path; entry['diameter'] = item.round) if item.respond_to?(:path) && item.path
         out << entry
       end
       out

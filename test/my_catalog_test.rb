@@ -148,4 +148,27 @@ class MyCatalogTest < Minitest::Test
     refute CatalogManager.cabinet('kitchen_cabinets', 'base', 'base_sink')['sink_single']
     assert_includes CatalogManager.cabinet('kitchen_cabinets', 'wall', 'wall_hood')['widths'], 900
   end
+  def test_a_model_you_drew_is_kept_as_a_component_entry_and_its_file_goes_with_it
+    FileUtils.mkdir_p(File.join(@dir, 'models'))
+    file = File.join('models', 'custom_mine_shelf.skp')
+    File.write(File.join(@dir, file), 'model')
+    entry = CatalogManager.component_entry('Shelf unit', [800.0, 300.0, 1800.0], file)
+    ids = CatalogManager.save_custom('Mine', 'tall', entry)
+    saved = CatalogManager.cabinet(ids[0], 'tall', ids[1])
+    assert_equal file, saved['component']
+    assert_equal [800.0, 300.0, 1800.0], saved.dig('defaults', 'width').then { |w| [w, saved['defaults']['depth'], saved['defaults']['height']] }
+    assert_equal File.join(@dir, file), CatalogManager.component_path(saved)
+    assert_empty CatalogManager.warnings
+    assert CatalogManager.remove_custom(ids[0], 'tall', ids[1])
+    refute File.file?(File.join(@dir, file)), 'the model file is deleted with its entry'
+  end
+
+  def test_egger_decors_are_listed_in_their_own_categories
+    names = MaterialManager.presets.select { |m| m['category'].to_s.start_with?('EGGER') }
+    assert_operator names.length, :>=, 25
+    assert names.any? { |m| m['name'] == 'EGGER H1145 Bardolino Oak' && m['texture'] }, 'a woodgrain decor has its picture'
+    assert names.any? { |m| m['name'] == 'EGGER W1000 Premium White' && m['texture'].nil? }, 'a plain decor is a plain colour'
+    assert_equal %w[EGGER\ -\ Plain\ decors EGGER\ -\ Woodgrain\ decors], names.map { |m| m['category'] }.uniq.sort
+    assert MaterialManager.presets.all? { |m| m['texture'].nil? || File.file?(File.join(MaterialManager::TEXTURE_DIR, m['texture'])) }, 'every picture exists'
+  end
 end

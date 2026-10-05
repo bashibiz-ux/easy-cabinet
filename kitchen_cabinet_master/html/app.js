@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.44.1';
+  const APP_VERSION = '0.45.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -906,7 +906,7 @@
       setText('splitHeight', Number(p.split_height) || (currentCabinet() || {}).split || 1000);
     }
     if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
-    if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 340);
+    if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 360);
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {

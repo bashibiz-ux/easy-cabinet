@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'json'
 
 module KitchenCabinetMaster
@@ -30,6 +31,8 @@ module KitchenCabinetMaster
     # ---- actions -------------------------------------------------------------
 
     def self.insert(raw)
+      entry = raw.is_a?(Hash) ? CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type']) : nil
+      return insert_component(raw, entry) if entry && entry['component'] # a model from your own catalog
       params, failure = prepare(raw)
       return failure if failure
 
@@ -76,11 +79,8 @@ module KitchenCabinetMaster
       raw = {} unless raw.is_a?(Hash)
       model = Sketchup.active_model
       roots = selected_cabinets(model)
-      if roots.empty?
-        count = model.selection.length
-        found = count.zero? ? 'Nothing is selected.' : "#{count} item#{'s' if count > 1} selected, none of them a cabinet made by this extension."
-        return Response.fail("Select the cabinets in the model that you want to keep in a catalog (click a cabinet, or a group that holds cabinets). #{found}")
-      end
+      return save_components(model, raw) if roots.empty? && model.selection.length.positive? # anything else you drew
+      return Response.fail('Select what you want to keep in a catalog: a cabinet of this extension, or any group, component or geometry you drew.') if roots.empty?
 
       catalog_name = raw['catalog_name'].to_s.strip
       cabinet_name = raw['cabinet_name'].to_s.strip
@@ -106,6 +106,100 @@ module KitchenCabinetMaster
     end
     private_class_method :save_to_catalog
 
+    # Anything you drew in the model (a group, a component, loose geometry; one thing or several together) is kept as a
+    # model file of its own in your catalog, and inserted again as a component beside the selected item. The catalog entry
+    # has its size (width along X, depth along Y, height along Z). Several items together are grouped for the save only.
+    def self.save_components(model, raw)
+      catalog_name = raw['catalog_name'].to_s.strip
+      name = raw['cabinet_name'].to_s.strip
+      category = %w[base wall tall].include?(raw['cabinet_category'].to_s) ? raw['cabinet_category'].to_s : nil
+      items = model.selection.to_a
+      single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
+      guess = guess_name(single)
+      if name.empty? && defined?(UI) && UI.respond_to?(:inputbox)
+        answer = UI.inputbox(['Catalog', 'Name', 'Kind'], [catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name, guess, category || 'base'],
+                             ['', '', 'base|wall|tall'], 'Save to my catalog')
+        return Response.fail('Nothing was saved.') unless answer
+
+        catalog_name = answer[0].to_s.strip
+        name = answer[1].to_s.strip
+        category = answer[2].to_s
+      end
+      name = guess if name.empty?
+      category ||= 'base'
+      slug = CatalogManager.slug(catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name)
+      file = File.join('models', "custom_#{slug}_#{CatalogManager.slug(name)}.skp")
+      path = File.join(CatalogManager.user_dir.to_s, file)
+      FileUtils.mkdir_p(File.dirname(path))
+      size = write_model_file(model, items, single, path)
+      return Response.fail('That could not be saved as a model file.') unless size && File.file?(path)
+
+      entry = CatalogManager.component_entry(name, size, file)
+      ids = CatalogManager.save_custom(catalog_name, category, entry)
+      Response.ok("#{name} saved to the catalog \"#{catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name}\" as a model of #{size.map { |v| v.round }.join(' x ')} mm.",
+                  { 'catalog_id' => ids[0], 'cabinet_type' => ids[1], 'cabinet_category' => category, 'catalogs' => CatalogManager.catalogs })
+    end
+    private_class_method :save_components
+
+    def self.guess_name(single)
+      label = single && (single.name.to_s.empty? ? single.definition.name.to_s : single.name.to_s)
+      label.to_s.empty? ? 'My model' : label
+    end
+    private_class_method :guess_name
+
+    # Writes the model file; returns [width, depth, height] in mm (its X, Y and Z extent) or nil.
+    def self.write_model_file(model, items, single, path)
+      if single
+        definition = single.definition
+        definition.save_as(path)
+        return bounds_mm(definition.bounds)
+      end
+
+      size = nil
+      model.start_operation('Save to catalog', true)
+      begin
+        group = model.active_entities.add_group(items)
+        group.definition.save_as(path)
+        size = bounds_mm(group.definition.bounds)
+      ensure
+        model.abort_operation # the model is left as it was
+      end
+      size
+    end
+    private_class_method :write_model_file
+
+    def self.bounds_mm(bounds)
+      [bounds.width, bounds.height, bounds.depth].map { |v| (v.to_mm * 10).round / 10.0 }
+    end
+    private_class_method :bounds_mm
+
+    # Inserts a model from your catalog as a component, in the row like a cabinet (beside the selected item).
+    def self.insert_component(raw, entry)
+      path = CatalogManager.component_path(entry)
+      return Response.fail('The model file of this catalog entry is missing.') unless path && File.file?(path)
+
+      model = Sketchup.active_model
+      size = [entry.dig('defaults', 'width'), entry.dig('defaults', 'depth'), entry.dig('defaults', 'height')].map(&:to_f)
+      category = raw['cabinet_category'].to_s
+      params = Defaults.params.merge('width' => size[0], 'depth' => size[1], 'height' => size[2], 'cabinet_category' => category,
+                                     'door_count' => 0, 'drawer_count' => 0, 'catalog_id' => raw['catalog_id'].to_s)
+      instance = nil
+      with_operation(model, 'Insert Model') do
+        definition = model.definitions.load(path)
+        entities, target = PlacementManager.target_for_new(model, params)
+        low = definition.bounds.min
+        # the model's X runs along the row (its width), its Y front to back: turn it a quarter so the width lies along the row
+        local = Geom::Transformation.translation(Geom::Vector3d.new(size[1].mm, 0, 0)) *
+                Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) *
+                Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
+        instance = entities.add_instance(definition, target * local)
+        instance.name = entry['name'].to_s
+        instance
+      end
+      SelectionManager.select(instance)
+      Response.ok("#{entry['name']} inserted.")
+    end
+    private_class_method :insert_component
     def self.remove_from_catalog(raw)
       raw = {} unless raw.is_a?(Hash)
       removed = CatalogManager.remove_custom(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])

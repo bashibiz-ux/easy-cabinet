@@ -83,6 +83,21 @@ module KitchenCabinetMaster
       definition
     end
 
+    # A bent pipe `diameter` mm thick that follows `path` (points [x, y, z] in mm, the first at the origin): a circle swept
+    # along the path with Follow Me. Should that fail, the pipe is made of one straight piece per leg of the path.
+    def self.tube_definition(model, path, diameter)
+      key = path.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
+      name = format('%<prefix>sTube %<key>s d%<d>g', prefix: NAME_PREFIX, key: key, d: diameter)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      build_tube(definition.entities, path, diameter)
+      definition
+    end
+
     # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is
     # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
     # its size and radius, so equal pieces share one definition.
@@ -286,6 +301,31 @@ module KitchenCabinetMaster
       face.pushpull(dy.mm)
     end
     private_class_method :build_rounded
+
+    # The circle of the pipe at the start of the path, swept along it.
+    def self.build_tube(entities, path, diameter)
+      points = path.map { |x, y, z| Geom::Point3d.new(x.mm, y.mm, z.mm) }
+      radius = (diameter / 2.0).mm
+      begin
+        edges = entities.add_curve(points)
+        circle = entities.add_circle(points[0], points[0].vector_to(points[1]), radius, CYLINDER_SEGMENTS)
+        face = entities.add_face(circle)
+        face.followme(edges)
+        edges.each { |edge| edge.erase! if edge.valid? && edge.faces.empty? } # the path inside the pipe is no longer needed
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] A bent pipe could not be swept (#{e.message}); drawn in straight pieces."
+        entities.clear!
+        points.each_cons(2) do |from, to|
+          direction = from.vector_to(to)
+          next if direction.length.zero?
+
+          ring = entities.add_face(entities.add_circle(from, direction, radius, CYLINDER_SEGMENTS))
+          ring.reverse! if ring.normal.dot(direction).negative?
+          ring.pushpull(from.distance(to))
+        end
+      end
+    end
+    private_class_method :build_tube
 
     # The circle of the bar (in the plane across its axis, its middle at the middle of the box) pushed along the axis.
     def self.build_cylinder(entities, dx, dy, dz, axis)

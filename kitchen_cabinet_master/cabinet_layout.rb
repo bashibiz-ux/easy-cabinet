@@ -25,7 +25,7 @@ module KitchenCabinetMaster
     # then just [0, 0, z] since the outline's own coordinates are already absolute.
     # `front` marks a panel that is part of the FRONT (a blind corner's fixed panel, the panel over a
     # built-in oven): it takes the door material, not the carcass one.
-    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, :holes, :shape, keyword_init: true)
+    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, :holes, :shape, :path, keyword_init: true)
     # A door is a panel plus a hinge. `pivot` is the vertical hinge axis in cabinet
     # coordinates (on the door's FRONT face edge, so the door never swings back
     # into the carcass, even at wide opening angles).
@@ -929,43 +929,52 @@ module KitchenCabinetMaster
     private_class_method :freestanding_layout
 
     # ---- a housing for a freestanding fridge ----------------------------------------------------------------
-    # Two side panels (the door material) as deep as the cabinet and as high as it is, with a fridge standing
-    # between them, and over it a little cabinet between the panels with a lift-up door. `housing_lift` is the height
-    # of that cabinet (and its door). Width is the whole unit, panels included.
-    HOUSING_LIFT = 340.0
+    # Two side panels (the door material) as deep as the cabinet and as high as it is, a fridge standing between them
+    # with its doors flush with the panels, and over it a cabinet of its own with the extension's standard carcass
+    # (sides, top, bottom, back) and a standard lift-up door (reveal, gap and overlay as on any door). `housing_lift`
+    # is the height of that cabinet, 360 mm to start (the height of our short wall units). Width is the whole unit,
+    # panels included.
+    HOUSING_LIFT = 360.0
     def self.housing_layout(params, dims)
       t = dims.thick
       d = dims.depth
       w = dims.width
       h = dims.height
       reveal = params['door_reveal'].to_f
+      clear = door_distance(params)
       lift = params['housing_lift'].to_f
       lift = HOUSING_LIFT unless lift.positive?
       lift = [lift, h - 800.0].min
-      inner = dims.inner_w
       cab_z = h - lift
+      cab_w = dims.inner_w          # the cabinet fills the space between the panels
+      cab_d = d - t - clear         # so that its door is flush with the front of the panels
+      inner = cab_w - (2 * t)
+      start = dims.interior_start
       sides = [panel('left_side', 'Left Side Panel', [d, t, h], [0, 0, 0]),
                panel('right_side', 'Right Side Panel', [d, t, h], [0, w - t, 0])]
       sides.each { |side| side.front = true } # the side panels are the colour of the doors
       panels = sides + [
-        panel('back', 'Back Panel', [dims.back, inner + (2 * dims.groove), lift], [dims.recess, t - dims.groove, cab_z]),
-        panel('lift_bottom', 'Lift Cabinet Bottom', [dims.interior_d, inner, t], [dims.interior_start, t, cab_z]),
-        panel('top', 'Top Panel', [dims.interior_d, inner, t], [dims.interior_start, t, h - t])
+        panel('lift_left', 'Lift Cabinet Left Side', [cab_d, t, lift], [0, t, cab_z]),
+        panel('lift_right', 'Lift Cabinet Right Side', [cab_d, t, lift], [0, w - (2 * t), cab_z]),
+        panel('back', 'Back Panel', [dims.back, inner + (2 * dims.groove), lift], [dims.recess, (2 * t) - dims.groove, cab_z]),
+        panel('lift_bottom', 'Lift Cabinet Bottom', [cab_d - start, inner, t], [start, 2 * t, cab_z]),
+        panel('top', 'Top Panel', [cab_d - start, inner, t], [start, 2 * t, h - t])
       ]
       door_h = lift - (2 * reveal)
       y = t + reveal
       z = cab_z + reveal
+      front = cab_d + clear # the back face of the door
       door = Door.new(
-        role: 'door_1', name: 'Lift-up Door', extent: [t, inner - (2 * reveal), door_h].map { |v| round2(v) },
-        offset: [d - t, y, z].map { |v| round2(v) }, hinge: 'top', pivot: [d, y, z + door_h].map { |v| round2(v) }, rotation: 0.0
+        role: 'door_1', name: 'Lift-up Door', extent: [t, cab_w - (2 * reveal), door_h].map { |v| round2(v) },
+        offset: [front, y, z].map { |v| round2(v) }, hinge: 'top', pivot: [front + t, y, z + door_h].map { |v| round2(v) }, rotation: 0.0
       )
       niche = cab_z - 15.0
-      fridge_w = inner - 10.0
-      parts = niche >= 700.0 && fridge_w >= 400.0 ? AppliancePieces.free_fridge('appliance_fridge_1_free', 10.0, t + 5.0, 0.0, fridge_w, d - 80.0, niche, params['door_opening_direction'].to_s != 'right') : []
+      fridge_w = dims.inner_w - 10.0
+      fridge_d = d - 25.0 # flush with the front of the panels, 25 mm off the wall
+      parts = niche >= 700.0 && fridge_w >= 400.0 ? AppliancePieces.free_fridge('appliance_fridge_1_housed', d - fridge_d, t + 5.0, 0.0, fridge_w, fridge_d, niche, params['door_opening_direction'].to_s != 'right') : []
       apply_overrides(Layout.new(base_z: 0.0, top_z: round2(h), panels: panels, doors: [door], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts), params)
     end
-    private_class_method :housing_layout
-    # nil for a unit that is not a fridge; otherwise
+    private_class_method :housing_layout    # nil for a unit that is not a fridge; otherwise
     # { spans: [[z, height], ...] bottom door first, lift: [z, height] or nil, shelf_z: shelf lower edge or nil,
     #   split: z between two doors or nil, body: [bottom, top] of the fridge itself, top_end: where the top fridge door ends }
     #

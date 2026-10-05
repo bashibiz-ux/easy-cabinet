@@ -164,34 +164,39 @@ module KitchenCabinetMaster
     end
     private_class_method :bowl
 
-    # A single-lever mixer tap in polished chrome: a round base, a column, a high swan neck that arches over the
-    # bowl, an aerator and a side lever.
+    # A single-lever mixer tap in polished chrome: a round base plate, a tapering body with the lever on one side, and
+    # a high swan neck (one smooth bent pipe) that rises, arches over the bowl and points down at the aerator.
     def self.mixer_tap(key, plan, top)
       u = plan[:tap_u]
       cx, _, cy, = plan[:turn].call(u, u, 48.0, 48.0)
       dir = plan[:mirror] ? -1.0 : 1.0 # the lever is on the right-hand side (the left once mirrored)
-      reach = [plan[:depth] * 0.5, 190.0].min
-      neck_top = top + 285.0
+      reach = [plan[:depth] * 0.45, 190.0].min # from the column to the aerator
+      radius = reach / 2.0
+      arc_z = top + 255.0
+      neck = [[cx, cy, top + 140.0], [cx, cy, arc_z]]
+      steps = 12
+      (1..steps).each do |i|
+        angle = Math::PI * i / steps
+        neck << [cx + (radius * (1.0 - Math.cos(angle))), cy, arc_z + (radius * Math.sin(angle))]
+      end
+      neck << [cx + reach, cy, arc_z - 52.0]
       out = [
-        cyl("#{key}_tap_base", 'Tap Base Plate', :z, [cx, cy, top], 64.0, 4.0),
-        cyl("#{key}_tap_body", 'Tap Body', :z, [cx, cy, top + 4.0], 46.0, 26.0),
-        cyl("#{key}_tap_column", 'Tap Column', :z, [cx, cy, top + 30.0], 36.0, 110.0),
-        cyl("#{key}_tap_collar", 'Tap Collar', :z, [cx, cy, top + 136.0], 42.0, 8.0),
-        cyl("#{key}_tap_neck", 'Tap Neck', :z, [cx, cy, top + 144.0], 28.0, neck_top - (top + 144.0)),
-        cyl("#{key}_tap_elbow", 'Tap Elbow', :y, [cx, cy - 14.0, neck_top - 4.0], 28.0, 28.0),
-        cyl("#{key}_tap_spout", 'Tap Spout', :x, [cx, cy, neck_top - 4.0], 26.0, reach),
-        cyl("#{key}_tap_elbow_2", 'Tap Elbow', :y, [cx + reach, cy - 13.0, neck_top - 4.0], 26.0, 26.0),
-        cyl("#{key}_tap_nozzle", 'Tap Nozzle', :z, [cx + reach, cy, neck_top - 44.0], 26.0, 40.0),
-        cyl("#{key}_tap_aerator", 'Tap Aerator', :z, [cx + reach, cy, neck_top - 58.0], 22.0, 14.0)
+        cyl("#{key}_tap_base", 'Tap Base Plate', :z, [cx, cy, top], 66.0, 4.0),
+        cyl("#{key}_tap_foot", 'Tap Foot', :z, [cx, cy, top + 4.0], 52.0, 14.0),
+        cyl("#{key}_tap_body", 'Tap Body', :z, [cx, cy, top + 18.0], 42.0, 40.0),
+        cyl("#{key}_tap_column", 'Tap Column', :z, [cx, cy, top + 58.0], 34.0, 70.0),
+        cyl("#{key}_tap_collar", 'Tap Collar', :z, [cx, cy, top + 126.0], 38.0, 8.0),
+        AppliancePieces.tube("#{key}_tap_neck", 'Tap Swan Neck', neck, 24.0),
+        cyl("#{key}_tap_aerator", 'Tap Aerator', :z, [cx + reach, cy, arc_z - 70.0], 22.0, 22.0)
       ]
-      arm_start = dir.positive? ? cy + 16.0 : cy - 16.0 - 70.0
-      tip_start = dir.positive? ? cy + 16.0 + 54.0 : cy - 16.0 - 70.0
-      out << cyl("#{key}_tap_lever", 'Tap Lever', :y, [cx, arm_start, top + 108.0], 13.0, 70.0)
-      out << cyl("#{key}_tap_lever_tip", 'Tap Lever Grip', :y, [cx, tip_start + (dir.positive? ? 0.0 : 0.0), top + 108.0], 20.0, 16.0)
+      arm = dir.positive? ? cy + 14.0 : cy - 14.0 - 56.0
+      grip = dir.positive? ? cy + 14.0 + 44.0 : cy - 14.0 - 56.0
+      out << cyl("#{key}_tap_boss", 'Tap Lever Boss', :y, [cx, dir.positive? ? cy + 12.0 : cy - 20.0, top + 94.0], 24.0, 8.0)
+      out << cyl("#{key}_tap_lever", 'Tap Lever', :y, [cx, arm, top + 94.0], 12.0, 56.0)
+      out << cyl("#{key}_tap_lever_tip", 'Tap Lever Grip', :y, [cx, grip, top + 94.0], 18.0, 14.0)
       out
     end
     private_class_method :mixer_tap
-
     # ---- the hob ------------------------------------------------------------------------------
 
     # The glass plate of a built-in hob as [x0, x1, y0, y1], or nil when the cabinet has none.
@@ -257,13 +262,13 @@ module KitchenCabinetMaster
       d = dims.depth
       out = [
         box("#{key}_frame", 'Hood Visor', [60.0, 20.0, -22.0], [d + 10.0, width, 14.0]),
-        box("#{key}_lip", 'Hood Front Glass', [d + 70.0, 20.0, -74.0], [14.0, width, 66.0]),
+        box("#{key}_lip", 'Hood Front Glass', [d + 70.0, 20.0, -44.0], [14.0, width, 36.0]),
         box("#{key}_trim_1", 'Hood Front Trim', [d + 68.0, 20.0, -10.0], [18.0, width, 3.0]),
-        box("#{key}_trim_2", 'Hood Front Trim', [d + 68.0, 20.0, -78.0], [18.0, width, 4.0]),
+        box("#{key}_trim_2", 'Hood Front Trim', [d + 68.0, 20.0, -48.0], [18.0, width, 4.0]),
         box("#{key}_panel", 'Hood Filter Frame', [110.0, 70.0, -24.0], [d - 110.0 + 20.0, width - 100.0, 2.0])
       ]
       3.times do |k|
-        out << cyl("#{key}_knob_#{k + 1}", "Hood Button #{k + 1}", :x, [d + 84.0, 20.0 + width - 60.0 - (k * 40.0), -42.0], 16.0, 3.0)
+        out << cyl("#{key}_knob_#{k + 1}", "Hood Button #{k + 1}", :x, [d + 84.0, 20.0 + width - 60.0 - (k * 40.0), -26.0], 14.0, 3.0)
       end
       ribs = [((width - 130.0) / 22.0).floor, 4].max
       ribs.times do |k|

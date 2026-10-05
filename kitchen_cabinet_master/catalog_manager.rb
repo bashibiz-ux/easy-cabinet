@@ -119,7 +119,9 @@ module KitchenCabinetMaster
         list = stored.is_a?(Hash) ? stored.dig('categories', category.to_s) : nil
         return false unless list.is_a?(Array) && list.any? { |item| item['id'] == cabinet_id.to_s }
 
+        gone = list.select { |item| item['id'] == cabinet_id.to_s }
         list.reject! { |item| item['id'] == cabinet_id.to_s }
+        gone.each { |item| forget_model_file(item, stored) }
         if stored['categories'].values.all?(&:empty?)
           File.delete(path)
           reload!
@@ -154,6 +156,23 @@ module KitchenCabinetMaster
           entry['sink_tray'] = stored['sink_tray'] == true
         end
         entry
+      end
+
+      # The folder of your own catalogs and models (nil when there is none).
+      def user_dir
+        user_root
+      end
+
+      # A catalog entry for a model you drew: size is its [width (X), depth (Y), height (Z)] in mm, ile the model file
+      # (relative to your folder). It is inserted as a component, not rebuilt from parameters.
+      def component_entry(name, size, file)
+        { 'name' => name.to_s.strip, 'code' => 'CU', 'doors' => 0, 'shelves' => 0, 'widths' => [size[0]], 'component' => file,
+          'defaults' => { 'width' => size[0], 'depth' => size[1], 'height' => size[2] } }
+      end
+
+      def component_path(entry)
+        root = user_root
+        entry['component'].to_s.empty? || root.nil? ? nil : File.join(root, entry['component'])
       end
 
       def slug(text)
@@ -270,6 +289,17 @@ module KitchenCabinetMaster
           'finishes' => bundle['finishes'].map { |f| { 'id' => f['name'], 'name' => f['name'], 'color' => f['color'] } },
           'defaults' => Defaults::HANDLE_DEFAULTS.merge(bundle['defaults'].is_a?(Hash) ? bundle['defaults'] : {})
         }
+      end
+
+      # A model file that no entry of this catalog uses any more is deleted.
+      def forget_model_file(item, stored)
+        return if item['component'].to_s.empty?
+        return if stored['categories'].values.flatten.any? { |other| other['component'] == item['component'] }
+
+        path = File.join(user_root.to_s, item['component'])
+        File.delete(path) if File.file?(path)
+      rescue SystemCallError => e
+        warn "[Kitchen Cabinet Master] Could not delete #{item['component']}: #{e.message}"
       end
 
       def read_json(path)

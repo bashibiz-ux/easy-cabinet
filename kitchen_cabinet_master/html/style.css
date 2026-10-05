@@ -288,6 +288,8 @@ h1 {
 .input select optgroup[label="Wood - Oak and light woods"] { background: #b9822a; }
 .input select optgroup[label="Wood - Walnut and dark woods"] { background: #8a4f2a; }
 .input select optgroup[label="Wood - Grey and painted woods"] { background: #7c6a60; }
+.input select optgroup[label="EGGER - Woodgrain decors"] { background: #9c5a14; }
+.input select optgroup[label="EGGER - Plain decors"] { background: #3a6ea5; }
 .input select optgroup[label="Stone and concrete"] { background: #7a5bc4; }
 .input select optgroup[label="Metal"] { background: #5f7d95; }
 .input select optgroup[label="PVC and edging"] { background: #6f7b86; }

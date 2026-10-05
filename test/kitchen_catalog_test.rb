@@ -502,16 +502,21 @@ class KitchenCatalogTest < Minitest::Test
       assert inside, 'the door is between the panels'
       assert_in_delta door.offset[2] + door.extent[2], door.pivot[2], 0.01, 'hinged on its top edge'
       assert_operator door.offset[2] + door.extent[2], :<=, 2160.0
-      fridge = layout.appliances.select { |a| a.role.include?('_free_') }
+      fridge = layout.appliances.select { |a| a.role.include?('_housed_') }
+      assert layout.panels.map(&:role).include?('lift_left') && layout.panels.map(&:role).include?('lift_bottom'), 'the cabinet over the fridge has its own carcass'
+      plates_front = fridge.select { |a| a.role =~ /_plate_\d\z/ }.map { |a| a.offset[0] + a.extent[0] }.max
+      assert_in_delta 650.0, plates_front, 0.01, 'the fridge doors are flush with the front of the panels'
+      assert_in_delta 650.0, door.offset[0] + door.extent[0], 0.01, 'and so is the door of the cabinet over it'
       assert_operator fridge.length, :>, 5, 'a fridge stands between the panels'
       assert fridge.all? { |a| a.offset[1] >= sides[0].extent[1] - 0.01 && a.offset[1] + a.extent[1] <= sides[1].offset[1] + 0.01 }, 'inside the panels'
       assert_operator fridge.map { |a| a.offset[2] + a.extent[2] }.max, :<=, door.offset[2], 'under the lift-up cabinet'
     end
     _, tall = unit('tall', 'tall_fridge_housing_free', 900, 'housing_lift' => 500)
     _, std = unit('tall', 'tall_fridge_housing_free', 900)
-    assert_in_delta 160.0, tall.doors.first.extent[2] - std.doors.first.extent[2], 0.01, 'the height of the lift-up cabinet is adjustable'
+    assert_in_delta 140.0, tall.doors.first.extent[2] - std.doors.first.extent[2], 0.01, 'the height of the lift-up cabinet is adjustable'
     refuse, = unit('tall', 'tall_fridge_housing_free', 900, 'housing_lift' => 1800)
     assert_includes refuse.errors.map { |e| e['field'] }, 'housing_lift'
+    assert_equal 360, entry['lift'], 'the lift-up cabinet starts as high as our short wall unit'
     # the fridge is drawn by width: fridge over freezer, side by side, French doors
     plates = ->(w) { unit('tall', 'tall_fridge_housing_free', w)[1].appliances.count { |a| a.role =~ /_plate_\d\z/ } }
     assert_equal [2, 2, 2, 3], [600, 900, 1000, 1200].map { |w| plates.call(w) }
@@ -542,14 +547,19 @@ class KitchenCatalogTest < Minitest::Test
     roles = layout.appliances.map(&:role)
     %w[glass window panel display seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
     finish = ->(role) { AppliancePieces.finish(role)[0] }
-    assert_equal 'Appliance - Black Glass', finish.call('appliance_oven_1_glass')
-    assert_equal 'Appliance - Brushed Steel', finish.call('appliance_oven_1_handle')
-    assert_equal 'Appliance - Chrome', finish.call('appliance_sink_1_tap_spout')
-    assert_equal 'Appliance - Sink Steel', finish.call('appliance_sink_1_bowl_1_floor')
+    assert_equal 'Appliance - Graphite Glass', finish.call('appliance_oven_1_glass')
+    assert_equal 'Appliance - Inox', finish.call('appliance_oven_1_handle')
+    assert_equal 'Appliance - Polished Chrome', finish.call('appliance_sink_1_tap_spout')
+    assert_equal 'Appliance - Sink Inox', finish.call('appliance_sink_1_bowl_1_floor')
     assert_equal 'Appliance - Gloss White', finish.call('appliance_fridge_1_body')
-    assert_equal 'Appliance - Silver Print', finish.call('appliance_hob_1_zone_1')
-    assert_equal 'Appliance - LED Light', finish.call('appliance_oven_1_display')
-    assert_equal 'Appliance - Black Plastic', finish.call('appliance_oven_1_cap_1')
+    assert_equal 'Appliance - Silver Ring', finish.call('appliance_hob_1_zone_1')
+    assert_equal 'Appliance - LED Glow', finish.call('appliance_oven_1_display')
+    assert_equal 'Appliance - Graphite Plastic', finish.call('appliance_oven_1_cap_1')
+    assert AppliancePieces::APPLIANCE_FINISHES.values.none? { |_, color, _| color[1, 6].scan(/../).map { |h| h.to_i(16) }.max < 0x30 }, 'no finish is pure black'
+    sink = unit('base', 'base_sink', 900)[1].appliances
+    neck = sink.find { |a| a.shape == 'tube' }
+    assert neck && neck.path.length > 10 && neck.round == 24.0, 'the tap has a swan neck: one bent pipe'
+    assert_equal 'Appliance - Polished Chrome', AppliancePieces.finish(neck.role)[0]
     assert AppliancePieces::APPLIANCE_FINISHES.values.all? { |_, color, look| color =~ /\A#\h{6}\z/ && look['roughness'] }, 'every finish has a colour and a roughness'
   end
 end

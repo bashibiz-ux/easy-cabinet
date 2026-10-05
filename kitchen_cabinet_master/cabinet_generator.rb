@@ -453,6 +453,8 @@ module KitchenCabinetMaster
     def self.appliance_definition(model, item)
       if item.points && !item.points.empty?
         PanelGenerator.polygon_definition(model, item.points, item.extent[2])
+      elsif item.shape == 'tube'
+        PanelGenerator.tube_definition(model, item.path, item.round)
       elsif item.shape.to_s.start_with?('cyl_')
         PanelGenerator.cylinder_definition(model, item.extent, item.shape.to_s[-1])
       else
@@ -463,7 +465,7 @@ module KitchenCabinetMaster
 
     # Which tick shows an appliance part: Show sink, Show hob, Show hood (always on view, whatever Show appliances says),
     # a freestanding fridge (always shown: it is the unit itself), or Show oven / microwave / fridge under Show appliances.
-    FIXTURE_KINDS = { '_sink_' => 'sink', '_hob_' => 'hob', '_hood_' => 'hood' }.freeze
+    FIXTURE_KINDS = { '_sink_' => 'sink', '_hob_' => 'hob', '_hood_' => 'hood', '_housed_' => 'fridge' }.freeze
 
     def self.apply_appliance_visibility(container, visibility)
       parts = index_by_role(container.definition.entities)

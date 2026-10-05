@@ -40,42 +40,54 @@ module KitchenCabinetMaster
 
     # What a part of an appliance is made of: [material name, colour, how it looks]. The look is what a renderer
     # needs (roughness 0 = a mirror, metalness 1 = bare metal, `texture` a picture in data/textures). It is applied
-    # where SketchUp has these settings; the colour and the picture always are.
+    # where SketchUp has these settings; the colour and the picture always are. The palette is stainless steel,
+    # graphite glass and light greys (no black), as on a Siemens iQ700 or a Teka built-in line in inox.
     APPLIANCE_FINISHES = {
       'body'   => ['Appliance - Body Grey', '#8a919b', { 'roughness' => 0.7, 'metalness' => 0.0 }],
-      'steel'  => ['Appliance - Brushed Steel', '#b9bec4', { 'roughness' => 0.35, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
-      'chrome' => ['Appliance - Chrome', '#e3e6e9', { 'roughness' => 0.06, 'metalness' => 1.0 }],
-      'glass'  => ['Appliance - Black Glass', '#101215', { 'roughness' => 0.04, 'metalness' => 0.0 }],
-      'window' => ['Appliance - Dark Window', '#050608', { 'roughness' => 0.02, 'metalness' => 0.0 }],
-      'panel'  => ['Appliance - Control Glass', '#16181c', { 'roughness' => 0.05, 'metalness' => 0.0 }],
-      'led'    => ['Appliance - LED Light', '#bfe6ff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
-      'black'  => ['Appliance - Black Plastic', '#17181a', { 'roughness' => 0.55, 'metalness' => 0.0 }],
-      'seal'   => ['Appliance - Black Rubber', '#0b0b0c', { 'roughness' => 0.9, 'metalness' => 0.0 }],
+      'steel'  => ['Appliance - Inox', '#cfd3d8', { 'roughness' => 0.3, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
+      'chrome' => ['Appliance - Polished Chrome', '#eef0f2', { 'roughness' => 0.05, 'metalness' => 1.0 }],
+      'glass'  => ['Appliance - Graphite Glass', '#59616b', { 'roughness' => 0.04, 'metalness' => 0.0 }],
+      'window' => ['Appliance - Smoked Window', '#363d45', { 'roughness' => 0.02, 'metalness' => 0.0 }],
+      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0 }],
+      'led'    => ['Appliance - LED Glow', '#d7efff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
+      'black'  => ['Appliance - Graphite Plastic', '#4a5159', { 'roughness' => 0.55, 'metalness' => 0.0 }],
+      'seal'   => ['Appliance - Graphite Trim', '#3e454d', { 'roughness' => 0.8, 'metalness' => 0.0 }],
       'white'  => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }],
-      'zone'   => ['Appliance - Silver Print', '#a9b1b8', { 'roughness' => 0.3, 'metalness' => 0.2 }],
-      'filter' => ['Appliance - Filter Steel', '#9aa1a8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
-      'basin'  => ['Appliance - Sink Steel', '#c3c8cd', { 'roughness' => 0.28, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
-      'groove' => ['Appliance - Sink Groove', '#8d949b', { 'roughness' => 0.5, 'metalness' => 1.0 }]
+      'zone'   => ['Appliance - Silver Ring', '#dde1e5', { 'roughness' => 0.3, 'metalness' => 0.2 }],
+      'filter' => ['Appliance - Mesh Steel', '#aab1b8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
+      'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
+      'groove' => ['Appliance - Sink Groove Inox', '#a7aeb5', { 'roughness' => 0.45, 'metalness' => 1.0 }]
     }.freeze
     # The first rule that matches the end of a role (its number taken off) says which finish the part gets.
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\Adisplay\z/, 'led'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\Arecess\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\Adisplay\z/, 'led'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
     # The material of an appliance part: by the end of its role (a built-in fridge's body is white, the glass of an
-    # oven black, handles and fronts brushed steel, the tap chrome ...).
+    # oven graphite, handles and fronts stainless steel, the tap chrome ...).
     def self.finish(role)
       kind = role.split('_')[1]
-      suffix = role.sub(/\Aappliance_[a-z]+_\d+_(?:free_)?/, '')
+      suffix = role.sub(/\Aappliance_[a-z]+_\d+_(?:free_|housed_)?/, '')
       suffix = suffix.sub(/_\d+\z/, '') # knob_1, post_2 ...
       return FRIDGE_FINISHES['body'] if kind == 'fridge' && suffix == 'body'
       return APPLIANCE_FINISHES[suffix] if APPLIANCE_FINISHES.key?(suffix) && !suffix.start_with?('bowl')
 
       rule = APPLIANCE_RULES.find { |pattern, _| suffix.match?(pattern) }
       APPLIANCE_FINISHES[rule ? rule[1] : 'steel']
+    end
+
+    # A tube that follows `path` (points [x, y, z] in the cabinet's frame): a bent pipe, such as a tap's swan neck.
+    # The part sits at the first point and keeps the path relative to it.
+    def self.tube(role, name, path, diameter)
+      first = path.first
+      relative = path.map { |p| [r2(p[0] - first[0]), r2(p[1] - first[1]), r2(p[2] - first[2])] }
+      lo = [0, 1, 2].map { |i| relative.map { |p| p[i] }.min - (diameter / 2.0) }
+      hi = [0, 1, 2].map { |i| relative.map { |p| p[i] }.max + (diameter / 2.0) }
+      CabinetLayout::Panel.new(role: role, name: name, extent: [0, 1, 2].map { |i| r2(hi[i] - lo[i]) }, offset: first.map { |v| r2(v) },
+                               points: nil, shape: 'tube', path: relative, round: diameter) # ound is its thickness
     end
 
     # ---- the oven -------------------------------------------------------------------------------------
@@ -108,7 +120,8 @@ module KitchenCabinetMaster
         box("#{key}_frame", 'Oven Frame', [front, y0, z0], [trim, w, h]),
         box("#{key}_panel", 'Oven Control Glass', [glass_x, inner_y, strip_z], [glass_t, inner_w, strip]),
         box("#{key}_seal", 'Oven Door Gap', [glass_x, inner_y, door_top], [glass_t + 0.2, inner_w, strip_z - door_top]),
-        box("#{key}_display", 'Oven Display', [face, mid - 38.0, knob_z - 11.0], [0.6, 76.0, 22.0]),
+        box("#{key}_bezel", 'Oven Display Surround', [face, mid - 46.0, knob_z - 16.0], [0.5, 92.0, 32.0]),
+        box("#{key}_display", 'Oven Display', [face + 0.5, mid - 38.0, knob_z - 11.0], [0.5, 76.0, 22.0]),
         cyl("#{key}_knob_1", 'Oven Knob 1', :x, [face, inner_y + 38.0, knob_z], 36.0, 13.0),
         cyl("#{key}_cap_1", 'Oven Knob Ring 1', :x, [face, inner_y + 38.0, knob_z], 24.0, 14.0),
         cyl("#{key}_knob_2", 'Oven Knob 2', :x, [face, y0 + w - inset - 38.0, knob_z], 36.0, 13.0),
@@ -155,7 +168,8 @@ module KitchenCabinetMaster
         box("#{key}_body", 'Microwave Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
         box("#{key}_frame", 'Microwave Frame', [front, y0, z0], [trim, w, h]),
         box("#{key}_panel", 'Microwave Control Glass', [glass_x, ctrl_y, z0 + inset], [glass_t, ctrl_w, h - (2 * inset)]),
-        box("#{key}_display", 'Microwave Display', [face, ctrl_y + 10.0, z0 + h - inset - 14.0 - 24.0], [0.6, ctrl_w - 20.0, 24.0]),
+        box("#{key}_bezel", 'Microwave Display Surround', [face, ctrl_y + 6.0, z0 + h - inset - 10.0 - 32.0], [0.5, ctrl_w - 12.0, 32.0]),
+        box("#{key}_display", 'Microwave Display', [face + 0.5, ctrl_y + 12.0, z0 + h - inset - 14.0 - 24.0], [0.5, ctrl_w - 24.0, 24.0]),
         cyl("#{key}_knob_1", 'Microwave Dial', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 44.0, 12.0),
         cyl("#{key}_cap_1", 'Microwave Dial Centre', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 30.0, 13.0)
       ]

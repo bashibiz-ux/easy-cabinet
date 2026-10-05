@@ -213,6 +213,7 @@
       });
       return faces;
     }
+    if (p.shape === 'tube' && p.path) return tubeFaces(p);
     if (p.shape && /^cyl_[xyz]$/.test(p.shape)) return cylinderFaces(p);
     const [ox, oy, oz] = p.origin; const [dx, dy, dz] = p.size;
     const angle = ((p.rot || 0) * Math.PI) / 180; const c = Math.cos(angle); const s = Math.sin(angle);
@@ -247,6 +248,26 @@
     return faces;
   }
 
+  // A bent pipe (a tap's swan neck) as one prism of 10 sides for each leg of its path.
+  function tubeFaces(p) {
+    const faces = []; const r = (p.diameter || 20) / 2; const n = 10;
+    const pts = p.path.map(([x, y, z]) => [p.origin[0] + x, p.origin[1] + y, p.origin[2] + z]);
+    const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    const cross = (a, b) => [(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])];
+    const unit = (a) => { const l = Math.hypot(...a) || 1; return a.map((v) => v / l); };
+    for (let k = 0; k + 1 < pts.length; k += 1) {
+      const dir = unit(sub(pts[k + 1], pts[k]));
+      const helper = Math.abs(dir[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1];
+      const u = unit(cross(dir, helper)); const v = cross(dir, u);
+      const ring = (c, i) => { const t = (2 * Math.PI * i) / n; return [c[0] + r * (Math.cos(t) * u[0] + Math.sin(t) * v[0]), c[1] + r * (Math.cos(t) * u[1] + Math.sin(t) * v[1]), c[2] + r * (Math.cos(t) * u[2] + Math.sin(t) * v[2])]; };
+      for (let i = 0; i < n; i += 1) {
+        const tm = (2 * Math.PI * (i + 0.5)) / n;
+        const normal = [Math.cos(tm) * u[0] + Math.sin(tm) * v[0], Math.cos(tm) * u[1] + Math.sin(tm) * v[1], Math.cos(tm) * u[2] + Math.sin(tm) * v[2]];
+        faces.push({ pts: [ring(pts[k], i), ring(pts[k], i + 1), ring(pts[k + 1], i + 1), ring(pts[k + 1], i)], normal, key: p.key });
+      }
+    }
+    return faces;
+  }
   function visible(p) {
     if (!state.groups[p.group]) return false;
     return !(state.isolate && state.selected && p.key !== state.selected);
