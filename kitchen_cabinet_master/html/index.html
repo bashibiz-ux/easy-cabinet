@@ -164,6 +164,38 @@
           <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
         </label>
         <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; end panels and toe kicks do too unless you pick their own.</p>
+        <!-- Your own materials, in categories of your own: a new colour, or a material of the model (its picture is copied). -->
+        <div class="mine">
+          <h3 class="vis-title">My materials</h3>
+          <label class="field">
+            <span class="label">Start from</span>
+            <div class="input"><select id="myFrom"></select></div>
+          </label>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Name</span>
+              <div class="input"><input id="myName" type="text" autocomplete="off" maxlength="60"></div>
+            </label>
+            <label class="field">
+              <span class="label">Category</span>
+              <div class="input"><input id="myCat" type="text" list="myCats" autocomplete="off" maxlength="40" placeholder="General"><datalist id="myCats"></datalist></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Colour (for a new colour)</span>
+            <div class="input"><input id="myColor" type="color" value="#c8a46e"></div>
+          </label>
+          <div class="btn-row">
+            <button class="btn" type="button" data-action="add_material" title="Keep this colour, or this material of the model, in your own category">Add to My Materials</button>
+          </div>
+          <label class="field">
+            <span class="label">Remove one of mine</span>
+            <div class="input"><select id="myRemove"></select></div>
+          </label>
+          <div class="btn-row one">
+            <button class="btn" type="button" data-action="remove_material" id="removeMaterial" title="Take it out of your list (cabinets and the model keep it)">Remove from My Materials</button>
+          </div>
+        </div>
       </div>
     </section>
 

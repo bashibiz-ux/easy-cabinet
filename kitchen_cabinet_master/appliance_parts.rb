@@ -174,13 +174,13 @@ module KitchenCabinetMaster
         box("#{key}_frame", 'Oven Frame', [front, y0, z0], [trim, w, h]),
         box("#{key}_panel", 'Oven Control Glass', [glass_x, inner_y, strip_z], [glass_t, inner_w, strip]),
         box("#{key}_seal", 'Oven Door Gap', [glass_x, inner_y, door_top], [glass_t + 0.2, inner_w, strip_z - door_top]),
-        box("#{key}_bezel", 'Oven Display Surround', [face, mid - 46.0, knob_z - 16.0], [0.5, 92.0, 32.0]),
-        box("#{key}_display", 'Oven Display', [face + 0.5, mid - 38.0, knob_z - 11.0], [0.5, 76.0, 22.0]),
-        *digits(key, '12:30', :x, face + 1.0, mid, knob_z, 13.0),
-        box("#{key}_icon_1", 'Oven Function Light', [face, mid - 62.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_2", 'Oven Function Light', [face, mid - 74.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_3", 'Oven Function Light', [face, mid + 56.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_4", 'Oven Function Light', [face, mid + 68.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_bezel", 'Oven Display Surround', [face, mid - 56.0, knob_z - 19.0], [0.5, 112.0, 38.0]),
+        box("#{key}_display", 'Oven Display', [face + 0.5, mid - 48.0, knob_z - 15.0], [0.5, 96.0, 30.0]),
+        *digits(key, '12:30', :x, face + 1.0, mid, knob_z, 20.0),
+        box("#{key}_icon_1", 'Oven Function Light', [face, mid - 70.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_2", 'Oven Function Light', [face, mid - 82.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_3", 'Oven Function Light', [face, mid + 64.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_4", 'Oven Function Light', [face, mid + 76.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
         cyl("#{key}_knob_1", 'Oven Knob 1', :x, [face, inner_y + 38.0, knob_z], 36.0, 13.0),
         cyl("#{key}_cap_1", 'Oven Knob Ring 1', :x, [face, inner_y + 38.0, knob_z], 24.0, 14.0),
         cyl("#{key}_knob_2", 'Oven Knob 2', :x, [face, y0 + w - inset - 38.0, knob_z], 36.0, 13.0),
@@ -227,9 +227,9 @@ module KitchenCabinetMaster
         box("#{key}_body", 'Microwave Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
         box("#{key}_frame", 'Microwave Frame', [front, y0, z0], [trim, w, h]),
         box("#{key}_panel", 'Microwave Control Glass', [glass_x, ctrl_y, z0 + inset], [glass_t, ctrl_w, h - (2 * inset)]),
-        box("#{key}_bezel", 'Microwave Display Surround', [face, ctrl_y + 6.0, z0 + h - inset - 10.0 - 32.0], [0.5, ctrl_w - 12.0, 32.0]),
-        box("#{key}_display", 'Microwave Display', [face + 0.5, ctrl_y + 12.0, z0 + h - inset - 14.0 - 24.0], [0.5, ctrl_w - 24.0, 24.0]),
-        *digits(key, '0:30', :x, face + 1.0, ctrl_y + (ctrl_w / 2.0), z0 + h - inset - 14.0 - 12.0, 14.0),
+        box("#{key}_bezel", 'Microwave Display Surround', [face, ctrl_y + 6.0, z0 + h - inset - 8.0 - 40.0], [0.5, ctrl_w - 12.0, 40.0]),
+        box("#{key}_display", 'Microwave Display', [face + 0.5, ctrl_y + 11.0, z0 + h - inset - 12.0 - 32.0], [0.5, ctrl_w - 22.0, 32.0]),
+        *digits(key, '0:30', :x, face + 1.0, ctrl_y + (ctrl_w / 2.0), z0 + h - inset - 12.0 - 16.0, 22.0),
         cyl("#{key}_knob_1", 'Microwave Dial', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 44.0, 12.0),
         cyl("#{key}_cap_1", 'Microwave Dial Centre', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 30.0, 13.0)
       ]
@@ -286,8 +286,8 @@ module KitchenCabinetMaster
         add_bar.call(1, bar_y, split - 70.0 - 150.0, 300.0)
         add_bar.call(2, bar_y, split + 70.0 + 300.0, 600.0)
         parts << box("#{key}_panel", 'Fridge Display', [face, y0 + (w / 2.0) - 40.0, top - 170.0], [0.8, 80.0, 40.0])
-        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, y0 + (w / 2.0) - 28.0, top - 160.0], [0.4, 56.0, 20.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, y0 + (w / 2.0), top - 150.0, 12.0))
+        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, y0 + (w / 2.0) - 38.0, top - 170.0], [0.4, 76.0, 32.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, y0 + (w / 2.0), top - 154.0, 22.0))
       elsif w < 1100.0
         half = w / 2.0
         add_door.call(1, 'Fridge Freezer Door', y0, half - (gap / 2.0), bottom, top - bottom)
@@ -297,8 +297,8 @@ module KitchenCabinetMaster
         add_bar.call(2, mid_y + 36.0, bottom + (body_h * 0.55), 700.0)
         dispenser_y = y0 + (half / 2.0)
         parts << box("#{key}_panel", 'Water Dispenser', [face, dispenser_y - 90.0, bottom + (body_h * 0.55) - 120.0], [0.8, 180.0, 330.0])
-        parts << box("#{key}_led", 'Dispenser Display', [face + 0.8, dispenser_y - 40.0, bottom + (body_h * 0.55) + 120.0], [0.4, 80.0, 28.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, dispenser_y, bottom + (body_h * 0.55) + 134.0, 14.0))
+        parts << box("#{key}_led", 'Dispenser Display', [face + 0.8, dispenser_y - 48.0, bottom + (body_h * 0.55) + 110.0], [0.4, 96.0, 40.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, dispenser_y, bottom + (body_h * 0.55) + 130.0, 26.0))
         parts << box("#{key}_trim_1", 'Dispenser Recess', [face + 0.8, dispenser_y - 55.0, bottom + (body_h * 0.55) - 70.0], [0.4, 110.0, 110.0])
       else
         freezer = (body_h * 0.3).round
@@ -315,8 +315,8 @@ module KitchenCabinetMaster
         parts << cyl("#{key}_post_1a", 'Freezer Handle Post', :x, [sx + door_t, mid_y - (length / 2.0) + 18.0, split - 55.0], 12.0, 32.0)
         parts << cyl("#{key}_post_1b", 'Freezer Handle Post', :x, [sx + door_t, mid_y + (length / 2.0) - 18.0, split - 55.0], 12.0, 32.0)
         parts << box("#{key}_panel", 'Fridge Display', [face, mid_y - 60.0, top - 150.0], [0.8, 120.0, 40.0])
-        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, mid_y - 40.0, top - 140.0], [0.4, 80.0, 20.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, mid_y, top - 130.0, 12.0))
+        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, mid_y - 48.0, top - 150.0], [0.4, 96.0, 32.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, mid_y, top - 134.0, 22.0))
       end
       parts
     end

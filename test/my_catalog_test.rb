@@ -171,4 +171,21 @@ class MyCatalogTest < Minitest::Test
     assert_equal %w[EGGER\ -\ Plain\ decors EGGER\ -\ Woodgrain\ decors], names.map { |m| m['category'] }.uniq.sort
     assert MaterialManager.presets.all? { |m| m['texture'].nil? || File.file?(File.join(MaterialManager::TEXTURE_DIR, m['texture'])) }, 'every picture exists'
   end
+  def test_your_own_materials_are_listed_by_category_and_can_be_removed
+    assert_nil MaterialManager.save_custom('name' => 'Walnut Veneer 7', 'category' => 'Kitchen', 'color' => '#6b4a32', 'kinds' => %w[panel toe_kick])
+    assert_nil MaterialManager.save_custom('name' => 'Teal Gloss', 'category' => '', 'color' => '#2f6f73')
+    mine = MaterialManager.custom_summary
+    assert_equal ['Teal Gloss', 'Walnut Veneer 7'], mine.map { |m| m['name'] }.sort
+    assert_equal 'General', mine.find { |m| m['name'] == 'Teal Gloss' }['category'], 'a blank category is General'
+    panel = MaterialManager.options(FakeModel.new([]))['panel']
+    walnut = panel.find { |m| m['id'] == 'Walnut Veneer 7' }
+    assert_equal 'My materials - Kitchen', walnut['group']
+    assert_equal '#6B4A32', MaterialManager.presets.find { |m| m['name'] == 'Walnut Veneer 7' }['color']
+    assert_match(/name/i, MaterialManager.save_custom('name' => '', 'color' => '#ffffff'))
+    assert_match(/comes with/, MaterialManager.save_custom('name' => 'White', 'color' => '#ffffff'), 'a bundled name is not taken')
+    assert_match(/colour/, MaterialManager.save_custom('name' => 'Bad', 'color' => 'red'))
+    assert MaterialManager.remove_custom('Teal Gloss')
+    refute MaterialManager.remove_custom('Teal Gloss')
+    assert_equal ['Walnut Veneer 7'], MaterialManager.custom_summary.map { |m| m['name'] }
+  end
 end

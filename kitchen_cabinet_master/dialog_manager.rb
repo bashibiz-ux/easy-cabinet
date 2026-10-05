@@ -79,6 +79,7 @@ module KitchenCabinetMaster
         when 'undo'          then undo_last
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
+        when 'add_material', 'remove_material' then MaterialManager.perform(action, data) # your own materials
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
         when *WORKTOP_ACTIONS then WorktopManager.perform(action, data)

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.48.0';
+  const APP_VERSION = '0.49.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -506,8 +506,17 @@
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
+    add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value, color: $('myColor').value }),
+    remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value })
   };
+
+  // Adding to or removing from your own materials changes every material list.
+  function materialsChanged(data, action) {
+    if (!data.materials) return;
+    loadMaterials(data.materials);
+    if (action === 'add_material') { $('myName').value = ''; $('myFrom').value = ''; }
+  }
 
   // Saving to or removing from your own catalogs changes the list of models.
   async function catalogsChanged(data, action) {
@@ -637,6 +646,10 @@
         if (!groups[item.group]) {
           groups[item.group] = document.createElement('optgroup');
           groups[item.group].label = item.group;
+          if (item.group.startsWith('My materials')) { // each category of yours in a colour of its own
+            const hue = [...item.group].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 360;
+            groups[item.group].style.background = `hsl(${hue}, 55%, 38%)`;
+          }
           el.append(groups[item.group]);
         }
         parent = groups[item.group];
@@ -734,6 +747,7 @@
   function loadMaterials(materials) {
     const panel = list(materials && materials.panel);
     const toeKick = list(materials && materials.toe_kick);
+    fillMine(materials, panel);
     state.colors = {};
     state.textures = {};
     [...panel, ...toeKick].forEach((m) => {
@@ -750,6 +764,18 @@
     updateChips();
   }
 
+  // Your own materials: the lists in the My materials block (a new colour or a material of the model to start from; the ones to remove).
+  function fillMine(materials, panel) {
+    const mine = list(materials && materials.mine);
+    fillSelect($('myFrom'), [{ id: '', name: 'A new colour (pick it below)' }, ...panel.filter((m) => m.group === 'In this model')]);
+    fillSelect($('myRemove'), mine.map((m) => ({ id: m.id, name: `${m.name} (${m.category})` })), { placeholder: mine.length ? 'Choose...' : 'None yet' });
+    const cats = $('myCats');
+    cats.innerHTML = '';
+    [...new Set(mine.map((m) => m.category))].forEach((c) => cats.append(new Option(c)));
+    const remove = $('removeMaterial');
+    if (remove) remove.disabled = state.busy || !mine.length;
+  }
+
   function updateChips() {
     document.querySelectorAll('[data-chip-for]').forEach((chip) => {
       const select = $(chip.dataset.chipFor);
@@ -758,7 +784,7 @@
       const picture = select && state.textures ? state.textures[select.value] : null;
       if (color) {
         chip.style.background = color;
-        if (picture) { chip.style.backgroundImage = `url(../data/textures/${picture})`; chip.style.backgroundSize = 'cover'; }
+        if (picture) { chip.style.backgroundImage = picture.startsWith('file:') ? `url(${picture})` : `url(../data/textures/${picture})`; chip.style.backgroundSize = 'cover'; }
         chip.dataset.color = color;
       } else {
         chip.style.background = '';
@@ -1712,6 +1738,7 @@
         setStatus('ok', res.message);
         if (action === 'get_cut_list') renderCutList(res.data || {});
         if (action === 'save_to_catalog' || action === 'remove_from_catalog') await catalogsChanged(res.data || {}, action);
+        if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
@@ -1738,7 +1765,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['myFrom', 'myName', 'myCat', 'myColor', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2052,7 +2079,7 @@
     ['catalogs', 'categories', 'directions', 'warnings'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
-    m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick) };
+    m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), mine: list(m.materials && m.materials.mine) };
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };
@@ -2138,6 +2165,12 @@
     $('lowerMode').addEventListener('change', syncZoneField);
     $('doorSplit').addEventListener('change', syncZoneField);
     $('drawerCount').addEventListener('input', syncZoneField);
+    $('myFrom').addEventListener('change', () => { // starting from a material of the model: its name and colour are offered
+      const id = $('myFrom').value;
+      $('myName').value = id;
+      const colour = state.colors && state.colors[id];
+      if (colour && /^#[0-9a-f]{6}$/i.test(colour)) $('myColor').value = colour;
+    });
     $('sinkTray').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
       // Choosing another cabinet fills the fields for the next Insert; it does not change the

@@ -397,7 +397,7 @@ class KitchenCatalogTest < Minitest::Test
     hood = layout.appliances.select { |a| a.role.start_with?('appliance_hood_1') }
     assert_operator hood.length, :>=, 8, 'visor, glass front, buttons, filter ribs and lights'
     assert hood.all? { |a| a.offset[2] < 0.0 }, 'below the cabinet'
-    assert_equal 360.0, layout.top_z
+    assert_equal 780.0, layout.top_z, 'the hood cabinet is a full standard wall unit'
   end
 
   def test_three_drawers_small_small_big
