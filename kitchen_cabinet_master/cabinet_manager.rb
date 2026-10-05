@@ -474,7 +474,7 @@ module KitchenCabinetMaster
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
       on = ->(value) { [true, 'true', 1, '1'].include?(value) }
-      visibility = %w[carcass door toe_kick appliances oven microwave fridge sink hob hood].to_h { |key| [key, on.call(raw[key])] }
+      visibility = %w[carcass door toe_kick appliances oven microwave fridge sink hob hood free_fridge].to_h { |key| [key, on.call(raw[key])] }
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])

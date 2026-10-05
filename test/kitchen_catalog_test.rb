@@ -494,14 +494,14 @@ class KitchenCatalogTest < Minitest::Test
       sides = layout.panels.select { |p| p.role.end_with?('_side') }
       assert_equal 2, sides.length
       assert sides.all?(&:front), 'the side panels are in the door material'
-      assert sides.all? { |p| p.extent[0] == 650.0 && p.extent[2] == 2160.0 }, 'as deep and as high as the cabinet'
+      assert sides.all? { |p| p.extent[0] == 650.0 && p.extent[2] == 2260.0 }, 'as deep as the cabinet and as high as a tall unit on its toe kick (100 + 2160)'
       door = layout.doors.first
       assert_equal 'top', door.hinge, 'a lift-up door'
       assert_equal 1, layout.doors.length
       inside = (sides[0].offset[1] + sides[0].extent[1]) <= door.offset[1] && (door.offset[1] + door.extent[1]) <= sides[1].offset[1]
       assert inside, 'the door is between the panels'
       assert_in_delta door.offset[2] + door.extent[2], door.pivot[2], 0.01, 'hinged on its top edge'
-      assert_operator door.offset[2] + door.extent[2], :<=, 2160.0
+      assert_operator door.offset[2] + door.extent[2], :<=, 2260.0
       fridge = layout.appliances.select { |a| a.role.include?('_housed_') }
       assert layout.panels.map(&:role).include?('lift_left') && layout.panels.map(&:role).include?('lift_bottom'), 'the cabinet over the fridge has its own carcass'
       plates_front = fridge.select { |a| a.role =~ /_plate_\d\z/ }.map { |a| a.offset[0] + a.extent[0] }.max
@@ -561,5 +561,15 @@ class KitchenCatalogTest < Minitest::Test
     assert neck && neck.path.length > 10 && neck.round == 24.0, 'the tap has a swan neck: one bent pipe'
     assert_equal 'Appliance - Polished Chrome', AppliancePieces.finish(neck.role)[0]
     assert AppliancePieces::APPLIANCE_FINISHES.values.all? { |_, color, look| color =~ /\A#\h{6}\z/ && look['roughness'] }, 'every finish has a colour and a roughness'
+  end
+  def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
+    ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_glass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
+              'appliance_fridge_1_plate_1' => 'fridge', 'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
+              'appliance_sink_1_tray' => 'sink' }
+    ticks.each { |role, tick| assert_equal tick, AppliancePieces.tick_for(role), role }
+    assert_equal true, Defaults.params['visibility_settings']['free_fridge'], 'the freestanding fridge has its own tick'
+    _, housing = unit('tall', 'tall_fridge_housing_free', 900)
+    assert housing.appliances.all? { |a| AppliancePieces.tick_for(a.role) == 'free_fridge' }, 'the fridge of a housing follows the freestanding fridge tick'
+    assert_equal 2260.0, CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge_housing_free')['defaults']['height']
   end
 end

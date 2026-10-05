@@ -16,7 +16,8 @@ module KitchenCabinetMaster
     SINK_CORNER = 28.0     # the radius of a bowl's corners
     HOB_WIDTH = 860.0      # the widest hob
     HOB_DEPTH = 510.0
-    ARC_STEPS = 6
+    ARC_STEPS = 12
+    TAP_STEPS = 24
 
     # The sink of a cabinet, or nil when it has none:
     #   rect     [x0, x1, y0, y1] the opening in the worktop
@@ -115,6 +116,9 @@ module KitchenCabinetMaster
       add.call('rim_2', 'Sink Rim', [x1, x1 + r, y0 - r, y1 + r], top, 3.0)
       add.call('rim_3', 'Sink Rim', [x0, x1, y0 - r, y0], top, 3.0)
       add.call('rim_4', 'Sink Rim', [x0, x1, y1, y1 + r], top, 3.0)
+      [[x0, y0, 180.0], [x1, y0, 270.0], [x1, y1, 0.0], [x0, y1, 90.0]].each_with_index do |(cx, cy, from), i| # the rim's outer corners are rounded
+        out << shaped("#{key}_rim_#{i + 5}", 'Sink Rim Corner', [[cx, cy]] + arc(cx, cy, r, from), top, 3.0)
+      end
 
       floor = top - SINK_BOWL_DEPTH
       plan[:bowls].each_with_index do |rect, i|
@@ -160,6 +164,8 @@ module KitchenCabinetMaster
       cy = (y0 + y1) / 2.0
       out << cyl("#{key}_bowl_#{n}_waste", "Sink Bowl #{n} Waste", :z, [cx, cy, floor + steel], 62.0, 2.0)
       out << cyl("#{key}_bowl_#{n}_hole", "Sink Bowl #{n} Waste Hole", :z, [cx, cy, floor + steel + 2.0], 40.0, 0.6)
+      out << cyl("#{key}_bowl_#{n}_plug", "Sink Bowl #{n} Plug", :z, [cx, cy, floor + steel + 2.6], 30.0, 2.0)
+      out << box("#{key}_bowl_#{n}_overflow", "Sink Bowl #{n} Overflow", [x0 + steel, cy - 30.0, top - 40.0], [0.8, 60.0, 8.0])
       out
     end
     private_class_method :bowl
@@ -174,7 +180,7 @@ module KitchenCabinetMaster
       radius = reach / 2.0
       arc_z = top + 255.0
       neck = [[cx, cy, top + 140.0], [cx, cy, arc_z]]
-      steps = 12
+      steps = TAP_STEPS
       (1..steps).each do |i|
         angle = Math::PI * i / steps
         neck << [cx + (radius * (1.0 - Math.cos(angle))), cy, arc_z + (radius * Math.sin(angle))]
@@ -310,6 +316,15 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :rounded_outline
+
+    # Points on an arc of 90 degrees round (cx, cy), starting at angle rom degrees.
+    def self.arc(cx, cy, radius, from)
+      (0..ARC_STEPS).map do |step|
+        angle = (from + (90.0 * step / ARC_STEPS)) * Math::PI / 180.0
+        [cx + (radius * Math.cos(angle)), cy + (radius * Math.sin(angle))]
+      end
+    end
+    private_class_method :arc
 
     # A quarter of a ring (outer radius `radius`, `thickness` thick) starting at angle `from` degrees.
     def self.quarter_ring(cx, cy, radius, thickness, from)

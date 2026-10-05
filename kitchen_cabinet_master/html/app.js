@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.45.0';
+  const APP_VERSION = '0.46.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -857,7 +857,8 @@
         fridge: $('showFridge').checked,
         sink: $('showSink').checked,
         hob: $('showHob').checked,
-        hood: $('showHood').checked
+        hood: $('showHood').checked,
+        free_fridge: $('showFreeFridge').checked
       }
     };
   }
@@ -943,6 +944,7 @@
       if ('sink' in v) $('showSink').checked = !!v.sink;
       if ('hob' in v) $('showHob').checked = !!v.hob;
       if ('hood' in v) $('showHood').checked = !!v.hood;
+      if ('free_fridge' in v) $('showFreeFridge').checked = !!v.free_fridge;
     }
     syncHandlePosition();
     syncWidthPreset();
@@ -1186,6 +1188,8 @@
     if (cabinet.split_label) { $('doorSplit').value = 'full'; setText('splitHeight', cabinet.split); }
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, '');
     setText('drawerCount', cabinet.drawers || 1);
+    // An appliance unit (a hob, a hood, a fridge) is only on view under Show appliances: it is switched on for it.
+    if (cabinet.freestanding || cabinet.hob || cabinet.hood || cabinet.free_housing) $('showAppliances').checked = true;
     if (cabinet.lift_label) setText('liftHeight', cabinet.lift);
     if (cabinet.sink) {
       $('sinkBowls').value = String(cabinet.sink_bowls || 1);
@@ -1736,7 +1740,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1988,6 +1992,7 @@
         sink: $('showSink').checked,
         hob: $('showHob').checked,
         hood: $('showHood').checked,
+        free_fridge: $('showFreeFridge').checked,
         worktop: $('visWorktop').checked,
         backsplash: $('visSplash').checked,
         opening_direction: $('showDirection').checked, // the plan symbol on the floor
@@ -2036,6 +2041,7 @@
     $('showSink').checked = v.sink !== false;
     $('showHob').checked = v.hob !== false;
     $('showHood').checked = v.hood !== false;
+    $('showFreeFridge').checked = v.free_fridge !== false;
     syncThicknessPresets();
     updateChips();
   }
@@ -2190,7 +2196,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }

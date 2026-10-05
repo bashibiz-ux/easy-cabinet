@@ -62,32 +62,58 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_polygon(definition.entities, points, thick.mm)
+      soften(definition.entities)
       cut_holes(definition.entities, holes, thick)
       definition
     end
 
     # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
     # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
-    CYLINDER_SEGMENTS = 20
+    # Round things are drawn with many sides and their edges smoothed, so that they look round: 16 sides for a pin, 32 for a
+    # knob, 48 for anything wider.
+    def self.segments_for(diameter)
+      diameter <= 14.0 ? 16 : (diameter <= 40.0 ? 32 : 48)
+    end
+    TUBE_SEGMENTS = 32
 
     def self.cylinder_definition(model, size, axis)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
-      name = format('%<prefix>sCylinder %<a>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, a: axis, x: dx, y: dy, z: dz)
+      sides = segments_for(across_of(dx, dy, dz, axis.to_s).max)
+      name = format('%<prefix>sCylinder %<a>s %<x>g x %<y>g x %<z>g s%<s>d', prefix: NAME_PREFIX, a: axis, x: dx, y: dy, z: dz, s: sides)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
-      build_cylinder(definition.entities, dx, dy, dz, axis.to_s)
+      build_cylinder(definition.entities, dx, dy, dz, axis.to_s, sides)
+      soften(definition.entities)
       definition
+    end
+
+    def self.across_of(dx, dy, dz, axis)
+      { 'x' => [dy, dz], 'y' => [dx, dz], 'z' => [dx, dy] }[axis]
+    end
+    private_class_method :across_of
+
+    # Edges between faces that are nearly flat to each other (the sides of a round part, a rounded edge) are made soft and
+    # smooth, so the surface shades as one curve; the sharp edges stay.
+    def self.soften(entities, limit_degrees = 40.0)
+      limit = limit_degrees * Math::PI / 180.0
+      entities.grep(Sketchup::Edge).each do |edge|
+        faces = edge.faces
+        next unless faces.length == 2 && faces[0].normal.angle_between(faces[1].normal) < limit
+
+        edge.soft = true
+        edge.smooth = true
+      end
     end
 
     # A bent pipe `diameter` mm thick that follows `path` (points [x, y, z] in mm, the first at the origin): a circle swept
     # along the path with Follow Me. Should that fail, the pipe is made of one straight piece per leg of the path.
     def self.tube_definition(model, path, diameter)
       key = path.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
-      name = format('%<prefix>sTube %<key>s d%<d>g', prefix: NAME_PREFIX, key: key, d: diameter)
+      name = format('%<prefix>sTube %<key>s d%<d>g s%<s>d', prefix: NAME_PREFIX, key: key, d: diameter, s: TUBE_SEGMENTS)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -95,18 +121,19 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_tube(definition.entities, path, diameter)
+      soften(definition.entities)
       definition
     end
 
     # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is
     # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
     # its size and radius, so equal pieces share one definition.
-    ROUND_STEPS = 8
+    ROUND_STEPS = 24
 
     def self.rounded_definition(model, size, radius, holes = nil)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
       r = [[radius.to_f, dz].min, dx].min
-      name = format('%<prefix>sRounded %<x>g x %<y>g x %<z>g r%<r>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: r) + hole_suffix(holes)
+      name = format('%<prefix>sRounded %<x>g x %<y>g x %<z>g r%<r>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: r) + " s#{ROUND_STEPS}" + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -114,6 +141,7 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       build_rounded(definition.entities, dx, dy, dz, r)
+      soften(definition.entities)
       cut_holes(definition.entities, holes, dz)
       definition
     end
@@ -125,7 +153,7 @@ module KitchenCabinetMaster
       key = points.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
       thick = (thickness.to_f * 100).round / 100.0
       r = [radius.to_f, thick].min
-      name = format('%sCorner %s t%g r%g e%s', NAME_PREFIX, key, thick, r, Array(edge).join('.')) + hole_suffix(holes)
+      name = format('%sCorner %s t%g r%g e%s s%d', NAME_PREFIX, key, thick, r, Array(edge).join('.'), ROUND_STEPS) + hole_suffix(holes)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -135,6 +163,7 @@ module KitchenCabinetMaster
       rounded_polygon_faces(points, thick, r, edge).each do |corners|
         definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] })
       end
+      soften(definition.entities)
       cut_holes(definition.entities, holes, thick)
       definition
     end
@@ -308,7 +337,7 @@ module KitchenCabinetMaster
       radius = (diameter / 2.0).mm
       begin
         edges = entities.add_curve(points)
-        circle = entities.add_circle(points[0], points[0].vector_to(points[1]), radius, CYLINDER_SEGMENTS)
+        circle = entities.add_circle(points[0], points[0].vector_to(points[1]), radius, TUBE_SEGMENTS)
         face = entities.add_face(circle)
         face.followme(edges)
         edges.each { |edge| edge.erase! if edge.valid? && edge.faces.empty? } # the path inside the pipe is no longer needed
@@ -319,7 +348,7 @@ module KitchenCabinetMaster
           direction = from.vector_to(to)
           next if direction.length.zero?
 
-          ring = entities.add_face(entities.add_circle(from, direction, radius, CYLINDER_SEGMENTS))
+          ring = entities.add_face(entities.add_circle(from, direction, radius, TUBE_SEGMENTS))
           ring.reverse! if ring.normal.dot(direction).negative?
           ring.pushpull(from.distance(to))
         end
@@ -328,13 +357,13 @@ module KitchenCabinetMaster
     private_class_method :build_tube
 
     # The circle of the bar (in the plane across its axis, its middle at the middle of the box) pushed along the axis.
-    def self.build_cylinder(entities, dx, dy, dz, axis)
+    def self.build_cylinder(entities, dx, dy, dz, axis, sides)
       across = { 'x' => [dy, dz], 'y' => [dx, dz], 'z' => [dx, dy] }[axis]
       length = { 'x' => dx, 'y' => dy, 'z' => dz }[axis]
       ra = across[0] / 2.0
       rb = across[1] / 2.0
-      ring = (0...CYLINDER_SEGMENTS).map do |i|
-        angle = 2.0 * Math::PI * i / CYLINDER_SEGMENTS
+      ring = (0...sides).map do |i|
+        angle = 2.0 * Math::PI * i / sides
         [ra + (ra * Math.cos(angle)), rb + (rb * Math.sin(angle))]
       end
       points = ring.map do |a, b|

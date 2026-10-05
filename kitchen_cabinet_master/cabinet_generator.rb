@@ -463,25 +463,21 @@ module KitchenCabinetMaster
     end
     private_class_method :appliance_definition
 
-    # Which tick shows an appliance part: Show sink, Show hob, Show hood (always on view, whatever Show appliances says),
-    # a freestanding fridge (always shown: it is the unit itself), or Show oven / microwave / fridge under Show appliances.
-    FIXTURE_KINDS = { '_sink_' => 'sink', '_hob_' => 'hob', '_hood_' => 'hood', '_housed_' => 'fridge' }.freeze
-
+    # Which tick shows an appliance part. The sink has its own tick (Fixtures). Every appliance is on view only under
+    # Show appliances AND its own tick: oven, microwave, hob, hood, built-in fridge, freestanding fridge (the unit of
+    # that name, and the fridge of a fridge housing).
     def self.apply_appliance_visibility(container, visibility)
       parts = index_by_role(container.definition.entities)
       shown = lambda do |role|
-        kind = FIXTURE_KINDS.find { |marker, _| role.include?(marker) }
-        if kind then visibility[kind[1]] != false
-        elsif role.include?('_free_') then true
+        if role.include?('_sink_')
+          visibility['sink'] != false
         else
-          visibility['appliances'] == true &&
-            visibility[role.include?('_micro_') ? 'microwave' : (role.include?('_fridge_') ? 'fridge' : 'oven')] != false
+          visibility['appliances'] == true && visibility[AppliancePieces.tick_for(role)] != false
         end
       end
       container.visible = parts.keys.any?(&shown)
       parts.each { |role, instance| instance.visible = shown.call(role) }
     end
-
     # The sink and hob sit on the worktop: the layout needs how far its top stands over the carcass (nothing without one).
     def self.with_rise(model, params)
       return params unless params['sink'] == true || params['hob'] == true

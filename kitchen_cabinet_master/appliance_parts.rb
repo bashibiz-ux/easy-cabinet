@@ -62,7 +62,7 @@ module KitchenCabinetMaster
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\Adisplay\z/, 'led'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\A(display|icon)/, 'led'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
@@ -77,6 +77,15 @@ module KitchenCabinetMaster
 
       rule = APPLIANCE_RULES.find { |pattern, _| suffix.match?(pattern) }
       APPLIANCE_FINISHES[rule ? rule[1] : 'steel']
+    end
+
+    # The Visibility tick that shows an appliance part (see CabinetGenerator.apply_appliance_visibility).
+    TICKS = { '_hob_' => 'hob', '_hood_' => 'hood', '_free_' => 'free_fridge', '_housed_' => 'free_fridge',
+              '_micro_' => 'microwave', '_fridge_' => 'fridge', '_sink_' => 'sink' }.freeze
+
+    def self.tick_for(role)
+      found = TICKS.find { |marker, _| role.include?(marker) }
+      found ? found[1] : 'oven'
     end
 
     # A tube that follows `path` (points [x, y, z] in the cabinet's frame): a bent pipe, such as a tap's swan neck.
@@ -122,6 +131,10 @@ module KitchenCabinetMaster
         box("#{key}_seal", 'Oven Door Gap', [glass_x, inner_y, door_top], [glass_t + 0.2, inner_w, strip_z - door_top]),
         box("#{key}_bezel", 'Oven Display Surround', [face, mid - 46.0, knob_z - 16.0], [0.5, 92.0, 32.0]),
         box("#{key}_display", 'Oven Display', [face + 0.5, mid - 38.0, knob_z - 11.0], [0.5, 76.0, 22.0]),
+        box("#{key}_icon_1", 'Oven Function Light', [face, mid - 62.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_2", 'Oven Function Light', [face, mid - 74.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_3", 'Oven Function Light', [face, mid + 56.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
+        box("#{key}_icon_4", 'Oven Function Light', [face, mid + 68.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
         cyl("#{key}_knob_1", 'Oven Knob 1', :x, [face, inner_y + 38.0, knob_z], 36.0, 13.0),
         cyl("#{key}_cap_1", 'Oven Knob Ring 1', :x, [face, inner_y + 38.0, knob_z], 24.0, 14.0),
         cyl("#{key}_knob_2", 'Oven Knob 2', :x, [face, y0 + w - inset - 38.0, knob_z], 36.0, 13.0),
