@@ -130,13 +130,16 @@ class MyCatalogTest < Minitest::Test
     assert_equal 5, CabinetLayout.compute(params).drawers.length
   end
 
-  def test_a_sink_is_turned_0_or_180_only
+  def test_a_sink_is_mirrored_not_turned
     base = { 'sink' => true, 'catalog_id' => 'kitchen_cabinets', 'cabinet_category' => 'base', 'cabinet_type' => 'base_sink', 'width' => '900', 'depth' => '560', 'height' => '780',
              'toe_kick_height' => '100', 'door_opening_direction' => 'left' }
-    { '0' => 0, '90' => 0, '180' => 180, '270' => 0 }.each do |sent, kept|
-      result = ValidationManager.validate(base.merge('sink_rotation' => sent), door_count: 2, drawer_count: 0)
-      assert_equal kept, result.params['sink_rotation'], "a turn of #{sent}"
-    end
+    plain = ValidationManager.validate(base, door_count: 2, drawer_count: 0)
+    assert_equal false, plain.params['sink_mirror']
+    mirrored = ValidationManager.validate(base.merge('sink_mirror' => true), door_count: 2, drawer_count: 0)
+    assert_equal true, mirrored.params['sink_mirror']
+    old = ValidationManager.validate(base.merge('sink_rotation' => '180'), door_count: 2, drawer_count: 0)
+    assert_equal true, old.params['sink_mirror'], 'an older cabinet turned half a turn is mirrored'
+    assert_equal false, ValidationManager.validate(base.merge('sink_rotation' => '90'), door_count: 2, drawer_count: 0).params['sink_mirror']
   end
 
   def test_the_one_door_sink_is_single_and_the_hood_comes_in_900

@@ -213,6 +213,7 @@
       });
       return faces;
     }
+    if (p.shape && /^cyl_[xyz]$/.test(p.shape)) return cylinderFaces(p);
     const [ox, oy, oz] = p.origin; const [dx, dy, dz] = p.size;
     const angle = ((p.rot || 0) * Math.PI) / 180; const c = Math.cos(angle); const s = Math.sin(angle);
     const at = (lx, ly, lz) => [ox + (lx * c) - (ly * s), oy + (lx * s) + (ly * c), oz + lz];
@@ -224,6 +225,25 @@
     quad([0, 0, 0], [0, 0, dz], [0, dy, dz], [0, dy, 0], [-1, 0, 0]);
     quad([0, dy, 0], [0, dy, dz], [dx, dy, dz], [dx, dy, 0], [0, 1, 0]);
     quad([0, 0, 0], [dx, 0, 0], [dx, 0, dz], [0, 0, dz], [0, -1, 0]);
+    return faces;
+  }
+
+  // A round bar or disc (a knob, a handle, a tap) as a prism of 14 sides along its axis, inside its box.
+  function cylinderFaces(p) {
+    const axis = p.shape[4]; const [ox, oy, oz] = p.origin; const [dx, dy, dz] = p.size;
+    const sizes = { x: [dy, dz, dx], y: [dx, dz, dy], z: [dx, dy, dz] }[axis]; // across a, across b, length
+    const at = (a, b, l) => ({ x: [ox + l, oy + a, oz + b], y: [ox + a, oy + l, oz + b], z: [ox + a, oy + b, oz + l] }[axis]);
+    const dir = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] }[axis];
+    const n = 14; const faces = []; const ring = [];
+    for (let i = 0; i < n; i += 1) { const t = (2 * Math.PI * i) / n; ring.push([(sizes[0] / 2) * (1 + Math.cos(t)), (sizes[1] / 2) * (1 + Math.sin(t)), t]); }
+    faces.push({ pts: ring.map(([a, b]) => at(a, b, sizes[2])), normal: dir, key: p.key });
+    faces.push({ pts: ring.slice().reverse().map(([a, b]) => at(a, b, 0)), normal: dir.map((v) => -v), key: p.key });
+    ring.forEach(([a, b, t], i) => {
+      const [a2, b2] = ring[(i + 1) % n];
+      const tm = t + Math.PI / n; const m = [Math.cos(tm), Math.sin(tm)];
+      const normal = { x: [0, m[0], m[1]], y: [m[0], 0, m[1]], z: [m[0], m[1], 0] }[axis];
+      faces.push({ pts: [at(a, b, 0), at(a2, b2, 0), at(a2, b2, sizes[2]), at(a, b, sizes[2])], normal, key: p.key });
+    });
     return faces;
   }
 
@@ -273,6 +293,7 @@
   }
 
   function colorOf(p) {
+    if (p.group === 'appliance' && p.color) return p.color;
     if (p.group === 'appliance' && DARK_PARTS.test(p.key)) return '#2b3038';
     if (p.group === 'appliance' && /fridge_1_body|free_body/.test(p.key)) return '#e6e9ed';
     return GROUP_COLORS[p.group] || '#bbbbbb';

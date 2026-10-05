@@ -76,7 +76,11 @@ module KitchenCabinetMaster
       raw = {} unless raw.is_a?(Hash)
       model = Sketchup.active_model
       roots = selected_cabinets(model)
-      return Response.fail('Select the cabinets in the model that you want to keep in a catalog.') if roots.empty?
+      if roots.empty?
+        count = model.selection.length
+        found = count.zero? ? 'Nothing is selected.' : "#{count} item#{'s' if count > 1} selected, none of them a cabinet made by this extension."
+        return Response.fail("Select the cabinets in the model that you want to keep in a catalog (click a cabinet, or a group that holds cabinets). #{found}")
+      end
 
       catalog_name = raw['catalog_name'].to_s.strip
       cabinet_name = raw['cabinet_name'].to_s.strip
@@ -112,12 +116,29 @@ module KitchenCabinetMaster
     private_class_method :remove_from_catalog
 
     # The cabinets selected in the model (one, or several picked together).
+    # Cabinets inside a selected group or component (a row you grouped, a copy of a kitchen) count too.
     def self.selected_cabinets(model)
-      list = model.selection.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) }
+      list = []
+      model.selection.each { |item| collect_cabinets(item, list, 0) }
       list = [SelectionManager.selected_cabinet(model)].compact if list.empty?
-      list
+      if list.empty?
+        path = model.active_path
+        path&.reverse_each { |item| (list << item) if AttributeManager.cabinet?(item) }
+      end
+      list.uniq
     end
     private_class_method :selected_cabinets
+
+    def self.collect_cabinets(item, list, depth)
+      if AttributeManager.cabinet?(item)
+        list << item
+      elsif depth < 4 && (item.is_a?(Sketchup::Group) || item.is_a?(Sketchup::ComponentInstance))
+        definition = item.respond_to?(:definition) ? item.definition : nil
+        entities = item.respond_to?(:entities) ? item.entities : definition&.entities
+        entities&.each { |child| collect_cabinets(child, list, depth + 1) }
+      end
+    end
+    private_class_method :collect_cabinets
 
     def self.suggested_name(root)
       stored = AttributeManager.read(root)
@@ -522,6 +543,8 @@ module KitchenCabinetMaster
                       'hob' => !!(cabinet && cabinet['hob']),
                       'hood' => !!(cabinet && cabinet['hood']),
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
+                      'free_housing' => !!(cabinet && cabinet['free_housing']),
+                      'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
       raw = raw.merge('sink_bowls' => 1, 'sink_rotation' => 0) if cabinet && cabinet['sink_single'] # a narrow sink: one bowl, not turned

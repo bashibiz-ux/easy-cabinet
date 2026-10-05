@@ -100,8 +100,8 @@ module KitchenCabinetMaster
       out['sink'] = truthy?(raw['sink'])
       out['sink_bowls'] = to_float(raw['sink_bowls']) == 2.0 ? 2 : 1
       out['sink_tray'] = truthy?(raw['sink_tray'])
-      turn = to_float(raw['sink_rotation'])
-      out['sink_rotation'] = turn.to_i == 180 ? 180 : 0 if turn
+      turn = to_float(raw['sink_rotation']) # (an older cabinet's half turn is a mirror now)
+      out['sink_mirror'] = truthy?(raw['sink_mirror']) || (turn && turn.to_i % 360 == 180) ? true : false
       out['hob'] = truthy?(raw['hob'])
       out['hood'] = truthy?(raw['hood'])
       rise = to_float(raw['worktop_rise'])
@@ -109,6 +109,9 @@ module KitchenCabinetMaster
       out['fridge'] = truthy?(raw['fridge'])
       out['fridge_lift'] = raw.key?('fridge_lift') ? truthy?(raw['fridge_lift']) : true
       out['freestanding'] = truthy?(raw['freestanding'])
+      out['free_housing'] = truthy?(raw['free_housing'])
+      lift = to_float(raw['housing_lift'])
+      out['housing_lift'] = lift if lift && lift >= 0
       mode = raw['lower_mode'].to_s
       out['lower_mode'] = mode if Defaults::LOWER_MODES.include?(mode)
       drawers = to_float(raw['lower_drawers'])
@@ -305,6 +308,7 @@ module KitchenCabinetMaster
 
       check_shelves(out, errors, bad)
       check_fixtures(out, errors, bad)
+      check_housing(out, errors, bad)
       check_corner(out, errors, bad)
       check_zone(out, door_count, drawer_count, errors, bad)
 
@@ -359,7 +363,21 @@ module KitchenCabinetMaster
     end
     private_class_method :check_drawer_heights
 
-    # A sink must lie inside its cabinet, whatever way it is turned.
+    # A housing for a freestanding fridge: the cabinet over the fridge must be a sensible height and leave room for it.
+    def self.check_housing(out, errors, bad)
+      return unless out['free_housing'] && (bad & %w[height]).empty? && out['height']
+
+      lift = out['housing_lift'].to_f
+      lift = CabinetLayout::HOUSING_LIFT unless lift.positive?
+      if lift < 150.0
+        errors << error('housing_lift', 'The lift-up cabinet must be at least 150 mm high.')
+      elsif out['height'] - lift < 800.0
+        errors << error('housing_lift', "That leaves only #{fmt((out['height'] - lift).round(1))} mm for the fridge (at least 800 mm).")
+      end
+    end
+    private_class_method :check_housing
+
+    # A sink must lie inside its cabinet.
     def self.check_fixtures(out, errors, bad)
       return unless out['sink'] && (bad & %w[width depth material_thickness back_thickness]).empty? && out['width'] && out['depth']
 
@@ -367,7 +385,7 @@ module KitchenCabinetMaster
       plan = Fixtures.sink_plan(out, dims)
       return if plan.nil? || plan[:fits]
 
-      errors << error('sink_bowls', 'That sink does not fit this cabinet. Use one bowl, no drainer or a wider cabinet, or turn the sink.')
+      errors << error('sink_bowls', 'That sink does not fit this cabinet. Use one bowl, no drainer or a wider cabinet.')
     end
     private_class_method :check_fixtures
 

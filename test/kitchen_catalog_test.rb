@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout validation_manager catalog_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout validation_manager catalog_manager handle_manager].each { |f| require File.join(plugin, f) }
 
 class KitchenCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -24,7 +24,8 @@ class KitchenCatalogTest < Minitest::Test
       'front_zone' => entry['zone'], 'bottom_zone' => entry['zone_bottom'], 'door_stacked' => entry['stacked'] == true,
       'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s,
       'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true, 'hood' => entry['hood'] == true,
-      'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s }
+      'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s,
+      'free_housing' => entry['free_housing'] == true, 'housing_lift' => entry['lift'] }
   end
 
   def each_entry
@@ -329,9 +330,9 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 0.0, layout.base_z, 'it stands on the floor'
     assert_equal 1850.0, layout.top_z
     roles = layout.appliances.map(&:role)
-    assert_includes roles, 'appliance_fridge_1_free_body'
+    assert_includes roles, 'appliance_fridge_1_free_shell'
     assert_equal 2, roles.grep(/plate/).length
-    assert_equal 2, roles.grep(/handle/).length
+    assert_equal 2, roles.grep(/_bar_/).length, 'a handle bar on each door'
     assert_equal [0.0, 1850.0, 1850.0], [layout.appliances.map { |a| a.offset[2] }.min, layout.appliances.map { |a| a.offset[2] + a.extent[2] }.max, layout.top_z]
   end
 
@@ -395,21 +396,22 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator y1, :<, 900.0 - 18.0
     assert_in_delta 420.0, x1 - x0, 0.01, 'the opening is the size of the sink'
 
-    # two bowls, no drainer; and turned a quarter: its length then runs front to back
+    # two bowls, no drainer; and mirrored: the drainer on the other side
     two, = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)
     assert_empty two.errors
     two_layout = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)[1]
     assert_equal 2, two_layout.appliances.map(&:role).grep(/bowl_\d_floor/).length
     refute two_layout.appliances.map(&:role).include?('appliance_sink_1_tray')
-    flat = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2)).first
-    turned = Fixtures.cutouts(unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2, 'sink_rotation' => 90)) # the maths can still turn a quarter
-    refute_empty turned
-    assert_operator flat[3] - flat[2], :>, flat[1] - flat[0], 'un-turned it is longer across than deep'
-    across = turned.first[3] - turned.first[2]
-    along = turned.first[1] - turned.first[0]
-    assert_operator along, :>, across, 'turned, its length runs front to back'
-    assert_operator along, :<, flat[3] - flat[2], 'as far as the depth of the cabinet allows'
-
+    plain = unit('base', 'base_sink', 1200, 'sink_bowls' => 1, 'sink_tray' => true)[0].params.merge('door_count' => 2)
+    dims = CabinetLayout.send(:dimensions, plain)
+    flat = Fixtures.sink_plan(plain, dims)
+    flipped = Fixtures.sink_plan(plain.merge('sink_mirror' => true), dims)
+    assert flat[:fits] && flipped[:fits]
+    centre = ->(rect) { (rect[2] + rect[3]) / 2.0 }
+    assert_operator centre.call(flat[:tray]), :>, centre.call(flat[:bowls].first), 'the drainer is on the right'
+    assert_operator centre.call(flipped[:tray]), :<, centre.call(flipped[:bowls].first), 'mirrored it is on the left'
+    assert_equal flat[:rect], flipped[:rect], 'the opening is the same either way'
+    assert_equal 420.0, flat[:depth], 'it is not turned: the bowls keep their depth'
     # a sink that does not fit is refused
     narrow, = unit('base', 'base_sink_1door', 400, 'sink_bowls' => 2)
     assert_includes narrow.errors.map { |e| e['field'] }, 'sink_bowls'
@@ -424,7 +426,8 @@ class KitchenCatalogTest < Minitest::Test
       glass = layout.appliances.find { |a| a.role == 'appliance_hob_1_glass' }
       assert glass, 'the hob'
       assert_in_delta [width - 20.0, 860.0].min, glass.extent[1], 0.01, 'as wide as the unit allows (860 at most)'
-      assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_ring/ }, 'cooking zones'
+      assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_zone_\d\z/ }, 'cooking zones'
+      assert layout.appliances.any? { |a| a.shape == 'cyl_z' }, 'drawn round'
       cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 2)).first
       assert_in_delta glass.extent[1] - 20.0, cut[3] - cut[2], 0.01, 'the opening is a little smaller than the glass'
     end
@@ -435,7 +438,7 @@ class KitchenCatalogTest < Minitest::Test
     result, layout = unit('wall', 'wall_hood', 600)
     assert_empty result.errors.map { |e| e['message'] }
     hood = layout.appliances.select { |a| a.role.start_with?('appliance_hood_1') }
-    assert_equal 3, hood.length
+    assert_operator hood.length, :>=, 8, 'visor, glass front, buttons, filter ribs and lights'
     assert hood.all? { |a| a.offset[2] < 0.0 }, 'below the cabinet'
     assert_equal 360.0, layout.top_z
   end
@@ -481,5 +484,72 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_tall_handles_have_their_own_tick_that_starts_on
     assert_equal false, Defaults.params['hide_tall_handles']
+  end
+  def test_a_freestanding_fridge_housing_has_door_coloured_side_panels_and_a_lift_up_cabinet_over_the_fridge
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge_housing_free')
+    assert_equal [600, 900, 1000, 1200], entry['widths']
+    [600, 900, 1000, 1200].each do |width|
+      result, layout = unit('tall', 'tall_fridge_housing_free', width)
+      assert_empty result.errors.map { |e| e['message'] }, width.to_s
+      sides = layout.panels.select { |p| p.role.end_with?('_side') }
+      assert_equal 2, sides.length
+      assert sides.all?(&:front), 'the side panels are in the door material'
+      assert sides.all? { |p| p.extent[0] == 650.0 && p.extent[2] == 2160.0 }, 'as deep and as high as the cabinet'
+      door = layout.doors.first
+      assert_equal 'top', door.hinge, 'a lift-up door'
+      assert_equal 1, layout.doors.length
+      inside = (sides[0].offset[1] + sides[0].extent[1]) <= door.offset[1] && (door.offset[1] + door.extent[1]) <= sides[1].offset[1]
+      assert inside, 'the door is between the panels'
+      assert_in_delta door.offset[2] + door.extent[2], door.pivot[2], 0.01, 'hinged on its top edge'
+      assert_operator door.offset[2] + door.extent[2], :<=, 2160.0
+      fridge = layout.appliances.select { |a| a.role.include?('_free_') }
+      assert_operator fridge.length, :>, 5, 'a fridge stands between the panels'
+      assert fridge.all? { |a| a.offset[1] >= sides[0].extent[1] - 0.01 && a.offset[1] + a.extent[1] <= sides[1].offset[1] + 0.01 }, 'inside the panels'
+      assert_operator fridge.map { |a| a.offset[2] + a.extent[2] }.max, :<=, door.offset[2], 'under the lift-up cabinet'
+    end
+    _, tall = unit('tall', 'tall_fridge_housing_free', 900, 'housing_lift' => 500)
+    _, std = unit('tall', 'tall_fridge_housing_free', 900)
+    assert_in_delta 160.0, tall.doors.first.extent[2] - std.doors.first.extent[2], 0.01, 'the height of the lift-up cabinet is adjustable'
+    refuse, = unit('tall', 'tall_fridge_housing_free', 900, 'housing_lift' => 1800)
+    assert_includes refuse.errors.map { |e| e['field'] }, 'housing_lift'
+    # the fridge is drawn by width: fridge over freezer, side by side, French doors
+    plates = ->(w) { unit('tall', 'tall_fridge_housing_free', w)[1].appliances.count { |a| a.role =~ /_plate_\d\z/ } }
+    assert_equal [2, 2, 2, 3], [600, 900, 1000, 1200].map { |w| plates.call(w) }
+  end
+
+  def test_lift_up_doors_and_drawers_always_get_a_horizontal_handle
+    bundle = { 'profile' => 'bar' }
+    settings = { 'length' => 160.0, 'orientation' => 'vertical', 'position' => 'auto', 'horizontal_place' => 'middle', 'category' => 'tall',
+                 'side_offset' => 40.0, 'vertical_offset' => 40.0, 'custom_x' => 0.0, 'custom_z' => 0.0 }
+    checked = 0
+    each_entry do |category, entry, width|
+      _, layout = unit(category, entry['id'], width)
+      (layout.doors + layout.drawers).each do |door|
+        next unless %w[top center].include?(door.hinge)
+
+        spot = HandleManager.placement(door, settings.merge('category' => category), bundle)
+        assert spot['horizontal'], "#{entry['id']} #{width} #{door.role}: a lift-up door or a drawer has a horizontal handle"
+        checked += 1
+      end
+    end
+    assert_operator checked, :>, 30
+  end
+
+  def test_the_appliances_are_drawn_with_round_parts_and_a_finish_for_each
+    _, layout = oven_unit('oven_micro')
+    shapes = layout.appliances.map(&:shape).compact.uniq
+    assert_equal ['cyl_x', 'cyl_y', 'cyl_z'].sort, (shapes + ['cyl_z']).uniq.sort, 'knobs, handle bars'
+    roles = layout.appliances.map(&:role)
+    %w[glass window panel display seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
+    finish = ->(role) { AppliancePieces.finish(role)[0] }
+    assert_equal 'Appliance - Black Glass', finish.call('appliance_oven_1_glass')
+    assert_equal 'Appliance - Brushed Steel', finish.call('appliance_oven_1_handle')
+    assert_equal 'Appliance - Chrome', finish.call('appliance_sink_1_tap_spout')
+    assert_equal 'Appliance - Sink Steel', finish.call('appliance_sink_1_bowl_1_floor')
+    assert_equal 'Appliance - Gloss White', finish.call('appliance_fridge_1_body')
+    assert_equal 'Appliance - Silver Print', finish.call('appliance_hob_1_zone_1')
+    assert_equal 'Appliance - LED Light', finish.call('appliance_oven_1_display')
+    assert_equal 'Appliance - Black Plastic', finish.call('appliance_oven_1_cap_1')
+    assert AppliancePieces::APPLIANCE_FINISHES.values.all? { |_, color, look| color =~ /\A#\h{6}\z/ && look['roughness'] }, 'every finish has a colour and a roughness'
   end
 end

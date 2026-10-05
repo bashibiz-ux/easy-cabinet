@@ -420,25 +420,10 @@ module KitchenCabinetMaster
     # ---- the appliances of an oven housing -------------------------------------------
 
     APPLIANCES_ROLE = 'appliances'
-    # What a part of an appliance is made of, by the end of its role: [material name, colour].
-    APPLIANCE_FINISHES = {
-      'body' => ['Appliance Body', '#8a919b'],
-      'glass' => ['Appliance Glass', '#1d2127'],
-      'panel' => ['Appliance Control Panel', '#2a2e35'],
-      'display' => ['Appliance Display', '#2f8fb0'],
-      'steel' => ['Appliance Steel', '#aeb4bd']
-    }.freeze
-    FRIDGE_FINISHES = { 'body' => ['Appliance White', '#eceff2'] }.freeze
-
-    # The material of an appliance part (a fridge's body is white; plates, handles, knobs and fronts are steel).
+    # The material of an appliance part (see AppliancePieces.finish): [name, colour, how it looks].
     def self.appliance_finish(role)
-      kind = role.split('_')[1]
-      suffix = role.sub(/\Aappliance_[a-z]+_\d+_(?:free_)?/, '')
-      suffix = suffix.sub(/_\d+\z/, '') # knob_1, post_2 ...
-      suffix = 'steel' unless APPLIANCE_FINISHES.key?(suffix)
-      (kind == 'fridge' && FRIDGE_FINISHES[suffix]) || APPLIANCE_FINISHES[suffix]
+      AppliancePieces.finish(role)
     end
-
     # The ovens, microwave and fridge, built from plain boxes, in a container of their own, shown or
     # hidden by the Show appliances / Show oven / Show microwave / Show fridge ticks.
     def self.sync_appliances(model, root, top, params, layout)
@@ -453,16 +438,28 @@ module KitchenCabinetMaster
       entities = container.definition.entities
       have = index_by_role(entities)
       items.each do |item|
-        definition = PanelGenerator.definition(model, item.extent)
+        definition = appliance_definition(model, item)
         instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
         instance.name = item.name
-        material_name, color = appliance_finish(item.role)
-        MaterialManager.apply(instance, material_name, model, color)
+        material_name, color, look = appliance_finish(item.role)
+        MaterialManager.apply(instance, material_name, model, color, look)
       end
       have.each_value { |surplus| discard_instance(model, surplus) }
       apply_appliance_visibility(container, params['visibility_settings'] || {})
     end
     private_class_method :sync_appliances
+
+    # A box, a round bar (shape cyl_x / cyl_y / cyl_z) or a flat board with an outline (points).
+    def self.appliance_definition(model, item)
+      if item.points && !item.points.empty?
+        PanelGenerator.polygon_definition(model, item.points, item.extent[2])
+      elsif item.shape.to_s.start_with?('cyl_')
+        PanelGenerator.cylinder_definition(model, item.extent, item.shape.to_s[-1])
+      else
+        PanelGenerator.definition(model, item.extent)
+      end
+    end
+    private_class_method :appliance_definition
 
     # Which tick shows an appliance part: Show sink, Show hob, Show hood (always on view, whatever Show appliances says),
     # a freestanding fridge (always shown: it is the unit itself), or Show oven / microwave / fridge under Show appliances.

@@ -169,12 +169,14 @@ module KitchenCabinetMaster
       'sink' => false,              # a sink in the cabinet (and its opening in the worktop)
       'sink_bowls' => 1,
       'sink_tray' => false,         # with a drainer
-      'sink_rotation' => 0,         # turned 0 or 180 degrees
+      'sink_mirror' => false,       # the drainer on the other side (the sink is mirrored, not turned)
       'hob' => false,               # a built-in hob on the cabinet (and its opening in the worktop)
       'hood' => false,              # a hood under a wall cabinet
       'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
+      'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge
+      'housing_lift' => 0.0,        # the height of that cabinet (0 = the standard)
       'freestanding' => false,      # a freestanding fridge: just the appliance, no carcass
       'lower_mode' => '',           # an oven housing's lower part: drawers, door or drawer_door (a small drawer over a door); '' = by the catalog
       'lower_drawers' => 2,

@@ -7,7 +7,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "White Melamine",
@@ -16,7 +18,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Shutter - Light Beige",
@@ -25,7 +29,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Cream",
@@ -34,7 +40,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Ivory",
@@ -43,7 +51,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Magnolia",
@@ -52,7 +62,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Warm White",
@@ -61,7 +73,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Chalk White",
@@ -70,7 +84,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Linen",
@@ -79,7 +95,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Carcass - Light Gray",
@@ -88,7 +106,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Light Grey",
@@ -97,7 +117,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Dove Grey",
@@ -106,7 +128,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Stone Grey",
@@ -115,7 +139,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Mid Grey",
@@ -124,7 +150,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Slate Grey",
@@ -133,7 +161,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Anthracite Grey",
@@ -142,7 +172,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Graphite",
@@ -151,7 +183,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Matt Black",
@@ -160,7 +194,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 0.0
     },
     {
       "name": "Jet Black",
@@ -169,7 +205,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Navy Blue",
@@ -178,7 +216,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Midnight Blue",
@@ -187,7 +227,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Petrol Blue",
@@ -196,7 +238,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Sky Blue",
@@ -205,7 +249,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Duck Egg",
@@ -214,7 +260,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Sage Green",
@@ -223,7 +271,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Olive Green",
@@ -232,7 +282,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Forest Green",
@@ -241,7 +293,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Mint",
@@ -250,7 +304,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Teal",
@@ -259,7 +315,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Mustard",
@@ -268,7 +326,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Terracotta",
@@ -277,7 +337,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Burgundy",
@@ -286,7 +348,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Dusty Pink",
@@ -295,7 +359,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Blush",
@@ -304,7 +370,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Coral",
@@ -313,7 +381,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Taupe",
@@ -322,7 +392,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Mocha",
@@ -331,7 +403,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Red",
@@ -340,7 +414,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Yellow",
@@ -349,7 +425,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.6,
+      "metalness": 0.0
     },
     {
       "name": "Light Oak",
@@ -358,7 +436,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "light_oak.png",
+      "size": 600
     },
     {
       "name": "Natural Oak",
@@ -367,7 +449,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "natural_oak.png",
+      "size": 600
     },
     {
       "name": "Bleached Oak",
@@ -376,7 +462,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "bleached_oak.png",
+      "size": 600
     },
     {
       "name": "Whitewashed Oak",
@@ -385,7 +475,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "whitewashed_oak.png",
+      "size": 600
     },
     {
       "name": "Honey Oak",
@@ -394,7 +488,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "honey_oak.png",
+      "size": 600
     },
     {
       "name": "Golden Oak",
@@ -403,7 +501,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0
     },
     {
       "name": "Ash",
@@ -412,7 +512,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "ash.png",
+      "size": 600
     },
     {
       "name": "Birch",
@@ -421,7 +525,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "birch.png",
+      "size": 600
     },
     {
       "name": "Maple",
@@ -430,7 +538,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "maple.png",
+      "size": 600
     },
     {
       "name": "Beech",
@@ -439,7 +551,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "beech.png",
+      "size": 600
     },
     {
       "name": "Pine",
@@ -448,7 +564,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "pine.png",
+      "size": 600
     },
     {
       "name": "Sandy Oak",
@@ -457,7 +577,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "sandy_oak.png",
+      "size": 600
     },
     {
       "name": "Walnut",
@@ -466,7 +590,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "walnut.png",
+      "size": 600
     },
     {
       "name": "Dark Walnut",
@@ -475,7 +603,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "dark_walnut.png",
+      "size": 600
     },
     {
       "name": "American Walnut",
@@ -484,7 +616,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "american_walnut.png",
+      "size": 600
     },
     {
       "name": "Smoked Oak",
@@ -493,7 +629,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "smoked_oak.png",
+      "size": 600
     },
     {
       "name": "Dark Oak",
@@ -502,7 +642,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "dark_oak.png",
+      "size": 600
     },
     {
       "name": "Wenge",
@@ -511,7 +655,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "wenge.png",
+      "size": 600
     },
     {
       "name": "Ebony",
@@ -520,7 +668,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "ebony.png",
+      "size": 600
     },
     {
       "name": "Mahogany",
@@ -529,7 +681,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "mahogany.png",
+      "size": 600
     },
     {
       "name": "Rosewood",
@@ -538,7 +694,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "rosewood.png",
+      "size": 600
     },
     {
       "name": "Chestnut",
@@ -547,7 +707,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "chestnut.png",
+      "size": 600
     },
     {
       "name": "Cherry",
@@ -556,7 +720,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "cherry.png",
+      "size": 600
     },
     {
       "name": "Teak",
@@ -565,7 +733,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "teak.png",
+      "size": 600
     },
     {
       "name": "Zebrano",
@@ -574,7 +746,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "zebrano.png",
+      "size": 600
     },
     {
       "name": "Grey Oak",
@@ -583,7 +759,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "grey_oak.png",
+      "size": 600
     },
     {
       "name": "Driftwood",
@@ -592,7 +772,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "driftwood.png",
+      "size": 600
     },
     {
       "name": "Weathered Oak",
@@ -601,7 +785,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "weathered_oak.png",
+      "size": 600
     },
     {
       "name": "Black Oak",
@@ -610,7 +798,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "black_oak.png",
+      "size": 600
     },
     {
       "name": "Cashmere Oak",
@@ -619,7 +811,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "cashmere_oak.png",
+      "size": 600
     },
     {
       "name": "Truffle Oak",
@@ -628,7 +824,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.55,
+      "metalness": 0.0,
+      "texture": "truffle_oak.png",
+      "size": 600
     },
     {
       "name": "Concrete",
@@ -637,7 +837,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 0.0,
+      "texture": "concrete.png",
+      "size": 800
     },
     {
       "name": "Light Concrete",
@@ -646,7 +850,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 0.0,
+      "texture": "light_concrete.png",
+      "size": 800
     },
     {
       "name": "Dark Concrete",
@@ -655,7 +863,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 0.0,
+      "texture": "dark_concrete.png",
+      "size": 800
     },
     {
       "name": "Marble White",
@@ -664,7 +876,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.15,
+      "metalness": 0.0,
+      "texture": "marble_white.png",
+      "size": 800
     },
     {
       "name": "Marble Grey",
@@ -673,7 +889,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.15,
+      "metalness": 0.0,
+      "texture": "marble_grey.png",
+      "size": 800
     },
     {
       "name": "Granite Black",
@@ -682,7 +902,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.15,
+      "metalness": 0.0,
+      "texture": "granite_black.png",
+      "size": 800
     },
     {
       "name": "Granite Grey",
@@ -691,7 +915,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.15,
+      "metalness": 0.0,
+      "texture": "granite_grey.png",
+      "size": 800
     },
     {
       "name": "Quartz White",
@@ -700,7 +928,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.15,
+      "metalness": 0.0,
+      "texture": "quartz_white.png",
+      "size": 800
     },
     {
       "name": "Slate",
@@ -709,7 +941,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.4,
+      "metalness": 0.0,
+      "texture": "slate.png",
+      "size": 800
     },
     {
       "name": "Sandstone",
@@ -718,7 +954,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 0.0,
+      "texture": "sandstone.png",
+      "size": 800
     },
     {
       "name": "Aluminium",
@@ -727,7 +967,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "aluminium.png",
+      "size": 300
     },
     {
       "name": "Brushed Steel",
@@ -736,7 +980,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "brushed_steel.png",
+      "size": 300
     },
     {
       "name": "Stainless Steel",
@@ -745,7 +993,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "stainless_steel.png",
+      "size": 300
     },
     {
       "name": "Brass",
@@ -754,7 +1006,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "brass.png",
+      "size": 300
     },
     {
       "name": "Brushed Brass",
@@ -763,7 +1019,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "brushed_brass.png",
+      "size": 300
     },
     {
       "name": "Copper",
@@ -772,7 +1032,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "copper.png",
+      "size": 300
     },
     {
       "name": "Gunmetal",
@@ -781,7 +1045,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0,
+      "texture": "gunmetal.png",
+      "size": 300
     },
     {
       "name": "Matt Black Metal",
@@ -790,7 +1058,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.85,
+      "metalness": 1.0
     },
     {
       "name": "Chrome",
@@ -799,7 +1069,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.05,
+      "metalness": 1.0
     },
     {
       "name": "Gold",
@@ -808,7 +1080,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 1.0
     },
     {
       "name": "PVC Black",
@@ -816,7 +1090,9 @@
       "category": "PVC and edging",
       "kinds": [
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0
     },
     {
       "name": "PVC White",
@@ -824,7 +1100,9 @@
       "category": "PVC and edging",
       "kinds": [
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0
     },
     {
       "name": "PVC Grey",
@@ -832,7 +1110,9 @@
       "category": "PVC and edging",
       "kinds": [
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.5,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss White",
@@ -841,7 +1121,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Black",
@@ -850,7 +1132,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Grey",
@@ -859,7 +1143,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Cream",
@@ -868,7 +1154,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Navy",
@@ -877,7 +1165,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Green",
@@ -886,7 +1176,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Gloss Red",
@@ -895,7 +1187,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.08,
+      "metalness": 0.0
     },
     {
       "name": "VR Satin White",
@@ -904,7 +1198,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 0.0
     },
     {
       "name": "VR Satin Grey",
@@ -913,7 +1209,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 0.0
     },
     {
       "name": "VR Satin Sage",
@@ -922,7 +1220,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.35,
+      "metalness": 0.0
     },
     {
       "name": "VR Chrome",
@@ -931,7 +1231,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.05,
+      "metalness": 1.0
     },
     {
       "name": "VR Brushed Steel",
@@ -940,7 +1242,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.12,
+      "metalness": 1.0,
+      "texture": "vr_brushed_steel.png",
+      "size": 300
     },
     {
       "name": "VR Brass",
@@ -949,7 +1255,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.12,
+      "metalness": 1.0,
+      "texture": "vr_brass.png",
+      "size": 300
     },
     {
       "name": "VR Copper",
@@ -958,7 +1268,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.12,
+      "metalness": 1.0,
+      "texture": "vr_copper.png",
+      "size": 300
     },
     {
       "name": "VR Gunmetal",
@@ -967,7 +1281,11 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.12,
+      "metalness": 1.0,
+      "texture": "vr_gunmetal.png",
+      "size": 300
     },
     {
       "name": "VR Black Metal",
@@ -976,7 +1294,9 @@
       "kinds": [
         "panel",
         "toe_kick"
-      ]
+      ],
+      "roughness": 0.12,
+      "metalness": 1.0
     },
     {
       "name": "VR Clear Glass",
@@ -986,7 +1306,9 @@
         "panel",
         "toe_kick"
       ],
-      "alpha": 0.25
+      "alpha": 0.25,
+      "roughness": 0.05,
+      "metalness": 0.0
     },
     {
       "name": "VR Frosted Glass",
@@ -996,7 +1318,9 @@
         "panel",
         "toe_kick"
       ],
-      "alpha": 0.55
+      "alpha": 0.55,
+      "roughness": 0.05,
+      "metalness": 0.0
     },
     {
       "name": "VR Smoked Glass",
@@ -1006,7 +1330,9 @@
         "panel",
         "toe_kick"
       ],
-      "alpha": 0.45
+      "alpha": 0.45,
+      "roughness": 0.05,
+      "metalness": 0.0
     }
   ]
 }

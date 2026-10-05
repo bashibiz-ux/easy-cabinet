@@ -666,6 +666,27 @@
           "depth": 650,
           "height": 1850
         }
+      },
+      {
+        "id": "tall_fridge_housing_free",
+        "name": "Tall - freestanding fridge housing",
+        "code": "TFH",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          600,
+          900,
+          1000,
+          1200
+        ],
+        "free_housing": true,
+        "lift": 340,
+        "lift_label": "Lift-up Cabinet Height",
+        "defaults": {
+          "width": 600,
+          "depth": 650,
+          "height": 2160
+        }
       }
     ]
   }

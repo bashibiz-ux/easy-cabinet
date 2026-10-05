@@ -66,6 +66,23 @@ module KitchenCabinetMaster
       definition
     end
 
+    # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
+    # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
+    CYLINDER_SEGMENTS = 20
+
+    def self.cylinder_definition(model, size, axis)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      name = format('%<prefix>sCylinder %<a>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, a: axis, x: dx, y: dy, z: dz)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      build_cylinder(definition.entities, dx, dy, dz, axis.to_s)
+      definition
+    end
+
     # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is
     # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
     # its size and radius, so equal pieces share one definition.
@@ -269,6 +286,30 @@ module KitchenCabinetMaster
       face.pushpull(dy.mm)
     end
     private_class_method :build_rounded
+
+    # The circle of the bar (in the plane across its axis, its middle at the middle of the box) pushed along the axis.
+    def self.build_cylinder(entities, dx, dy, dz, axis)
+      across = { 'x' => [dy, dz], 'y' => [dx, dz], 'z' => [dx, dy] }[axis]
+      length = { 'x' => dx, 'y' => dy, 'z' => dz }[axis]
+      ra = across[0] / 2.0
+      rb = across[1] / 2.0
+      ring = (0...CYLINDER_SEGMENTS).map do |i|
+        angle = 2.0 * Math::PI * i / CYLINDER_SEGMENTS
+        [ra + (ra * Math.cos(angle)), rb + (rb * Math.sin(angle))]
+      end
+      points = ring.map do |a, b|
+        case axis
+        when 'x' then [0, a.mm, b.mm]
+        when 'y' then [a.mm, 0, b.mm]
+        else [a.mm, b.mm, 0]
+        end
+      end
+      face = entities.add_face(points)
+      normal = { 'x' => :x, 'y' => :y, 'z' => :z }[axis]
+      face.reverse! if face.normal.send(normal).negative?
+      face.pushpull(length.mm)
+    end
+    private_class_method :build_cylinder
 
     # A flat, horizontal solid: `points` outline pushed up by `thickness`.
     def self.build_polygon(entities, points, thickness)

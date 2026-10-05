@@ -260,20 +260,22 @@
             <label class="field" id="drawerH6Field"><span class="label">Drawer 6</span><div class="input"><input id="drawerH6" type="text" inputmode="decimal" autocomplete="off" placeholder="auto"><em>mm</em></div></label>
           </div>
         </div>
-        <!-- A sink cabinet: one or two bowls, with or without a drainer, turned a quarter at a time. -->
+        <!-- A sink cabinet: one or two bowls, with or without a drainer, mirrored to put the drainer on the other side. -->
         <div id="sinkFields" hidden>
           <div class="grid-2">
             <label class="field" id="sinkBowlsField">
               <span class="label">Sink Bowls</span>
               <div class="input"><select id="sinkBowls"><option value="1">One bowl</option><option value="2">Two bowls</option></select></div>
             </label>
-            <label class="field" id="sinkTurnField">
-              <span class="label">Turn Sink</span>
-              <div class="input"><select id="sinkRotation"><option value="0">0 degrees</option><option value="180">180 degrees</option></select></div>
-            </label>
+            <label class="check" id="sinkTurnField"><input type="checkbox" id="sinkMirror"><span>Mirror sink (drainer on the other side)</span></label>
           </div>
           <label class="check"><input type="checkbox" id="sinkTray"><span>With drainer tray</span></label>
         </div>
+        <!-- A housing for a freestanding fridge: the height of the lift-up cabinet over the fridge. -->
+        <label class="field narrow" id="liftHeightField" hidden>
+          <span class="label" id="liftHeightLabel">Lift-up Cabinet Height</span>
+          <div class="input"><input id="liftHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+        </label>
         <!-- A blind corner's blind panel: its width (the door takes the rest). -->
         <label class="field narrow" id="blindField" hidden>
           <span class="label" id="blindLabel">Blind Panel Width</span>

@@ -59,7 +59,12 @@ module KitchenCabinetMaster
         out << front(drawer, 'drawer')
         Array(layout.drawer_boxes && layout.drawer_boxes[drawer.role]).each { |item| out << drawer_board(item, drawer) }
       end
-      layout.appliances.to_a.each { |item| out << board(item, 'appliance', z) }
+      layout.appliances.to_a.each do |item|
+        entry = board(item, 'appliance', z)
+        entry['color'] = AppliancePieces.finish(item.role)[1] # what it looks like in the picture
+        entry['shape'] = item.shape if item.respond_to?(:shape) && item.shape
+        out << entry
+      end
       out
     end
     private_class_method :list

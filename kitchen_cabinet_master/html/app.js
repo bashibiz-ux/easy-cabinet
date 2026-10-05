@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.43.0';
+  const APP_VERSION = '0.44.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -55,6 +55,7 @@
     fridge_height: 'fridgeHeight',
     blind_width: 'blindWidth',
     split_height: 'splitHeight',
+    housing_lift: 'liftHeight',
     drawer_heights: 'drawerH1',
     sink_bowls: 'sinkBowls',
     lower_mode: 'lowerMode',
@@ -561,7 +562,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -734,8 +735,10 @@
     const panel = list(materials && materials.panel);
     const toeKick = list(materials && materials.toe_kick);
     state.colors = {};
+    state.textures = {};
     [...panel, ...toeKick].forEach((m) => {
       if (m.color) state.colors[m.id] = m.color;
+      if (m.texture) state.textures[m.id] = m.texture; // the picture of a wood, stone or metal
     });
     ['baseMaterial', 'wallMaterial', 'tallMaterial'].forEach((id) => fillSelect($(id), panel));
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
@@ -752,8 +755,10 @@
       const select = $(chip.dataset.chipFor);
       const map = select && select.id === 'handleFinish' ? state.finishColors : state.colors;
       const color = select ? map[select.value] : null;
+      const picture = select && state.textures ? state.textures[select.value] : null;
       if (color) {
         chip.style.background = color;
+        if (picture) { chip.style.backgroundImage = `url(../data/textures/${picture})`; chip.style.backgroundSize = 'cover'; }
         chip.dataset.color = color;
       } else {
         chip.style.background = '';
@@ -818,11 +823,12 @@
       fridge_lift: $('liftUp').checked,
       door_split: hasSplitField() && $('doorSplit').value === 'split',
       split_height: hasSplitField() ? mmv('splitHeight') : '',
+      housing_lift: hasLiftField() ? mmv('liftHeight') : '',
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
       sink_tray: $('sinkTray').checked,
-      sink_rotation: $('sinkRotation').value,
+      sink_mirror: $('sinkMirror').checked,
       blind_width: hasBlindField() ? mmv('blindWidth') : '',
       lower_mode: hasLowerField() ? $('lowerMode').value : '',
       lower_drawers: $('lowerDrawers').value,
@@ -900,12 +906,13 @@
       setText('splitHeight', Number(p.split_height) || (currentCabinet() || {}).split || 1000);
     }
     if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
+    if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 340);
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {
       $('sinkBowls').value = String(p.sink_bowls || 1);
       $('sinkTray').checked = p.sink_tray === true;
-      $('sinkRotation').value = String(p.sink_rotation || 0);
+      $('sinkMirror').checked = p.sink_mirror === true || Number(p.sink_rotation) === 180;
     }
     if (p.blind_width > 0 && hasBlindField()) setText('blindWidth', p.blind_width);
     if (hasLowerField()) {
@@ -1091,6 +1098,7 @@
   const hasLowerField = () => hasCatalogField('lower');
   const hasBlindField = () => hasCatalogField('blind_label');
   const hasSplitField = () => hasCatalogField('split_label');
+  const hasLiftField = () => hasCatalogField('lift_label');
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1119,13 +1127,15 @@
     setSoft($('doorSplitField'), !hasSplitField());
     setSoft($('splitField'), !hasSplitField() || $('doorSplit').value !== 'split');
     if (cabinet && cabinet.split_label) $('splitLabel').textContent = cabinet.split_label;
+    setSoft($('liftHeightField'), !hasLiftField());
+    if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
     setSoft($('sinkFields'), !hasSinkField());
     setSoft($('drawerCountField'), !hasDrawerHeights());
     setSoft($('drawerHeightsField'), !hasDrawerHeights());
     for (let i = 1; i <= 6; i += 1) setSoft($(`drawerH${i}Field`), !hasDrawerHeights() || i > drawerCount());
     const single = !!(cabinet && cabinet.sink_single);
     setSoft($('sinkBowlsField'), single);
-    setSoft($('sinkTurnField'), single || !$('sinkTray').checked); // a turn only matters for the side the drainer is on
+    setSoft($('sinkTurnField'), single || !$('sinkTray').checked); // a mirror only matters for the side the drainer is on
     setSoft($('blindField'), !hasBlindField());
     if (cabinet && cabinet.blind_label) $('blindLabel').textContent = cabinet.blind_label;
     setSoft($('lowerField'), !hasLowerField());
@@ -1176,10 +1186,11 @@
     if (cabinet.split_label) { $('doorSplit').value = 'full'; setText('splitHeight', cabinet.split); }
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, '');
     setText('drawerCount', cabinet.drawers || 1);
+    if (cabinet.lift_label) setText('liftHeight', cabinet.lift);
     if (cabinet.sink) {
       $('sinkBowls').value = String(cabinet.sink_bowls || 1);
       $('sinkTray').checked = cabinet.sink_tray === true;
-      $('sinkRotation').value = '0';
+      $('sinkMirror').checked = false;
     }
     if (cabinet.blind_label) setText('blindWidth', cabinet.blind);
     if (cabinet.lower) {

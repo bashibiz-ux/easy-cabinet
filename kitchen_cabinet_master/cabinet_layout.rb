@@ -25,7 +25,7 @@ module KitchenCabinetMaster
     # then just [0, 0, z] since the outline's own coordinates are already absolute.
     # `front` marks a panel that is part of the FRONT (a blind corner's fixed panel, the panel over a
     # built-in oven): it takes the door material, not the carcass one.
-    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, :holes, keyword_init: true)
+    Panel  = Struct.new(:role, :name, :extent, :offset, :points, :rotation, :round, :round_edge, :front, :holes, :shape, keyword_init: true)
     # A door is a panel plus a hinge. `pivot` is the vertical hinge axis in cabinet
     # coordinates (on the door's FRONT face edge, so the door never swings back
     # into the carcass, even at wide opening angles).
@@ -68,6 +68,7 @@ module KitchenCabinetMaster
     def self.compute(params)
       dims = dimensions(params)
       return freestanding_layout(params, dims) if params['freestanding'] == true
+      return housing_layout(params, dims) if params['free_housing'] == true
       category = params['cabinet_category'].to_s
       style = corner_style(params)
 
@@ -235,7 +236,7 @@ module KitchenCabinetMaster
     def self.envelope(params)
       thick = params['material_thickness'].to_f
       category = params['cabinet_category'].to_s
-      base_z = category == 'wall' || params['freestanding'] == true ? 0.0 : params['toe_kick_height'].to_f
+      base_z = category == 'wall' || params['freestanding'] == true || params['free_housing'] == true ? 0.0 : params['toe_kick_height'].to_f
       # A corner unit's outer footprint is a square sized by Width in both
       # directions; its own Depth instead controls the internal return panels.
       square = corner?(params)
@@ -807,10 +808,10 @@ module KitchenCabinetMaster
       (zone && zone[:stack] || []).each do |item|
         counts[item[:kind]] += 1
         key = "appliance_#{item[:kind]}_#{counts[item[:kind]]}"
-        out.concat(item[:kind] == :oven ? oven_parts(key, dims, item) : microwave_parts(key, dims, item))
+        out.concat(item[:kind] == :oven ? AppliancePieces.oven(key, dims, item) : AppliancePieces.microwave(key, dims, item))
       end
       fridge = fridge_layout(params, dims)
-      out.concat(fridge_parts(dims, fridge)) if fridge
+      out.concat(AppliancePieces.built_in_fridge(dims, fridge, params['door_opening_direction'].to_s != 'right')) if fridge
       out.concat(Fixtures.parts(params, dims)) # the sink, the hob, the hood
       out
     end
@@ -822,80 +823,7 @@ module KitchenCabinetMaster
     end
     private_class_method :part
 
-    # A plate as wide as the unit less 8 mm (a 900 mm unit takes a 900 mm oven), centred.
-    def self.appliance_plate_width(dims)
-      [dims.width - 8.0, 900.0].min
-    end
-    private_class_method :appliance_plate_width
-
-    def self.oven_parts(key, dims, item)
-      front = dims.depth # the carcass front
-      h = item[:height]
-      z0 = item[:z]
-      w = appliance_plate_width(dims)
-      y0 = (dims.width - w) / 2.0
-      body_w = dims.inner_w - 4.0
-      body_d = [dims.interior_d - 30.0, 550.0].min
-      margin = 12.0
-      strip = [56.0, h * 0.12].min
-      strip_z = z0 + h - margin - strip
-      handle_z = strip_z - 30.0
-      glass_top = handle_z - 8.0 - 14.0
-      glass_bottom = z0 + 36.0
-      handle_w = [w - 160.0, 100.0].max
-      handle_y = y0 + ((w - handle_w) / 2.0)
-      x = front + 6.0 # the face of the steel front
-
-      parts = [
-        part(key, 'body', 'Oven Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
-        part(key, 'frame', 'Oven Front', [front, y0, z0], [6.0, w, h]),
-        part(key, 'panel', 'Oven Control Strip', [x, y0 + margin, strip_z], [1.5, w - (2 * margin), strip]),
-        part(key, 'display', 'Oven Display', [x + 1.5, y0 + (w / 2.0) - 35.0, strip_z + (strip / 2.0) - 11.0], [1.0, 70.0, 22.0]),
-        part(key, 'knob_1', 'Oven Knob 1', [x + 1.5, y0 + margin + 22.0, strip_z + (strip / 2.0) - 13.0], [10.0, 26.0, 26.0]),
-        part(key, 'knob_2', 'Oven Knob 2', [x + 1.5, y0 + w - margin - 22.0 - 26.0, strip_z + (strip / 2.0) - 13.0], [10.0, 26.0, 26.0]),
-        part(key, 'handle', 'Oven Handle', [x + 22.0, handle_y, handle_z - 8.0], [12.0, handle_w, 16.0]),
-        part(key, 'post_1', 'Oven Handle Post 1', [x, handle_y, handle_z - 8.0], [22.0, 16.0, 16.0]),
-        part(key, 'post_2', 'Oven Handle Post 2', [x, handle_y + handle_w - 16.0, handle_z - 8.0], [22.0, 16.0, 16.0])
-      ]
-      if glass_top - glass_bottom >= 50.0
-        parts << part(key, 'glass', 'Oven Window', [x, y0 + 40.0, glass_bottom], [2.0, w - 80.0, glass_top - glass_bottom])
-      end
-      parts
-    end
-    private_class_method :oven_parts
-
-    def self.microwave_parts(key, dims, item)
-      front = dims.depth
-      h = item[:height]
-      z0 = item[:z]
-      w = appliance_plate_width(dims)
-      y0 = (dims.width - w) / 2.0
-      body_w = dims.inner_w - 4.0
-      body_d = [dims.interior_d - 30.0, 350.0].min
-      margin = 14.0
-      ctrl_w = (w * 0.22).round
-      ctrl_y = y0 + w - margin - ctrl_w
-      glass_w = ctrl_y - 30.0 - (y0 + margin)
-      handle_h = h * 0.55
-      x = front + 6.0
-
-      parts = [
-        part(key, 'body', 'Microwave Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
-        part(key, 'frame', 'Microwave Front', [front, y0, z0], [6.0, w, h]),
-        part(key, 'panel', 'Microwave Control Panel', [x, ctrl_y, z0 + margin], [1.5, ctrl_w, h - (2 * margin)]),
-        part(key, 'display', 'Microwave Display', [x + 1.5, ctrl_y + 10.0, z0 + h - margin - 14.0 - 24.0], [1.0, ctrl_w - 20.0, 24.0]),
-        part(key, 'handle', 'Microwave Handle', [x + 22.0, ctrl_y - 26.0, z0 + ((h - handle_h) / 2.0)], [12.0, 14.0, handle_h]),
-        part(key, 'post_1', 'Microwave Handle Post 1', [x, ctrl_y - 26.0, z0 + ((h - handle_h) / 2.0)], [22.0, 14.0, 14.0]),
-        part(key, 'post_2', 'Microwave Handle Post 2', [x, ctrl_y - 26.0, z0 + ((h + handle_h) / 2.0) - 14.0], [22.0, 14.0, 14.0])
-      ]
-      3.times do |index|
-        parts << part(key, "knob_#{index + 1}", "Microwave Button #{index + 1}",
-                      [x + 1.5, ctrl_y + 15.0, z0 + margin + 20.0 + (index * 34.0)], [8.0, ctrl_w - 30.0, 18.0])
-      end
-      parts << part(key, 'glass', 'Microwave Window', [x, y0 + margin, z0 + margin], [2.0, glass_w, h - (2 * margin)]) if glass_w >= 60.0
-      parts
-    end
-    private_class_method :microwave_parts
+    # The oven, microwave, built-in fridge and freestanding fridge are drawn by AppliancePieces (appliance_parts.rb).
 
     # ---- a built-in fridge (or fridge-freezer) -------------------------------------------
     #
@@ -992,31 +920,51 @@ module KitchenCabinetMaster
     private_class_method :small_drawer
 
     # ---- a freestanding fridge: no carcass, just the fridge itself ----------------------------------------
-    # Width x depth x height as entered. A white body on a dark plinth, a steel door each for the freezer (below)
-    # and the fridge (above), and a vertical handle on each next to the gap between them.
+    # Width x depth x height as entered (see AppliancePieces.free_fridge for how it looks by width).
     def self.freestanding_layout(params, dims)
-      w = dims.width
-      d = dims.depth
-      h = dims.height
-      plinth = 25.0
-      body_h = h - plinth
-      freezer = (body_h * 0.3).round
-      door_t = 22.0
-      key = 'appliance_fridge_1_free'
-      split = plinth + freezer
-      right_hinge = params['door_opening_direction'].to_s == 'right'
-      y = right_hinge ? 25.0 : w - 25.0 - 22.0 # the handles are at the free edge
-      parts = [
-        part(key, 'panel', 'Fridge Plinth', [30.0, 20.0, 0.0], [d - 60.0, w - 40.0, plinth]),
-        part(key, 'body', 'Fridge Body', [0.0, 0.0, plinth], [d - door_t, w, body_h]),
-        part(key, 'plate_1', 'Fridge Freezer Door', [d - door_t, 0.0, plinth], [door_t, w, freezer - 2.0]),
-        part(key, 'plate_2', 'Fridge Door', [d - door_t, 0.0, split + 2.0], [door_t, w, h - split - 2.0]),
-        part(key, 'handle_1', 'Fridge Freezer Handle', [d, y, split - 40.0 - 300.0], [30.0, 22.0, 300.0]),
-        part(key, 'handle_2', 'Fridge Handle', [d, y, split + 40.0], [30.0, 22.0, 450.0])
-      ]
-      apply_overrides(Layout.new(base_z: 0.0, top_z: round2(h), panels: [], doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts), params)
+      hinge_left = params['door_opening_direction'].to_s != 'right'
+      parts = AppliancePieces.free_fridge('appliance_fridge_1_free', 0.0, 0.0, 0.0, dims.width, dims.depth, dims.height, hinge_left)
+      apply_overrides(Layout.new(base_z: 0.0, top_z: round2(dims.height), panels: [], doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts), params)
     end
     private_class_method :freestanding_layout
+
+    # ---- a housing for a freestanding fridge ----------------------------------------------------------------
+    # Two side panels (the door material) as deep as the cabinet and as high as it is, with a fridge standing
+    # between them, and over it a little cabinet between the panels with a lift-up door. `housing_lift` is the height
+    # of that cabinet (and its door). Width is the whole unit, panels included.
+    HOUSING_LIFT = 340.0
+    def self.housing_layout(params, dims)
+      t = dims.thick
+      d = dims.depth
+      w = dims.width
+      h = dims.height
+      reveal = params['door_reveal'].to_f
+      lift = params['housing_lift'].to_f
+      lift = HOUSING_LIFT unless lift.positive?
+      lift = [lift, h - 800.0].min
+      inner = dims.inner_w
+      cab_z = h - lift
+      sides = [panel('left_side', 'Left Side Panel', [d, t, h], [0, 0, 0]),
+               panel('right_side', 'Right Side Panel', [d, t, h], [0, w - t, 0])]
+      sides.each { |side| side.front = true } # the side panels are the colour of the doors
+      panels = sides + [
+        panel('back', 'Back Panel', [dims.back, inner + (2 * dims.groove), lift], [dims.recess, t - dims.groove, cab_z]),
+        panel('lift_bottom', 'Lift Cabinet Bottom', [dims.interior_d, inner, t], [dims.interior_start, t, cab_z]),
+        panel('top', 'Top Panel', [dims.interior_d, inner, t], [dims.interior_start, t, h - t])
+      ]
+      door_h = lift - (2 * reveal)
+      y = t + reveal
+      z = cab_z + reveal
+      door = Door.new(
+        role: 'door_1', name: 'Lift-up Door', extent: [t, inner - (2 * reveal), door_h].map { |v| round2(v) },
+        offset: [d - t, y, z].map { |v| round2(v) }, hinge: 'top', pivot: [d, y, z + door_h].map { |v| round2(v) }, rotation: 0.0
+      )
+      niche = cab_z - 15.0
+      fridge_w = inner - 10.0
+      parts = niche >= 700.0 && fridge_w >= 400.0 ? AppliancePieces.free_fridge('appliance_fridge_1_free', 10.0, t + 5.0, 0.0, fridge_w, d - 80.0, niche, params['door_opening_direction'].to_s != 'right') : []
+      apply_overrides(Layout.new(base_z: 0.0, top_z: round2(h), panels: panels, doors: [door], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: parts), params)
+    end
+    private_class_method :housing_layout
     # nil for a unit that is not a fridge; otherwise
     # { spans: [[z, height], ...] bottom door first, lift: [z, height] or nil, shelf_z: shelf lower edge or nil,
     #   split: z between two doors or nil, body: [bottom, top] of the fridge itself, top_end: where the top fridge door ends }
@@ -1105,27 +1053,6 @@ module KitchenCabinetMaster
     end
     private_class_method :fridge_doors
 
-    # The fridge: a white body on the bottom panel and, on its front, one steel plate per door.
-    def self.fridge_parts(dims, fridge)
-      bottom, top = fridge[:body]
-      return [] unless top - bottom >= 200.0
-
-      front = dims.depth
-      body_w = dims.inner_w - 4.0
-      body_d = [dims.interior_d - 30.0, 560.0].min
-      w = appliance_plate_width(dims)
-      y0 = (dims.width - w) / 2.0
-      key = 'appliance_fridge_1'
-      parts = [part(key, 'body', 'Fridge Body', [front - body_d, (dims.width - body_w) / 2.0, bottom], [body_d, body_w, top - bottom])]
-      if fridge[:split]
-        parts << part(key, 'plate_1', 'Fridge Lower Front', [front, y0, bottom], [2.0, w, fridge[:split] - 2.0 - bottom])
-        parts << part(key, 'plate_2', 'Fridge Upper Front', [front, y0, fridge[:split] + 2.0], [2.0, w, top - fridge[:split] - 2.0])
-      else
-        parts << part(key, 'plate_1', 'Fridge Front', [front, y0, bottom], [2.0, w, top - bottom])
-      end
-      parts
-    end
-    private_class_method :fridge_parts
 
     # nil without a zone; { drawers: zone_height } over a door, { door: zone_height } for a door on top
     # of an open niche (a fridge housing).
@@ -1223,4 +1150,5 @@ module KitchenCabinetMaster
 end
 
 # The sink, hob and hood parts (loaded here too so the layout works wherever it is loaded alone, as in the tests).
+require_relative 'appliance_parts'
 require_relative 'fixtures'
