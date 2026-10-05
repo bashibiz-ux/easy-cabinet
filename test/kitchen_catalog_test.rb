@@ -79,13 +79,6 @@ class KitchenCatalogTest < Minitest::Test
     assert_includes layout.panels.map(&:role), 'drawer_rail'
   end
 
-  def test_a_fridge_housing_has_a_door_only_at_the_top
-    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge')
-    result = ValidationManager.validate(raw_for('tall', entry, 600), door_count: 1, drawer_count: 0)
-    door = CabinetLayout.compute(result.params.merge('door_count' => 1, 'drawer_count' => 0)).doors.first
-    assert_in_delta 500.0 - Defaults.params['door_reveal'], door.extent[2], 0.05
-    assert_in_delta 100.0 + 2160.0 - 500.0, door.offset[2], 0.05
-  end
 
   def test_an_oven_housing_has_drawers_below_a_niche_and_a_door_above
     entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_oven')
@@ -198,20 +191,6 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 45.0, wall.doors.first.rotation
   end
 
-  def test_a_fridge_housing_has_a_panel_where_the_door_closes_in_two_widths_and_an_adjustable_door
-    assert_equal [600, 900], CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge')['widths']
-    result, layout = unit('tall', 'tall_fridge', 900)
-    assert_empty result.errors
-    door = layout.doors.first
-    rail = layout.panels.find { |p| p.role == 'door_rail' }
-    assert rail, 'a panel under the door'
-    reveal = Defaults.params['door_reveal']
-    assert_in_delta 2160.0 - 500.0 - reveal, rail.offset[2], 0.01
-    assert_in_delta door.offset[2] - 100.0, rail.offset[2] + reveal, 0.01, 'the door covers it, a reveal short of its lower edge'
-    assert_in_delta 560.0, rail.offset[0] + rail.extent[0], 0.01, 'flush with the carcass front'
-    _, taller = unit('tall', 'tall_fridge', 600, 'front_zone' => 800)
-    assert_in_delta 800.0 - Defaults.params['door_reveal'], taller.doors.first.extent[2], 0.01, 'the door height can be adjusted'
-  end
 
   def test_the_built_in_fridge_has_a_door_of_adjustable_height_and_a_lift_up_door_over_it
     reveal = Defaults.params['door_reveal']
@@ -280,7 +259,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator body.offset[2], :>=, 18.0, 'on the bottom panel'
     _, single = unit('tall', 'tall_fridge_builtin_1door')
     assert_equal ['appliance_fridge_1_plate_1'], single.appliances.map(&:role).grep(/plate/)
-    assert_equal true, Defaults.params['visibility_settings']['fridge'], 'the fridge has its own tick'
+    assert_nil Defaults.params['visibility_settings']['fridge'], 'a built-in fridge has no tick of its own: it follows Show appliances'
   end
 
   # The lower part of an oven housing: drawers, a door, or a small drawer over a door.
@@ -320,21 +299,6 @@ class KitchenCatalogTest < Minitest::Test
     assert_includes refuse.errors.map { |e| e['field'] }, 'small_drawer'
   end
 
-  def test_a_freestanding_fridge_is_only_the_appliance
-    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge_free')
-    assert_equal [600, 700, 900], entry['widths']
-    result, layout = unit('tall', 'tall_fridge_free')
-    assert_empty result.errors.map { |e| e['message'] }
-    assert_empty layout.panels
-    assert_empty layout.doors
-    assert_equal 0.0, layout.base_z, 'it stands on the floor'
-    assert_equal 1850.0, layout.top_z
-    roles = layout.appliances.map(&:role)
-    assert_includes roles, 'appliance_fridge_1_free_shell'
-    assert_equal 2, roles.grep(/plate/).length
-    assert_equal 2, roles.grep(/_bar_/).length, 'a handle bar on each door'
-    assert_equal [0.0, 1850.0, 1850.0], [layout.appliances.map { |a| a.offset[2] }.min, layout.appliances.map { |a| a.offset[2] + a.extent[2] }.max, layout.top_z]
-  end
 
   def test_a_tall_unit_has_one_full_door_or_two_split_doors_with_the_lower_one_adjustable
     reveal = Defaults.params['door_reveal']
@@ -564,12 +528,40 @@ class KitchenCatalogTest < Minitest::Test
   end
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
     ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_glass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
-              'appliance_fridge_1_plate_1' => 'fridge', 'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
+              'appliance_fridge_1_plate_1' => nil, 'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
               'appliance_sink_1_tray' => 'sink' }
-    ticks.each { |role, tick| assert_equal tick, AppliancePieces.tick_for(role), role }
+    ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
     assert_equal true, Defaults.params['visibility_settings']['free_fridge'], 'the freestanding fridge has its own tick'
     _, housing = unit('tall', 'tall_fridge_housing_free', 900)
     assert housing.appliances.all? { |a| AppliancePieces.tick_for(a.role) == 'free_fridge' }, 'the fridge of a housing follows the freestanding fridge tick'
     assert_equal 2260.0, CatalogManager.cabinet(CATALOG, 'tall', 'tall_fridge_housing_free')['defaults']['height']
+  end
+  def test_the_tall_list_has_a_pull_out_and_no_pantry_fridge_housing_or_freestanding_fridge
+    ids = CatalogManager.cabinets(CATALOG, 'tall').map { |e| e['id'] }
+    %w[tall_pantry tall_fridge tall_fridge_free].each { |id| refute_includes ids, id }
+    assert_includes ids, 'tall_pullout'
+    entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_pullout')
+    assert_equal [150, 200, 300, 400, 450, 600], entry['widths']
+    result, layout = unit('tall', 'tall_pullout', 300, 'drawer_number' => 1)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal 1, layout.drawers.length
+    assert_in_delta 2160.0 - (2 * Defaults.params['door_reveal']), layout.drawers.first.extent[2], 0.01, 'one pull-out front over the full height'
+    assert_equal 1, layout.drawer_boxes.length, 'with its box'
+  end
+
+  def test_the_built_in_oven_cabinet_comes_with_a_hob_too
+    ids = CatalogManager.cabinets(CATALOG, 'base').map { |e| e['id'] }
+    assert_includes ids, 'base_oven'
+    assert_includes ids, 'base_oven_hob'
+    [600, 900].each do |width|
+      result, layout = unit('base', 'base_oven_hob', width)
+      assert_empty result.errors.map { |e| e['message'] }, width.to_s
+      roles = layout.appliances.map(&:role)
+      assert roles.any? { |r| r.start_with?('appliance_oven_1_') }, 'the oven'
+      assert_includes roles, 'appliance_hob_1_glass'
+      cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 1))
+      assert_equal 1, cut.length, 'an opening for the hob in the worktop'
+    end
+    refute unit('base', 'base_oven', 600)[1].appliances.any? { |a| a.role.include?('_hob_') }
   end
 end

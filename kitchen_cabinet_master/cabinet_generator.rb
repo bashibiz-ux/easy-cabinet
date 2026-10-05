@@ -472,7 +472,8 @@ module KitchenCabinetMaster
         if role.include?('_sink_')
           visibility['sink'] != false
         else
-          visibility['appliances'] == true && visibility[AppliancePieces.tick_for(role)] != false
+          tick = AppliancePieces.tick_for(role)
+          visibility['appliances'] == true && (tick.nil? || visibility[tick] != false)
         end
       end
       container.visible = parts.keys.any?(&shown)

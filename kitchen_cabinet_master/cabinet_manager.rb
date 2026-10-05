@@ -474,7 +474,7 @@ module KitchenCabinetMaster
     def self.set_visibility(raw)
       raw = {} unless raw.is_a?(Hash)
       on = ->(value) { [true, 'true', 1, '1'].include?(value) }
-      visibility = %w[carcass door toe_kick appliances oven microwave fridge sink hob hood free_fridge].to_h { |key| [key, on.call(raw[key])] }
+      visibility = %w[carcass door toe_kick appliances oven microwave sink hob hood free_fridge].to_h { |key| [key, on.call(raw[key])] }
       show_floor_symbol = on.call(raw['opening_direction'])
       show_door_symbol = on.call(raw['door_symbol'])
       show_wall_symbol = on.call(raw['wall_opening_direction'])
@@ -488,6 +488,14 @@ module KitchenCabinetMaster
       cabinets = instances.select { |instance| AttributeManager.cabinet?(instance) }
       toe_kicks = instances.select { |instance| AttributeManager.part_kind(instance) == 'toe_kick' }
       worktops = WorktopManager.pieces_in(model)
+      # With something selected the ticks are for that item alone (its own cabinet, or the toe kick); with nothing selected, for all.
+      only = on.call(raw['selected_only'])
+      if only
+        cabinet = SelectionManager.selected_cabinet(model)
+        part = SelectionManager.selected_part(model)
+        cabinets = [cabinet].compact
+        toe_kicks = part && AttributeManager.part_kind(part) == 'toe_kick' ? [part] : []
+      end
       if cabinets.empty? && toe_kicks.empty? && worktops.empty?
         return Response.ok('No cabinets in the model yet. New cabinets will use these settings.')
       end
@@ -495,8 +503,8 @@ module KitchenCabinetMaster
       SelectionManager.suspend do
         with_operation(model, 'Change Cabinet Visibility') do
           # The worktop and its back splash (kept on the model, so pieces built later follow the ticks).
-          show_worktop = raw.key?('worktop') ? on.call(raw['worktop']) : WorktopManager.shown?(model, 'worktop')
-          show_splash = raw.key?('backsplash') ? on.call(raw['backsplash']) : WorktopManager.shown?(model, 'backsplash')
+          show_worktop = raw.key?('worktop') && !only ? on.call(raw['worktop']) : WorktopManager.shown?(model, 'worktop')
+          show_splash = raw.key?('backsplash') && !only ? on.call(raw['backsplash']) : WorktopManager.shown?(model, 'backsplash')
           WorktopManager.set_shown(model, show_worktop, show_splash)
           cabinets.each do |cabinet|
             AttributeManager.write(cabinet, 'visibility_settings' => visibility,
@@ -515,6 +523,8 @@ module KitchenCabinetMaster
           toe_kicks.each { |toe_kick| toe_kick.visible = visibility['toe_kick'] }
         end
       end
+
+      return Response.ok('Nothing of this extension is selected: select a cabinet, or clear the selection to change every cabinet.') if only && cabinets.empty? && toe_kicks.empty?
 
       Response.ok("Visibility updated on #{cabinets.length} cabinet#{'s' unless cabinets.length == 1}" \
                   "#{" and #{toe_kicks.length} toe kick#{'s' unless toe_kicks.length == 1}" unless toe_kicks.empty?}.")

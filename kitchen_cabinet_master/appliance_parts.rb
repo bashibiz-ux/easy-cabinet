@@ -81,11 +81,13 @@ module KitchenCabinetMaster
 
     # The Visibility tick that shows an appliance part (see CabinetGenerator.apply_appliance_visibility).
     TICKS = { '_hob_' => 'hob', '_hood_' => 'hood', '_free_' => 'free_fridge', '_housed_' => 'free_fridge',
-              '_micro_' => 'microwave', '_fridge_' => 'fridge', '_sink_' => 'sink' }.freeze
+              '_micro_' => 'microwave', '_sink_' => 'sink' }.freeze
 
     def self.tick_for(role)
       found = TICKS.find { |marker, _| role.include?(marker) }
-      found ? found[1] : 'oven'
+      return found[1] if found
+
+      role.include?('_fridge_') ? nil : 'oven' # a built-in fridge has no tick of its own: it follows Show appliances
     end
 
     # A tube that follows `path` (points [x, y, z] in the cabinet's frame): a bent pipe, such as a tap's swan neck.

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.46.0';
+  const APP_VERSION = '0.47.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -854,7 +854,6 @@
         appliances: $('showAppliances').checked,
         oven: $('showOven').checked,
         microwave: $('showMicro').checked,
-        fridge: $('showFridge').checked,
         sink: $('showSink').checked,
         hob: $('showHob').checked,
         hood: $('showHood').checked,
@@ -940,7 +939,6 @@
       if ('appliances' in v) $('showAppliances').checked = !!v.appliances;
       if ('oven' in v) $('showOven').checked = !!v.oven;
       if ('microwave' in v) $('showMicro').checked = !!v.microwave;
-      if ('fridge' in v) $('showFridge').checked = !!v.fridge;
       if ('sink' in v) $('showSink').checked = !!v.sink;
       if ('hob' in v) $('showHob').checked = !!v.hob;
       if ('hood' in v) $('showHood').checked = !!v.hood;
@@ -1740,7 +1738,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1767,9 +1765,9 @@
     await runAction('update', { live: true });
   }
 
-  // Door gap, door reveal, panel and back panel thickness and the Material section
-  // are settings for the whole job: editing one changes EVERY cabinet in the model,
-  // whether or not one is selected.
+  // Door gap, door reveal, panel and back panel thickness, the Handle section and the Material section
+  // are settings for the whole job: editing one changes EVERY cabinet in the model when nothing is selected,
+  // and only the selected cabinet when one is.
   // Only the setting that was edited is sent, so changing the door gap never
   // touches the materials of cabinets, and the other way round.
   const GLOBAL_FIELDS = {
@@ -1959,10 +1957,10 @@
         return;
       }
     }
-    // The carcass raise and the handle's orientation are for every cabinet, unless one cabinet is selected:
-    // then the change is only that cabinet's.
-    const OWN_WHEN_SELECTED = ['carcassRaise', 'handleOrientation', 'handleHPlace'];
-    if (GLOBAL_FIELDS[el.id] && !(OWN_WHEN_SELECTED.includes(el.id) && state.selectedKind === 'cabinet')) {
+    // The settings of the whole job (materials, door gap, reveal, thickness, handle, carcass raise ...) are for every cabinet when
+    // nothing is selected. With a cabinet selected the change is only that cabinet's (it goes through the live update below); with
+    // anything else selected nothing else changes.
+    if (GLOBAL_FIELDS[el.id] && !state.selectedKind) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
       // A different handle bundle brings its own lengths, finishes and positions
@@ -1988,11 +1986,11 @@
         appliances: $('showAppliances').checked,
         oven: $('showOven').checked,
         microwave: $('showMicro').checked,
-        fridge: $('showFridge').checked,
         sink: $('showSink').checked,
         hob: $('showHob').checked,
         hood: $('showHood').checked,
         free_fridge: $('showFreeFridge').checked,
+        selected_only: !!state.selectedKind, // with something selected a tick is for that item alone; otherwise for all
         worktop: $('visWorktop').checked,
         backsplash: $('visSplash').checked,
         opening_direction: $('showDirection').checked, // the plan symbol on the floor
@@ -2037,7 +2035,6 @@
     $('showAppliances').checked = v.appliances === true;
     $('showOven').checked = v.oven !== false;
     $('showMicro').checked = v.microwave !== false;
-    $('showFridge').checked = v.fridge !== false;
     $('showSink').checked = v.sink !== false;
     $('showHob').checked = v.hob !== false;
     $('showHood').checked = v.hood !== false;
@@ -2196,7 +2193,7 @@
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showFridge', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }

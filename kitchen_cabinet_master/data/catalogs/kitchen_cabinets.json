@@ -353,6 +353,32 @@
           "depth": 560,
           "height": 780
         }
+      },
+      {
+        "id": "base_oven_hob",
+        "name": "Base - built-in oven with hob",
+        "code": "BOH",
+        "doors": 0,
+        "drawers": 1,
+        "shelves": 0,
+        "widths": [
+          600,
+          900
+        ],
+        "zone_bottom": 140,
+        "bottom_label": "Drawer Height",
+        "top_front": 40,
+        "top_front_label": "Top Panel Height",
+        "appliances": "oven",
+        "appliance_sets": [
+          "oven"
+        ],
+        "hob": true,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
       }
     ],
     "wall": [
@@ -542,18 +568,22 @@
         }
       },
       {
-        "id": "tall_pantry",
-        "name": "Tall - pantry, 2 doors",
-        "code": "TP",
-        "doors": 2,
-        "shelves": 6,
+        "id": "tall_pullout",
+        "name": "Tall - pull-out",
+        "code": "TPO",
+        "doors": 0,
+        "drawers": 1,
+        "shelves": 0,
         "widths": [
-          900
+          150,
+          200,
+          300,
+          400,
+          450,
+          600
         ],
-        "split": 1000,
-        "split_label": "Lower Door Height",
         "defaults": {
-          "width": 900,
+          "width": 300,
           "depth": 560,
           "height": 2160
         }
@@ -568,24 +598,6 @@
         "widths": [
           600
         ],
-        "defaults": {
-          "width": 600,
-          "depth": 560,
-          "height": 2160
-        }
-      },
-      {
-        "id": "tall_fridge",
-        "name": "Tall - fridge housing",
-        "code": "TF",
-        "doors": 1,
-        "shelves": 0,
-        "widths": [
-          600,
-          900
-        ],
-        "zone": 500,
-        "zone_label": "Door Height",
         "defaults": {
           "width": 600,
           "depth": 560,
@@ -647,24 +659,6 @@
           "width": 600,
           "depth": 560,
           "height": 2160
-        }
-      },
-      {
-        "id": "tall_fridge_free",
-        "name": "Tall - freestanding fridge",
-        "code": "FF",
-        "doors": 0,
-        "shelves": 0,
-        "widths": [
-          600,
-          700,
-          900
-        ],
-        "freestanding": true,
-        "defaults": {
-          "width": 600,
-          "depth": 650,
-          "height": 1850
         }
       },
       {
