@@ -62,7 +62,7 @@ module KitchenCabinetMaster
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\A(display|icon)/, 'led'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\A(display|icon)/, 'led'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
@@ -101,6 +101,49 @@ module KitchenCabinetMaster
                                points: nil, shape: 'tube', path: relative, round: diameter) # ound is its thickness
     end
 
+    # ---- numbers on a display ---------------------------------------------------------------------------
+
+    # Which segments (a top, b top right, c bottom right, d bottom, e bottom left, f top left, g middle) make each sign.
+    SEGMENTS = { '0' => 'abcdef', '1' => 'bc', '2' => 'abdeg', '3' => 'abcdg', '4' => 'bcfg', '5' => 'acdfg', '6' => 'acdefg',
+                 '7' => 'abc', '8' => 'abcdefg', '9' => 'abcdfg', 'C' => 'adef', 'P' => 'abefg', '-' => 'g' }.freeze
+
+    # Writes `text` (digits, ':', a degree sign written as '*', and C, P, -) in seven-segment figures `height` mm high, centred on
+    # (u_mid, v_mid) of a display. `plane` :x is a display on a vertical front (u runs along Y, v up Z, `depth` is the X of the
+    # glass); :z is a display lying flat (u along Y, v towards the back, so -X; `depth` is the Z of the glass). Each segment is a
+    # thin box with the role "<key>_digit_<n>" (the finish "digit": dark figures on the lit display).
+    def self.digits(key, text, plane, depth, u_mid, v_mid, height)
+      t = [height * 0.13, 1.0].max
+      w = height * 0.55
+      gap = t * 1.3
+      advance = ->(ch) { { ':' => t, '*' => t * 1.6, ' ' => w * 0.5 }.fetch(ch, w) + gap }
+      total = text.each_char.sum { |ch| advance.call(ch) } - gap
+      rects = []
+      cursor = -total / 2.0
+      text.each_char do |ch|
+        case ch
+        when ':' then [0.3, 0.7].each { |k| rects << [cursor, cursor + t, (height * k) - (t / 2.0), (height * k) + (t / 2.0)] }
+        when '*' then rects << [cursor, cursor + (t * 1.6), height - (t * 1.6), height]
+        when ' ' then nil
+        else
+          on = SEGMENTS[ch] || ''
+          shapes = { 'a' => [t, w - t, height - t, height], 'd' => [t, w - t, 0.0, t], 'g' => [t, w - t, (height - t) / 2.0, (height + t) / 2.0],
+                     'f' => [0.0, t, height / 2.0, height - (t / 2.0)], 'b' => [w - t, w, height / 2.0, height - (t / 2.0)],
+                     'e' => [0.0, t, t / 2.0, height / 2.0], 'c' => [w - t, w, t / 2.0, height / 2.0] }
+          on.each_char { |s| u0, u1, v0, v1 = shapes[s]; rects << [cursor + u0, cursor + u1, v0, v1] }
+        end
+        cursor += advance.call(ch)
+      end
+      thin = 0.3
+      rects.each_with_index.map do |(u0, u1, v0, v1), i|
+        v_lo = v_mid - (height / 2.0) + v0
+        size_v = v1 - v0
+        if plane == :x
+          box("#{key}_digit_#{i + 1}", 'Display Figure', [depth, u_mid + u0, v_lo], [thin, u1 - u0, size_v])
+        else
+          box("#{key}_digit_#{i + 1}", 'Display Figure', [v_mid + (height / 2.0) - v1, u_mid + u0, depth], [size_v, u1 - u0, thin])
+        end
+      end
+    end
     # ---- the oven -------------------------------------------------------------------------------------
 
     # `item` = { z:, height: }: where the oven stands (on its shelf) and how tall it is.
@@ -133,6 +176,7 @@ module KitchenCabinetMaster
         box("#{key}_seal", 'Oven Door Gap', [glass_x, inner_y, door_top], [glass_t + 0.2, inner_w, strip_z - door_top]),
         box("#{key}_bezel", 'Oven Display Surround', [face, mid - 46.0, knob_z - 16.0], [0.5, 92.0, 32.0]),
         box("#{key}_display", 'Oven Display', [face + 0.5, mid - 38.0, knob_z - 11.0], [0.5, 76.0, 22.0]),
+        *digits(key, '12:30', :x, face + 1.0, mid, knob_z, 13.0),
         box("#{key}_icon_1", 'Oven Function Light', [face, mid - 62.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
         box("#{key}_icon_2", 'Oven Function Light', [face, mid - 74.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
         box("#{key}_icon_3", 'Oven Function Light', [face, mid + 56.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
@@ -185,6 +229,7 @@ module KitchenCabinetMaster
         box("#{key}_panel", 'Microwave Control Glass', [glass_x, ctrl_y, z0 + inset], [glass_t, ctrl_w, h - (2 * inset)]),
         box("#{key}_bezel", 'Microwave Display Surround', [face, ctrl_y + 6.0, z0 + h - inset - 10.0 - 32.0], [0.5, ctrl_w - 12.0, 32.0]),
         box("#{key}_display", 'Microwave Display', [face + 0.5, ctrl_y + 12.0, z0 + h - inset - 14.0 - 24.0], [0.5, ctrl_w - 24.0, 24.0]),
+        *digits(key, '0:30', :x, face + 1.0, ctrl_y + (ctrl_w / 2.0), z0 + h - inset - 14.0 - 12.0, 14.0),
         cyl("#{key}_knob_1", 'Microwave Dial', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 44.0, 12.0),
         cyl("#{key}_cap_1", 'Microwave Dial Centre', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 30.0, 13.0)
       ]
@@ -242,6 +287,7 @@ module KitchenCabinetMaster
         add_bar.call(2, bar_y, split + 70.0 + 300.0, 600.0)
         parts << box("#{key}_panel", 'Fridge Display', [face, y0 + (w / 2.0) - 40.0, top - 170.0], [0.8, 80.0, 40.0])
         parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, y0 + (w / 2.0) - 28.0, top - 160.0], [0.4, 56.0, 20.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, y0 + (w / 2.0), top - 150.0, 12.0))
       elsif w < 1100.0
         half = w / 2.0
         add_door.call(1, 'Fridge Freezer Door', y0, half - (gap / 2.0), bottom, top - bottom)
@@ -252,6 +298,7 @@ module KitchenCabinetMaster
         dispenser_y = y0 + (half / 2.0)
         parts << box("#{key}_panel", 'Water Dispenser', [face, dispenser_y - 90.0, bottom + (body_h * 0.55) - 120.0], [0.8, 180.0, 330.0])
         parts << box("#{key}_led", 'Dispenser Display', [face + 0.8, dispenser_y - 40.0, bottom + (body_h * 0.55) + 120.0], [0.4, 80.0, 28.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, dispenser_y, bottom + (body_h * 0.55) + 134.0, 14.0))
         parts << box("#{key}_trim_1", 'Dispenser Recess', [face + 0.8, dispenser_y - 55.0, bottom + (body_h * 0.55) - 70.0], [0.4, 110.0, 110.0])
       else
         freezer = (body_h * 0.3).round
@@ -269,6 +316,7 @@ module KitchenCabinetMaster
         parts << cyl("#{key}_post_1b", 'Freezer Handle Post', :x, [sx + door_t, mid_y + (length / 2.0) - 18.0, split - 55.0], 12.0, 32.0)
         parts << box("#{key}_panel", 'Fridge Display', [face, mid_y - 60.0, top - 150.0], [0.8, 120.0, 40.0])
         parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, mid_y - 40.0, top - 140.0], [0.4, 80.0, 20.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.2, mid_y, top - 130.0, 12.0))
       end
       parts
     end

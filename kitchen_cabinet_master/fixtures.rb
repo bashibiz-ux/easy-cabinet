@@ -250,7 +250,8 @@ module KitchenCabinetMaster
       out << cyl("#{key}_gap_power", 'Hob Power Button Glass', :z, [front + 12.0, mid - (width * 0.3), z + 0.3], 19.0, 0.3)
       slider = [width * 0.42, 340.0].min
       out << box("#{key}_zone_slider", 'Hob Touch Slider', [front + 8.0, mid - (slider / 2.0), z], [8.0, slider, 0.3])
-      out << box("#{key}_led_1", 'Hob Display', [front + 24.0, mid - 30.0, z], [10.0, 60.0, 0.5])
+      out << box("#{key}_led_1", 'Hob Display', [front + 22.0, mid - 30.0, z], [14.0, 60.0, 0.5])
+      out.concat(AppliancePieces.digits(key, 'P9', :z, z + 0.5, mid, front + 29.0, 9.0))
       4.times do |k|
         out << box("#{key}_led_#{k + 2}", 'Hob Level Light', [front + 3.0, mid - (slider / 2.0) + 25.0 + (k * (slider - 50.0) / 3.0) - 2.0, z], [3.0, 4.0, 0.5])
       end

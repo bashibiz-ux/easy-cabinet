@@ -557,4 +557,24 @@ class KitchenCatalogTest < Minitest::Test
     end
     refute unit('base', 'base_oven', 600)[1].appliances.any? { |a| a.role.include?('_hob_') }
   end
+  def test_the_displays_of_the_appliances_show_numbers
+    _, oven = oven_unit('oven_micro')
+    %w[oven micro].each do |kind|
+      display = oven.appliances.find { |a| a.role == "appliance_#{kind}_1_display" }
+      figures = oven.appliances.select { |a| a.role =~ /appliance_#{kind}_1_digit_\d+\z/ }
+      assert_operator figures.length, :>=, 12, "#{kind}: the clock reads 12:30 / 0:30"
+      assert figures.all? { |f| f.offset[1] >= display.offset[1] - 0.01 && f.offset[1] + f.extent[1] <= display.offset[1] + display.extent[1] + 0.01 }, "#{kind}: the figures lie on the display"
+      assert figures.all? { |f| f.offset[2] >= display.offset[2] - 0.01 && f.offset[2] + f.extent[2] <= display.offset[2] + display.extent[2] + 0.01 }, "#{kind}: and inside its height"
+      assert figures.all? { |f| f.offset[0] >= display.offset[0] + display.extent[0] - 0.01 }, "#{kind}: standing on its face"
+    end
+    _, hob = unit('base', 'base_hob', 600)
+    led = hob.appliances.find { |a| a.role == 'appliance_hob_1_led_1' }
+    marks = hob.appliances.select { |a| a.role =~ /appliance_hob_1_digit_/ }
+    assert_operator marks.length, :>=, 8, 'the hob shows P9'
+    assert marks.all? { |m| m.offset[0] >= led.offset[0] - 0.01 && m.offset[0] + m.extent[0] <= led.offset[0] + led.extent[0] + 0.01 }, 'on its display'
+    _, house = unit('tall', 'tall_fridge_housing_free', 900)
+    assert house.appliances.any? { |a| a.role =~ /housed_digit_/ }, 'a freestanding fridge shows its temperature'
+    assert_equal 'Appliance - Graphite Trim', AppliancePieces.finish('appliance_oven_1_digit_4')[0]
+    assert_equal '12:30'.length, 5
+  end
 end
