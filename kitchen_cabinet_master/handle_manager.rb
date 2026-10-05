@@ -14,6 +14,7 @@ module KitchenCabinetMaster
   module HandleManager
     TOLERANCE = 1e-6
     KNOB_SEGMENTS = 48
+    TALL_PULL_OUT_MIN = 1200.0 # a drawer front at least this high is a tall pull-out
 
     # Fills in anything the panel left blank from the bundle's own defaults, so what
     # is stored on the cabinet is always the complete, effective set of values.
@@ -104,7 +105,9 @@ module KitchenCabinetMaster
       if door.hinge == 'top'
         return { 'u' => door_w / 2.0, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
       end
-      position = 'top' if door.hinge == 'center' && position == 'hand' # a drawer is not at "hand height": its handle is at its top
+      # A drawer is not at "hand height": its handle is at its top. Only a full-height pull-out (a tall unit's) is taken hold of at hand height,
+      # like the doors of the other tall units.
+      position = 'top' if door.hinge == 'center' && position == 'hand' && door_h < TALL_PULL_OUT_MIN
 
       if horizontal && settings['horizontal_place'] == 'middle' && door.hinge != 'center'
         v = case position

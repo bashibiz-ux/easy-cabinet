@@ -633,4 +633,20 @@ class KitchenCatalogTest < Minitest::Test
       assert faces_out, 'faces of the grip point out of it'
     end
   end
+  def test_the_handle_of_a_tall_pull_out_is_at_the_same_height_as_on_the_other_tall_units
+    bundle = { 'profile' => 'bar' }
+    settings = { 'length' => 160.0, 'orientation' => 'vertical', 'position' => 'auto', 'horizontal_place' => 'middle', 'category' => 'tall',
+                 'side_offset' => 40.0, 'vertical_offset' => 40.0, 'custom_x' => 0.0, 'custom_z' => 0.0 }
+    _, pull = unit('tall', 'tall_pullout', 300)
+    _, doors = unit('tall', 'tall_1door', 450)
+    out = HandleManager.placement(pull.drawers.first, settings, bundle)
+    door = HandleManager.placement(doors.doors.first, settings, bundle)
+    floor_height = ->(item, spot) { item.offset[2] + spot['v'] }
+    assert_in_delta floor_height.call(doors.doors.first, door), floor_height.call(pull.drawers.first, out), 0.01, 'the same height off the floor'
+    assert_in_delta Defaults::TALL_HANDLE_HEIGHT, floor_height.call(pull.drawers.first, out), 0.01
+    assert out['horizontal'], 'and it stays horizontal'
+    _, four = unit('tall', 'tall_4drawer', 600)
+    top = HandleManager.placement(four.drawers.last, settings, bundle)
+    assert_operator top['v'], :>, four.drawers.last.extent[2] / 2.0, 'the small drawers of a tall unit keep their handle at the top'
+  end
 end
