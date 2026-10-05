@@ -13,7 +13,7 @@ module KitchenCabinetMaster
   # orientation never creates a new definition.
   module HandleManager
     TOLERANCE = 1e-6
-    KNOB_SEGMENTS = 24
+    KNOB_SEGMENTS = 48
 
     # Fills in anything the panel left blank from the bundle's own defaults, so what
     # is stored on the cabinet is always the complete, effective set of values.
@@ -207,7 +207,7 @@ module KitchenCabinetMaster
       profile = bundle['profile']
       section = section(bundle)
       projection = projection(bundle)
-      name = format('Handle %<profile>s %<length>g x %<section>g x %<projection>g',
+      name = format('Handle %<profile>s %<length>g x %<section>g x %<projection>g smooth',
                     profile: profile, length: length, section: section, projection: projection)
 
       existing = model.definitions[name]
@@ -261,13 +261,87 @@ module KitchenCabinetMaster
     end
     private_class_method :build_bar
 
-    # A knob: a cylinder standing off the door. `length` is its diameter.
+    # A knob: a turned round knob standing off the door (a lathe shape: a small rose on the door, a slim neck, a domed head
+    # with a rounded rim), drawn with 48 sides and smooth edges. `diameter` is the head's width.
     def self.build_knob(entities, diameter, projection)
-      circle = entities.add_circle(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(1, 0, 0), (diameter / 2.0).mm, KNOB_SEGMENTS)
-      face = entities.add_face(circle)
-      face.reverse! if face.normal.x < 0
-      face.pushpull(projection.mm)
+      knob_faces(diameter, projection).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      PanelGenerator.soften(entities)
     end
     private_class_method :build_knob
+
+    # The outline of the knob as [radius, height above the door] from the middle of its base to the middle of its top.
+    # Pure maths.
+    def self.knob_profile(diameter, projection)
+      head = diameter / 2.0
+      rose = [diameter * 0.34, head].min
+      neck = diameter * 0.17
+      lift = [projection * 0.1, 2.5].min          # the rose
+      neck_top = [projection * 0.42, lift + 4.0].max
+      head_h = [projection - neck_top, 5.0].max
+      rim_z = neck_top + (head_h * 0.38)          # where the rim is widest
+      steps = 10
+      points = [[0.0, 0.0], [rose, 0.0], [rose, lift * 0.55], [rose * 0.88, lift], [neck * 1.5, lift + 0.8], [neck, lift + 2.2], [neck, neck_top - 2.5]]
+      (1..4).each { |k| points << [neck + ((neck * 0.55) * (1 - Math.cos((Math::PI / 2.0) * k / 4))), neck_top - (2.5 * (1 - (k / 4.0)))] } # a curve out of the neck
+      (1..4).each do |k| # the underside of the head: a gentle slope out to the rim
+        t = k / 4.0
+        points << [(neck * 1.55) + ((head - (neck * 1.55)) * t), neck_top + (((rim_z - neck_top) * 0.9) * (t**1.6))]
+      end
+      (1..steps).each do |k| # the rounded rim and the dome, a quarter of an ellipse
+        angle = (Math::PI / 2.0) * k / steps
+        points << [head * Math.cos(angle), rim_z + ((projection - rim_z) * Math.sin(angle))]
+      end
+      points.map { |r, z| [(r * 1000).round / 1000.0, (z * 1000).round / 1000.0] }
+    end
+
+    # The faces of the knob (arrays of [x, y, z] in mm, each facing outwards): the outline turned about the X axis (out of the
+    # door), `segments` sides round. Pure maths.
+    def self.knob_faces(diameter, projection, segments = KNOB_SEGMENTS)
+      profile = knob_profile(diameter, projection)
+      ring = lambda do |radius, height, index|
+        angle = 2.0 * Math::PI * (index % segments) / segments
+        [height, radius * Math.cos(angle), radius * Math.sin(angle)]
+      end
+      faces = []
+      profile.each_cons(2) do |(r0, x0), (r1, x1)|
+        next if r0.zero? && r1.zero?
+
+        dr = r1 - r0
+        dx = x1 - x0
+        length = Math.hypot(dr, dx)
+        next if length < 1e-9
+
+        out = [dx / length, -dr / length] # outward normal in the (radius, height) plane (the outline runs up the right-hand side)
+        segments.times do |j|
+          corners = [[r0, x0, j], [r0, x0, j + 1], [r1, x1, j + 1], [r1, x1, j]]
+          points = corners.map { |r, x, i| ring.call(r, x, i) }
+          points = points.each_with_index.reject { |p, i| i.positive? && p == points[i - 1] }.map(&:first)
+          points.pop if points.length > 1 && points.first == points.last
+          next if points.length < 3
+
+          middle = 2.0 * Math::PI * (j + 0.5) / segments
+          outward = [out[1], out[0] * Math.cos(middle), out[0] * Math.sin(middle)]
+          points.reverse! if dot(newell(points), outward).negative?
+          faces << points
+        end
+      end
+      faces
+    end
+
+    def self.newell(points)
+      normal = [0.0, 0.0, 0.0]
+      points.each_with_index do |p, i|
+        q = points[(i + 1) % points.length]
+        normal[0] += (p[1] - q[1]) * (p[2] + q[2])
+        normal[1] += (p[2] - q[2]) * (p[0] + q[0])
+        normal[2] += (p[0] - q[0]) * (p[1] + q[1])
+      end
+      normal
+    end
+    private_class_method :newell
+
+    def self.dot(a, b)
+      (a[0] * b[0]) + (a[1] * b[1]) + (a[2] * b[2])
+    end
+    private_class_method :dot
   end
 end

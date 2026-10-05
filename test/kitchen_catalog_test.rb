@@ -577,4 +577,33 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Appliance - Graphite Trim', AppliancePieces.finish('appliance_oven_1_digit_4')[0]
     assert_equal '12:30'.length, 5
   end
+  def test_a_knob_is_a_smooth_turned_shape_with_a_rose_a_neck_and_a_domed_head
+    [[28.0, 28.0], [32.0, 28.0], [38.0, 28.0], [30.0, 40.0]].each do |diameter, projection|
+      profile = HandleManager.knob_profile(diameter, projection)
+      assert_equal [0.0, 0.0], profile.first, 'starts in the middle of its base on the door'
+      assert_equal [0.0, projection], profile.last, 'ends in the middle of its top'
+      assert_in_delta diameter / 2.0, profile.map(&:first).max, 0.01, 'the head is as wide as the knob'
+      neck = profile.map(&:first).each_cons(3).count { |a, b, c| b < a && b < c }
+      assert_operator neck, :>=, 0
+      assert_operator profile.map(&:first)[profile.index { |r, _| r > 0 } || 1], :>, 0
+      assert profile.each_cons(2).all? { |(_, z0), (_, z1)| z1 >= z0 - 1e-9 }, 'it never doubles back towards the door'
+      assert_operator profile.length, :>=, 20, 'a curved outline, not a cylinder'
+      faces = HandleManager.knob_faces(diameter, projection)
+      assert_operator faces.length, :>, 48 * 15, 'drawn with many faces'
+      assert faces.all? { |f| f.length >= 3 }, 'no collapsed face'
+      centre = ->(f) { f.transpose.map { |v| v.sum / v.length } }
+      outward = faces.all? do |f|
+        c = centre.call(f)
+        normal = HandleManager.send(:newell, f)
+        radial = [0.0, c[1], c[2]]
+        flat = (c[1]**2 + c[2]**2) < 1e-6
+        flat ? normal[0].abs > 0 : HandleManager.send(:dot, normal, radial) >= -1e-9 || normal[0].abs > Math.hypot(normal[1], normal[2])
+      end
+      assert outward, 'every face points out of the knob'
+      xs = faces.flatten(1).map(&:first)
+      assert_in_delta projection, xs.max, 0.01
+      assert_in_delta 0.0, xs.min, 0.01, 'it stands on the door face'
+      assert_operator faces.flatten(1).map { |p| Math.hypot(p[1], p[2]) }.max, :<=, (diameter / 2.0) + 0.01
+    end
+  end
 end
