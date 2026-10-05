@@ -298,31 +298,9 @@
       "metalness": 0.0
     },
     {
-      "name": "Mint",
-      "color": "#C9E2D0",
-      "category": "Plain colours - Blues and greens",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
       "name": "Teal",
       "color": "#2F6F73",
       "category": "Plain colours - Blues and greens",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Mustard",
-      "color": "#C9A227",
-      "category": "Plain colours - Warm colours",
       "kinds": [
         "panel",
         "toe_kick"
@@ -375,17 +353,6 @@
       "metalness": 0.0
     },
     {
-      "name": "Coral",
-      "color": "#E0705A",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
       "name": "Taupe",
       "color": "#9B8B7E",
       "category": "Plain colours - Warm colours",
@@ -399,28 +366,6 @@
     {
       "name": "Mocha",
       "color": "#7A6252",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Red",
-      "color": "#B3262D",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Yellow",
-      "color": "#E8C93A",
       "category": "Plain colours - Warm colours",
       "kinds": [
         "panel",
@@ -1074,17 +1019,6 @@
       "metalness": 1.0
     },
     {
-      "name": "Gold",
-      "color": "#C9A24A",
-      "category": "Metal",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.35,
-      "metalness": 1.0
-    },
-    {
       "name": "PVC Black",
       "color": "#141414",
       "category": "PVC and edging",
@@ -1172,17 +1106,6 @@
     {
       "name": "VR Gloss Green",
       "color": "#2F5A44",
-      "category": "V-Ray ready - Gloss and satin",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.08,
-      "metalness": 0.0
-    },
-    {
-      "name": "VR Gloss Red",
-      "color": "#A8232B",
       "category": "V-Ray ready - Gloss and satin",
       "kinds": [
         "panel",
@@ -1297,42 +1220,6 @@
       ],
       "roughness": 0.12,
       "metalness": 1.0
-    },
-    {
-      "name": "VR Clear Glass",
-      "color": "#DCEBF0",
-      "category": "V-Ray ready - Metal and glass",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "alpha": 0.25,
-      "roughness": 0.05,
-      "metalness": 0.0
-    },
-    {
-      "name": "VR Frosted Glass",
-      "color": "#E6EEF0",
-      "category": "V-Ray ready - Metal and glass",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "alpha": 0.55,
-      "roughness": 0.05,
-      "metalness": 0.0
-    },
-    {
-      "name": "VR Smoked Glass",
-      "color": "#3A4247",
-      "category": "V-Ray ready - Metal and glass",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "alpha": 0.45,
-      "roughness": 0.05,
-      "metalness": 0.0
     },
     {
       "name": "EGGER H1145 Bardolino Oak",

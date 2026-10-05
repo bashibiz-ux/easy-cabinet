@@ -606,4 +606,31 @@ class KitchenCatalogTest < Minitest::Test
       assert_operator faces.flatten(1).map { |p| Math.hypot(p[1], p[2]) }.max, :<=, (diameter / 2.0) + 0.01
     end
   end
+  def test_a_bar_handle_is_a_smooth_round_grip_with_domed_ends_on_two_round_posts
+    [[96.0, 10.0, 30.0], [160.0, 10.0, 30.0], [320.0, 12.0, 35.0], [128.0, 10.0, 10.0]].each do |length, section, projection|
+      faces = HandleManager.bar_faces(length, section, projection)
+      assert_operator faces.length, :>, 48 * 8, 'many faces'
+      assert faces.all? { |f| f.length >= 3 }
+      points = faces.flatten(1)
+      assert_in_delta projection, points.map(&:first).max, 0.01, 'the grip is as far from the door as the projection says'
+      assert_in_delta length / 2.0, points.map { |p| p[2] }.max, 0.01
+      assert_in_delta(-length / 2.0, points.map { |p| p[2] }.min, 0.01)
+      d = [section, projection].min
+      assert_operator points.map { |p| p[1].abs }.max, :<=, (d * 0.6) + 0.01, 'no wider than the grip and its roses'
+      posts = projection > d
+      assert_operator points.map(&:first).min, :<, 0.01, 'posts reach the door, or the grip rests on it'
+      assert_operator(faces.length, :>, 48 * 30, 'with posts') if posts
+      faces_out = faces.all? do |f|
+        normal = HandleManager.send(:newell, f)
+        c = f.transpose.map { |v| v.sum / v.length }
+        grip_axis = [projection - (d / 2.0), 0.0, c[2]]
+        radial = [c[0] - grip_axis[0], c[1], 0.0]
+        near_grip = (radial[0]**2 + radial[1]**2) <= ((d / 2.0) + 0.01)**2 && c[0] > projection - d - 0.01
+        next true unless near_grip && c[2].abs < (length / 2.0) - (d * 1.3) # the straight part of the grip, clear of the posts
+
+        HandleManager.send(:dot, normal, radial) > 0
+      end
+      assert faces_out, 'faces of the grip point out of it'
+    end
+  end
 end

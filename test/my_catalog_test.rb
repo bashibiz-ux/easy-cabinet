@@ -102,18 +102,18 @@ class MyCatalogTest < Minitest::Test
     assert categories.count { |c| c.start_with?('Plain colours') } >= 3
     assert categories.count { |c| c.start_with?('V-Ray ready') } >= 2
     %w[Shutter\ -\ Light\ Beige Carcass\ -\ Light\ Gray White].each { |name| assert list.any? { |m| m['name'] == name }, name }
-    glass = list.find { |m| m['name'] == 'VR Clear Glass' }
-    assert glass['alpha'] < 1.0, 'glass is see-through'
+    assert list.none? { |m| m['name'] =~ /Glass|\A(Gold|Red|Yellow|Coral|Mustard|Mint)\z|VR Gloss Red/ }, 'no loud colours, no glass, no gold'
   end
 
   def test_the_options_group_by_category_with_the_models_own_materials_first
-    model = FakeModel.new([FakeMaterial.new('My Special', FakeColor.new(1, 2, 3)), FakeMaterial.new('White', FakeColor.new(255, 255, 255))])
+    model = FakeModel.new([FakeMaterial.new('My Special', FakeColor.new(1, 2, 3)), FakeMaterial.new('White', FakeColor.new(255, 255, 255)), FakeMaterial.new('Appliance - Inox', FakeColor.new(200, 200, 200)), FakeMaterial.new('Cabinet Name Label', FakeColor.new(0, 0, 0))])
     panel = MaterialManager.options(model)['panel']
     assert_equal 'In this model', panel.first['group']
     assert_equal 'My Special', panel.first['id']
     white = panel.find { |m| m['id'] == 'White' }
     assert_equal 'Plain colours - Whites', white['group'], 'a preset that is also in the model keeps its category'
     assert_equal 1, panel.count { |m| m['id'] == 'White' }
+    refute panel.any? { |m| m['id'] =~ /\AAppliance - |Cabinet Name Label/ }, 'the extension''s own materials are not offered'
     walnut = panel.find { |m| m['id'] == 'Walnut' }
     assert_match(/Wood/, walnut['group'])
     toe = MaterialManager.options(model)['toe_kick']

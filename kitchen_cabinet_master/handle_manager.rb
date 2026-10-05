@@ -242,22 +242,11 @@ module KitchenCabinetMaster
       lengths.include?(bundle['default_length']) ? bundle['default_length'].to_f : lengths.first.to_f
     end
 
-    # A bar: a grip along Z held off the door by two posts. Built from shared box
-    # definitions, so no boolean geometry is needed.
-    def self.build_bar(model, entities, length, section, projection)
-      grip = [section, projection].min
-      post = projection - grip
-
-      parts = [['Grip', [grip, section, length], [projection - grip, -section / 2.0, -length / 2.0]]]
-      if post.positive?
-        parts << ['Post 1', [post, section, section], [0, -section / 2.0, -length / 2.0]]
-        parts << ['Post 2', [post, section, section], [0, -section / 2.0, (length / 2.0) - section]]
-      end
-
-      parts.each do |name, extent, offset|
-        instance = entities.add_instance(PanelGenerator.definition(model, extent), Geom::Transformation.new(offset.map(&:mm)))
-        instance.name = name
-      end
+    # A bar: a round grip with domed ends along Z, held off the door by two round posts on small roses (see bar_faces), drawn
+    # with 48 sides and smooth edges.
+    def self.build_bar(_model, entities, length, section, projection)
+      bar_faces(length, section, projection).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      PanelGenerator.soften(entities)
     end
     private_class_method :build_bar
 
@@ -296,32 +285,67 @@ module KitchenCabinetMaster
     # The faces of the knob (arrays of [x, y, z] in mm, each facing outwards): the outline turned about the X axis (out of the
     # door), `segments` sides round. Pure maths.
     def self.knob_faces(diameter, projection, segments = KNOB_SEGMENTS)
-      profile = knob_profile(diameter, projection)
-      ring = lambda do |radius, height, index|
-        angle = 2.0 * Math::PI * (index % segments) / segments
-        [height, radius * Math.cos(angle), radius * Math.sin(angle)]
-      end
+      lathe_faces(knob_profile(diameter, projection), segments, ->(axial, a, b) { [axial, a, b] })
+    end
+
+    # A shape turned on a lathe: the outline [[radius, along the axis], ...] (running up the right-hand side of the shape, from
+    # one end of the axis to the other) turned `segments` sides round. `place` takes (along the axis, a, b) in the shape's own
+    # frame (a and b across the axis) to a point [x, y, z] in mm. Returns the faces, each facing outwards. Pure maths.
+    def self.lathe_faces(profile, segments, place)
       faces = []
       profile.each_cons(2) do |(r0, x0), (r1, x1)|
-        next if r0.zero? && r1.zero?
-
         dr = r1 - r0
         dx = x1 - x0
         length = Math.hypot(dr, dx)
-        next if length < 1e-9
+        next if length < 1e-9 || (r0.zero? && r1.zero?)
 
-        out = [dx / length, -dr / length] # outward normal in the (radius, height) plane (the outline runs up the right-hand side)
+        radial = dx / length # the outward normal in the (radius, along the axis) plane
+        axial = -dr / length
         segments.times do |j|
           corners = [[r0, x0, j], [r0, x0, j + 1], [r1, x1, j + 1], [r1, x1, j]]
-          points = corners.map { |r, x, i| ring.call(r, x, i) }
+          points = corners.map do |r, x, i|
+            angle = 2.0 * Math::PI * (i % segments) / segments
+            place.call(x, r * Math.cos(angle), r * Math.sin(angle))
+          end
           points = points.each_with_index.reject { |p, i| i.positive? && p == points[i - 1] }.map(&:first)
           points.pop if points.length > 1 && points.first == points.last
           next if points.length < 3
 
           middle = 2.0 * Math::PI * (j + 0.5) / segments
-          outward = [out[1], out[0] * Math.cos(middle), out[0] * Math.sin(middle)]
+          rm = (r0 + r1) / 2.0
+          xm = (x0 + x1) / 2.0
+          from = place.call(xm, rm * Math.cos(middle), rm * Math.sin(middle))
+          toward = place.call(xm + axial, (rm + radial) * Math.cos(middle), (rm + radial) * Math.sin(middle))
+          outward = [toward[0] - from[0], toward[1] - from[1], toward[2] - from[2]]
           points.reverse! if dot(newell(points), outward).negative?
           faces << points
+        end
+      end
+      faces
+    end
+
+    # A bar handle: a round grip with domed ends held off the door by two round posts, each on a small rose. Faces in mm in
+    # the handle's frame (X out of the door, Y across, Z along the grip, the origin in the middle of the back). Pure maths.
+    def self.bar_faces(length, section, projection, segments = KNOB_SEGMENTS)
+      d = [section, projection].min
+      radius = d / 2.0
+      cap = [radius, length / 2.0].min
+      centre_x = projection - radius # the grip's axis
+      steps = 8
+      half = length / 2.0
+      grip = [[0.0, -half]]
+      (1..steps).each { |k| a = (Math::PI / 2.0) * k / steps; grip << [radius * Math.sin(a), -half + cap - (cap * Math.cos(a))] }
+      grip << [radius, half - cap] unless cap * 2.0 >= length # the straight part between the two domes
+      (1..steps).each { |k| a = (Math::PI / 2.0) * k / steps; grip << [radius * Math.cos(a), half - cap + (cap * Math.sin(a))] }
+      faces = lathe_faces(grip, segments, ->(axial, a, b) { [centre_x + a, b, axial] })
+      post_length = centre_x
+      if projection > d + 0.5 # a grip that stands off the door has posts
+        rp = radius * 0.62
+        rose = [radius * 0.98, rp * 1.1].max
+        post = [[0.0, 0.0], [rose, 0.0], [rose, 0.7], [rose * 0.9, 1.4], [rp * 1.4, 2.0], [rp, 3.2], [rp, [post_length, 3.3].max], [0.0, [post_length, 3.3].max]]
+        [-1.0, 1.0].each do |side|
+          z = side * (half - cap)
+          faces.concat(lathe_faces(post, segments, ->(axial, a, b) { [axial, a, z + b] }))
         end
       end
       faces

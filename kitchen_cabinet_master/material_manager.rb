@@ -13,6 +13,7 @@ module KitchenCabinetMaster
     FALLBACK_COLOR = [200, 200, 200].freeze
     IN_MODEL = 'In this model'
     MINE = 'My materials'
+    INTERNAL = /\A(Appliance - |Cabinet Name Label)/
     TEXTURE_DIR = File.join(DATA_DIR, 'textures')
     DEFAULT_TEXTURE_SIZE = 600 # a picture is this many mm wide on the board
 
@@ -20,7 +21,8 @@ module KitchenCabinetMaster
     #   { 'panel' => [...], 'toe_kick' => [...] }
     # Each entry: { 'id' => name, 'name' => label, 'color' => '#RRGGBB' or nil }
     def self.options(model)
-      existing = model.materials.map { |m| entry(m.name, hex(m.color), IN_MODEL) }
+      # (The materials this extension makes for its own parts, the appliances and the name label, are not offered for doors.)
+      existing = model.materials.reject { |m| INTERNAL.match?(m.name.to_s) }.map { |m| entry(m.name, hex(m.color), IN_MODEL) }
 
       panel = merge(existing, presets_for('panel'))
       toe_kick = merge(existing, presets_for('toe_kick'))
