@@ -243,28 +243,6 @@
       "metalness": 0.0
     },
     {
-      "name": "Sky Blue",
-      "color": "#A9C6DA",
-      "category": "Plain colours - Blues and greens",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Duck Egg",
-      "color": "#BFD6D2",
-      "category": "Plain colours - Blues and greens",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
       "name": "Sage Green",
       "color": "#A3B09A",
       "category": "Plain colours - Blues and greens",
@@ -298,64 +276,9 @@
       "metalness": 0.0
     },
     {
-      "name": "Teal",
-      "color": "#2F6F73",
-      "category": "Plain colours - Blues and greens",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Terracotta",
-      "color": "#B9623F",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Burgundy",
-      "color": "#5B1F2A",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Dusty Pink",
-      "color": "#D9B4B0",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
-      "name": "Blush",
-      "color": "#EBD2CC",
-      "category": "Plain colours - Warm colours",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.6,
-      "metalness": 0.0
-    },
-    {
       "name": "Taupe",
       "color": "#9B8B7E",
-      "category": "Plain colours - Warm colours",
+      "category": "Plain colours - Taupes and browns",
       "kinds": [
         "panel",
         "toe_kick"
@@ -366,7 +289,7 @@
     {
       "name": "Mocha",
       "color": "#7A6252",
-      "category": "Plain colours - Warm colours",
+      "category": "Plain colours - Taupes and browns",
       "kinds": [
         "panel",
         "toe_kick"
@@ -633,19 +556,6 @@
       "size": 600
     },
     {
-      "name": "Rosewood",
-      "color": "#5E2E26",
-      "category": "Wood - Walnut and dark woods",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.55,
-      "metalness": 0.0,
-      "texture": "rosewood.png",
-      "size": 600
-    },
-    {
       "name": "Chestnut",
       "color": "#7A4E2D",
       "category": "Wood - Walnut and dark woods",
@@ -682,19 +592,6 @@
       "roughness": 0.55,
       "metalness": 0.0,
       "texture": "teak.png",
-      "size": 600
-    },
-    {
-      "name": "Zebrano",
-      "color": "#B58A55",
-      "category": "Wood - Walnut and dark woods",
-      "kinds": [
-        "panel",
-        "toe_kick"
-      ],
-      "roughness": 0.55,
-      "metalness": 0.0,
-      "texture": "zebrano.png",
       "size": 600
     },
     {
@@ -1150,7 +1047,7 @@
     {
       "name": "VR Chrome",
       "color": "#E4E6E8",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"
@@ -1161,7 +1058,7 @@
     {
       "name": "VR Brushed Steel",
       "color": "#AEB2B6",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"
@@ -1174,7 +1071,7 @@
     {
       "name": "VR Brass",
       "color": "#C2A24E",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"
@@ -1187,7 +1084,7 @@
     {
       "name": "VR Copper",
       "color": "#B8714C",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"
@@ -1200,7 +1097,7 @@
     {
       "name": "VR Gunmetal",
       "color": "#50555B",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"
@@ -1213,7 +1110,7 @@
     {
       "name": "VR Black Metal",
       "color": "#202022",
-      "category": "V-Ray ready - Metal and glass",
+      "category": "V-Ray ready - Metal",
       "kinds": [
         "panel",
         "toe_kick"

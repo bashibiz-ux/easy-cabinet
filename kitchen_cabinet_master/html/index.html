@@ -164,11 +164,11 @@
           <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
         </label>
         <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; end panels and toe kicks do too unless you pick their own.</p>
-        <!-- Your own materials, in categories of your own: a new colour, or a material of the model (its picture is copied). -->
+        <!-- Your own materials, in categories of your own: a material of the model (its colour and picture are copied). -->
         <div class="mine">
           <h3 class="vis-title">My materials</h3>
           <label class="field">
-            <span class="label">Start from</span>
+            <span class="label">Material of the model</span>
             <div class="input"><select id="myFrom"></select></div>
           </label>
           <div class="grid-2">
@@ -181,12 +181,8 @@
               <div class="input"><input id="myCat" type="text" list="myCats" autocomplete="off" maxlength="40" placeholder="General"><datalist id="myCats"></datalist></div>
             </label>
           </div>
-          <label class="field">
-            <span class="label">Colour (for a new colour)</span>
-            <div class="input"><input id="myColor" type="color" value="#c8a46e"></div>
-          </label>
           <div class="btn-row">
-            <button class="btn" type="button" data-action="add_material" title="Keep this colour, or this material of the model, in your own category">Add to My Materials</button>
+            <button class="btn" type="button" data-action="add_material" title="Keep this material of the model in your own category">Add to My Materials</button>
           </div>
           <label class="field">
             <span class="label">Remove one of mine</span>

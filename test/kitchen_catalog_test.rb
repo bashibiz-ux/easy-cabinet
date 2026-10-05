@@ -413,15 +413,15 @@ class KitchenCatalogTest < Minitest::Test
   end
 
   def test_a_base_unit_with_a_built_in_oven_has_a_drawer_below_and_no_door
-    assert_equal [600, 900], CatalogManager.cabinet(CATALOG, 'base', 'base_oven')['widths']
+    assert_equal [600, 900], CatalogManager.cabinet(CATALOG, 'base', 'base_oven_hob')['widths']
     [600, 900].each do |width|
-      result, layout = unit('base', 'base_oven', width)
+      result, layout = unit('base', 'base_oven_hob', width)
       assert_empty result.errors.map { |e| e['message'] }, width.to_s
       assert_empty layout.doors
       assert_equal 1, layout.drawers.length
       assert_equal 1, layout.appliances.count { |a| a.role.end_with?('_body') }, 'one oven'
-      front = layout.appliances.find { |a| a.role.end_with?('frame') }
-      assert layout.appliances.all? { |a| a.offset[2] + a.extent[2] <= 780.0 - 40.0 }, 'it fits under the panel over it'
+      front = layout.appliances.find { |a| a.role.end_with?('oven_1_frame') }
+      assert layout.appliances.select { |a| a.role.start_with?('appliance_oven_') }.all? { |a| a.offset[2] + a.extent[2] <= 780.0 - 40.0 }, 'it fits under the panel over it'
       assert_in_delta width - 8.0, front.extent[1], 0.01, "the oven is as wide as the unit (#{width})"
       top = layout.panels.find { |p| p.role == 'top_front' }
       assert top.front, 'the panel over the oven is the door colour'
@@ -429,14 +429,14 @@ class KitchenCatalogTest < Minitest::Test
       assert_in_delta 780.0 - Defaults.params['door_reveal'], top.offset[2] + top.extent[2], 0.01
     end
     # the drawer and the panel over the oven can be adjusted
-    _, deeper = unit('base', 'base_oven', 600, 'bottom_zone' => 160, 'top_front' => 20)
+    _, deeper = unit('base', 'base_oven_hob', 600, 'bottom_zone' => 160, 'top_front' => 20)
     assert_in_delta 160.0 - (2 * Defaults.params['door_reveal']), deeper.drawers.first.extent[2], 0.01, 'the drawer height'
     assert_in_delta 20.0 - Defaults.params['door_reveal'], deeper.panels.find { |p| p.role == 'top_front' }.extent[2], 0.01, 'the top panel height'
-    too_big, = unit('base', 'base_oven', 600, 'bottom_zone' => 200)
+    too_big, = unit('base', 'base_oven_hob', 600, 'bottom_zone' => 200)
     assert_includes too_big.errors.map { |e| e['field'] }, 'oven_height', 'a taller drawer pushes the oven into the panel over it'
-    result, = unit('base', 'base_oven', 600, 'appliance_set' => 'double_oven')
+    result, = unit('base', 'base_oven_hob', 600, 'appliance_set' => 'double_oven')
     assert_includes result.errors.map { |e| e['field'] }, 'oven_height', 'two ovens do not fit in a base unit'
-    assert_equal ['oven'], CatalogManager.cabinet(CATALOG, 'base', 'base_oven')['appliance_sets']
+    assert_equal ['oven'], CatalogManager.cabinet(CATALOG, 'base', 'base_oven_hob')['appliance_sets']
   end
 
   def test_tall_handles_have_their_own_tick_that_starts_on
@@ -488,6 +488,7 @@ class KitchenCatalogTest < Minitest::Test
       _, layout = unit(category, entry['id'], width)
       (layout.doors + layout.drawers).each do |door|
         next unless %w[top center].include?(door.hinge)
+        next if entry['pullout'] # a pull-out has a vertical handle (see below)
 
         spot = HandleManager.placement(door, settings.merge('category' => category), bundle)
         assert spot['horizontal'], "#{entry['id']} #{width} #{door.role}: a lift-up door or a drawer has a horizontal handle"
@@ -549,7 +550,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_built_in_oven_cabinet_comes_with_a_hob_too
     ids = CatalogManager.cabinets(CATALOG, 'base').map { |e| e['id'] }
-    assert_includes ids, 'base_oven'
+    refute_includes ids, 'base_oven', 'the plain built-in oven cabinet is no longer in the list'
     assert_includes ids, 'base_oven_hob'
     [600, 900].each do |width|
       result, layout = unit('base', 'base_oven_hob', width)
@@ -560,7 +561,6 @@ class KitchenCatalogTest < Minitest::Test
       cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 1))
       assert_equal 1, cut.length, 'an opening for the hob in the worktop'
     end
-    refute unit('base', 'base_oven', 600)[1].appliances.any? { |a| a.role.include?('_hob_') }
   end
   def test_the_displays_of_the_appliances_show_numbers
     _, oven = oven_unit('oven_micro')
@@ -644,12 +644,12 @@ class KitchenCatalogTest < Minitest::Test
                  'side_offset' => 40.0, 'vertical_offset' => 40.0, 'custom_x' => 0.0, 'custom_z' => 0.0 }
     _, pull = unit('tall', 'tall_pullout', 300)
     _, doors = unit('tall', 'tall_1door', 450)
-    out = HandleManager.placement(pull.drawers.first, settings, bundle)
+    out = HandleManager.placement(pull.drawers.first, settings.merge('pullout' => true), bundle)
     door = HandleManager.placement(doors.doors.first, settings, bundle)
     floor_height = ->(item, spot) { item.offset[2] + spot['v'] }
     assert_in_delta floor_height.call(doors.doors.first, door), floor_height.call(pull.drawers.first, out), 0.01, 'the same height off the floor'
     assert_in_delta Defaults::TALL_HANDLE_HEIGHT, floor_height.call(pull.drawers.first, out), 0.01
-    assert out['horizontal'], 'and it stays horizontal'
+    assert_equal false, out['horizontal'], 'and it is vertical'
     _, four = unit('tall', 'tall_4drawer', 600)
     top = HandleManager.placement(four.drawers.last, settings, bundle)
     assert_operator top['v'], :>, four.drawers.last.extent[2] / 2.0, 'the small drawers of a tall unit keep their handle at the top'

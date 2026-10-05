@@ -48,7 +48,8 @@ module KitchenCabinetMaster
         'side_offset' => params['handle_side_offset'].to_f,
         'vertical_offset' => params['handle_vertical_offset'].to_f,
         'custom_x' => params['handle_custom_x'].to_f,
-        'custom_z' => params['handle_custom_z'].to_f
+        'custom_z' => params['handle_custom_z'].to_f,
+        'pullout' => params['pullout'] == true # a pull-out unit: its handle is always vertical
       }
     end
 
@@ -86,6 +87,8 @@ module KitchenCabinetMaster
       horizontal = settings['orientation'] == 'horizontal' && bundle['profile'] == 'bar'
       # A lift-up door and a drawer front always take a horizontal handle, whatever orientation is chosen.
       horizontal = true if %w[top center].include?(door.hinge) && bundle['profile'] == 'bar'
+      pull_out = settings['pullout'] == true && door.hinge == 'center'
+      horizontal = false if pull_out # ... except on a pull-out unit, whose handle is always vertical
 
       # A knob is round (its length is the diameter); a bar is `length` long and `section` wide.
       half_along = length / 2.0
@@ -142,6 +145,7 @@ module KitchenCabinetMaster
       v = grip_height(door, door_h, half_v, vertical) || v
       if door.hinge == 'center' # a drawer front: a vertical handle is centred on it, and no handle runs off it
         v = door_h / 2.0 unless horizontal
+        v = hand_height(door, door_h, half_v, vertical) if pull_out && door_h >= TALL_PULL_OUT_MIN # a tall pull-out: at hand height like the other tall units
         v = door_h >= 2 * half_v ? v.clamp(half_v, door_h - half_v) : door_h / 2.0
       end
       { 'u' => u, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }

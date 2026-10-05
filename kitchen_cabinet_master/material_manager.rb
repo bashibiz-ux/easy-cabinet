@@ -236,28 +236,25 @@ module KitchenCabinetMaster
 
     # A material of the model (its colour and picture are copied) or a new colour becomes one of yours.
     def self.add_from_panel(model, data)
-      entry = { 'name' => data['name'], 'category' => data['category'], 'color' => data['color'], 'kinds' => %w[panel toe_kick] }
       source = data['from'].to_s.strip
-      unless source.empty?
-        material = model.materials[source]
-        return "The model has no material called \"#{source}\"." unless material
+      return 'Choose the material of the model that you want to keep.' if source.empty?
 
-        entry['color'] = hex(material.color)
-        entry['name'] = source if entry['name'].to_s.strip.empty?
-        entry['alpha'] = material.alpha.round(2) if material.alpha < 1.0
-        if material.texture && custom_textures_dir
-          file = "#{CatalogManager.slug(entry['name'])}.png"
-          FileUtils.mkdir_p(custom_textures_dir)
-          material.texture.write(File.join(custom_textures_dir, file))
-          entry['texture'] = file
-          entry['size'] = material.texture.width.to_mm.round
-        end
+      material = model.materials[source]
+      return "The model has no material called \"#{source}\"." unless material
+
+      name = data['name'].to_s.strip.empty? ? source : data['name']
+      entry = { 'name' => name, 'category' => data['category'], 'color' => hex(material.color), 'kinds' => %w[panel toe_kick],
+                'roughness' => 0.5, 'metalness' => 0.0 }
+      entry['alpha'] = material.alpha.round(2) if material.alpha < 1.0
+      if material.texture && custom_textures_dir
+        file = "#{CatalogManager.slug(name)}.png"
+        FileUtils.mkdir_p(custom_textures_dir)
+        material.texture.write(File.join(custom_textures_dir, file))
+        entry['texture'] = file
+        entry['size'] = material.texture.width.to_mm.round
       end
-      entry['roughness'] = 0.5
-      entry['metalness'] = 0.0
       save_custom(entry)
-    end
-    private_class_method :add_from_panel
+    end    private_class_method :add_from_panel
 
     def self.presets_for(kind)
       presets

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.51.2';
+  const APP_VERSION = '0.52.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -506,7 +506,7 @@
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
-    add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value, color: $('myColor').value }),
+    add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value }),
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value })
   };
@@ -767,7 +767,7 @@
   // Your own materials: the lists in the My materials block (a new colour or a material of the model to start from; the ones to remove).
   function fillMine(materials, panel) {
     const mine = list(materials && materials.mine);
-    fillSelect($('myFrom'), [{ id: '', name: 'A new colour (pick it below)' }, ...panel.filter((m) => m.group === 'In this model')]);
+    fillSelect($('myFrom'), panel.filter((m) => m.group === 'In this model'), { placeholder: 'Choose a material of the model...' });
     fillSelect($('myRemove'), mine.map((m) => ({ id: m.id, name: `${m.name} (${m.category})` })), { placeholder: mine.length ? 'Choose...' : 'None yet' });
     const cats = $('myCats');
     cats.innerHTML = '';
@@ -1765,7 +1765,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['myFrom', 'myName', 'myCat', 'myColor', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2165,11 +2165,9 @@
     $('lowerMode').addEventListener('change', syncZoneField);
     $('doorSplit').addEventListener('change', syncZoneField);
     $('drawerCount').addEventListener('input', syncZoneField);
-    $('myFrom').addEventListener('change', () => { // starting from a material of the model: its name and colour are offered
+    $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;
       $('myName').value = id;
-      const colour = state.colors && state.colors[id];
-      if (colour && /^#[0-9a-f]{6}$/i.test(colour)) $('myColor').value = colour;
     });
     $('sinkTray').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {

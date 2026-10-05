@@ -284,7 +284,7 @@ h1 {
 .input select optgroup[label="Plain colours - Whites"] { background: #4b78b5; }
 .input select optgroup[label="Plain colours - Greys and blacks"] { background: #5b6b7a; }
 .input select optgroup[label="Plain colours - Blues and greens"] { background: #2f8f5b; }
-.input select optgroup[label="Plain colours - Warm colours"] { background: #c4552d; }
+.input select optgroup[label="Plain colours - Taupes and browns"] { background: #c4552d; }
 .input select optgroup[label="Wood - Oak and light woods"] { background: #b9822a; }
 .input select optgroup[label="Wood - Walnut and dark woods"] { background: #8a4f2a; }
 .input select optgroup[label="Wood - Grey and painted woods"] { background: #7c6a60; }
@@ -294,7 +294,7 @@ h1 {
 .input select optgroup[label="Metal"] { background: #5f7d95; }
 .input select optgroup[label="PVC and edging"] { background: #6f7b86; }
 .input select optgroup[label="V-Ray ready - Gloss and satin"] { background: #cc2a6f; }
-.input select optgroup[label="V-Ray ready - Metal and glass"] { background: #0e8fa3; }
+.input select optgroup[label="V-Ray ready - Metal"] { background: #0e8fa3; }
 
 .input em {
   margin-left: 6px;

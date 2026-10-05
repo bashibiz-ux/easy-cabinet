@@ -331,31 +331,6 @@
         }
       },
       {
-        "id": "base_oven",
-        "name": "Base - built-in oven",
-        "code": "BOV",
-        "doors": 0,
-        "drawers": 1,
-        "shelves": 0,
-        "widths": [
-          600,
-          900
-        ],
-        "zone_bottom": 140,
-        "bottom_label": "Drawer Height",
-        "top_front": 40,
-        "top_front_label": "Top Panel Height",
-        "appliances": "oven",
-        "appliance_sets": [
-          "oven"
-        ],
-        "defaults": {
-          "width": 600,
-          "depth": 560,
-          "height": 780
-        }
-      },
-      {
         "id": "base_oven_hob",
         "name": "Base - built-in oven with hob",
         "code": "BOH",
