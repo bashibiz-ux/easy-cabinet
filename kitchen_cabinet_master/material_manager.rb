@@ -254,7 +254,8 @@ module KitchenCabinetMaster
         entry['size'] = material.texture.width.to_mm.round
       end
       save_custom(entry)
-    end    private_class_method :add_from_panel
+    end
+    private_class_method :add_from_panel
 
     def self.presets_for(kind)
       presets
