@@ -268,6 +268,7 @@
           150,
           200
         ],
+        "pullout": true,
         "defaults": {
           "width": 200,
           "depth": 560,
@@ -582,6 +583,7 @@
           450,
           600
         ],
+        "pullout": true,
         "defaults": {
           "width": 300,
           "depth": 560,

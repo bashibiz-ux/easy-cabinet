@@ -684,6 +684,7 @@ module KitchenCabinetMaster
     # at negative X). { drawer role => [Panel, ...] }. A drawer too small for a box gets none.
     def self.drawer_boxes(params, dims, drawers)
       boxes = {}
+      return boxes if params['pullout'] == true # a pull-out unit is just its front: nothing inside it
       t = dims.thick # the boards are as thick as the carcass panels (Panel Thickness in the Presets)
       slide = Defaults::DRAWER_SLIDE_GAP
       reveal = params['door_reveal'].to_f

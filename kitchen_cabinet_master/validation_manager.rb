@@ -110,6 +110,7 @@ module KitchenCabinetMaster
       out['fridge_lift'] = raw.key?('fridge_lift') ? truthy?(raw['fridge_lift']) : true
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
+      out['pullout'] = truthy?(raw['pullout'])
       lift = to_float(raw['housing_lift'])
       out['housing_lift'] = lift if lift && lift >= 0
       mode = raw['lower_mode'].to_s

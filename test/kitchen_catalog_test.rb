@@ -25,7 +25,7 @@ class KitchenCatalogTest < Minitest::Test
       'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s,
       'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true, 'hood' => entry['hood'] == true,
       'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s,
-      'free_housing' => entry['free_housing'] == true, 'housing_lift' => entry['lift'] }
+      'free_housing' => entry['free_housing'] == true, 'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true }
   end
 
   def each_entry
@@ -539,7 +539,12 @@ class KitchenCatalogTest < Minitest::Test
     assert_empty result.errors.map { |e| e['message'] }
     assert_equal 1, layout.drawers.length
     assert_in_delta 2160.0 - (2 * Defaults.params['door_reveal']), layout.drawers.first.extent[2], 0.01, 'one pull-out front over the full height'
-    assert_equal 1, layout.drawer_boxes.length, 'with its box'
+    assert_empty layout.drawer_boxes, 'and nothing inside it'
+    _, base = unit('base', 'base_pullout', 200)
+    assert_equal 1, base.drawers.length
+    assert_empty base.drawer_boxes, 'the narrow base pull-out has no inner parts either'
+    _, ordinary = unit('base', 'base_2drawer', 600)
+    assert_equal 2, ordinary.drawer_boxes.length, 'ordinary drawers keep their boxes'
   end
 
   def test_the_built_in_oven_cabinet_comes_with_a_hob_too
