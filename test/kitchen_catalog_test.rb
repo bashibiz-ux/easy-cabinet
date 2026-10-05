@@ -247,21 +247,14 @@ class KitchenCatalogTest < Minitest::Test
     assert no_lift.panels.find { |p| p.role == 'fridge_shelf' }, 'and a shelf stands over the fridge'
   end
 
-  def test_the_fridge_is_drawn_behind_the_doors
-    result, layout = unit('tall', 'tall_fridge_builtin_2door')
-    assert_empty result.errors
-    roles = layout.appliances.map(&:role)
-    assert_includes roles, 'appliance_fridge_1_body'
-    assert_equal %w[appliance_fridge_1_plate_1 appliance_fridge_1_plate_2], roles.grep(/plate/), 'a front for each door'
-    body = layout.appliances.find { |a| a.role.end_with?('body') }
-    shelf = layout.panels.find { |p| p.role == 'fridge_shelf' }
-    assert_operator body.offset[2] + body.extent[2], :<=, shelf.offset[2], 'it stands under the shelf'
-    assert_operator body.offset[2], :>=, 18.0, 'on the bottom panel'
-    _, single = unit('tall', 'tall_fridge_builtin_1door')
-    assert_equal ['appliance_fridge_1_plate_1'], single.appliances.map(&:role).grep(/plate/)
-    assert_nil Defaults.params['visibility_settings']['fridge'], 'a built-in fridge has no tick of its own: it follows Show appliances'
+  def test_a_built_in_fridge_unit_has_no_fridge_drawn_inside
+    ['tall_fridge_builtin_1door', 'tall_fridge_builtin_2door'].each do |id|
+      result, layout = unit('tall', id)
+      assert_empty result.errors, id
+      assert_empty layout.appliances, "#{id}: only the housing, no fridge inside"
+      assert layout.doors.length >= 1 && layout.panels.find { |pan| pan.role == 'fridge_shelf' }, 'the doors and the shelf are still there'
+    end
   end
-
   # The lower part of an oven housing: drawers, a door, or a small drawer over a door.
   def lower_unit(mode, count = 2, extra = {})
     entry = CatalogManager.cabinet(CATALOG, 'tall', 'tall_oven')
@@ -528,7 +521,7 @@ class KitchenCatalogTest < Minitest::Test
   end
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
     ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_glass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
-              'appliance_fridge_1_plate_1' => nil, 'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
+              'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
               'appliance_sink_1_tray' => 'sink' }
     ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
     assert_equal true, Defaults.params['visibility_settings']['free_fridge'], 'the freestanding fridge has its own tick'

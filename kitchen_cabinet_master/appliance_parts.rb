@@ -203,37 +203,6 @@ module KitchenCabinetMaster
       ]
     end
 
-    # ---- a built-in fridge ----------------------------------------------------------------------------
-
-    # `fridge` = fridge_layout (body: [bottom, top], split: z between two doors or nil).
-    def self.built_in_fridge(dims, fridge, hinge_left)
-      bottom, top = fridge[:body]
-      return [] unless top - bottom >= 200.0
-
-      front = dims.depth
-      body_w = dims.inner_w - 4.0
-      body_d = [dims.interior_d - 30.0, 560.0].min
-      w = plate_width(dims)
-      y0 = (dims.width - w) / 2.0
-      key = 'appliance_fridge_1'
-      handle_y = hinge_left ? y0 + w - 34.0 : y0 + 34.0 # next to the free edge
-      parts = [box("#{key}_body", 'Fridge Body', [front - body_d, (dims.width - body_w) / 2.0, bottom], [body_d, body_w, top - bottom])]
-      fronts = fridge[:split] ? [[bottom, fridge[:split] - 2.0], [fridge[:split] + 2.0, top]] : [[bottom, top]]
-      fronts.each_with_index do |(z0, z1), index|
-        n = index + 1
-        parts << box("#{key}_plate_#{n}", n == 1 && fronts.length > 1 ? 'Fridge Lower Front' : (fronts.length > 1 ? 'Fridge Upper Front' : 'Fridge Front'),
-                     [front, y0, z0], [2.0, w, z1 - z0])
-        length = [[(z1 - z0) * 0.55, 700.0].min, 160.0].max
-        next if z1 - z0 < 240.0
-
-        mid = (z0 + z1) / 2.0
-        parts << cyl("#{key}_bar_#{n}", 'Fridge Handle', :z, [front + 26.0, handle_y, mid - (length / 2.0)], 16.0, length)
-        parts << cyl("#{key}_post_#{n}a", 'Fridge Handle Post', :x, [front + 2.0, handle_y, mid - (length / 2.0) + 14.0], 10.0, 24.0)
-        parts << cyl("#{key}_post_#{n}b", 'Fridge Handle Post', :x, [front + 2.0, handle_y, mid + (length / 2.0) - 14.0], 10.0, 24.0)
-      end
-      parts
-    end
-
     # ---- a fridge that stands by itself ----------------------------------------------------------------
 
     # A stainless steel fridge-freezer with its front face at `x + d`, standing on the floor `z0`, `w` wide from `y0`,

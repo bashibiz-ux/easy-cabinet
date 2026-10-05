@@ -810,8 +810,7 @@ module KitchenCabinetMaster
         key = "appliance_#{item[:kind]}_#{counts[item[:kind]]}"
         out.concat(item[:kind] == :oven ? AppliancePieces.oven(key, dims, item) : AppliancePieces.microwave(key, dims, item))
       end
-      fridge = fridge_layout(params, dims)
-      out.concat(AppliancePieces.built_in_fridge(dims, fridge, params['door_opening_direction'].to_s != 'right')) if fridge
+      # (A built-in fridge housing is just the housing: doors, shelf and lift-up door. No fridge is drawn inside it.)
       out.concat(Fixtures.parts(params, dims)) # the sink, the hob, the hood
       out
     end
