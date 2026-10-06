@@ -21,6 +21,7 @@
     "door_gap",
     "door_reveal",
     "door_distance",
+    "front_radius",
     "top_panel",
     "panel_thickness",
     "back_thickness",

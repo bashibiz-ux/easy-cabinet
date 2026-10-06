@@ -70,22 +70,84 @@ module KitchenCabinetMaster
     # A door or drawer front (size [thickness, width, height] in mm; its outer face is the high-X face) with the shapes of a design
     # cut into that face (see FrontDesign). A front too small for the design is a plain board. Named after its design and size, so
     # equal fronts share one definition.
-    def self.front_definition(model, size, design)
+    # The four edges around the outer face are rounded with `radius` mm (0 = square edges), smooth like a worktop's front edge.
+    def self.front_definition(model, size, design, radius = 0.0)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      r = front_radius(dx, dy, dz, radius)
       cuts = FrontDesign.cuts(design, dy, dz, dx)
-      return definition(model, size) if cuts.empty?
+      return definition(model, size) if cuts.empty? && r.zero?
 
-      name = format('%<prefix>sFront %<design>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, design: design, x: dx, y: dy, z: dz)
+      name = format('%<prefix>sFront %<design>s %<x>g x %<y>g x %<z>g r%<r>g s%<s>d', prefix: NAME_PREFIX, design: design, x: dx, y: dy, z: dz, r: r, s: FRONT_STEPS)
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
-      build_box(definition.entities, dx.mm, dy.mm, dz.mm)
-      cut_front(definition.entities, cuts, dx)
+      if r.positive?
+        rounded_front_faces(dx, dy, dz, r).each { |corners| definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      else
+        build_box(definition.entities, dx.mm, dy.mm, dz.mm)
+      end
+      # (the rounded border is not flat: a cut stays inside the flat middle of the face)
+      cut_front(definition.entities, clip_cuts(cuts, dy, dz, r), dx)
       soften(definition.entities)
       definition
     end
+
+    FRONT_STEPS = 16
+
+    # The radius a front of this size can have: never more than its thickness less 1 mm, or under 1 mm from half its width or height.
+    def self.front_radius(dx, dy, dz, radius)
+      r = [radius.to_f, dx - 1.0, (dy / 2.0) - 1.0, (dz / 2.0) - 1.0].min
+      r < 0.2 ? 0.0 : (r * 100).round / 100.0
+    end
+
+    # The cuts of a design kept inside the flat face (`radius` in from every edge); a cut that is left under 1 mm is dropped.
+    def self.clip_cuts(cuts, width, height, radius)
+      return cuts unless radius.positive?
+
+      cuts.filter_map do |y0, y1, z0, z1, from, to|
+        y0 = [y0, radius].max
+        y1 = [y1, width - radius].min
+        z0 = [z0, radius].max
+        z1 = [z1, height - radius].min
+        [y0, y1, z0, z1, from, to] if y1 - y0 >= 1.0 && z1 - z0 >= 1.0
+      end
+    end
+
+    # The faces (arrays of [x, y, z] in mm, each facing outwards) of a front `dx` x `dy` x `dz` (its outer face is the high-X one)
+    # whose outer edges are rounded with `r`: rings of rectangles, each a little further in and out than the one before, joined
+    # by flat strips (mitred at the corners). Pure maths.
+    def self.rounded_front_faces(dx, dy, dz, r)
+      rings = (0..FRONT_STEPS).map do |step|
+        angle = (Math::PI / 2.0) * step / FRONT_STEPS
+        inset = (r - (r * Math.cos(angle))).round(4)
+        x = (dx - r + (r * Math.sin(angle))).round(4)
+        [[x, inset, inset], [x, dy - inset, inset], [x, dy - inset, dz - inset], [x, inset, dz - inset]]
+      end
+      rings.unshift([[0.0, 0.0, 0.0], [0.0, dy, 0.0], [0.0, dy, dz], [0.0, 0.0, dz]]) # the back
+      faces = [rings.first, rings.last]
+      rings.each_cons(2) { |a, b| 4.times { |e| faces << [a[e], a[(e + 1) % 4], b[(e + 1) % 4], b[e]] } }
+      centre = [dx / 2.0, dy / 2.0, dz / 2.0]
+      faces.map do |corners|
+        normal = newell_normal(corners)
+        mid = corners.transpose.map { |values| values.sum / corners.length }
+        outward = (0..2).sum { |i| normal[i] * (mid[i] - centre[i]) }
+        outward.negative? ? corners.reverse : corners
+      end
+    end
+
+    def self.newell_normal(corners)
+      n = [0.0, 0.0, 0.0]
+      corners.each_with_index do |(x, y, z), i|
+        nx, ny, nz = corners[(i + 1) % corners.length]
+        n[0] += (y - ny) * (z + nz)
+        n[1] += (z - nz) * (x + nx)
+        n[2] += (x - nx) * (y + ny)
+      end
+      n
+    end
+    private_class_method :newell_normal
 
     # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm.
     def self.cut_front(entities, cuts, thickness)

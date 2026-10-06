@@ -202,6 +202,7 @@ module KitchenCabinetMaster
       'show_door_symbol'       => false, # the dashed swing lines on the door (ticked by the user when wanted)
       'door_gap'               => 1.5,
       'door_reveal'            => 2.0,
+      'front_radius'           => 3.0, # the front edges of doors and drawer fronts are rounded with this radius
       'door_distance'          => DOOR_CLEARANCE, # how far the doors stand in front of the carcass
       # The top of a BASE unit: '' = two separate 10 cm panels (one full panel on an open
       # unit), 'rails' = the same, spelled out, 'full' = one full panel. Wall and tall

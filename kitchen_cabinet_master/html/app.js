@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.52.5';
+  const APP_VERSION = '0.53.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -34,6 +34,7 @@
     back_thickness: 'backThickness',
     door_gap: 'doorGap',
     door_distance: 'doorDistance',
+    front_radius: 'frontRadius',
     top_panel_style: 'topPanel',
     door_opening_direction: 'direction',
     door_opening_angle: 'angle',
@@ -94,6 +95,7 @@
     door_gap: 'doorGap',
     door_reveal: 'doorReveal',
     door_distance: 'doorDistance',
+    front_radius: 'frontRadius',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -392,7 +394,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'thickness', 'backThickness', 'topPanel',
     'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -584,7 +586,7 @@
 
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
-    'doorGap', 'doorReveal', 'doorDistance', 'thickness', 'backThickness',
+    'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGap', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
@@ -694,7 +696,7 @@
 
   const ALL_FEATURES = [
     'base', 'wall', 'tall', 'corner', 'filler', 'end_panel', 'toe_kick',
-    'door_gap', 'door_reveal', 'door_distance', 'top_panel', 'panel_thickness', 'back_thickness',
+    'door_gap', 'door_reveal', 'door_distance', 'front_radius', 'top_panel', 'panel_thickness', 'back_thickness',
     'cabinet_extras', 'worktop', 'handle', 'materials', 'door_opening', 'visibility', 'rotate'
   ];
 
@@ -835,6 +837,7 @@
       back_thickness: mmv('backThickness'),
       door_gap: mmv('doorGap'),
       door_distance: mmv('doorDistance'),
+      front_radius: mmv('frontRadius'),
       top_panel_style: $('topPanel').value,
       door_opening_direction: $('direction').value,
       door_opening_angle: $('angle').value,
@@ -1898,6 +1901,7 @@
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
+    frontRadius: ['front_radius', 'frontRadius'],
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     handle: ['handle_id', 'handle'],
     handleLength: ['handle_length', 'handleLength'],

@@ -24,6 +24,7 @@ module KitchenCabinetMaster
       'door_gap'              => { label: 'Door gap', min: 0.0, max: 10.0 },
       'door_reveal'           => { label: 'Door reveal', min: 0.0, max: 10.0 },
       'door_distance'         => { label: 'Door distance', min: 0.0, max: 50.0 },
+      'front_radius'          => { label: 'Front edge radius', min: 0.0, max: 9.0 },
       'door_opening_angle'    => { label: 'Opening angle', min: 1.0, max: 170.0, unit: 'degrees' },
       'placement_gap'         => { label: 'Gap between cabinets', min: 0.0, max: 100.0 },
       # A cabinet only needs the toe-kick HEIGHT (how far it stands off the floor);
