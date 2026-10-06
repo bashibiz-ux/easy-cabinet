@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.57.0';
+  const APP_VERSION = '0.57.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1204,7 +1204,7 @@
     setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
     setSoft($('glassField'), !hasGlassField());
-    setSoft($('liftDoorField'), !hasGlassField());
+    setSoft($('liftDoorField'), !hasGlassField() || !!(currentCabinet() || {}).lift_door); // (a lift-up unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;

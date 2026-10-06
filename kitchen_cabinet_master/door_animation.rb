@@ -13,7 +13,7 @@ module KitchenCabinetMaster
   #   right hinge -> rotate counter-clockwise (positive angle about +Z)
   module DoorAnimation
     OPEN_KEY = 'open'
-    FRAMES = 18
+    FRAMES = 30 # frames from closed to open (it was 18: a bit slower now)
     ARC_STEP_DEGREES = 10.0
     HINGE_MARK = 20.0 # mm above and below the hinge point
 

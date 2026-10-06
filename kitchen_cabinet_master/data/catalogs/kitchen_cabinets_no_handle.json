@@ -492,6 +492,27 @@
         }
       },
       {
+        "id": "wall_glass_liftup",
+        "name": "Wall - glass lift-up door",
+        "code": "WGL",
+        "doors": 1,
+        "shelves": 1,
+        "glass": true,
+        "lift_door": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 480
+        }
+      },
+      {
         "id": "wall_liftup_short",
         "name": "Wall - lift-up door, short",
         "code": "WL",

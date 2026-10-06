@@ -855,4 +855,15 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal %w[top top], pair.doors.map(&:hinge)
     assert_equal true, ValidationManager.validate({ 'lift_door' => true }).params['lift_door']
   end
+
+  def test_the_glass_lift_up_unit_is_in_both_wall_lists
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      entry = CatalogManager.cabinets(catalog, 'wall').find { |e| e['id'] == 'wall_glass_liftup' }
+      assert entry, catalog
+      assert entry['glass'] && entry['lift_door'] && entry['doors'] == 1
+      assert_equal [600, 800, 900, 1000, 1200], entry['widths']
+    end
+    _, unit = unit('wall', 'wall_glass_liftup', 800, 'lift_door' => true)
+    assert_equal ['top'], unit.doors.map(&:hinge)
+  end
 end
