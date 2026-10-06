@@ -142,8 +142,9 @@ module KitchenCabinetMaster
     end
 
     # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with), and the gap that
-    # leaves over them is how the fingers take hold. It is closed by a panel in the door material, between the carcass sides, standing
-    # `FINGER_RECESS` back from the face of the doors and reaching `FINGER_OVERLAP` down behind the top of the doors. When the doors are
+    # leaves over them is how the fingers take hold. It is closed by a panel in the door material, flush with the front of the carcass
+    # sides and from the outside of one to the outside of the other, up to their top. It reaches `FINGER_OVERLAP` down in front of the
+    # top of the doors, which step back by its thickness. When the doors are
     # made shorter or taller the panel follows. Not for the corner shapes, a unit with a panel over its oven, or wall and tall units.
     # The fronts are changed here; the panel is returned.
     def self.finger_pull_panels(params, dims, doors, drawers, base_z)
@@ -155,12 +156,17 @@ module KitchenCabinetMaster
       fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap >= 60.0 }
       return [] if fronts.empty?
 
-      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)] }
+      # (the shortened fronts also step back one board thickness, behind the panel)
+      fronts.each do |item|
+        item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)]
+        item.offset = [round2(item.offset[0] - dims.thick), item.offset[1], item.offset[2]]
+      end
       door_top = dims.height - reveal - gap                       # the top of the shortened fronts, above the carcass bottom
       bottom = door_top - Defaults::FINGER_OVERLAP
-      # (its front face is FINGER_RECESS behind the face of the doors, so its back face is one board thickness behind that)
-      panel = panel('finger_panel', 'Finger Gap Panel', [dims.thick, dims.inner_w, (dims.height - 1.0) - bottom],
-                    [dims.depth + door_distance(params) - Defaults::FINGER_RECESS, dims.thick, bottom])
+      # (the panel's front is flush with the front of the side panels and it runs from the outside of one side panel to the other,
+      # up to their top)
+      panel = panel('finger_panel', 'Finger Gap Panel', [dims.thick, dims.width, dims.height - bottom],
+                    [dims.depth - dims.thick, 0, bottom])
       panel.front = true # the colour of the doors
       [panel]
     end

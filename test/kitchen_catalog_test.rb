@@ -662,22 +662,24 @@ class KitchenCatalogTest < Minitest::Test
     panel = pull.panels.find { |p| p.role == 'finger_panel' }
     assert panel, 'a panel over the doors'
     assert panel.front, 'in the door material'
-    assert_in_delta 900.0 - 36.0, panel.extent[1], 0.01, 'from one side panel of the carcass to the other'
-    assert_in_delta 18.0, panel.offset[1], 0.01
+    assert_in_delta 900.0, panel.extent[1], 0.01, 'from the outside of one side panel of the carcass to the other'
+    assert_in_delta 0.0, panel.offset[1], 0.01
     assert_equal plain.doors.map { |d| d.extent[2] - 35.0 }, pull.doors.map { |d| d.extent[2] }, 'the doors are 35 mm shorter'
     assert_equal plain.doors.map { |d| d.offset[2] }, pull.doors.map { |d| d.offset[2] }, 'from where they started'
+    assert_equal plain.doors.map { |d| d.offset[0] - 18.0 }, pull.doors.map { |d| d.offset[0] }, 'and stepped back by the thickness of the panel'
     door_top = pull.doors.first.offset[2] + pull.doors.first.extent[2] - 100.0 # above the carcass bottom
     assert_in_delta door_top - 10.0, panel.offset[2], 0.01, 'the panel reaches 10 mm down behind the top of the doors'
-    assert_in_delta 779.0, panel.offset[2] + panel.extent[2], 0.01, 'and up to the top of the carcass'
-    door_face = pull.doors.first.offset[0] + pull.doors.first.extent[0]
-    assert_in_delta door_face - 10.0, panel.offset[0] + panel.extent[0], 0.01, 'standing 10 mm back from the face of the doors: the gap for the fingers'
+    assert_in_delta 780.0, panel.offset[2] + panel.extent[2], 0.01, 'and up to the top of the carcass sides'
+    side = pull.panels.find { |p| p.role == 'left_side' }
+    assert_in_delta side.offset[0] + side.extent[0], panel.offset[0] + panel.extent[0], 0.01, 'its front is flush with the front of the side panels'
+    assert_in_delta side.offset[2] + side.extent[2], panel.offset[2] + panel.extent[2], 0.01, 'and it starts at their top'
     refute plain.panels.any? { |p| p.role == 'finger_panel' }
     # the door height reduction is adjustable and the panel follows it
     _, deeper = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_gap' => 60)
     assert_in_delta pull.doors.first.extent[2] - 25.0, deeper.doors.first.extent[2], 0.01, 'doors 60 mm shorter'
     deeper_panel = deeper.panels.find { |p| p.role == 'finger_panel' }
     assert_in_delta panel.offset[2] - 25.0, deeper_panel.offset[2], 0.01, 'the panel is taller by the same amount'
-    assert_in_delta 779.0, deeper_panel.offset[2] + deeper_panel.extent[2], 0.01
+    assert_in_delta 780.0, deeper_panel.offset[2] + deeper_panel.extent[2], 0.01
     refuse, = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_gap' => 300)
     assert_includes refuse.errors.map { |e| e['field'] }, 'finger_gap'
     # drawers: only the top one

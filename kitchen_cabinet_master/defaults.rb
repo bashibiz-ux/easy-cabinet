@@ -128,7 +128,6 @@ module KitchenCabinetMaster
     RAIL_DEPTH           = 100.0 # depth of the two structural rails that top a base unit
     FINGER_GAP = 35.0     # the model without handles: how much shorter the top fronts of a base unit are, to start with
     FINGER_OVERLAP = 10.0 # the panel over them reaches this far down behind the top of the fronts
-    FINGER_RECESS = 10.0  # and stands this far back from their face (the depth of the gap for the fingers)
     SHELF_FRONT_SETBACK  = 20.0  # shelves stop this far short of the carcass front
     SHELF_SIDE_CLEARANCE = 1.0   # gap each side of a shelf so it can be removed
     TOE_KICK_RECESS      = 50.0  # the toe kick is set back this far from the carcass front
