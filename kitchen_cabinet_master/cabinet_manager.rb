@@ -116,6 +116,7 @@ module KitchenCabinetMaster
 
       model = Sketchup.active_model
       cabinets = selected_cabinets(model)
+      selected_only = !cabinets.empty?
       if cabinets.empty?
         return Response.fail('Select a cabinet to give it that front design, or clear the selection to give it to every cabinet.') unless model.selection.empty?
 
@@ -133,8 +134,12 @@ module KitchenCabinetMaster
         errors.empty? ? plans << [cabinet, params] : problems << [cabinet, errors]
       end
       name = FrontDesign::DESIGNS.find { |item| item['id'] == design }['name']
-      return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} the front design \"#{name}\".") if plans.empty? && problems.empty?
-      return Response.fail(problems.first[1].first['message'], problems.first[1]) if plans.empty?
+      ids = cabinets.map { |cabinet| AttributeManager.cabinet_id(cabinet) }
+      panels = following_end_panels(model, design, selected_only ? ids : nil)
+      if plans.empty? && problems.empty? && panels.empty?
+        return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} the front design \"#{name}\".")
+      end
+      return Response.fail(problems.first[1].first['message'], problems.first[1]) if plans.empty? && panels.empty?
 
       SelectionManager.suspend do
         with_operation(model, 'Change Front Design') do
@@ -143,14 +148,32 @@ module KitchenCabinetMaster
             CabinetGenerator.update(model, cabinet, params)
             PartManager.follow_door(model, cabinet)
           end
+          panels.each do |panel, params|
+            PartGenerator.update(model, panel, params, PartLayout.end_panel(params))
+          end
         end
       end
       SelectionManager.push_selection(model)
-      Response.ok("Front design \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}." \
-                  "#{" #{problems.length} could not take it." unless problems.empty?}")
+      done = "Front design \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}"
+      done += " and #{panels.length} end panel#{'s' unless panels.length == 1}" unless panels.empty?
+      Response.ok("#{done}.#{" #{problems.length} could not take it." unless problems.empty?}")
     end
     private_class_method :apply_front_design
 
+    # The end panels that are set to follow the front design (and are not in it yet): [[panel, new params], ...]. With `only` (the ids of
+    # the cabinets that were changed) just the end panels standing against those; otherwise every one.
+    def self.following_end_panels(model, design, only)
+      model.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
+        next unless AttributeManager.part_kind(part) == 'end_panel'
+
+        stored = AttributeManager.read(part)
+        next unless stored['face'] == 'design' && FrontDesign.clean(stored['front_design']) != design
+        next if only && !only.include?(stored['target_id'])
+
+        [part, stored.merge('front_design' => design)]
+      end
+    end
+    private_class_method :following_end_panels
     # Anything you drew in the model (a group, a component, loose geometry; one thing or several together) is kept as a
     # model file of its own in your catalog, and inserted again as a component beside the selected item. The catalog entry
     # has its size (width along X, depth along Y, height along Z). Several items together are grouped for the save only.

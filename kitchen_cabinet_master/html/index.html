@@ -413,6 +413,11 @@
             <span class="label">Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
           </label>
+          <!-- Its outer face: plain, or cut in the front design chosen in Models (it follows when that changes). -->
+          <label class="field">
+            <span class="label">Face</span>
+            <div class="input"><select id="epFace"><option value="flat">Flat</option><option value="design">As the selected front design</option></select></div>
+          </label>
         </div>
 
         <!-- Toe Kick: shown when Cabinet Category = Toe Kick. Its own entity, a run of pieces laid end to end. -->

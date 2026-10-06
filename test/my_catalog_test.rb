@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager material_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager material_manager part_layout].each { |f| require File.join(plugin, f) }
 
 class MyCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -190,7 +190,7 @@ class MyCatalogTest < Minitest::Test
   end
   def test_front_designs_cut_shapes_into_a_front_and_leave_a_small_one_flat
     ids = FrontDesign::DESIGNS.map { |d| d['id'] }
-    assert_equal %w[flat shaker slim_shaker stepped fluted grooved], ids
+    assert_equal %w[flat shaker slim_shaker stepped fluted grooved three_panel beaded flutes_h line_frame edge_pull], ids
     assert_empty FrontDesign.cuts('flat', 600, 700, 18)
     ids.reject { |id| id == 'flat' }.each do |id|
       cuts = FrontDesign.cuts(id, 596, 716, 18)
@@ -225,5 +225,38 @@ class MyCatalogTest < Minitest::Test
     assert_equal 'shaker', ValidationManager.validate(base.merge('front_design' => 'shaker'), door_count: 2, drawer_count: 0).params['front_design']
     assert_equal 'flat', ValidationManager.validate(base.merge('front_design' => 'zigzag'), door_count: 2, drawer_count: 0).params['front_design']
     assert_equal 'flat', Defaults.params['front_design']
+  end
+  def test_every_front_design_cuts_inside_a_tall_door_a_base_door_and_a_wide_drawer_front
+    [[596, 716], [446, 2060], [896, 196], [296, 356]].each do |w, h|
+      FrontDesign::DESIGNS.map { |d| d['id'] }.reject { |id| id == 'flat' }.each do |id|
+        cuts = FrontDesign.cuts(id, w, h, 18)
+        assert_operator cuts.length, :<=, 60, "#{id} #{w}x#{h}: not an endless number of grooves"
+        cuts.each do |y0, y1, z0, z1, from, to|
+          assert y0 >= -1e-9 && y1 <= w + 1e-9 && z0 >= -1e-9 && z1 <= h + 1e-9, "#{id} #{w}x#{h}: inside the front"
+          assert y1 > y0 && z1 > z0 && to > from && to < 18
+        end
+      end
+    end
+    assert_empty FrontDesign.cuts('edge_pull', 400, 100, 18), 'no finger groove on a very low front'
+    assert_equal 2, FrontDesign.cuts('three_panel', 596, 2060, 18).length
+    assert_equal 4, FrontDesign.cuts('line_frame', 596, 716, 18).length, 'the four sides of the outline'
+    pull = FrontDesign.cuts('edge_pull', 596, 716, 18).first
+    assert_equal 716.0, pull[3], 'the groove reaches the top edge'
+    assert_operator FrontDesign.cuts('beaded', 596, 716, 18).length, :>, FrontDesign.cuts('fluted', 596, 716, 18).length
+  end
+
+  def test_an_end_panel_is_flat_or_in_the_selected_front_design
+    raw = { 'side' => 'right', 'depth' => '580', 'thickness' => '18', 'height' => '880', 'material' => Defaults::SAME_AS_DOOR }
+    flat = ValidationManager.validate_end_panel(raw)
+    assert_equal 'flat', flat.params['face']
+    follow = ValidationManager.validate_end_panel(raw.merge('face' => 'design', 'front_design' => 'shaker'))
+    assert_equal ['design', 'shaker'], follow.params.values_at('face', 'front_design')
+    assert_empty follow.errors
+    base = follow.params.merge('target_base_z' => 0.0)
+    assert_nil PartLayout.end_panel(base.merge('face' => 'flat')).board.shape, 'a flat end panel'
+    assert_equal 'front_shaker@right', PartLayout.end_panel(base).board.shape, 'cut in the design, on its outer (right) face'
+    assert_equal 'front_fluted@left', PartLayout.end_panel(base.merge('side' => 'left', 'front_design' => 'fluted')).board.shape
+    assert_nil PartLayout.end_panel(base.merge('front_design' => 'flat')).board.shape, 'the flat design is no cut'
+    assert_equal 'flat', Defaults.end_panel_params['face']
   end
 end

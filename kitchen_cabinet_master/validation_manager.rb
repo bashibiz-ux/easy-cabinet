@@ -754,6 +754,10 @@ module KitchenCabinetMaster
       choice = raw['material'].to_s.strip
       out['material_choice'] = choice.empty? ? Defaults::SAME_AS_DOOR : choice
 
+      # Its outer face: flat, or in the front design that was selected (kept with it, so a later Update does not lose it).
+      out['face'] = raw['face'].to_s == 'design' ? 'design' : 'flat'
+      out['front_design'] = FrontDesign.clean(raw['front_design'])
+
       Result.new(out, errors)
     end
 

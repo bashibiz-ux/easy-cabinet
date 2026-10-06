@@ -92,10 +92,13 @@ module KitchenCabinetMaster
       depth = params['depth'].to_f
       height = params['height'].to_f
       base_z = params['target_base_z'].to_f
+      # The outer face follows the front design when the end panel is set to ("face" = "design"), else it is flat.
+      design = params['face'].to_s == 'design' ? FrontDesign.clean(params['front_design']) : FrontDesign::DEFAULT
       board = CabinetLayout::Panel.new(
         role: 'board', name: 'End Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
-        offset: [0.0, 0.0, round2(base_z)]
+        offset: [0.0, 0.0, round2(base_z)],
+        shape: (design == FrontDesign::DEFAULT ? nil : "front_#{design}@#{params['side']}")
       )
       with_overrides(Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: []), params)
     end

@@ -254,7 +254,8 @@ module KitchenCabinetMaster
       'depth'     => 580.0,
       'thickness' => 18.0,
       'height'    => 880.0,
-      'material'  => SAME_AS_DOOR
+      'material'  => SAME_AS_DOOR,
+      'face'      => 'flat'            # its outer face: flat, or "design" = cut in the selected front design
     }.freeze
 
     # Returns a deep, mutable copy so callers can modify it freely.

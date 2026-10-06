@@ -99,6 +99,34 @@ module KitchenCabinetMaster
       end
     end
 
+    # An end panel (size [depth, thickness, height] in mm) with the shapes of a design cut into its outer face: the low-Y face of a
+    # panel on the left of a cabinet, the high-Y face of one on its right. (Across the face runs the depth, up it the height.)
+    def self.panel_face_definition(model, size, design, side)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      cuts = FrontDesign.cuts(design, dx, dz, dy)
+      return definition(model, size) if cuts.empty?
+
+      name = format('%<prefix>sFace %<design>s %<side>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, design: design, side: side, x: dx, y: dy, z: dz)
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      build_box(definition.entities, dx.mm, dy.mm, dz.mm)
+      left = side.to_s == 'left'
+      cuts.each do |u0, u1, v0, v1, from, to|
+        y = (left ? from : dy - from).mm
+        face = definition.entities.add_face([u0.mm, y, v0.mm], [u1.mm, y, v0.mm], [u1.mm, y, v1.mm], [u0.mm, y, v1.mm])
+        depth = (to - from).mm
+        inward = left ? 1.0 : -1.0 # which way is into the board
+        face.pushpull(face.normal.y * inward > 0 ? depth : -depth)
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not cut a design into an end panel: #{e.message}"
+      end
+      soften(definition.entities)
+      definition
+    end
+
     # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
     # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
     # Round things are drawn with many sides and their edges smoothed, so that they look round: 16 sides for a pin, 32 for a

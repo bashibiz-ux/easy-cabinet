@@ -12,7 +12,12 @@ module KitchenCabinetMaster
       { 'id' => 'slim_shaker', 'name' => 'Slim shaker' },
       { 'id' => 'stepped', 'name' => 'Stepped panel' },
       { 'id' => 'fluted', 'name' => 'Fluted (vertical grooves)' },
-      { 'id' => 'grooved', 'name' => 'Two panels (horizontal groove)' }
+      { 'id' => 'grooved', 'name' => 'Two panels (horizontal groove)' },
+      { 'id' => 'three_panel', 'name' => 'Three panels (two grooves)' },
+      { 'id' => 'beaded', 'name' => 'Beaded (fine vertical grooves)' },
+      { 'id' => 'flutes_h', 'name' => 'Horizontal grooves' },
+      { 'id' => 'line_frame', 'name' => 'Line frame (grooved outline)' },
+      { 'id' => 'edge_pull', 'name' => 'Edge pull (finger groove along the top)' }
     ].freeze
 
     def self.ids
@@ -38,6 +43,11 @@ module KitchenCabinetMaster
       when 'stepped' then stepped_cuts(width, height, thickness)
       when 'fluted' then fluted_cuts(width, height, thickness)
       when 'grooved' then grooved_cuts(width, height, thickness)
+      when 'three_panel' then three_panel_cuts(width, height, thickness)
+      when 'beaded' then beaded_cuts(width, height, thickness)
+      when 'flutes_h' then flutes_h_cuts(width, height, thickness)
+      when 'line_frame' then line_frame_cuts(width, height, thickness)
+      when 'edge_pull' then edge_pull_cuts(width, height, thickness)
       else []
       end
     end
@@ -68,13 +78,14 @@ module KitchenCabinetMaster
     def self.fluted_cuts(width, height, thickness)
       return [] if width < 90.0 || height < 120.0
 
-      count = ((width - 50.0 - 6.0) / 22.0).floor + 1
+      pitch = [22.0, (width - 56.0) / 50.0].max # never more than about 50 grooves
+      count = ((width - 50.0 - 6.0) / pitch).floor + 1
       return [] if count < 3
 
-      span = ((count - 1) * 22.0) + 6.0
+      span = ((count - 1) * pitch) + 6.0
       start = (width - span) / 2.0
       depth = [3.0, thickness / 5.0].min
-      (0...count).map { |i| [start + (i * 22.0), start + (i * 22.0) + 6.0, 25.0, height - 25.0, 0.0, depth] }
+      (0...count).map { |i| [start + (i * pitch), start + (i * pitch) + 6.0, 25.0, height - 25.0, 0.0, depth] }
     end
     private_class_method :fluted_cuts
 
@@ -85,5 +96,64 @@ module KitchenCabinetMaster
       [[0.0, width, (height / 2.0) - 3.0, (height / 2.0) + 3.0, 0.0, [3.0, thickness / 5.0].min]]
     end
     private_class_method :grooved_cuts
+
+    # Two grooves, a third of the height apart: three panels (a tall front).
+    def self.three_panel_cuts(width, height, thickness)
+      return [] if height < 600.0 || width < 100.0
+
+      depth = [3.0, thickness / 5.0].min
+      [1.0 / 3.0, 2.0 / 3.0].map { |k| [0.0, width, (height * k) - 2.0, (height * k) + 2.0, 0.0, depth] }
+    end
+    private_class_method :three_panel_cuts
+
+    # Fine vertical grooves (a beadboard): 3 mm wide every 16 mm.
+    def self.beaded_cuts(width, height, thickness)
+      return [] if width < 90.0 || height < 100.0
+
+      pitch = [16.0, (width - 43.0) / 60.0].max
+      count = ((width - 40.0 - 3.0) / pitch).floor + 1
+      return [] if count < 5
+
+      span = ((count - 1) * pitch) + 3.0
+      start = (width - span) / 2.0
+      depth = [2.0, thickness / 6.0].min
+      (0...count).map { |i| [start + (i * pitch), start + (i * pitch) + 3.0, 20.0, height - 20.0, 0.0, depth] }
+    end
+    private_class_method :beaded_cuts
+
+    # Horizontal grooves 6 mm high every 22 mm, as a group in the middle of the height.
+    def self.flutes_h_cuts(width, height, thickness)
+      return [] if height < 90.0 || width < 100.0
+
+      pitch = [22.0, (height - 56.0) / 50.0].max
+      count = ((height - 50.0 - 6.0) / pitch).floor + 1
+      return [] if count < 3
+
+      span = ((count - 1) * pitch) + 6.0
+      start = (height - span) / 2.0
+      depth = [3.0, thickness / 5.0].min
+      (0...count).map { |i| [25.0, width - 25.0, start + (i * pitch), start + (i * pitch) + 6.0, 0.0, depth] }
+    end
+    private_class_method :flutes_h_cuts
+
+    # A groove 3 mm wide drawn as a rectangle 45 mm in from the edges.
+    def self.line_frame_cuts(width, height, thickness)
+      return [] if width < 120.0 || height < 120.0
+
+      i = 45.0
+      g = 3.0
+      depth = [2.0, thickness / 6.0].min
+      [[i, width - i, i, i + g, 0.0, depth], [i, width - i, height - i - g, height - i, 0.0, depth],
+       [i, i + g, i + g, height - i - g, 0.0, depth], [width - i - g, width - i, i + g, height - i - g, 0.0, depth]]
+    end
+    private_class_method :line_frame_cuts
+
+    # A rebate along the top edge, 22 mm high and 10 mm deep, to get a finger under (the front is taken hold of there).
+    def self.edge_pull_cuts(width, height, thickness)
+      return [] if height < 150.0 || width < 100.0
+
+      [[0.0, width, height - 22.0, height, 0.0, [10.0, thickness * 0.55].min]]
+    end
+    private_class_method :edge_pull_cuts
   end
 end

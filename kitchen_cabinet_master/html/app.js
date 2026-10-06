@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.52.1';
+  const APP_VERSION = '0.52.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -317,6 +317,7 @@
     setText('epThickness', d.thickness);
     setText('epHeight', d.height);
     setSelect('epMaterial', d.material_choice || d.material || '__door__');
+    setSelect('epFace', d.face || 'flat');
     updateChips();
     drawPreview();
   }
@@ -379,7 +380,9 @@
       thickness: mmv('epThickness'),
       height: mmv('epHeight'),
       height_auto: !state.touched.has('epHeight'),
-      material: $('epMaterial').value
+      material: $('epMaterial').value,
+      face: $('epFace').value,
+      front_design: $('frontDesign').value // the design an end panel set to follow the front design is cut in
     };
   }
 
