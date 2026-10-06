@@ -1,9 +1,9 @@
 {
-  "id": "kitchen_cabinets_gola",
-  "name": "Kitchen Cabinet - Gola handle",
+  "id": "kitchen_cabinets_no_handle",
+  "name": "Kitchen Cabinet - without handle",
   "version": 2,
   "aliases": [
-
+    "kitchen_cabinets_gola"
   ],
   "handle_bundles": [
 
@@ -659,5 +659,5 @@
       }
     ]
   },
-  "gola": true
+  "finger_pull": true
 }

@@ -88,11 +88,10 @@ module KitchenCabinetMaster
       carcass = stored['carcass_material'].to_s.empty? ? door : stored['carcass_material'].to_s
       owner = stored['cabinet_name'] || stored['cabinet_id']
 
-      out = layout.panels.reject { |panel| panel.shape == 'gola' }.map do |panel|
+      out = layout.panels.map do |panel|
         shaped = panel.points && !panel.points.empty?
         board(panel.name + (shaped ? ' (shaped)' : ''), panel.extent, panel.front ? door : carcass, owner) # a front panel is cut from the door material
       end
-      layout.panels.select { |panel| panel.shape == 'gola' }.each { |panel| out << { part: 'Gola profile', size: [panel.extent[1], 0.0, 0.0], material: 'Aluminium', owner: owner, quantity: 1 } }
       fronts = layout.doors + layout.drawers
       fronts.each { |item| out << board(item.name, item.extent, door, owner) }
       (layout.drawer_boxes || {}).each_value { |panels| panels.each { |p| out << board(p.name, p.extent, carcass, owner) } }

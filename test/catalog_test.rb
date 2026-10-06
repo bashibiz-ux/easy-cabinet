@@ -17,21 +17,21 @@ class CatalogTest < Minitest::Test
   include KitchenCabinetMaster
   DATA_DIR_FOR_TEST = KitchenCabinetMaster::DATA_DIR
 
-  def test_the_models_are_kitchen_cabinet_with_handle_and_with_gola_handle
+  def test_the_models_are_kitchen_cabinet_with_handle_and_without_handle
     catalogs = CatalogManager.catalogs
-    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - Gola handle'], catalogs.map { |c| c['name'] }
+    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - without handle'], catalogs.map { |c| c['name'] }
     assert_empty CatalogManager.warnings
   end
 
-  def test_the_gola_model_has_no_handle_and_the_other_has_the_handle_bundles
-    gola = CatalogManager.catalogs.find { |c| c['name'] == 'Kitchen Cabinet - Gola handle' }
-    refute_includes gola['features'], 'handle'
-    assert_equal [], gola['handle_bundles']
-    assert CatalogManager.catalog(gola['id'])['gola'], 'it makes the Gola profile'
-    refute CatalogManager.catalog('kitchen_cabinets')['gola']
-    %w[base wall tall].each { |category| assert_equal CatalogManager.cabinets('kitchen_cabinets', category).map { |c| c['id'] }, CatalogManager.cabinets(gola['id'], category).map { |c| c['id'] }, category }
+  def test_the_model_without_handle_has_no_handle_and_the_other_has_the_handle_bundles
+    plain = CatalogManager.catalogs.find { |c| c['name'] == 'Kitchen Cabinet - without handle' }
+    refute_includes plain['features'], 'handle'
+    assert_equal [], plain['handle_bundles']
+    assert plain['finger_pull'], 'it has the finger gap over the doors'
+    assert_equal 'kitchen_cabinets_no_handle', CatalogManager.catalog('kitchen_cabinets_gola')['id'], 'the earlier name of the model still finds it'
+    refute CatalogManager.catalogs.find { |c| c['id'] == 'kitchen_cabinets' }['finger_pull']
+    %w[base wall tall].each { |category| assert_equal CatalogManager.cabinets('kitchen_cabinets', category).map { |c| c['id'] }, CatalogManager.cabinets(plain['id'], category).map { |c| c['id'] }, category }
   end
-
   def test_the_catalog_switches_on_every_option_but_corner
     features = CatalogManager.catalogs.first['features']
     assert_equal (CatalogManager::FEATURES - ['corner']).sort, features.sort
@@ -71,6 +71,6 @@ class CatalogTest < Minitest::Test
       refute File.exist?(File.join(DATA_DIR_FOR_TEST, 'catalogs', "#{id}.json")), id
       assert_includes CatalogManager::LEGACY_FILES, "catalogs/#{id}.json"
     end
-    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_gola.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
+    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_no_handle.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
   end
 end

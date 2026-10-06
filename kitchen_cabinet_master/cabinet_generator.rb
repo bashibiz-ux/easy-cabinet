@@ -32,7 +32,6 @@ module KitchenCabinetMaster
     DOOR_PREFIX = 'door_'
     DRAWER_PREFIX = 'drawer_'
     DOOR_PANEL_ROLE = 'panel'
-    GOLA_MATERIAL = 'Aluminium' # the Gola profile
     HANDLE_ROLE = 'handle'
     DOOR_SYMBOL_ROLE = 'door_symbol'
     SIGNATURE_KEY = 'signature'
@@ -621,7 +620,7 @@ module KitchenCabinetMaster
         instance.visible = visible unless visible.nil?
         # A panel that is part of the front (a blind corner's fixed panel) is the door's colour.
         front = front_material && item.respond_to?(:front) && item.front
-        MaterialManager.apply(instance, item.respond_to?(:shape) && item.shape == 'gola' ? GOLA_MATERIAL : (front ? front_material : material_name), model)
+        MaterialManager.apply(instance, front ? front_material : material_name, model)
       end
 
       leftovers.each_value { |surplus| discard_instance(model, surplus) }
@@ -631,7 +630,6 @@ module KitchenCabinetMaster
     def self.place_item(model, entities, instance, item, transformation)
       definition =
         if item.points then PanelGenerator.polygon_definition(model, item.points, item.extent[2])
-        elsif item.shape == 'gola' then PanelGenerator.gola_definition(model, item.extent)
         elsif item.shape.to_s.start_with?('front_') then PanelGenerator.front_definition(model, item.extent, item.shape.to_s.delete_prefix('front_'))
         else PanelGenerator.definition(model, item.extent)
         end

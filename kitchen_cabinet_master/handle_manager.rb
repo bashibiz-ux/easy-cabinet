@@ -314,8 +314,9 @@ module KitchenCabinetMaster
             angle = 2.0 * Math::PI * (i % segments) / segments
             place.call(x, r * Math.cos(angle), r * Math.sin(angle))
           end
-          points = points.each_with_index.reject { |p, i| i.positive? && p == points[i - 1] }.map(&:first)
-          points.pop if points.length > 1 && points.first == points.last
+          # (SketchUp refuses a face with two points closer than 0.001 inch: the corners that collapse on the axis are merged.)
+          points = points.each_with_index.reject { |p, i| i.positive? && same_point?(p, points[i - 1]) }.map(&:first)
+          points.pop if points.length > 1 && same_point?(points.first, points.last)
           next if points.length < 3
 
           middle = 2.0 * Math::PI * (j + 0.5) / segments
@@ -344,6 +345,7 @@ module KitchenCabinetMaster
       (1..steps).each { |k| a = (Math::PI / 2.0) * k / steps; grip << [radius * Math.sin(a), -half + cap - (cap * Math.cos(a))] }
       grip << [radius, half - cap] unless cap * 2.0 >= length # the straight part between the two domes
       (1..steps).each { |k| a = (Math::PI / 2.0) * k / steps; grip << [radius * Math.cos(a), half - cap + (cap * Math.sin(a))] }
+      grip = grip.map { |r, z| [(r * 1000).round / 1000.0, (z * 1000).round / 1000.0] } # (sin and cos of a right angle are not exactly 0)
       faces = lathe_faces(grip, segments, ->(axial, a, b) { [centre_x + a, b, axial] })
       post_length = centre_x
       if projection > d + 0.5 # a grip that stands off the door has posts
@@ -357,6 +359,11 @@ module KitchenCabinetMaster
       end
       faces
     end
+
+    def self.same_point?(a, b)
+      a.zip(b).all? { |u, v| (u - v).abs < 0.005 }
+    end
+    private_class_method :same_point?
 
     def self.newell(points)
       normal = [0.0, 0.0, 0.0]

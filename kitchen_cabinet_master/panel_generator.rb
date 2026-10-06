@@ -127,23 +127,6 @@ module KitchenCabinetMaster
       definition
     end
 
-    # The Gola profile: a J-section (a back plate, a top plate and a short lip that drops at the front) `size` = [depth, length, height]
-    # in mm, the section drawn in the X-Z plane and run out along Y.
-    def self.gola_definition(model, size)
-      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
-      name = format('%<prefix>sGola %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz)
-      existing = model.definitions[name]
-      return existing if existing && AttributeManager.managed?(existing)
-
-      definition = model.definitions.add(name)
-      AttributeManager.mark_managed(definition)
-      section = [[0.0, 0.0], [2.0, 0.0], [2.0, dz - 3.0], [dx - 3.0, dz - 3.0], [dx - 3.0, dz - 14.0], [dx, dz - 14.0], [dx, dz], [0.0, dz]]
-      face = definition.entities.add_face(section.map { |x, z| [x.mm, 0, z.mm] })
-      face.reverse! if face.normal.y < 0
-      face.pushpull(dy.mm)
-      definition
-    end
-
     # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
     # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
     # Round things are drawn with many sides and their edges smoothed, so that they look round: 16 sides for a pin, 32 for a

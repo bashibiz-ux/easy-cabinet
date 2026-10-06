@@ -111,7 +111,13 @@ module KitchenCabinetMaster
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
       out['pullout'] = truthy?(raw['pullout'])
-      out['gola'] = truthy?(raw['gola'])
+      out['finger_pull'] = truthy?(raw['finger_pull'])
+      gap = to_float(raw['finger_gap'])
+      if out['finger_pull'] && gap && !gap.between?(15.0, 100.0)
+        errors << error('finger_gap', 'The finger gap (how much shorter the doors are) must be between 15 and 100 mm.')
+      elsif gap && gap.between?(15.0, 100.0)
+        out['finger_gap'] = gap
+      end
       out['front_design'] = FrontDesign.clean(raw['front_design'])
       lift = to_float(raw['housing_lift'])
       out['housing_lift'] = lift if lift && lift >= 0

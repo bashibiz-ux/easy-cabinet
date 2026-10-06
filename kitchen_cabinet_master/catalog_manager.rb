@@ -16,7 +16,7 @@ module KitchenCabinetMaster
     REQUIRED_DEFAULTS = %w[width depth height].freeze
     # Files of earlier versions (an install cannot delete them, so they are removed when the catalogs load). The other models were
     # taken out: Kitchen Cabinet - with handle and Kitchen Cabinet - Gola handle are the two models.
-    LEGACY_FILES = %w[catalogs/sample_catalog.json catalogs/door_with_pull_handle.json catalogs/drawer_units.json catalogs/handleless_doors.json].freeze
+    LEGACY_FILES = %w[catalogs/sample_catalog.json catalogs/door_with_pull_handle.json catalogs/drawer_units.json catalogs/handleless_doors.json catalogs/kitchen_cabinets_gola.json].freeze
     DEFAULT_CUSTOM_NAME = 'My cabinets'
     # The measurements a catalog entry lets the panel adjust: entry key => [the key that switches it on, stored parameter].
     ADJUSTABLE = {
@@ -39,7 +39,7 @@ module KitchenCabinetMaster
       # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]
       def catalogs
         data[:catalogs].values.map do |c|
-          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']), 'custom' => c['custom'] == true,
+          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']), 'custom' => c['custom'] == true, 'finger_pull' => c['finger_pull'] == true,
             'features' => features_of(c), 'handle_bundles' => c['handle_bundles'].is_a?(Array) ? c['handle_bundles'] : nil }
         end
       end

@@ -25,7 +25,7 @@ class KitchenCatalogTest < Minitest::Test
       'appliance_set' => entry['appliances'].to_s, 'shelf_count' => entry['shelves'].to_s,
       'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true, 'hood' => entry['hood'] == true,
       'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'], 'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s,
-      'free_housing' => entry['free_housing'] == true, 'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true }
+      'free_housing' => entry['free_housing'] == true, 'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true, 'finger_pull' => false }
   end
 
   def each_entry
@@ -654,31 +654,60 @@ class KitchenCatalogTest < Minitest::Test
     top = HandleManager.placement(four.drawers.last, settings, bundle)
     assert_operator top['v'], :>, four.drawers.last.extent[2] / 2.0, 'the small drawers of a tall unit keep their handle at the top'
   end
-  def test_the_gola_model_stops_the_top_fronts_short_and_adds_a_profile_along_the_top
-    g = Defaults::GOLA_HEIGHT
+  def test_the_model_without_handle_shortens_the_top_fronts_and_closes_the_gap_with_a_panel_that_follows
     reveal = Defaults.params['door_reveal']
     _, plain = unit('base', 'base_2door', 900)
-    result, gola = unit('base', 'base_2door', 900, 'gola' => true)
+    result, pull = unit('base', 'base_2door', 900, 'finger_pull' => true)
     assert_empty result.errors.map { |e| e['message'] }
-    profile = gola.panels.find { |p| p.role == 'gola' }
-    assert profile, 'a Gola profile'
-    assert_equal 'gola', profile.shape
-    assert_in_delta 780.0, profile.offset[2] + profile.extent[2], 0.01, 'at the top of the unit'
-    assert_in_delta 900.0 - 36.0, profile.extent[1], 0.01, 'between the side panels'
-    assert_equal plain.doors.map { |d| d.extent[2] - g }, gola.doors.map { |d| d.extent[2] }, 'the doors stop short of the top'
-    assert_equal plain.doors.map { |d| d.offset[2] }, gola.doors.map { |d| d.offset[2] }, 'and start where they did'
-    assert_operator gola.doors.first.offset[2] + gola.doors.first.extent[2], :<=, 100.0 + 780.0 - reveal - g + 0.01
-    refute plain.panels.any? { |p| p.role == 'gola' }
+    panel = pull.panels.find { |p| p.role == 'finger_panel' }
+    assert panel, 'a panel over the doors'
+    assert panel.front, 'in the door material'
+    assert_in_delta 900.0 - 36.0, panel.extent[1], 0.01, 'from one side panel of the carcass to the other'
+    assert_in_delta 18.0, panel.offset[1], 0.01
+    assert_equal plain.doors.map { |d| d.extent[2] - 35.0 }, pull.doors.map { |d| d.extent[2] }, 'the doors are 35 mm shorter'
+    assert_equal plain.doors.map { |d| d.offset[2] }, pull.doors.map { |d| d.offset[2] }, 'from where they started'
+    door_top = pull.doors.first.offset[2] + pull.doors.first.extent[2] - 100.0 # above the carcass bottom
+    assert_in_delta door_top - 10.0, panel.offset[2], 0.01, 'the panel reaches 10 mm down behind the top of the doors'
+    assert_in_delta 779.0, panel.offset[2] + panel.extent[2], 0.01, 'and up to the top of the carcass'
+    door_face = pull.doors.first.offset[0] + pull.doors.first.extent[0]
+    assert_in_delta door_face - 10.0, panel.offset[0] + panel.extent[0], 0.01, 'standing 10 mm back from the face of the doors: the gap for the fingers'
+    refute plain.panels.any? { |p| p.role == 'finger_panel' }
+    # the door height reduction is adjustable and the panel follows it
+    _, deeper = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_gap' => 60)
+    assert_in_delta pull.doors.first.extent[2] - 25.0, deeper.doors.first.extent[2], 0.01, 'doors 60 mm shorter'
+    deeper_panel = deeper.panels.find { |p| p.role == 'finger_panel' }
+    assert_in_delta panel.offset[2] - 25.0, deeper_panel.offset[2], 0.01, 'the panel is taller by the same amount'
+    assert_in_delta 779.0, deeper_panel.offset[2] + deeper_panel.extent[2], 0.01
+    refuse, = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_gap' => 300)
+    assert_includes refuse.errors.map { |e| e['field'] }, 'finger_gap'
     # drawers: only the top one
-    _, drawers = unit('base', 'base_3drawer', 600, 'gola' => true)
+    _, drawers = unit('base', 'base_3drawer', 600, 'finger_pull' => true)
     _, ordinary = unit('base', 'base_3drawer', 600)
-    assert_in_delta ordinary.drawers.last.extent[2] - g, drawers.drawers.last.extent[2], 0.01, 'the top drawer front is lower'
+    assert_in_delta ordinary.drawers.last.extent[2] - 35.0, drawers.drawers.last.extent[2], 0.01, 'the top drawer front is lower'
     assert_in_delta ordinary.drawers.first.extent[2], drawers.drawers.first.extent[2], 0.01, 'the others are as they were'
     assert_equal drawers.drawers.length, drawers.drawer_boxes.length, 'every drawer keeps its box'
     # not on wall units, tall units or corner shapes
     [['wall', 'wall_2door'], ['tall', 'tall_2door'], ['base', 'base_corner_l'], ['base', 'base_corner_diagonal']].each do |category, id|
-      _, other = unit(category, id, nil, 'gola' => true)
-      refute other.panels.any? { |p| p.role == 'gola' }, id
+      _, other = unit(category, id, nil, 'finger_pull' => true)
+      refute other.panels.any? { |p| p.role == 'finger_panel' }, id
+    end
+  end
+
+  def test_no_face_of_a_handle_has_two_points_closer_than_sketchup_accepts
+    faces = []
+    [28.0, 32.0, 38.0].each { |d| faces << HandleManager.knob_faces(d, 28.0) }
+    Dir[File.join(KitchenCabinetMaster::DATA_DIR, 'handles', '*.json')].each do |file|
+      bundle = JSON.parse(File.read(file, encoding: 'UTF-8'))
+      next unless bundle['profile'] == 'bar'
+
+      bundle['lengths'].each { |length| faces << HandleManager.bar_faces(length.to_f, (bundle['section'] || 10).to_f, (bundle['projection'] || 30).to_f) }
+    end
+    assert_operator faces.length, :>=, 9
+    faces.flatten(1).each do |face|
+      face.combination(2).each do |a, b|
+        distance = Math.sqrt(a.zip(b).sum { |u, v| (u - v)**2 })
+        assert_operator distance, :>, 0.0255, 'SketchUp raises "Duplicate points in array" for points closer than 0.001 inch'
+      end
     end
   end
 end

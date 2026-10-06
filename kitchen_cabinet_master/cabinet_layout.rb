@@ -133,7 +133,7 @@ module KitchenCabinetMaster
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
-      panels.concat(gola_panels(params, dims, doors, drawers, base_z)) # (the fronts stop short of the top for the Gola profile)
+      panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z)) # (the top fronts are shorter: the finger gap)
       custom = params['custom_overrides']
       drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
@@ -141,22 +141,30 @@ module KitchenCabinetMaster
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
 
-    # A Gola handle model: instead of handles, a Gola profile (an aluminium J-section) runs along the top of the fronts of a base
-    # unit, and the fronts that reach the top stop `GOLA_HEIGHT` short of it, leaving the channel to put the fingers in. Not for the
-    # corner shapes or a unit with a panel over its oven. The fronts are changed here; the profile is returned as a panel.
-    def self.gola_panels(params, dims, doors, drawers, base_z)
-      return [] unless params['gola'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
+    # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with), and the gap that
+    # leaves over them is how the fingers take hold. It is closed by a panel in the door material, between the carcass sides, standing
+    # `FINGER_RECESS` back from the face of the doors and reaching `FINGER_OVERLAP` down behind the top of the doors. When the doors are
+    # made shorter or taller the panel follows. Not for the corner shapes, a unit with a panel over its oven, or wall and tall units.
+    # The fronts are changed here; the panel is returned.
+    def self.finger_pull_panels(params, dims, doors, drawers, base_z)
+      return [] unless params['finger_pull'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
 
       reveal = params['door_reveal'].to_f
+      gap = params['finger_gap'].to_f.positive? ? params['finger_gap'].to_f : Defaults::FINGER_GAP
       limit = base_z + dims.height - reveal
-      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - Defaults::GOLA_HEIGHT >= 60.0 }
+      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap >= 60.0 }
       return [] if fronts.empty?
 
-      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - Defaults::GOLA_HEIGHT)] }
-      [Panel.new(role: 'gola', name: 'Gola Profile', extent: [30.0, round2(dims.inner_w), Defaults::GOLA_HEIGHT],
-                 offset: [round2(dims.depth - 2.0), round2(dims.thick), round2(dims.height - Defaults::GOLA_HEIGHT)], shape: 'gola')]
+      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)] }
+      door_top = dims.height - reveal - gap                       # the top of the shortened fronts, above the carcass bottom
+      bottom = door_top - Defaults::FINGER_OVERLAP
+      # (its front face is FINGER_RECESS behind the face of the doors, so its back face is one board thickness behind that)
+      panel = panel('finger_panel', 'Finger Gap Panel', [dims.thick, dims.inner_w, (dims.height - 1.0) - bottom],
+                    [dims.depth + door_distance(params) - Defaults::FINGER_RECESS, dims.thick, bottom])
+      panel.front = true # the colour of the doors
+      [panel]
     end
-    private_class_method :gola_panels
+    private_class_method :finger_pull_panels
 
     # What the user changed in the Customize window (see Customizer): per part key, a size for the axes that were
     # changed and a move from where it belongs. Applied last, so everything built on the layout sees it.

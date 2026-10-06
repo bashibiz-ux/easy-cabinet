@@ -126,7 +126,9 @@ module KitchenCabinetMaster
     end
 
     RAIL_DEPTH           = 100.0 # depth of the two structural rails that top a base unit
-    GOLA_HEIGHT = 35.0 # the Gola profile: how far down the fronts stop from the top of a base unit
+    FINGER_GAP = 35.0     # the model without handles: how much shorter the top fronts of a base unit are, to start with
+    FINGER_OVERLAP = 10.0 # the panel over them reaches this far down behind the top of the fronts
+    FINGER_RECESS = 10.0  # and stands this far back from their face (the depth of the gap for the fingers)
     SHELF_FRONT_SETBACK  = 20.0  # shelves stop this far short of the carcass front
     SHELF_SIDE_CLEARANCE = 1.0   # gap each side of a shelf so it can be removed
     TOE_KICK_RECESS      = 50.0  # the toe kick is set back this far from the carcass front
@@ -177,7 +179,8 @@ module KitchenCabinetMaster
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
-      'gola' => false,              # a Gola handle model: base fronts without handles, a Gola profile along the top
+      'finger_pull' => false,       # the model without handles: a finger gap over the doors of a base unit, closed by a panel
+      'finger_gap' => 35.0,         # how much shorter the doors are (the gap over them)
       'pullout' => false,           # a pull-out unit: just the front, no box inside it
       'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge
       'housing_lift' => 0.0,        # the height of that cabinet (0 = the standard)
