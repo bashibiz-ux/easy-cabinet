@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.54.1';
+  const APP_VERSION = '0.54.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -887,7 +887,7 @@
       lower_drawers: $('lowerDrawers').value,
       small_drawer: mmv('smallDrawer'),
       micro_height: mmv('microHeight'),
-      shelf_count: $('shelves').value,
+      shelf_count: hasShelvesField() ? $('shelves').value : '0',
       carcass_material: $('carcassMaterial').value,
       toe_kick_height: mmv('toeHeight'),
       handle_length: handleValue('handleLength'),
@@ -1163,6 +1163,11 @@
     const cabinet = currentCabinet() || {};
     return hasFingerField() && (Number(cabinet.drawers) > 1 || (Number(cabinet.drawers) > 0 && Number(cabinet.doors) > 0));
   };
+  // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
+  const hasShelvesField = () => {
+    const cabinet = currentCabinet() || {};
+    return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
+  };
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1195,6 +1200,7 @@
     setSoft($('fingerGapField'), !hasFingerDoorField());
     setSoft($('fingerGapDrawerField'), !hasFingerDrawerField());
     setSoft($('fingerAllField'), !hasFingerAllField());
+    setSoft($('shelvesField'), !hasShelvesField());
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
@@ -1402,7 +1408,7 @@
 
     const cabinet = currentCabinet();
     const doors = cabinet ? (cabinet.doors | 0) : 0;
-    const shelves = Math.min(20, Math.max(0, parseInt($('shelves').value, 10) || 0));
+    const shelves = hasShelvesField() ? Math.min(20, Math.max(0, parseInt($('shelves').value, 10) || 0)) : 0;
     const hingeOnLeft = $('direction').value !== 'right';
     const showSwing = $('showDoorSymbol').checked;
     // The Visibility ticks show in the picture too: an unticked part is faded.

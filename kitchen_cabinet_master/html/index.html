@@ -376,8 +376,11 @@
           <span class="label">Carcass bottom raise upward</span>
           <div class="input"><input id="carcassRaise" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <!-- The shelf count is no longer a field in this card: the cabinet type brings its own. -->
-        <div hidden><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
+        <!-- Not shown for a unit of drawers: it has no shelves. -->
+        <label class="field narrow cabinet-only" id="shelvesField">
+          <span class="label">Shelves</span>
+          <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
+        </label>
 
         <!-- Shown only with Cabinet Category = Toe Kick: the height of a toe kick, which is also how far cabinets stand off the floor. -->
         <label class="field narrow cabinet-or-toe">
