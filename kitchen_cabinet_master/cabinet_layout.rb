@@ -151,12 +151,15 @@ module KitchenCabinetMaster
       return [] unless params['finger_pull'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
 
       reveal = params['door_reveal'].to_f
-      gap = params['finger_gap'].to_f.positive? ? params['finger_gap'].to_f : Defaults::FINGER_GAP
+      door_gap = params['finger_gap'].to_f.positive? ? params['finger_gap'].to_f : Defaults::FINGER_GAP
+      drawer_gap = params['finger_gap_drawer'].to_f.positive? ? params['finger_gap_drawer'].to_f : door_gap # (a drawer front has its own reduction)
       limit = base_z + dims.height - reveal
-      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap >= 60.0 }
+      gap_of = ->(item) { drawers.include?(item) ? drawer_gap : door_gap }
+      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap_of.call(item) >= 60.0 }
       return [] if fronts.empty?
 
-      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)] }
+      gap = fronts.map { |item| gap_of.call(item) }.max # (the panel reaches down behind the lowest of them)
+      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap_of.call(item))] }
       # The top front rail (or the front of a full top panel) steps back one board thickness, behind the panel.
       rail = panels.find { |item| item.role == 'top_front_rail' }
       rail.offset = [round2(rail.offset[0] - dims.thick), rail.offset[1], rail.offset[2]] if rail

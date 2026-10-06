@@ -715,4 +715,29 @@ class KitchenCatalogTest < Minitest::Test
       end
     end
   end
+
+  def test_the_top_drawer_front_has_its_own_reduction_and_the_panel_follows_it
+    _, plain = unit('base', 'base_3drawer', 600)
+    _, same = unit('base', 'base_3drawer', 600, 'finger_pull' => true)
+    result, own = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_gap_drawer' => 50)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_in_delta plain.drawers.last.extent[2] - 35.0, same.drawers.last.extent[2], 0.01, 'both start at 35 mm'
+    assert_in_delta plain.drawers.last.extent[2] - 50.0, own.drawers.last.extent[2], 0.01, 'the drawer front is 50 mm lower'
+    assert_in_delta plain.drawers.first.extent[2], own.drawers.first.extent[2], 0.01, 'the other drawers are as they were'
+    panel = own.panels.find { |p| p.role == 'finger_panel' }
+    same_panel = same.panels.find { |p| p.role == 'finger_panel' }
+    assert_in_delta same_panel.offset[2] - 15.0, panel.offset[2], 0.01, 'the panel reaches 15 mm lower'
+    assert_in_delta 780.0, panel.offset[2] + panel.extent[2], 0.01
+    # a door and a drawer: each has its own value
+    _, both = unit('base', 'base_drawer_door', 600, 'finger_pull' => true, 'finger_gap' => 40, 'finger_gap_drawer' => 60)
+    _, normal = unit('base', 'base_drawer_door', 600)
+    assert_in_delta normal.drawers.first.extent[2] - 60.0, both.drawers.first.extent[2], 0.01
+    assert_in_delta normal.doors.first.extent[2], both.doors.first.extent[2], 0.01, 'a lower door is not changed'
+    refuse, = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_gap_drawer' => 300)
+    assert_includes refuse.errors.map { |e| e['field'] }, 'finger_gap_drawer'
+    # a door unit is not affected by the drawer value
+    _, doors = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_gap_drawer' => 80)
+    _, doors_plain = unit('base', 'base_2door', 900)
+    assert_in_delta doors_plain.doors.first.extent[2] - 35.0, doors.doors.first.extent[2], 0.01
+  end
 end

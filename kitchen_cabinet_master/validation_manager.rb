@@ -119,6 +119,12 @@ module KitchenCabinetMaster
       elsif gap && gap.between?(15.0, 100.0)
         out['finger_gap'] = gap
       end
+      drawer_gap = to_float(raw['finger_gap_drawer'])
+      if out['finger_pull'] && drawer_gap && !drawer_gap.between?(15.0, 100.0)
+        errors << error('finger_gap_drawer', 'The finger gap of the drawer front (how much shorter it is) must be between 15 and 100 mm.')
+      elsif drawer_gap && drawer_gap.between?(15.0, 100.0)
+        out['finger_gap_drawer'] = drawer_gap
+      end
       out['front_design'] = FrontDesign.clean(raw['front_design'])
       lift = to_float(raw['housing_lift'])
       out['housing_lift'] = lift if lift && lift >= 0
