@@ -186,6 +186,15 @@ module KitchenCabinetMaster
         panel.front = true # the colour of the doors
         panel
       end
+      # The side panels are cut away where a finger gap panel stands (it runs from outside to outside, in front of them): a notch at the
+      # front edge, one board thickness deep, over the height of the panel.
+      notches = result.map { |item| [round2(dims.thick), item.offset[2], round2(item.offset[2] + item.extent[2])] }.sort_by { |notch| notch[1] }
+      panels.each do |item|
+        next unless %w[left_side right_side].include?(item.role)
+
+        item.shape = 'notch'
+        item.path = notches
+      end
       result
     end
     private_class_method :finger_pull_panels

@@ -778,4 +778,26 @@ class KitchenCatalogTest < Minitest::Test
     _, tiny = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_all' => true, 'finger_gap' => 100, 'finger_gap_drawer' => 100, 'height' => '500')
     tiny.drawers.each { |d| assert_operator d.extent[2], :>=, 60.0 }
   end
+
+  def test_the_side_panels_are_cut_away_where_the_finger_gap_panels_stand
+    _, plain = unit('base', 'base_3drawer', 600)
+    assert(plain.panels.select { |p| %w[left_side right_side].include?(p.role) }.all? { |p| p.shape.nil? })
+    _, top = unit('base', 'base_3drawer', 600, 'finger_pull' => true)
+    sides = top.panels.select { |p| %w[left_side right_side].include?(p.role) }
+    assert_equal 2, sides.length
+    panel = top.panels.find { |p| p.role == 'finger_panel' }
+    sides.each do |side|
+      assert_equal 'notch', side.shape
+      assert_equal [[18.0, panel.offset[2], panel.offset[2] + panel.extent[2]]], side.path, 'one notch, as deep as the panel and as tall'
+      assert_in_delta 780.0, side.path.last[2], 0.01, 'up to the top of the side'
+    end
+    _, all = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_all' => true)
+    assert_equal 3, all.panels.find { |p| p.role == 'left_side' }.path.length, 'a notch for each panel'
+    assert(all.panels.find { |p| p.role == 'left_side' }.path.each_cons(2).all? { |a, b| a[2] <= b[1] }, 'bottom to top, apart')
+  end
+
+  def test_the_back_splash_can_have_its_own_material
+    assert_equal '', ValidationManager.validate_worktop({ 'backsplash_material' => '' }).params['backsplash_material']
+    assert_equal 'Oak', ValidationManager.validate_worktop({ 'backsplash_material' => ' Oak ' }).params['backsplash_material']
+  end
 end

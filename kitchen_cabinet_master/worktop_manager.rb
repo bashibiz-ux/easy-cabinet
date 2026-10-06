@@ -31,7 +31,8 @@ module KitchenCabinetMaster
       'worktop_cuts' => '',          # distances (mm) from the start of a run to cut at, e.g. "1500,3000"
       'backsplash_height' => 100.0,  # 0 = no back splash
       'backsplash_thickness' => 20.0,
-      'material' => 'White'
+      'material' => 'White',
+      'backsplash_material' => ''     # '' = the material of the worktop
     }.freeze
 
     # items: Hashes in world millimetres, one per base unit / filler:
@@ -213,6 +214,10 @@ module KitchenCabinetMaster
       unless errors.any? || MaterialManager.available?(model, params['material'])
         errors << { 'field' => 'material', 'message' => "The material \"#{params['material']}\" was not found in the model." }
       end
+      splash = params['backsplash_material'].to_s
+      unless errors.any? || splash.empty? || MaterialManager.available?(model, splash)
+        errors << { 'field' => 'backsplash_material', 'message' => "The material \"#{splash}\" was not found in the model." }
+      end
       return Response.fail(errors.first['message'], errors) unless errors.empty?
 
       runs = Worktop.runs(items_of(model))
@@ -353,6 +358,7 @@ module KitchenCabinetMaster
     def self.make_part(model, kind, extent, points, transformation, params, round_edge = nil, holes = nil)
       stored = params.dup
       stored['part_kind'] = kind
+      stored['material'] = params['backsplash_material'] if kind == 'backsplash' && !params['backsplash_material'].to_s.empty? # (its own material)
       stored['part_id'] = AttributeManager.next_part_id(model)
       stored['part_name'] = "#{kind == 'worktop' ? 'Worktop' : 'Back Splash'} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]

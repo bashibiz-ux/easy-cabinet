@@ -630,6 +630,7 @@ module KitchenCabinetMaster
     def self.place_item(model, entities, instance, item, transformation)
       definition =
         if item.points then PanelGenerator.polygon_definition(model, item.points, item.extent[2])
+        elsif item.shape.to_s == 'notch' then PanelGenerator.notched_definition(model, item.extent, item.path)
         elsif item.shape.to_s.start_with?('front_') then PanelGenerator.front_definition(model, item.extent, item.shape.to_s.delete_prefix('front_'), item.round.to_f)
         else PanelGenerator.definition(model, item.extent)
         end

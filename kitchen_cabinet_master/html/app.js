@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.54.0';
+  const APP_VERSION = '0.54.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -335,7 +335,8 @@
       worktop_piece: 0, // cutting into pieces was taken out of the panel
       worktop_cuts: '',
       backsplash_height: mmv('wtSplash'),
-      material: $('wtMaterial').value
+      material: $('wtMaterial').value,
+      backsplash_material: $('wtSplashMaterial').value === '__same__' ? '' : $('wtSplashMaterial').value
     };
   }
 
@@ -364,6 +365,7 @@
     setText('wtSplash', d.backsplash_height);
     showCuts(d.worktop_cuts);
     setSelect('wtMaterial', d.material);
+    setSelect('wtSplashMaterial', d.backsplash_material || '__same__');
   }
 
   function collectFiller() {
@@ -400,7 +402,7 @@
     'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
-    'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtSplash', 'wtMaterial',
+    'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtSplash', 'wtMaterial', 'wtSplashMaterial',
     'wbThickness', 'wbLength', 'wbSetback', 'wbMaterial'
   ];
 
@@ -779,6 +781,7 @@
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
+    fillSelect($('wtSplashMaterial'), [{ id: '__same__', name: 'Same as worktop' }, ...panel]);
     fillSelect($('wbMaterial'), [{ id: '__door__', name: 'Same as wall unit door material' }, ...panel]);
     updateChips();
   }
@@ -2027,7 +2030,7 @@
 
   // The Worktop fields rebuild the worktops that are already there (nothing is
   // created until Apply Worktop is pressed).
-  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial']);
+  const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial', 'wtSplashMaterial']);
 
   function scheduleWorktop(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.worktopTimer);

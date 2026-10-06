@@ -189,4 +189,12 @@ class FrontRadiusTest < Minitest::Test
       end
     end
   end
+
+  def test_a_side_panel_outline_has_a_notch_for_each_finger_gap_panel
+    assert_equal [[0.0, 0.0], [560.0, 0.0], [560.0, 733.0], [542.0, 733.0], [542.0, 780.0], [0.0, 780.0]],
+                 PG.notched_outline(560.0, 780.0, [[18.0, 733.0, 780.0]]), 'one notch at the top'
+    two = PG.notched_outline(560.0, 780.0, [[18.0, 300.0, 345.0], [18.0, 733.0, 780.0]])
+    assert_equal [[0.0, 0.0], [560.0, 0.0], [560.0, 300.0], [542.0, 300.0], [542.0, 345.0], [560.0, 345.0], [560.0, 733.0], [542.0, 733.0], [542.0, 780.0], [0.0, 780.0]], two
+    assert_equal [[0.0, 0.0], [560.0, 0.0], [560.0, 780.0], [0.0, 780.0]], PG.notched_outline(560.0, 780.0, []), 'no notch: a plain board'
+  end
 end

@@ -26,10 +26,12 @@
     <section class="card" id="sec-presets">
       <button class="card-head" type="button" aria-expanded="true">Presets</button>
       <div class="card-body">
-        <label class="field">
+        <label class="field narrow">
           <span class="label">Units</span>
           <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
         </label>
+
+        <p class="group-title">Fronts</p>
         <div class="grid-2">
           <label class="field" data-feature="door_gap">
             <span class="label">Door Gap</span>
@@ -40,19 +42,23 @@
             <div class="input"><input id="doorReveal" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
           </label>
         </div>
-        <label class="field narrow" data-feature="door_distance">
-          <span class="label">Door Distance</span>
-          <div class="input"><input id="doorDistance" type="text" inputmode="decimal" autocomplete="off" aria-label="Door distance: how far the doors stand in front of the carcass"><em>mm</em></div>
-        </label>
-        <label class="field narrow" data-feature="front_radius">
-          <span class="label">Front Edge Radius</span>
-          <div class="input"><input id="frontRadius" type="text" inputmode="decimal" autocomplete="off" aria-label="Front edge radius: how round the front edges of the doors and drawer fronts are (0 = square)"><em>mm</em></div>
-        </label>
+        <div class="grid-2">
+          <label class="field" data-feature="door_distance">
+            <span class="label">Door Distance</span>
+            <div class="input"><input id="doorDistance" type="text" inputmode="decimal" autocomplete="off" aria-label="Door distance: how far the doors stand in front of the carcass"><em>mm</em></div>
+          </label>
+          <label class="field" data-feature="front_radius">
+            <span class="label">Front Edge Radius</span>
+            <div class="input"><input id="frontRadius" type="text" inputmode="decimal" autocomplete="off" aria-label="Front edge radius: how round the front edges of the doors and drawer fronts are (0 = square)"><em>mm</em></div>
+          </label>
+        </div>
         <!-- The model without handles: the finger gap of every front, as a setting for the whole job (each cabinet keeps its own below). -->
-        <label class="field narrow" id="fingerGapGlobalField" hidden>
+        <label class="field" id="fingerGapGlobalField" hidden>
           <span class="label">Door Height Reduction (finger gap)</span>
           <div class="input"><input id="fingerGapGlobal" type="text" inputmode="decimal" autocomplete="off" aria-label="Door height reduction (finger gap) for every cabinet, or the selected one"><em>mm</em></div>
         </label>
+
+        <p class="group-title">Carcass</p>
         <label class="field" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
           <div class="thick-row">
@@ -370,10 +376,8 @@
           <span class="label">Carcass bottom raise upward</span>
           <div class="input"><input id="carcassRaise" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <label class="field narrow cabinet-only">
-          <span class="label">Shelves</span>
-          <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
-        </label>
+        <!-- The shelf count is no longer a field in this card: the cabinet type brings its own. -->
+        <div hidden><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
 
         <!-- Shown only with Cabinet Category = Toe Kick: the height of a toe kick, which is also how far cabinets stand off the floor. -->
         <label class="field narrow cabinet-or-toe">
@@ -509,6 +513,10 @@
         <label class="field">
           <span class="label">Worktop Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="wtMaterial"></i><select id="wtMaterial" data-material></select></div>
+        </label>
+        <label class="field">
+          <span class="label">Back Splash Material</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="wtSplashMaterial"></i><select id="wtSplashMaterial" data-material></select></div>
         </label>
         <div class="btn-row two">
           <button class="btn primary" type="button" data-action="apply_worktop">Apply Worktop</button>

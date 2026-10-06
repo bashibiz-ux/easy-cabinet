@@ -83,6 +83,37 @@ module KitchenCabinetMaster
       end
     end
 
+    # The outline of a side panel dx deep and dz high seen from the side, as [[x, z], ...] going round: the front edge (high x) has a
+    # notch nx deep from z0 to z1 for each of [[nx, z0, z1], ...] (bottom to top), where a finger gap panel stands. Pure maths.
+    def self.notched_outline(dx, dz, notches)
+      points = [[0.0, 0.0], [dx, 0.0]]
+      notches.each do |nx, z0, z1|
+        z1 = [z1, dz].min
+        next unless z1 > z0
+
+        points << [dx, z0] << [dx - nx, z0] << [dx - nx, z1]
+        points << [dx, z1] if z1 < dz
+      end
+      points << [dx, dz] unless points.last == [dx, dz] || points.last[0] < dx
+      points << [0.0, dz]
+      points.each_with_object([]) { |p, kept| kept << p unless kept.last == p }
+    end
+
+    # A panel (size [x, y, z] in mm) with notches in its front edge (see notched_outline), the outline pushed out along Y.
+    def self.notched_definition(model, size, notches)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      list = Array(notches).map { |n| n.map { |v| (v.to_f * 100).round / 100.0 } }
+      name = format('%<prefix>sNotched %<x>g x %<y>g x %<z>g n%<n>s', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, n: list.flatten.join('.'))
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      face = definition.entities.add_face(notched_outline(dx, dz, list).map { |x, z| [x.mm, 0, z.mm] })
+      face.pushpull(face.normal.y.positive? ? dy.mm : -dy.mm)
+      definition
+    end
+
     # A door or drawer front (size [thickness, width, height] in mm; its outer face is the high-X face) with the shapes of a design
     # cut into that face (see FrontDesign). A front too small for the design is a plain board. Named after its design and size, so
     # equal fronts share one definition.
