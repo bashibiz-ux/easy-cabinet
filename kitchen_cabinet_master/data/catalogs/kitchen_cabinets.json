@@ -1,9 +1,11 @@
 {
   "id": "kitchen_cabinets",
-  "name": "Kitchen Cabinet - Pull Handle",
-  "version": 1,
+  "name": "Kitchen Cabinet - with handle",
+  "version": 2,
   "aliases": [
-
+    "door_with_pull_handle",
+    "drawer_units",
+    "handleless_doors"
   ],
   "handle_bundles": [
     "sample_bar_handles",

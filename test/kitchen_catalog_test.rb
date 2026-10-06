@@ -37,7 +37,7 @@ class KitchenCatalogTest < Minitest::Test
   end
 
   def test_the_catalog_is_listed
-    assert_includes CatalogManager.catalogs.map { |c| c['name'] }, 'Kitchen Cabinet - Pull Handle'
+    assert_includes CatalogManager.catalogs.map { |c| c['name'] }, 'Kitchen Cabinet - with handle'
     assert_empty CatalogManager.warnings
   end
 
@@ -653,5 +653,32 @@ class KitchenCatalogTest < Minitest::Test
     _, four = unit('tall', 'tall_4drawer', 600)
     top = HandleManager.placement(four.drawers.last, settings, bundle)
     assert_operator top['v'], :>, four.drawers.last.extent[2] / 2.0, 'the small drawers of a tall unit keep their handle at the top'
+  end
+  def test_the_gola_model_stops_the_top_fronts_short_and_adds_a_profile_along_the_top
+    g = Defaults::GOLA_HEIGHT
+    reveal = Defaults.params['door_reveal']
+    _, plain = unit('base', 'base_2door', 900)
+    result, gola = unit('base', 'base_2door', 900, 'gola' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    profile = gola.panels.find { |p| p.role == 'gola' }
+    assert profile, 'a Gola profile'
+    assert_equal 'gola', profile.shape
+    assert_in_delta 780.0, profile.offset[2] + profile.extent[2], 0.01, 'at the top of the unit'
+    assert_in_delta 900.0 - 36.0, profile.extent[1], 0.01, 'between the side panels'
+    assert_equal plain.doors.map { |d| d.extent[2] - g }, gola.doors.map { |d| d.extent[2] }, 'the doors stop short of the top'
+    assert_equal plain.doors.map { |d| d.offset[2] }, gola.doors.map { |d| d.offset[2] }, 'and start where they did'
+    assert_operator gola.doors.first.offset[2] + gola.doors.first.extent[2], :<=, 100.0 + 780.0 - reveal - g + 0.01
+    refute plain.panels.any? { |p| p.role == 'gola' }
+    # drawers: only the top one
+    _, drawers = unit('base', 'base_3drawer', 600, 'gola' => true)
+    _, ordinary = unit('base', 'base_3drawer', 600)
+    assert_in_delta ordinary.drawers.last.extent[2] - g, drawers.drawers.last.extent[2], 0.01, 'the top drawer front is lower'
+    assert_in_delta ordinary.drawers.first.extent[2], drawers.drawers.first.extent[2], 0.01, 'the others are as they were'
+    assert_equal drawers.drawers.length, drawers.drawer_boxes.length, 'every drawer keeps its box'
+    # not on wall units, tall units or corner shapes
+    [['wall', 'wall_2door'], ['tall', 'tall_2door'], ['base', 'base_corner_l'], ['base', 'base_corner_diagonal']].each do |category, id|
+      _, other = unit(category, id, nil, 'gola' => true)
+      refute other.panels.any? { |p| p.role == 'gola' }, id
+    end
   end
 end

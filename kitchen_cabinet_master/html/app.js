@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.52.2';
+  const APP_VERSION = '0.52.3';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -720,7 +720,7 @@
     document.querySelectorAll('[data-feature]').forEach((el) => {
       const off = !on.has(el.dataset.feature);
       el.classList.toggle('feature-off', off);
-      el.querySelectorAll('input, select, button:not(.card-head)').forEach((control) => {
+      el.querySelectorAll('input, select, button:not(.card-head):not(.card-move)').forEach((control) => {
         if (off && !control.disabled) {
           control.disabled = true;
           control.dataset.featureLocked = '1';
@@ -1724,6 +1724,80 @@
   }
 
   /* ---------------------------------------------------------------------- *
+   * The order of the sections: each can be moved up or down (the arrows, or drag the grip), and the order is remembered
+   * ---------------------------------------------------------------------- */
+
+  const CARD_ORDER_KEY = 'kcm.cardOrder';
+  const cardList = () => [...$('scroll').querySelectorAll(':scope > section.card')];
+
+  function saveCardOrder() {
+    try { localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(cardList().map((card) => card.id))); } catch (_) { /* the order is not kept */ }
+  }
+
+  function moveCard(card, step) {
+    const cards = cardList();
+    const index = cards.indexOf(card) + step;
+    if (index < 0 || index >= cards.length) return;
+    if (step < 0) cards[index].before(card); else cards[index].after(card);
+    saveCardOrder();
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function enableCardOrder() {
+    const cards = cardList();
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(CARD_ORDER_KEY) || '[]'); } catch (_) { /* the usual order */ }
+    if (Array.isArray(saved) && saved.length && cards.length) {
+      const byId = new Map(cards.map((card) => [card.id, card]));
+      const wanted = saved.filter((id) => byId.has(id)).map((id) => byId.get(id));
+      const order = [...wanted, ...cards.filter((card) => !wanted.includes(card))];
+      const marker = document.createComment('cards');
+      cards[0].before(marker);
+      order.forEach((card) => marker.parentNode.insertBefore(card, marker));
+      marker.remove();
+    }
+
+    let dragged = null;
+    const clearMarks = () => cardList().forEach((card) => card.classList.remove('drop-before', 'drop-after', 'dragging'));
+    cardList().forEach((card) => {
+      const tools = document.createElement('div');
+      tools.className = 'card-tools';
+      tools.innerHTML = '<span class="card-grip" draggable="true" title="Drag to move this section">&#8942;&#8942;</span>' +
+        '<button type="button" class="card-move" data-step="-1" title="Move up" aria-label="Move up">&#9650;</button>' +
+        '<button type="button" class="card-move" data-step="1" title="Move down" aria-label="Move down">&#9660;</button>';
+      card.append(tools);
+      tools.querySelectorAll('.card-move').forEach((button) => {
+        button.addEventListener('click', (event) => { event.stopPropagation(); moveCard(card, Number(button.dataset.step)); });
+      });
+      const grip = tools.querySelector('.card-grip');
+      grip.addEventListener('dragstart', (event) => {
+        dragged = card;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', card.id);
+        card.classList.add('dragging');
+      });
+      grip.addEventListener('dragend', () => { dragged = null; clearMarks(); });
+      card.addEventListener('dragover', (event) => {
+        if (!dragged || dragged === card) return;
+        event.preventDefault();
+        const box = card.getBoundingClientRect();
+        const before = event.clientY < box.top + (box.height / 2);
+        card.classList.toggle('drop-before', before);
+        card.classList.toggle('drop-after', !before);
+      });
+      card.addEventListener('dragleave', () => card.classList.remove('drop-before', 'drop-after'));
+      card.addEventListener('drop', (event) => {
+        if (!dragged || dragged === card) return;
+        event.preventDefault();
+        if (card.classList.contains('drop-before')) card.before(dragged); else card.after(dragged);
+        clearMarks();
+        dragged = null;
+        saveCardOrder();
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------------- *
    * Actions
    * ---------------------------------------------------------------------- */
 
@@ -2248,6 +2322,7 @@
 
   async function init() {
     wrapCardBodies();
+    enableCardOrder();
     enableSmoothScroll($('scroll'));
     wireEvents();
     try {

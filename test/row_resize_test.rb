@@ -70,7 +70,7 @@ class RowResizeTest < Minitest::Test
 
   def cabinet(y:, width: 600.0, category: 'base', **where)
     attrs = Defaults.params.merge('cabinet_id' => "CABINET_#{@seq += 1}", 'cabinet_name' => "BU#{width.to_i}",
-                                  'catalog_id' => 'door_with_pull_handle', 'cabinet_type' => 'base_1door',
+                                  'catalog_id' => 'kitchen_cabinets', 'cabinet_type' => 'base_1door',
                                   'cabinet_category' => category, 'width' => width, 'depth' => 560.0, 'height' => 780.0,
                                   'door_count' => 1, 'drawer_count' => 0, 'toe_kick_height' => 100.0)
     item = Thing.new(attrs, move(y, **where), @holder)

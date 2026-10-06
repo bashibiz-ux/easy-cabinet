@@ -111,6 +111,7 @@ module KitchenCabinetMaster
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
       out['pullout'] = truthy?(raw['pullout'])
+      out['gola'] = truthy?(raw['gola'])
       out['front_design'] = FrontDesign.clean(raw['front_design'])
       lift = to_float(raw['housing_lift'])
       out['housing_lift'] = lift if lift && lift >= 0

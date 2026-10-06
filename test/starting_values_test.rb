@@ -1,4 +1,4 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 # What a new item starts as, and that an open shelf unit lines up with the doors
 # beside it.  Run:  ruby test/starting_values_test.rb
@@ -34,7 +34,7 @@ class StartingValuesTest < Minitest::Test
   end
 
   def test_the_standard_cabinets_are_560_deep_and_780_high
-    base = CatalogManager.cabinets('door_with_pull_handle', 'base')
+    base = CatalogManager.cabinets('kitchen_cabinets', 'base')
     refute_empty base
     base.each do |cabinet|
       assert_equal 560, cabinet['defaults']['depth'], cabinet['id']

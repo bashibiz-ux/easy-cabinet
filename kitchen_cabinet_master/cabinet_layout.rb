@@ -133,12 +133,30 @@ module KitchenCabinetMaster
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
+      panels.concat(gola_panels(params, dims, doors, drawers, base_z)) # (the fronts stop short of the top for the Gola profile)
       custom = params['custom_overrides']
       drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
                                  drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
+
+    # A Gola handle model: instead of handles, a Gola profile (an aluminium J-section) runs along the top of the fronts of a base
+    # unit, and the fronts that reach the top stop `GOLA_HEIGHT` short of it, leaving the channel to put the fingers in. Not for the
+    # corner shapes or a unit with a panel over its oven. The fronts are changed here; the profile is returned as a panel.
+    def self.gola_panels(params, dims, doors, drawers, base_z)
+      return [] unless params['gola'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
+
+      reveal = params['door_reveal'].to_f
+      limit = base_z + dims.height - reveal
+      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - Defaults::GOLA_HEIGHT >= 60.0 }
+      return [] if fronts.empty?
+
+      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - Defaults::GOLA_HEIGHT)] }
+      [Panel.new(role: 'gola', name: 'Gola Profile', extent: [30.0, round2(dims.inner_w), Defaults::GOLA_HEIGHT],
+                 offset: [round2(dims.depth - 2.0), round2(dims.thick), round2(dims.height - Defaults::GOLA_HEIGHT)], shape: 'gola')]
+    end
+    private_class_method :gola_panels
 
     # What the user changed in the Customize window (see Customizer): per part key, a size for the axes that were
     # changed and a move from where it belongs. Applied last, so everything built on the layout sees it.

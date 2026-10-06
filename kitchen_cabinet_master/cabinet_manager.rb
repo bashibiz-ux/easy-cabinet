@@ -717,6 +717,7 @@ module KitchenCabinetMaster
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'free_housing' => !!(cabinet && cabinet['free_housing']),
                       'pullout' => !!(cabinet && cabinet['pullout']),
+                      'gola' => !!(CatalogManager.catalog(raw['catalog_id']) || {})['gola'],
                       'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)

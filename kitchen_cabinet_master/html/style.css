@@ -152,7 +152,28 @@ h1 {
   background: var(--sheet);
 }
 
-.card { border-bottom: 1px solid var(--line); }
+.card { position: relative; border-bottom: 1px solid var(--line); }
+
+/* The arrows and the grip that move a section up or down: they show when the pointer is over the section's title. */
+.card-tools {
+  position: absolute;
+  top: 9px;
+  right: 34px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+}
+.card:hover .card-tools, .card-tools:focus-within, .card.dragging .card-tools { opacity: 1; }
+.card.collapsed:not(:hover) .card-tools:not(:focus-within) { opacity: 0; }
+.card-grip { cursor: grab; padding: 2px 4px; color: var(--muted); font-size: 13px; line-height: 1; letter-spacing: -2px; user-select: none; }
+.card-grip:hover { color: var(--accent); }
+.card-move { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer; }
+.card-move:hover { background: rgba(107, 149, 240, 0.14); color: var(--accent-hover); }
+.card.dragging { opacity: 0.5; }
+.card.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.card.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
 
 .card-head {
   display: flex;

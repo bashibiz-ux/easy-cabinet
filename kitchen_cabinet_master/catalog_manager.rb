@@ -14,7 +14,9 @@ module KitchenCabinetMaster
   module CatalogManager
     USER_DIR_NAME = 'KitchenCabinetMaster_Data'
     REQUIRED_DEFAULTS = %w[width depth height].freeze
-    LEGACY_FILES = ['catalogs/sample_catalog.json'].freeze
+    # Files of earlier versions (an install cannot delete them, so they are removed when the catalogs load). The other models were
+    # taken out: Kitchen Cabinet - with handle and Kitchen Cabinet - Gola handle are the two models.
+    LEGACY_FILES = %w[catalogs/sample_catalog.json catalogs/door_with_pull_handle.json catalogs/drawer_units.json catalogs/handleless_doors.json].freeze
     DEFAULT_CUSTOM_NAME = 'My cabinets'
     # The measurements a catalog entry lets the panel adjust: entry key => [the key that switches it on, stored parameter].
     ADJUSTABLE = {
