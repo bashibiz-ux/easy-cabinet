@@ -384,11 +384,11 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer door_opening_angle
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_FLAGS = %w[finger_all].freeze # ticks (true / false)
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
-                          handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place].freeze
+                          handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place door_opening_direction].freeze
 
     # Door gap, door reveal, door distance, panel thickness, back panel thickness, the
     # Handle section and the materials of the Material section are settings for the whole job: changing one changes
@@ -721,7 +721,7 @@ module KitchenCabinetMaster
                       'free_housing' => !!(cabinet && cabinet['free_housing']),
                       'pullout' => !!(cabinet && cabinet['pullout']),
                       'glass_door' => !!(cabinet && cabinet['glass']),
-                      'lift_door' => !!(cabinet && cabinet['lift_door']),
+                      'lift_door' => !!(cabinet && (cabinet['lift_door'] || (cabinet['glass'] && ValidationManager.truthy_value?(raw['lift_door'])))), # (a glass door unit can be a lift-up one too)
                       'finger_pull' => !!(CatalogManager.catalog(raw['catalog_id']) || {})['finger_pull'],
                       'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),

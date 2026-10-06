@@ -838,11 +838,21 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_global_settings_the_panel_sends_are_taken_by_the_cabinet_manager
     source = File.read(File.expand_path('../kitchen_cabinet_master/cabinet_manager.rb', __dir__))
     numbers = source[/GLOBAL_NUMBERS = %w\[(.*?)\]/m, 1].split
-    %w[finger_gap finger_gap_drawer].each { |key| assert_includes numbers, key }
-    refute_includes numbers, 'door_opening_angle', 'the opening angle is the cabinet''s own'
+    %w[finger_gap finger_gap_drawer door_opening_angle].each { |key| assert_includes numbers, key }
+    assert_includes source[/GLOBAL_MATERIALS = %w\[(.*?)\]/m, 1].split, 'door_opening_direction'
     assert_includes source[/GLOBAL_FLAGS = %w\[(.*?)\]/m, 1].split, 'finger_all'
     assert_equal false, Defaults.params['finger_all']
     assert_equal true, ValidationManager.validate({ 'finger_all' => true }).params['finger_all']
     assert_equal false, ValidationManager.validate({ 'finger_all' => 'false' }).params['finger_all']
+  end
+
+  def test_a_glass_door_unit_can_lift_up_too
+    _, hinged = unit('wall', 'wall_glass_1door', 600)
+    assert_equal ['left'], hinged.doors.map(&:hinge)
+    _, lift = unit('wall', 'wall_glass_1door', 600, 'lift_door' => true)
+    assert_equal ['top'], lift.doors.map(&:hinge)
+    _, pair = unit('wall', 'wall_glass_2door', 900, 'lift_door' => true)
+    assert_equal %w[top top], pair.doors.map(&:hinge)
+    assert_equal true, ValidationManager.validate({ 'lift_door' => true }).params['lift_door']
   end
 end

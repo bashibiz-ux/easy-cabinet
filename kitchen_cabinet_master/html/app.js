@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.56.2';
+  const APP_VERSION = '0.57.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -883,6 +883,7 @@
       finger_gap_drawer: hasFingerField() ? mmv('fingerGapGlobal') : '',
       finger_all: hasFingerField() && $('fingerAllGlobal').checked,
       glass_material: $('glassMaterial').value,
+      lift_door: hasGlassField() && $('liftDoor').checked, // a glass door unit can lift up instead of swinging
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
@@ -968,6 +969,7 @@
     if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 360);
     if (hasFingerField()) { setText('fingerGapGlobal', Number(p.finger_gap) || 35); $('fingerAllGlobal').checked = p.finger_all === true; }
     setSelect('glassMaterial', p.glass_material || 'Glass - Clear');
+    $('liftDoor').checked = p.lift_door === true;
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {
@@ -1202,6 +1204,7 @@
     setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
     setSoft($('glassField'), !hasGlassField());
+    setSoft($('liftDoorField'), !hasGlassField());
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
@@ -1926,6 +1929,8 @@
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
+    angle: ['door_opening_angle', 'angle'],
+    direction: ['door_opening_direction', 'direction'],
     frontRadius: ['front_radius', 'frontRadius'],
     fingerGapGlobal: ['finger_gap', 'fingerGapGlobal'],
     fingerAllGlobal: ['finger_all', 'fingerAllGlobal'],
