@@ -147,7 +147,7 @@ module KitchenCabinetMaster
       return cuts unless radius.positive?
 
       cuts.filter_map do |y0, y1, z0, z1, from, to|
-        margin = round_lip?([y0, y1, z0, z1, from, to]) ? radius * 2.0 : radius # (a rounded lip needs room for its curve too)
+        margin = radius * 2.0 # (a rounded lip needs room for its curve too)
         y0 = [y0, margin].max
         y1 = [y1, width - margin].min
         z0 = [z0, margin].max
@@ -190,11 +190,26 @@ module KitchenCabinetMaster
     end
     private_class_method :newell_normal
 
-    # A pocket big enough (20 mm either way) gets a rounded lip and rounded inner corners.
+    # Every cut gets a rounded lip and rounded inner corners, as far as its size allows. A big pocket has a smooth curve (16 steps), a
+    # narrow groove (under 20 mm) a smaller one (6 steps).
     MIN_ROUND_POCKET = 20.0
+    GROOVE_STEPS = 6
 
     def self.round_lip?(cut)
-      [cut[1] - cut[0], cut[3] - cut[2]].min >= MIN_ROUND_POCKET
+      [cut[1] - cut[0], cut[3] - cut[2]].min >= 1.0
+    end
+
+    # The radius of a cut's lip: lip, but under half its width (and 0.5 mm less than its depth). Under 0.3 mm it is not rounded.
+    def self.lip_radius(cut, lip)
+      width = [cut[1] - cut[0], cut[3] - cut[2]].min
+      [lip, (width / 2.0) - 0.3, cut[5] - cut[4] - 0.5].min
+    end
+
+    # Do two cuts at the same level come so close that their rounded mouths (s wider) would run into each other?
+    def self.crowded?(cut, others, s)
+      others.any? do |o|
+        !o.equal?(cut) && o[4] == cut[4] && o[0] < cut[1] + s && o[1] > cut[0] - s && o[2] < cut[3] + s && o[3] > cut[2] - s
+      end
     end
 
     # The faces (arrays of [x, y, z] in mm, each facing into the pocket) of a pocket y0..y1 x z0..z1 cut from `from` to `to` mm inside the
@@ -202,20 +217,20 @@ module KitchenCabinetMaster
     # corner where the wall meets the floor (as far as the depth allows): rings of rectangles, each a little further in and out than the
     # one before, joined by flat strips. The first ring (the outline of the pocket's mouth, `radius` mm outside the wall) is where the
     # pocket joins the face. Pure maths.
-    def self.rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, radius)
+    def self.rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, radius, steps = FRONT_STEPS)
       top = thickness - from
       depth = to - from
       ring = lambda do |x, grow|
         [[x, y0 - grow, z0 - grow], [x, y1 + grow, z0 - grow], [x, y1 + grow, z1 + grow], [x, y0 - grow, z1 + grow]].map { |p| p.map { |v| v.round(4) } }
       end
-      rings = (0..FRONT_STEPS).map do |step|
-        angle = (Math::PI / 2.0) * step / FRONT_STEPS
+      rings = (0..steps).map do |step|
+        angle = (Math::PI / 2.0) * step / steps
         ring.call(top - (radius * (1.0 - Math.cos(angle))), radius * (1.0 - Math.sin(angle)))
       end
-      corner = [radius, depth - radius].min
+      corner = [radius, depth - radius, ([y1 - y0, z1 - z0].min - 0.2) / 2.0].min
       if corner >= 0.3
-        (0..FRONT_STEPS).each do |step|
-          angle = (Math::PI / 2.0) * step / FRONT_STEPS
+        (0..steps).each do |step|
+          angle = (Math::PI / 2.0) * step / steps
           rings << ring.call(top - depth + corner - (corner * Math.sin(angle)), -corner * (1.0 - Math.cos(angle)))
         end
       else
@@ -239,12 +254,13 @@ module KitchenCabinetMaster
     # zero a big pocket has its lip and inner corners rounded (see rounded_pocket_faces).
     def self.cut_front(entities, cuts, thickness, lip = 0.0, frame = FRONT_FRAME)
       cuts.each do |y0, y1, z0, z1, from, to|
-        s = [lip, to - from - 0.5].min # (the curve is never deeper than the pocket)
-        if s >= 0.3 && round_lip?([y0, y1, z0, z1, from, to])
+        cut = [y0, y1, z0, z1, from, to]
+        s = lip_radius(cut, lip) # (the curve is never deeper than the pocket)
+        if lip.positive? && s >= 0.3 && round_lip?(cut) && !crowded?(cut, cuts, s)
           x = thickness - from
           mouth = [[x, y0 - s, z0 - s], [x, y1 + s, z0 - s], [x, y1 + s, z1 + s], [x, y0 - s, z1 + s]]
           add_mapped(entities, mouth, frame, false).erase! # a hole in the face, the pocket's mouth
-          rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, s).each { |corners| add_mapped(entities, corners, frame) }
+          rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, s, [y1 - y0, z1 - z0].min >= MIN_ROUND_POCKET ? FRONT_STEPS : GROOVE_STEPS).each { |corners| add_mapped(entities, corners, frame) }
           next
         end
         cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)

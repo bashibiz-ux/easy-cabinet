@@ -64,7 +64,7 @@ class FrontRadiusTest < Minitest::Test
 
   def test_cuts_stay_inside_the_flat_face
     groove = [[0.0, 400.0, 347.0, 353.0, 0.0, 3.0]]
-    assert_equal [[3.0, 397.0, 347.0, 353.0, 0.0, 3.0]], PG.clip_cuts(groove, 400.0, 700.0, 3.0)
+    assert_equal [[6.0, 394.0, 347.0, 353.0, 0.0, 3.0]], PG.clip_cuts(groove, 400.0, 700.0, 3.0)
     assert_equal groove, PG.clip_cuts(groove, 400.0, 700.0, 0.0)
     assert_empty PG.clip_cuts([[0.0, 2.0, 10.0, 50.0, 0.0, 3.0]], 400.0, 700.0, 3.0)
   end
@@ -110,7 +110,15 @@ class FrontRadiusTest < Minitest::Test
     assert_equal [[6.0, 394.0, 100.0, 600.0, 0.0, 6.0]], PG.clip_cuts(big, 400.0, 700.0, 3.0)
     groove = [[0.0, 400.0, 347.0, 353.0, 0.0, 3.0]]
     assert PG.round_lip?(big.first)
-    refute PG.round_lip?(groove.first), 'a groove stays plain'
+    assert PG.round_lip?(groove.first), 'a groove is rounded too'
+    assert_in_delta 2.7, PG.lip_radius([0.0, 6.0, 0.0, 700.0, 0.0, 3.2], 3.0), 0.001, 'under half its width'
+    assert_in_delta 1.5, PG.lip_radius([0.0, 300.0, 0.0, 300.0, 0.0, 2.0], 3.0), 0.001, 'and not deeper than the groove'
+    near = [[0.0, 3.0, 0.0, 100.0, 0.0, 2.0], [3.0, 6.0, 0.0, 100.0, 0.0, 2.0]]
+    assert PG.crowded?(near.first, near, 1.0), 'two grooves that touch (a line frame) stay square'
+    apart = [[0.0, 3.0, 0.0, 100.0, 0.0, 2.0], [16.0, 19.0, 0.0, 100.0, 0.0, 2.0]]
+    refute PG.crowded?(apart.first, apart, 1.2)
+    nested = [[0.0, 300.0, 0.0, 300.0, 0.0, 4.0], [20.0, 280.0, 20.0, 280.0, 4.0, 8.0]]
+    refute PG.crowded?(nested.last, nested, 3.0), 'a step inside a recess is on another level'
   end
 
   def test_the_inner_corner_of_a_pocket_is_round_too
@@ -126,5 +134,19 @@ class FrontRadiusTest < Minitest::Test
     assert_equal [10.0, 0.0, 5.0], left.map.call(18.0, 10.0, 5.0), 'the outer face of a left panel is at low Y'
     assert_equal [10.0, 18.0, 5.0], right.map.call(18.0, 10.0, 5.0), 'and of a right panel at high Y'
     assert right.flip && !left.flip
+  end
+
+  def test_a_narrow_groove_is_rounded_and_closes_up
+    groove = PG.rounded_pocket_faces(100.0, 106.0, 25.0, 675.0, 0.0, 3.0, 18.0, 2.5, 6)
+    edges = Hash.new(0)
+    groove.each { |corners| corners.each_with_index { |p, i| edges[[key(p), key(corners[(i + 1) % corners.length])]] += 1 } }
+    open = edges.keys.reject { |a, b| edges.key?([b, a]) }
+    assert_equal [97.5, 108.5], open.flatten(1).map { |p| p[1] }.uniq.sort, 'the mouth is the radius wider than the groove'
+    groove.each do |corners|
+      corners.each_with_index do |p, i|
+        q = corners[(i + 1) % corners.length]
+        refute_operator Math.sqrt(p.zip(q).sum { |a, b| (a - b)**2 }), :<, 0.01
+      end
+    end
   end
 end
