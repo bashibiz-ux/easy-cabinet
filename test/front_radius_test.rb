@@ -114,11 +114,12 @@ class FrontRadiusTest < Minitest::Test
     assert_in_delta 2.7, PG.lip_radius([0.0, 6.0, 0.0, 700.0, 0.0, 3.2], 3.0), 0.001, 'under half its width'
     assert_in_delta 1.5, PG.lip_radius([0.0, 300.0, 0.0, 300.0, 0.0, 2.0], 3.0), 0.001, 'and not deeper than the groove'
     near = [[0.0, 3.0, 0.0, 100.0, 0.0, 2.0], [3.0, 6.0, 0.0, 100.0, 0.0, 2.0]]
-    assert PG.crowded?(near.first, near, 1.0), 'two grooves that touch (a line frame) stay square'
+    assert PG.crowded?(near, 0, 1.0), 'two grooves that touch stay square'
     apart = [[0.0, 3.0, 0.0, 100.0, 0.0, 2.0], [16.0, 19.0, 0.0, 100.0, 0.0, 2.0]]
-    refute PG.crowded?(apart.first, apart, 1.2)
+    refute PG.crowded?(apart, 0, 1.2)
+    refute PG.crowded?(apart.map(&:dup), 0, 1.2), 'a cut is not crowded by itself'
     nested = [[0.0, 300.0, 0.0, 300.0, 0.0, 4.0], [20.0, 280.0, 20.0, 280.0, 4.0, 8.0]]
-    refute PG.crowded?(nested.last, nested, 3.0), 'a step inside a recess is on another level'
+    refute PG.crowded?(nested, 1, 3.0), 'a step inside a recess is on another level'
   end
 
   def test_the_inner_corner_of_a_pocket_is_round_too
@@ -143,6 +144,45 @@ class FrontRadiusTest < Minitest::Test
     open = edges.keys.reject { |a, b| edges.key?([b, a]) }
     assert_equal [97.5, 108.5], open.flatten(1).map { |p| p[1] }.uniq.sort, 'the mouth is the radius wider than the groove'
     groove.each do |corners|
+      corners.each_with_index do |p, i|
+        q = corners[(i + 1) % corners.length]
+        refute_operator Math.sqrt(p.zip(q).sum { |a, b| (a - b)**2 }), :<, 0.01
+      end
+    end
+  end
+
+  def test_every_design_but_the_line_frame_is_rounded_cut_by_cut
+    (FrontDesign.ids - %w[flat line_frame]).each do |design|
+      cuts = PG.clip_cuts(FrontDesign.cuts(design, 596.0, 716.0, 18.0), 596.0, 716.0, 3.0)
+      next if cuts.empty?
+
+      cuts.each_index do |i|
+        s = PG.lip_radius(cuts[i], 3.0)
+        assert_operator s, :>=, 0.3, "#{design}: cut #{i} has a lip to round"
+        refute PG.crowded?(cuts, i, s), "#{design}: cut #{i} is not in the way of another"
+      end
+    end
+  end
+
+  def test_the_line_frame_is_one_loop
+    assert_equal [[45.0, 551.0, 45.0, 671.0, 3.0, 0.0, 2.0]], FrontDesign.loops('line_frame', 596.0, 716.0, 18.0)
+    assert_empty FrontDesign.loops('line_frame', 100.0, 716.0, 18.0)
+    assert_empty FrontDesign.loops('shaker', 596.0, 716.0, 18.0)
+  end
+
+  def test_the_groove_round_the_line_frame_closes_up_and_faces_into_the_groove
+    faces = PG.rounded_loop_faces(45.0, 551.0, 45.0, 671.0, 3.0, 0.0, 2.0, 18.0, 1.2)
+    edges = Hash.new(0)
+    faces.each { |corners| corners.each_with_index { |p, i| edges[[key(p), key(corners[(i + 1) % corners.length])]] += 1 } }
+    open = edges.keys.reject { |a, b| edges.key?([b, a]) }
+    ys = open.flatten(1).map { |p| p[1] }.uniq.sort
+    assert_in_delta 43.8, ys.first, 0.001, 'the mouth is the radius outside the groove'
+    assert_in_delta 552.2, ys.last, 0.001
+    assert(open.all? { |a, b| a[0] == 18.0 && b[0] == 18.0 }, 'both mouths are at the level of the face')
+    assert_equal 8, open.map(&:first).uniq.length, 'two loops of four corners are open: the outside of the groove and the island'
+    faces.each do |corners|
+      n = PG.send(:newell_normal, corners)
+      assert_operator n[0], :>=, -1e-9, 'no face looks into the board'
       corners.each_with_index do |p, i|
         q = corners[(i + 1) % corners.length]
         refute_operator Math.sqrt(p.zip(q).sum { |a, b| (a - b)**2 }), :<, 0.01

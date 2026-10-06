@@ -136,6 +136,13 @@ module KitchenCabinetMaster
     end
     private_class_method :flutes_h_cuts
 
+    # The grooves of a design that run all the way round a rectangle, as [y0, y1, z0, z1, groove width, from, to] (the outside of the
+    # groove): the line frame. `cuts` has the same groove as four boards, for when it is cut square.
+    def self.loops(design, width, height, thickness)
+      return [] unless design.to_s == 'line_frame' && width >= 120.0 && height >= 120.0
+
+      [[45.0, width - 45.0, 45.0, height - 45.0, 3.0, 0.0, [2.0, thickness / 6.0].min]]
+    end
     # A groove 3 mm wide drawn as a rectangle 45 mm in from the edges.
     def self.line_frame_cuts(width, height, thickness)
       return [] if width < 120.0 || height < 120.0

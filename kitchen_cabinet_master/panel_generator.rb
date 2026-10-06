@@ -94,7 +94,7 @@ module KitchenCabinetMaster
       return definition(model, size) if cuts.empty? && r.zero?
 
       name = format('%<prefix>sFront %<design>s %<x>g x %<y>g x %<z>g r%<r>g s%<s>d', prefix: NAME_PREFIX, design: design, x: dx, y: dy, z: dz, r: r, s: FRONT_STEPS)
-      faced_definition(model, name, [dx, dy, dz], [dx, dy, dz], r, cuts, FRONT_FRAME)
+      faced_definition(model, name, [dx, dy, dz], [dx, dy, dz], r, design, cuts, FRONT_FRAME)
     end
 
     # An end panel (size [depth, thickness, height] in mm) with its outer face rounded and the shapes of a design cut into it.
@@ -105,12 +105,12 @@ module KitchenCabinetMaster
       return definition(model, size) if cuts.empty? && r.zero?
 
       name = format('%<prefix>sFace %<design>s %<side>s %<x>g x %<y>g x %<z>g r%<r>g s%<s>d', prefix: NAME_PREFIX, design: design, side: side, x: dx, y: dy, z: dz, r: r, s: FRONT_STEPS)
-      faced_definition(model, name, [dy, dx, dz], [dx, dy, dz], r, cuts, end_panel_frame(side, dy))
+      faced_definition(model, name, [dy, dx, dz], [dx, dy, dz], r, design, cuts, end_panel_frame(side, dy))
     end
 
     # `front` is [thickness, width, height] of the front in its own frame, `box` the size of the part (the same numbers in the
     # part's own order).
-    def self.faced_definition(model, name, front, box, r, cuts, frame)
+    def self.faced_definition(model, name, front, box, r, design, cuts, frame)
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
@@ -122,8 +122,12 @@ module KitchenCabinetMaster
       else
         build_box(definition.entities, box[0].mm, box[1].mm, box[2].mm)
       end
+      # A groove drawn as a loop (the line frame) is one rounded groove all the way round, when it can be.
+      loops = r.positive? ? FrontDesign.loops(design, width, height, thickness).select { |loop| lip_radius([loop[0], loop[0] + loop[4], loop[2], loop[2] + loop[4], loop[5], loop[6]], r) >= 0.3 } : []
+      cuts = [] unless loops.empty?
       # (the rounded border is not flat: a cut stays inside the flat middle of the face)
       cut_front(definition.entities, clip_cuts(cuts, width, height, r), thickness, r, frame)
+      loops.each { |loop| cut_loop(definition.entities, loop, thickness, r, frame) }
       soften(definition.entities)
       definition
     end
@@ -206,9 +210,10 @@ module KitchenCabinetMaster
     end
 
     # Do two cuts at the same level come so close that their rounded mouths (s wider) would run into each other?
-    def self.crowded?(cut, others, s)
-      others.any? do |o|
-        !o.equal?(cut) && o[4] == cut[4] && o[0] < cut[1] + s && o[1] > cut[0] - s && o[2] < cut[3] + s && o[3] > cut[2] - s
+    def self.crowded?(cuts, index, s)
+      cut = cuts[index]
+      cuts.each_with_index.any? do |o, i|
+        i != index && o[4] == cut[4] && o[0] < cut[1] + s && o[1] > cut[0] - s && o[2] < cut[3] + s && o[3] > cut[2] - s
       end
     end
 
@@ -253,10 +258,10 @@ module KitchenCabinetMaster
     # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm. With `lip` above
     # zero a big pocket has its lip and inner corners rounded (see rounded_pocket_faces).
     def self.cut_front(entities, cuts, thickness, lip = 0.0, frame = FRONT_FRAME)
-      cuts.each do |y0, y1, z0, z1, from, to|
+      cuts.each_with_index do |(y0, y1, z0, z1, from, to), index|
         cut = [y0, y1, z0, z1, from, to]
         s = lip_radius(cut, lip) # (the curve is never deeper than the pocket)
-        if lip.positive? && s >= 0.3 && round_lip?(cut) && !crowded?(cut, cuts, s)
+        if lip.positive? && s >= 0.3 && round_lip?(cut) && !crowded?(cuts, index, s)
           x = thickness - from
           mouth = [[x, y0 - s, z0 - s], [x, y1 + s, z0 - s], [x, y1 + s, z1 + s], [x, y0 - s, z1 + s]]
           add_mapped(entities, mouth, frame, false).erase! # a hole in the face, the pocket's mouth
@@ -269,6 +274,58 @@ module KitchenCabinetMaster
       end
     end
 
+    # A groove all the way round a rectangle: [y0, y1, z0, z1, width, from, to] (the outside of the groove). Its lips and inner
+    # corners are rounded; the face inside it (the island) stays.
+    def self.cut_loop(entities, loop, thickness, lip, frame)
+      y0, y1, z0, z1, width, from, to = loop
+      s = lip_radius([y0, y0 + width, z0, z0 + width, from, to], lip)
+      x = thickness - from
+      outer = add_mapped(entities, [[x, y0 - s, z0 - s], [x, y1 + s, z0 - s], [x, y1 + s, z1 + s], [x, y0 - s, z1 + s]], frame, false)
+      inner = [[x, y0 + width + s, z0 + width + s], [x, y1 - width - s, z0 + width + s], [x, y1 - width - s, z1 - width - s], [x, y0 + width + s, z1 - width - s]]
+      add_mapped(entities, inner, frame, false) # the island stays
+      outer.erase! # (what is left of the first face is the ring round the island: the mouth of the groove)
+      rounded_loop_faces(y0, y1, z0, z1, width, from, to, thickness, s).each { |corners| add_mapped(entities, corners, frame) }
+    rescue StandardError => e
+      warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
+    end
+
+    # The faces (each facing into the groove) of a groove width wide all the way round the rectangle y0..y1 x z0..z1 (its outside),
+    # cut from rom to 	o mm inside the face of a front 	hickness thick: a profile across the groove (a curve over each lip, the
+    # walls, a curve into each inner corner and the floor) swept round the rectangle as rings, mitred at the corners. Pure maths.
+    def self.rounded_loop_faces(y0, y1, z0, z1, width, from, to, thickness, radius, steps = GROOVE_STEPS)
+      top = thickness - from
+      depth = to - from
+      corner = [radius, depth - radius, (width - 0.2) / 2.0].min
+      corner = 0.0 if corner < 0.3
+      profile = [] # [how far in from the outside of the groove, how deep]
+      (0..steps).each { |k| a = (Math::PI / 2.0) * k / steps; profile << [-radius * (1.0 - Math.sin(a)), radius * (1.0 - Math.cos(a))] }
+      if corner.positive?
+        (0..steps).each { |k| a = (Math::PI / 2.0) * k / steps; profile << [corner * (1.0 - Math.cos(a)), depth - corner + (corner * Math.sin(a))] }
+        (0..steps).each { |k| a = (Math::PI / 2.0) * k / steps; profile << [width - corner + (corner * Math.sin(a)), depth - (corner * (1.0 - Math.cos(a)))] }
+      else
+        profile << [0.0, depth] << [width, depth]
+      end
+      (0..steps).each { |k| a = (Math::PI / 2.0) * k / steps; profile << [width + radius - (radius * Math.cos(a)), radius - (radius * Math.sin(a))] }
+      rings = profile.map do |inset, down|
+        x = top - down
+        [[x, y0 + inset, z0 + inset], [x, y1 - inset, z0 + inset], [x, y1 - inset, z1 - inset], [x, y0 + inset, z1 - inset]].map { |p| p.map { |v| v.round(4) } }
+      end
+      rings = rings.each_with_object([]) { |item, kept| kept << item unless kept.last == item }
+      inward = [[0.0, 1.0], [-1.0, 0.0], [0.0, -1.0], [1.0, 0.0]] # into the rectangle, side by side (bottom, right, top, left)
+      faces = []
+      rings.each_cons(2) do |a, b|
+        4.times do |e|
+          corners = [a[e], a[(e + 1) % 4], b[(e + 1) % 4], b[e]]
+          normal = newell_normal(corners)
+          mid = corners.transpose.map { |values| values.sum / corners.length }
+          across = [mid[2] - z0, y1 - mid[1], z1 - mid[2], mid[1] - y0][e] # how far in from the outside of the groove
+          toward = across < (width / 2.0) - 1e-6 ? 1.0 : (across > (width / 2.0) + 1e-6 ? -1.0 : 0.0) # which way the groove's middle is
+          score = normal[0] + (toward * ((normal[1] * inward[e][0]) + (normal[2] * inward[e][1])))
+          faces << (score.negative? ? corners.reverse : corners)
+        end
+      end
+      faces
+    end
     def self.cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)
       x = thickness - from
       face = add_mapped(entities, [[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]], frame, false)
