@@ -384,8 +384,9 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer door_opening_angle
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
+    GLOBAL_FLAGS = %w[finger_all].freeze # ticks (true / false)
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
                           handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place].freeze
 
@@ -403,6 +404,7 @@ module KitchenCabinetMaster
         overrides[key] = text unless text.empty? # blank: keep what each cabinet has
       end
       GLOBAL_MATERIALS.each { |key| overrides[key] = raw[key].to_s.strip if raw.key?(key) }
+      GLOBAL_FLAGS.each { |key| overrides[key] = ValidationManager.truthy_value?(raw[key]) if raw.key?(key) }
 
       model = Sketchup.active_model
       cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
@@ -470,6 +472,7 @@ module KitchenCabinetMaster
       overrides.any? do |key, value|
         next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
         next false if key == 'carcass_raise' && stored['cabinet_category'] != 'wall' # only wall units lift their carcass
+        next false if %w[finger_gap finger_gap_drawer finger_all].include?(key) && stored['finger_pull'] != true # only the model without handles has a finger gap
         if GLOBAL_NUMBERS.include?(key)
           ValidationManager.to_float(stored[key]) != ValidationManager.to_float(value)
         else

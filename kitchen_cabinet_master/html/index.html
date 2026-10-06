@@ -58,6 +58,8 @@
           <div class="input"><input id="fingerGapGlobal" type="text" inputmode="decimal" autocomplete="off" aria-label="Door height reduction (finger gap) for every cabinet, or the selected one"><em>mm</em></div>
         </label>
 
+        <label class="check" id="fingerAllGlobalField" hidden><input type="checkbox" id="fingerAllGlobal"><span>Finger gap on all fronts of drawers</span></label>
+
         <p class="group-title">Carcass</p>
         <label class="field" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
@@ -324,16 +326,13 @@
           <span class="label">Door Height Reduction (finger gap)</span>
           <div class="input"><input id="fingerGap" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <label class="field narrow" id="fingerGapDrawerField" hidden>
-          <span class="label">Drawer Front Height Reduction (finger gap)</span>
-          <div class="input"><input id="fingerGapDrawer" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-        </label>
+        <!-- The reduction of the drawer fronts is the Presets setting (it follows that one); kept here, out of sight, for the cabinet. -->
+        <div hidden><input id="fingerGapDrawer" type="text" inputmode="decimal" autocomplete="off"></div>
         <!-- A glass door cabinet: what the pane is made of. -->
         <label class="field" id="glassField" hidden>
           <span class="label">Glass</span>
           <div class="input has-chip"><i class="chip" data-chip-for="glassMaterial"></i><select id="glassMaterial" data-material></select></div>
         </label>
-        <label class="check" id="fingerAllField" hidden><input type="checkbox" id="fingerAll"><span>Finger gap on every front (not only the top one)</span></label>
         <!-- A housing for a freestanding fridge: the height of the lift-up cabinet over the fridge. -->
         <label class="field narrow" id="liftHeightField" hidden>
           <span class="label" id="liftHeightLabel">Lift-up Cabinet Height</span>

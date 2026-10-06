@@ -150,7 +150,8 @@ module KitchenCabinetMaster
       rows = current_rows(group_all?(raw))
       return Response.ok('There is nothing in the model yet.', { 'rows' => [], 'areas' => [] }) if rows.empty?
 
-      Response.ok("#{rows.sum(&:quantity)} pieces in #{rows.length} lines.", { 'rows' => rows.map { |row| row_hash(row) },
+      scope = selected_only? ? ' (the selected items only)' : ''
+      Response.ok("#{rows.sum(&:quantity)} pieces in #{rows.length} lines#{scope}.", { 'rows' => rows.map { |row| row_hash(row) },
                                                                                  'areas' => CutList.areas(rows).map { |m, t, a| { 'material' => m, 'thickness' => t, 'area' => a } } })
     end
 
@@ -179,9 +180,17 @@ module KitchenCabinetMaster
     end
     private_class_method :group_all?
 
+    # With cabinets or parts selected in the model the list is of those; with nothing selected it is of everything.
+    def self.selected_only?
+      Sketchup.active_model.selection.grep(Sketchup::ComponentInstance).any? { |item| AttributeManager.cabinet?(item) || AttributeManager.part?(item) }
+    end
+    private_class_method :selected_only?
+
     def self.current_rows(group_all = false)
       model = Sketchup.active_model
-      records = model.entities.grep(Sketchup::ComponentInstance).filter_map do |item|
+      items = model.entities.grep(Sketchup::ComponentInstance)
+      items = items.select { |item| model.selection.include?(item) } if selected_only?
+      records = items.filter_map do |item|
         stored = AttributeManager.read(item)
         stored if stored && (AttributeManager.cabinet?(item) || AttributeManager.part?(item))
       end

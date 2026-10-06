@@ -40,6 +40,13 @@ module KitchenCabinetMaster
 
       runs = Worktop.runs(items)
       existing = pieces_in(model)
+      # With a wall bottom panel selected the settings are for the run it belongs to; with none selected, for every run.
+      keys = [true, 'true', 1, '1'].include?(raw['selected_only']) ? selected_run_keys(model) : []
+      unless keys.empty?
+        runs = runs.select { |run| keys.include?(run_key(run)) }
+        existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }
+        return Response.fail('The selected panel is not under wall units with a raised carcass any more.') if runs.empty?
+      end
       SelectionManager.suspend do
         with_operation(model, 'Apply Wall Bottom Panel') do
           existing.each { |item| PartGenerator.remove(model, item) }
@@ -72,15 +79,31 @@ module KitchenCabinetMaster
       existing = pieces_in(model)
       return if existing.empty?
 
-      stored = AttributeManager.read(existing.first)
-      thickness = stored['wall_bottom_thickness'].to_f
-      params = { 'thickness' => thickness.positive? ? thickness : DEFAULT_THICKNESS,
-                 'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f,
-                 'setback' => stored['wall_bottom_setback'].nil? ? DEFAULT_SETBACK : stored['wall_bottom_setback'].to_f,
-                 'material' => stored['wall_bottom_material'].to_s.empty? ? Defaults::SAME_AS_DOOR : stored['wall_bottom_material'] }
+      params = params_of(AttributeManager.read(existing.first))
       runs = Worktop.runs(items_of(model))
+      own = existing.map { |item| AttributeManager.read(item) }.reject { |s| s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
       existing.each { |item| PartGenerator.remove(model, item) }
-      runs.each { |run| build(model, run, params) }
+      runs.each do |run|
+        mine = own[run_key(run)]
+        build(model, run, mine ? params_of(mine) : params) # each run keeps the settings its own panel was built with
+      end
+    end
+
+    def self.run_key(run)
+      run[:items].first[:ref].persistent_id.to_s
+    end
+
+    def self.selected_run_keys(model)
+      pieces_in(model).select { |item| model.selection.include?(item) }.map { |item| AttributeManager.read(item)['run_key'].to_s }.reject(&:empty?).uniq
+    end
+
+    # The settings a panel was built with.
+    def self.params_of(stored)
+      thickness = stored['wall_bottom_thickness'].to_f
+      { 'thickness' => thickness.positive? ? thickness : DEFAULT_THICKNESS,
+        'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f,
+        'setback' => stored['wall_bottom_setback'].nil? ? DEFAULT_SETBACK : stored['wall_bottom_setback'].to_f,
+        'material' => stored['wall_bottom_material'].to_s.empty? ? Defaults::SAME_AS_DOOR : stored['wall_bottom_material'] }
     end
 
     def self.pieces_in(model)
@@ -153,7 +176,7 @@ module KitchenCabinetMaster
         extent = [depth, to - from, thickness]
         stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'wall_bottom_length' => params['length'],
                    'wall_bottom_depth' => params['depth'], 'wall_bottom_setback' => params['setback'],
-                   'wall_bottom_material' => params['material'], 'width' => extent[1], 'depth' => extent[0], 'material' => material }
+                   'wall_bottom_material' => params['material'], 'run_key' => run_key(run), 'width' => extent[1], 'depth' => extent[0], 'material' => material }
         stored['part_id'] = AttributeManager.next_part_id(model)
         stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
         layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)

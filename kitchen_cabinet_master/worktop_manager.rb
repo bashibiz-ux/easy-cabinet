@@ -223,6 +223,14 @@ module KitchenCabinetMaster
       runs = Worktop.runs(items_of(model))
       return Response.fail('There are no base units to put a worktop on. Insert a base unit first.') if runs.empty?
 
+      # With a worktop piece selected the settings are for the run it belongs to; with none selected they are for every run.
+      keys = [true, 'true', 1, '1'].include?(raw['selected_only']) ? selected_run_keys(model) : []
+      unless keys.empty?
+        runs = runs.select { |run| keys.include?(run_key(run)) }
+        existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }
+        return Response.fail('The selected worktop does not sit on base units any more.') if runs.empty?
+      end
+
       count = SelectionManager.suspend do
         with_operation(model, 'Apply Worktop') do
           existing.each { |item| PartGenerator.remove(model, item) }
@@ -260,12 +268,24 @@ module KitchenCabinetMaster
       return if existing.empty?
 
       keys = Worktop::DEFAULTS.keys
-      stored = existing.map { |item| AttributeManager.read(item) }.find { |s| s['part_kind'] == 'worktop' } || {}
-      params = Worktop::DEFAULTS.merge(stored.slice(*keys))
+      records = existing.map { |item| AttributeManager.read(item) }
+      fallback = records.find { |s| s['part_kind'] == 'worktop' } || {}
+      # Each run is rebuilt with the settings its own pieces were built with.
+      own = records.select { |s| s['part_kind'] == 'worktop' && !s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
       runs = Worktop.runs(items_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
-      runs.each { |run| build(model, run, params) }
+      runs.each { |run| build(model, run, Worktop::DEFAULTS.merge((own[run_key(run)] || fallback).slice(*keys))) }
       CabinetGenerator.sync_fixtures(model)
+    end
+
+    # What tells a run of units apart: its first unit. Kept on its pieces, so a piece can be rebuilt on its own.
+    def self.run_key(run)
+      run[:items].first[:ref].persistent_id.to_s
+    end
+
+    # The runs the selected worktop / back splash pieces belong to (none: nothing selected, or pieces from before this was kept).
+    def self.selected_run_keys(model)
+      pieces_in(model).select { |item| model.selection.include?(item) }.map { |item| AttributeManager.read(item)['run_key'].to_s }.reject(&:empty?).uniq
     end
 
     # Every slab and back splash piece in the model.
@@ -300,6 +320,7 @@ module KitchenCabinetMaster
     # One run: its slab(s) and back splash(es), each a part of its own so it can be
     # selected, moved or deleted, all on the Worktop tag. Returns how many slabs.
     def self.build(model, run, params)
+      params = params.merge('run_key' => run_key(run))
       first = run[:items].first[:ref]
       total = run[:corner] ? 0.0 : run[:length] + (2 * params['worktop_end'].to_f)
       spans = run[:corner] ? [[0.0, nil]] : Worktop.pieces(total, params)

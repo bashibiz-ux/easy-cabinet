@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.55.0';
+  const APP_VERSION = '0.56.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -143,6 +143,7 @@
     lastMaterialRefresh: 0,
     // What is selected in the model: 'cabinet', 'filler', 'end_panel', 'toe_kick' or null.
     selectedKind: null,
+    wallBottomSelected: false, // a wall bottom panel is selected: its settings are for it alone
     // Filler / end panel fields the user has set themselves (see followCabinet).
     touched: new Set(),
     unit: 'mm',
@@ -191,7 +192,7 @@
     // overwrite what the user is in the middle of typing.
     if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
 
-    if (name === 'cabinet_selected' || name === 'part_selected' || name === 'cabinet_cleared') state.liveHold = false;
+    if (name === 'cabinet_selected' || name === 'part_selected' || name === 'cabinet_cleared') { state.liveHold = false; state.wallBottomSelected = false; }
 
     if (name === 'cabinet_selected') {
       state.selectedKind = 'cabinet';
@@ -202,6 +203,7 @@
       if (data.part_kind === 'wall_bottom') {
         // Clicking a wall bottom panel opens the Wall Bottom Panel section with its values.
         state.selectedKind = null;
+        state.wallBottomSelected = true;
         setBadge(data.part_name);
         if (data.wall_bottom_thickness) setText('wbThickness', data.wall_bottom_thickness);
         if (data.wall_bottom_length !== undefined) setText('wbLength', data.wall_bottom_length);
@@ -336,7 +338,8 @@
       worktop_cuts: '',
       backsplash_height: mmv('wtSplash'),
       material: $('wtMaterial').value,
-      backsplash_material: $('wtSplashMaterial').value === '__same__' ? '' : $('wtSplashMaterial').value
+      backsplash_material: $('wtSplashMaterial').value === '__same__' ? '' : $('wtSplashMaterial').value,
+      selected_only: state.selectedKind === 'worktop' // with a worktop piece selected the settings are for its run alone
     };
   }
 
@@ -398,7 +401,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'fingerAllGlobal', 'thickness', 'backThickness', 'topPanel',
     'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -482,7 +485,7 @@
     rotate: () => ({ degrees: $('rotateDegrees').value }),
     worktop: () => collectWorktop(),
     cutlist: () => ({ group: $('cutGroup').checked }),
-    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value }),
+    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value, selected_only: state.wallBottomSelected }),
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
@@ -878,7 +881,7 @@
       housing_lift: hasLiftField() ? mmv('liftHeight') : '',
       finger_gap: hasFingerField() ? mmv('fingerGap') : '',
       finger_gap_drawer: hasFingerField() ? mmv('fingerGapDrawer') : '',
-      finger_all: hasFingerField() && $('fingerAll').checked,
+      finger_all: hasFingerField() && $('fingerAllGlobal').checked,
       glass_material: $('glassMaterial').value,
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
@@ -963,7 +966,7 @@
     }
     if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
     if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 360);
-    if (hasFingerField()) { setText('fingerGap', Number(p.finger_gap) || 35); setText('fingerGapDrawer', Number(p.finger_gap_drawer) || Number(p.finger_gap) || 35); $('fingerAll').checked = p.finger_all === true; }
+    if (hasFingerField()) { setText('fingerGap', Number(p.finger_gap) || 35); setText('fingerGapDrawer', Number(p.finger_gap_drawer) || Number(p.finger_gap) || 35); setText('fingerGapGlobal', Number(p.finger_gap) || 35); $('fingerAllGlobal').checked = p.finger_all === true; }
     setSelect('glassMaterial', p.glass_material || 'Glass - Clear');
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
@@ -1162,18 +1165,6 @@
   // The drawer front of a unit with drawers has its own reduction; the door field is not shown on a unit of drawers alone.
   const hasFingerDrawerField = () => hasFingerField() && Number((currentCabinet() || {}).drawers) > 0;
   const hasFingerDoorField = () => hasFingerField() && (Number((currentCabinet() || {}).doors) > 0 || !hasFingerDrawerField());
-  // Every front can have its own gap when the unit has more than one level of fronts (drawers, or a drawer over a door).
-  const hasFingerAllField = () => {
-    const cabinet = currentCabinet() || {};
-    return hasFingerField() && (Number(cabinet.drawers) > 1 || (Number(cabinet.drawers) > 0 && Number(cabinet.doors) > 0));
-  };
-  // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
-  const hasShelvesField = () => {
-    const cabinet = currentCabinet() || {};
-    return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
-  };
-  // A glass door cabinet has a field for the glass.
-  const hasGlassField = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1204,8 +1195,7 @@
     if (cabinet && cabinet.split_label) $('splitLabel').textContent = cabinet.split_label;
     setSoft($('liftHeightField'), !hasLiftField());
     setSoft($('fingerGapField'), !hasFingerDoorField());
-    setSoft($('fingerGapDrawerField'), !hasFingerDrawerField());
-    setSoft($('fingerAllField'), !hasFingerAllField());
+    setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
     setSoft($('glassField'), !hasGlassField());
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
@@ -1934,8 +1924,10 @@
     doorGap: ['door_gap', 'doorGap'],
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
+    angle: ['door_opening_angle', 'angle'],
     frontRadius: ['front_radius', 'frontRadius'],
     fingerGapGlobal: ['finger_gap', 'fingerGapGlobal'],
+    fingerAllGlobal: ['finger_all', 'fingerAllGlobal'],
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     handle: ['handle_id', 'handle'],
     handleLength: ['handle_length', 'handleLength'],
@@ -1978,6 +1970,7 @@
       const withHandle = !!$('handle').value;
       globalDirty.forEach((elementId, key) => {
         if (key.startsWith('handle_') && key !== 'handle_id' && !withHandle) payload[key] = ''; // no handle: nothing to set
+        else if ($(elementId).type === 'checkbox') payload[key] = $(elementId).checked;
         else payload[key] = LENGTH_IDS.includes(elementId) ? mmv(elementId) : $(elementId).value;
       });
       globalDirty.clear();
