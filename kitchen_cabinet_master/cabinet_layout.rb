@@ -1159,5 +1159,6 @@ module KitchenCabinetMaster
 end
 
 # The sink, hob and hood parts (loaded here too so the layout works wherever it is loaded alone, as in the tests).
+require_relative 'front_design'
 require_relative 'appliance_parts'
 require_relative 'fixtures'

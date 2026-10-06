@@ -67,6 +67,38 @@ module KitchenCabinetMaster
       definition
     end
 
+    # A door or drawer front (size [thickness, width, height] in mm; its outer face is the high-X face) with the shapes of a design
+    # cut into that face (see FrontDesign). A front too small for the design is a plain board. Named after its design and size, so
+    # equal fronts share one definition.
+    def self.front_definition(model, size, design)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      cuts = FrontDesign.cuts(design, dy, dz, dx)
+      return definition(model, size) if cuts.empty?
+
+      name = format('%<prefix>sFront %<design>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, design: design, x: dx, y: dy, z: dz)
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      build_box(definition.entities, dx.mm, dy.mm, dz.mm)
+      cut_front(definition.entities, cuts, dx)
+      soften(definition.entities)
+      definition
+    end
+
+    # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm.
+    def self.cut_front(entities, cuts, thickness)
+      cuts.each do |y0, y1, z0, z1, from, to|
+        x = (thickness - from).mm
+        face = entities.add_face([x, y0.mm, z0.mm], [x, y1.mm, z0.mm], [x, y1.mm, z1.mm], [x, y0.mm, z1.mm])
+        depth = (to - from).mm
+        face.pushpull(face.normal.x.positive? ? -depth : depth)
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
+      end
+    end
+
     # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
     # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
     # Round things are drawn with many sides and their edges smoothed, so that they look round: 16 sides for a pin, 32 for a

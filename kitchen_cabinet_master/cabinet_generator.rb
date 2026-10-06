@@ -301,7 +301,8 @@ module KitchenCabinetMaster
     # carries the door's position), and the handle sits on the panel's front face.
     def self.sync_door_contents(model, container, door, params, material, bundle, boxes = nil)
       entities = container.definition.entities
-      panel = CabinetLayout::Panel.new(role: DOOR_PANEL_ROLE, name: "#{door.name} Panel", extent: door.extent,
+      design = FrontDesign.clean(params['front_design'])
+      panel = CabinetLayout::Panel.new(role: DOOR_PANEL_ROLE, name: "#{door.name} Panel", extent: door.extent, shape: (design == FrontDesign::DEFAULT ? nil : "front_#{design}"),
                                        offset: [0, 0, 0])
       reconcile(model, entities, [panel], material, scope: ->(role) { role == DOOR_PANEL_ROLE }) do |_item, _existing|
         Geom::Transformation.new
@@ -627,7 +628,11 @@ module KitchenCabinetMaster
     private_class_method :reconcile
 
     def self.place_item(model, entities, instance, item, transformation)
-      definition = item.points ? PanelGenerator.polygon_definition(model, item.points, item.extent[2]) : PanelGenerator.definition(model, item.extent)
+      definition =
+        if item.points then PanelGenerator.polygon_definition(model, item.points, item.extent[2])
+        elsif item.shape.to_s.start_with?('front_') then PanelGenerator.front_definition(model, item.extent, item.shape.to_s.delete_prefix('front_'))
+        else PanelGenerator.definition(model, item.extent)
+        end
       place_instance(model, entities, instance, item.role, definition, transformation)
     end
     private_class_method :place_item

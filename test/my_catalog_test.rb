@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout validation_manager catalog_manager material_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager material_manager].each { |f| require File.join(plugin, f) }
 
 class MyCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -187,5 +187,43 @@ class MyCatalogTest < Minitest::Test
     assert MaterialManager.remove_custom('Teal Gloss')
     refute MaterialManager.remove_custom('Teal Gloss')
     assert_equal ['Walnut Veneer 7'], MaterialManager.custom_summary.map { |m| m['name'] }
+  end
+  def test_front_designs_cut_shapes_into_a_front_and_leave_a_small_one_flat
+    ids = FrontDesign::DESIGNS.map { |d| d['id'] }
+    assert_equal %w[flat shaker slim_shaker stepped fluted grooved], ids
+    assert_empty FrontDesign.cuts('flat', 600, 700, 18)
+    ids.reject { |id| id == 'flat' }.each do |id|
+      cuts = FrontDesign.cuts(id, 596, 716, 18)
+      assert_operator cuts.length, :>=, 1, id
+      cuts.each do |y0, y1, z0, z1, from, to|
+        assert y0 >= 0 && y1 <= 596 && z0 >= 0 && z1 <= 716, "#{id}: inside the front"
+        assert_operator y1, :>, y0
+        assert_operator z1, :>, z0
+        assert_operator to, :>, from
+        assert_operator to, :<, 18, "#{id}: never through the board"
+      end
+    end
+    shaker = FrontDesign.cuts('shaker', 596, 716, 18).first
+    assert_equal [70.0, 526.0, 70.0, 646.0], shaker[0, 4], 'a recessed panel in a 70 mm frame'
+    assert_equal 2, FrontDesign.cuts('stepped', 596, 716, 18).length, 'two steps'
+    assert_operator FrontDesign.cuts('fluted', 596, 716, 18).length, :>=, 20, 'many grooves'
+    assert_equal 1, FrontDesign.cuts('grooved', 596, 716, 18).length
+    # a small front stays flat, a narrow one gets a slimmer frame
+    assert_empty FrontDesign.cuts('shaker', 100, 100, 18), 'too small for a frame'
+    assert_empty FrontDesign.cuts('fluted', 60, 700, 18)
+    assert_empty FrontDesign.cuts('grooved', 400, 200, 18)
+    narrow = FrontDesign.cuts('shaker', 146, 716, 18).first
+    assert_in_delta 43.0, narrow[0], 0.01, 'the frame is narrower on a narrow front'
+    assert_equal 'flat', FrontDesign.clean('nonsense')
+    assert_equal 'shaker', FrontDesign.clean('shaker')
+  end
+
+  def test_a_cabinet_keeps_its_front_design
+    base = { 'catalog_id' => 'kitchen_cabinets', 'cabinet_category' => 'base', 'cabinet_type' => 'base_2door', 'width' => '900', 'depth' => '560', 'height' => '780',
+             'toe_kick_height' => '100', 'door_opening_direction' => 'left' }
+    assert_equal 'flat', ValidationManager.validate(base, door_count: 2, drawer_count: 0).params['front_design']
+    assert_equal 'shaker', ValidationManager.validate(base.merge('front_design' => 'shaker'), door_count: 2, drawer_count: 0).params['front_design']
+    assert_equal 'flat', ValidationManager.validate(base.merge('front_design' => 'zigzag'), door_count: 2, drawer_count: 0).params['front_design']
+    assert_equal 'flat', Defaults.params['front_design']
   end
 end

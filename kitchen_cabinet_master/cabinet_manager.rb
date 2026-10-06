@@ -22,6 +22,7 @@ module KitchenCabinetMaster
       when 'apply_all' then apply_all(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
+      when 'apply_front_design' then apply_front_design(raw)
       when 'save_to_catalog' then save_to_catalog(raw)
       when 'remove_from_catalog' then remove_from_catalog(raw)
       else Response.fail("Unknown action \"#{action}\".")
@@ -105,6 +106,50 @@ module KitchenCabinetMaster
                   saved.last.merge('catalogs' => CatalogManager.catalogs))
     end
     private_class_method :save_to_catalog
+
+    # The front design chosen in the Models section goes on the selected cabinets (one, or several picked together); with nothing
+    # selected, on every cabinet. Their doors and drawer fronts are redrawn in that design; nothing else about them changes.
+    def self.apply_front_design(raw)
+      raw = {} unless raw.is_a?(Hash)
+      design = raw['front_design'].to_s
+      return Response.fail('Choose one of the front designs in the list.') unless FrontDesign.valid?(design)
+
+      model = Sketchup.active_model
+      cabinets = selected_cabinets(model)
+      if cabinets.empty?
+        return Response.fail('Select a cabinet to give it that front design, or clear the selection to give it to every cabinet.') unless model.selection.empty?
+
+        cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+        return Response.ok('No cabinets in the model yet. New cabinets will use this front design.') if cabinets.empty?
+      end
+
+      plans = []
+      problems = []
+      cabinets.each do |cabinet|
+        stored = AttributeManager.read(cabinet)
+        next if FrontDesign.clean(stored['front_design']) == design
+
+        params, errors = restyle_params(model, stored, 'front_design' => design)
+        errors.empty? ? plans << [cabinet, params] : problems << [cabinet, errors]
+      end
+      name = FrontDesign::DESIGNS.find { |item| item['id'] == design }['name']
+      return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} the front design \"#{name}\".") if plans.empty? && problems.empty?
+      return Response.fail(problems.first[1].first['message'], problems.first[1]) if plans.empty?
+
+      SelectionManager.suspend do
+        with_operation(model, 'Change Front Design') do
+          plans.each do |cabinet, params|
+            params['cabinet_name'] = NamingManager.for_update(cabinet, params)
+            CabinetGenerator.update(model, cabinet, params)
+            PartManager.follow_door(model, cabinet)
+          end
+        end
+      end
+      SelectionManager.push_selection(model)
+      Response.ok("Front design \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}." \
+                  "#{" #{problems.length} could not take it." unless problems.empty?}")
+    end
+    private_class_method :apply_front_design
 
     # Anything you drew in the model (a group, a component, loose geometry; one thing or several together) is kept as a
     # model file of its own in your catalog, and inserted again as a component beside the selected item. The catalog entry

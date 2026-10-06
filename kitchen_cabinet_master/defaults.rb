@@ -175,6 +175,7 @@ module KitchenCabinetMaster
       'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
+      'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
       'pullout' => false,           # a pull-out unit: just the front, no box inside it
       'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge
       'housing_lift' => 0.0,        # the height of that cabinet (0 = the standard)

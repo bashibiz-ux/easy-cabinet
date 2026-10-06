@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.52.0';
+  const APP_VERSION = '0.52.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -511,6 +511,16 @@
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value })
   };
 
+  // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
+  async function applyFrontDesign() {
+    try {
+      const res = await call('apply_front_design', { front_design: $('frontDesign').value });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    }
+  }
+
   // Adding to or removing from your own materials changes every material list.
   function materialsChanged(data, action) {
     if (!data.materials) return;
@@ -811,6 +821,7 @@
     const handleValue = (id) => (withHandle ? $(id).value : '');
     return {
       catalog_id: $('catalog').value,
+      front_design: $('frontDesign').value,
       handle_id: $('handle').value,
       base_material: $('baseMaterial').value,
       wall_material: $('wallMaterial').value,
@@ -1262,6 +1273,7 @@
     setBadge(params.cabinet_name || params.cabinet_id || null);
     followCabinet({ height: params.height, front: params.envelope_depth, top: params.cabinet_category === 'wall' ? params.top_z - params.base_z : params.top_z });
     setSelect('catalog', resolveCatalogId(params.catalog_id));
+    setSelect('frontDesign', params.front_design || 'flat'); // the design of the selected cabinet's fronts
     applyCatalogFeatures();
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
@@ -1765,7 +1777,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['frontDesign', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2076,7 +2088,7 @@
     Object.keys(FALLBACK_LISTS).forEach((key) => {
       if (!list(m[key]).length) m[key] = FALLBACK_LISTS[key];
     });
-    ['catalogs', 'categories', 'directions', 'warnings'].forEach((key) => { m[key] = list(m[key]); });
+    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), mine: list(m.materials && m.materials.mine) };
@@ -2099,6 +2111,7 @@
       { id: 'full', name: 'One full panel' }
     ]);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
+    fillSelect($('frontDesign'), m.front_designs.length ? m.front_designs : [{ id: 'flat', name: 'Flat (slab)' }]);
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
@@ -2165,6 +2178,7 @@
     $('lowerMode').addEventListener('change', syncZoneField);
     $('doorSplit').addEventListener('change', syncZoneField);
     $('drawerCount').addEventListener('input', syncZoneField);
+    $('frontDesign').addEventListener('change', applyFrontDesign);
     $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;
       $('myName').value = id;
