@@ -181,6 +181,7 @@ module KitchenCabinetMaster
       'finger_pull' => false,       # the model without handles: a finger gap over the doors of a base unit, closed by a panel
       'finger_gap' => 35.0,         # how much shorter the doors are (the gap over them)
       'finger_gap_drawer' => 35.0,  # and how much shorter the top drawer front is
+      'finger_all' => false,        # every front of the unit has its finger gap (not only the top one)
       'pullout' => false,           # a pull-out unit: just the front, no box inside it
       'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge
       'housing_lift' => 0.0,        # the height of that cabinet (0 = the standard)

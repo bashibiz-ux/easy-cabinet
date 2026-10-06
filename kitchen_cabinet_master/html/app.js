@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.53.6';
+  const APP_VERSION = '0.54.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -396,7 +396,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'thickness', 'backThickness', 'topPanel',
     'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -589,7 +589,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGap', 'fingerGapDrawer', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGap', 'fingerGapDrawer', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
   ];
@@ -873,6 +873,7 @@
       housing_lift: hasLiftField() ? mmv('liftHeight') : '',
       finger_gap: hasFingerField() ? mmv('fingerGap') : '',
       finger_gap_drawer: hasFingerField() ? mmv('fingerGapDrawer') : '',
+      finger_all: hasFingerField() && $('fingerAll').checked,
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
@@ -956,7 +957,7 @@
     }
     if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
     if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 360);
-    if (hasFingerField()) { setText('fingerGap', Number(p.finger_gap) || 35); setText('fingerGapDrawer', Number(p.finger_gap_drawer) || Number(p.finger_gap) || 35); }
+    if (hasFingerField()) { setText('fingerGap', Number(p.finger_gap) || 35); setText('fingerGapDrawer', Number(p.finger_gap_drawer) || Number(p.finger_gap) || 35); $('fingerAll').checked = p.finger_all === true; }
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {
@@ -1154,6 +1155,11 @@
   // The drawer front of a unit with drawers has its own reduction; the door field is not shown on a unit of drawers alone.
   const hasFingerDrawerField = () => hasFingerField() && Number((currentCabinet() || {}).drawers) > 0;
   const hasFingerDoorField = () => hasFingerField() && (Number((currentCabinet() || {}).doors) > 0 || !hasFingerDrawerField());
+  // Every front can have its own gap when the unit has more than one level of fronts (drawers, or a drawer over a door).
+  const hasFingerAllField = () => {
+    const cabinet = currentCabinet() || {};
+    return hasFingerField() && (Number(cabinet.drawers) > 1 || (Number(cabinet.drawers) > 0 && Number(cabinet.doors) > 0));
+  };
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1185,6 +1191,9 @@
     setSoft($('liftHeightField'), !hasLiftField());
     setSoft($('fingerGapField'), !hasFingerDoorField());
     setSoft($('fingerGapDrawerField'), !hasFingerDrawerField());
+    setSoft($('fingerAllField'), !hasFingerAllField());
+    setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
+    if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
     setSoft($('sinkFields'), !hasSinkField());
     setSoft($('drawerCountField'), !hasDrawerHeights());
@@ -1246,8 +1255,8 @@
     // An appliance unit (a hob, a hood, a fridge) is only on view under Show appliances: it is switched on for it.
     if (cabinet.freestanding || cabinet.hob || cabinet.hood || cabinet.free_housing) $('showAppliances').checked = true;
     if (cabinet.lift_label) setText('liftHeight', cabinet.lift);
-    if (hasFingerField() && !$('fingerGap').value) setText('fingerGap', 35);
-    if (hasFingerField() && !$('fingerGapDrawer').value) setText('fingerGapDrawer', 35);
+    if (hasFingerField() && !$('fingerGap').value) setText('fingerGap', $('fingerGapGlobal').value || 35);
+    if (hasFingerField() && !$('fingerGapDrawer').value) setText('fingerGapDrawer', $('fingerGapGlobal').value || 35);
     if (cabinet.sink) {
       $('sinkBowls').value = String(cabinet.sink_bowls || 1);
       $('sinkTray').checked = cabinet.sink_tray === true;
@@ -1910,6 +1919,7 @@
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
     frontRadius: ['front_radius', 'frontRadius'],
+    fingerGapGlobal: ['finger_gap', 'fingerGapGlobal'],
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     handle: ['handle_id', 'handle'],
     handleLength: ['handle_length', 'handleLength'],
@@ -2074,6 +2084,8 @@
 
   // A field was edited: update the selected item if this field belongs to it.
   function liveEdit(el) {
+    // The setting for the whole job is also each cabinet's own reduction (doors and drawers); the cabinet fields follow it.
+    if (el.id === 'fingerGapGlobal') { $('fingerGap').value = el.value; $('fingerGapDrawer').value = el.value; }
     if (WALL_BOTTOM_IDS.has(el.id)) {
       scheduleWallBottom(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
@@ -2099,6 +2111,7 @@
     if (GLOBAL_FIELDS[el.id] && !state.selectedKind) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
+      if (el.id === 'fingerGapGlobal') globalDirty.set('finger_gap_drawer', elementId); // doors and drawers alike
       // A different handle bundle brings its own lengths, finishes and positions
       // (the panel has just refilled them), so they all go along with it.
       if (el.id === 'handle') {

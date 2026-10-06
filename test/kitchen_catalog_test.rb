@@ -740,4 +740,42 @@ class KitchenCatalogTest < Minitest::Test
     _, doors_plain = unit('base', 'base_2door', 900)
     assert_in_delta doors_plain.doors.first.extent[2] - 35.0, doors.doors.first.extent[2], 0.01
   end
+
+  def test_every_front_can_have_its_finger_gap_when_asked
+    _, plain = unit('base', 'base_3drawer', 600)
+    _, top_only = unit('base', 'base_3drawer', 600, 'finger_pull' => true)
+    assert_equal 1, top_only.panels.count { |p| p.role.start_with?('finger_panel') }, 'as it was: only the top one'
+    assert_in_delta plain.drawers.first.extent[2], top_only.drawers.first.extent[2], 0.01
+
+    result, all = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_all' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    all.drawers.each_with_index do |drawer, i|
+      assert_in_delta plain.drawers[i].extent[2] - 35.0, drawer.extent[2], 0.01, "drawer #{i + 1} is 35 mm lower"
+      assert_in_delta plain.drawers[i].offset[2], drawer.offset[2], 0.01, 'and starts where it did'
+    end
+    finger = all.panels.select { |p| p.role.start_with?('finger_panel') }
+    assert_equal 3, finger.length, 'a panel over each drawer'
+    assert_equal 3, finger.map(&:role).uniq.length
+    top, middle, bottom = finger.sort_by { |p| -p.offset[2] }
+    assert_in_delta 780.0, top.offset[2] + top.extent[2], 0.01, 'the top one goes up to the top of the sides'
+    [middle, bottom].each do |panel|
+      assert panel.front
+      assert_in_delta 600.0, panel.extent[1], 0.01, 'from side to side'
+      assert_in_delta 542.0, panel.offset[0], 0.01, 'flush with the front of the sides'
+    end
+    drawer = plain.drawers[1]
+    ended = drawer.offset[2] + drawer.extent[2] - 100.0 # where the middle drawer front ended above the carcass bottom
+    assert_in_delta ended, middle.offset[2] + middle.extent[2], 0.01, 'a lower panel goes up to where its front ended'
+    assert_in_delta ended - 35.0 - 10.0, middle.offset[2], 0.01, 'and 10 mm down behind the shortened front'
+    # a drawer over a door: the door has its gap too, and a door unit with two doors beside each other has one panel
+    _, both = unit('base', 'base_drawer_door', 600, 'finger_pull' => true, 'finger_all' => true)
+    _, normal = unit('base', 'base_drawer_door', 600)
+    assert_in_delta normal.doors.first.extent[2] - 35.0, both.doors.first.extent[2], 0.01
+    assert_equal 2, both.panels.count { |p| p.role.start_with?('finger_panel') }
+    _, pair = unit('base', 'base_2door', 900, 'finger_pull' => true, 'finger_all' => true)
+    assert_equal 1, pair.panels.count { |p| p.role.start_with?('finger_panel') }
+    # fronts that are too small keep their height
+    _, tiny = unit('base', 'base_3drawer', 600, 'finger_pull' => true, 'finger_all' => true, 'finger_gap' => 100, 'finger_gap_drawer' => 100, 'height' => '500')
+    tiny.drawers.each { |d| assert_operator d.extent[2], :>=, 60.0 }
+  end
 end

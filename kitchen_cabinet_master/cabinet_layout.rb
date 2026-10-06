@@ -141,12 +141,13 @@ module KitchenCabinetMaster
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
 
-    # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with), and the gap that
-    # leaves over them is how the fingers take hold. It is closed by a panel in the door material, flush with the front of the carcass
-    # sides and from the outside of one to the outside of the other, up to their top. It reaches `FINGER_OVERLAP` down in front of the
-    # top of the doors, which stay where they are; the top front rail steps back by its thickness. When the doors are
-    # made shorter or taller the panel follows. Not for the corner shapes, a unit with a panel over its oven, or wall and tall units.
-    # The fronts are changed here; the panel is returned.
+    # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with; a drawer front by
+    # `finger_gap_drawer`), and the gap that leaves over them is how the fingers take hold. It is closed by a panel in the door
+    # material, flush with the front of the carcass sides and from the outside of one to the outside of the other, up to their top. It
+    # reaches `FINGER_OVERLAP` down in front of the top of the fronts, which stay where they are; the top front rail steps back by its
+    # thickness. When the fronts are made shorter or taller the panel follows. With `finger_all` every front of the unit (each drawer, a
+    # door under a drawer) has its own gap, closed by a panel of its own up to where the front used to end. Not for the corner shapes, a
+    # unit with a panel over its oven, or wall and tall units. The fronts are changed here; the panels are returned.
     def self.finger_pull_panels(params, dims, doors, drawers, base_z, panels)
       return [] unless params['finger_pull'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
 
@@ -154,25 +155,38 @@ module KitchenCabinetMaster
       door_gap = params['finger_gap'].to_f.positive? ? params['finger_gap'].to_f : Defaults::FINGER_GAP
       drawer_gap = params['finger_gap_drawer'].to_f.positive? ? params['finger_gap_drawer'].to_f : door_gap # (a drawer front has its own reduction)
       limit = base_z + dims.height - reveal
-      gap_of = ->(item) { drawers.include?(item) ? drawer_gap : door_gap }
-      fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap_of.call(item) >= 60.0 }
+      gaps = {}
+      doors.each { |item| gaps[item.object_id] = door_gap }
+      drawers.each { |item| gaps[item.object_id] = drawer_gap }
+      fronts = (doors + drawers).select do |item|
+        reaches_top = (item.offset[2] + item.extent[2] - limit).abs < 0.6
+        (reaches_top || params['finger_all'] == true) && item.extent[2] - gaps[item.object_id] >= 60.0
+      end
       return [] if fronts.empty?
 
-      gap = fronts.map { |item| gap_of.call(item) }.max # (the panel reaches down behind the lowest of them)
-      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap_of.call(item))] }
-      # The top front rail (or the front of a full top panel) steps back one board thickness, behind the panel.
-      rail = panels.find { |item| item.role == 'top_front_rail' }
-      rail.offset = [round2(rail.offset[0] - dims.thick), rail.offset[1], rail.offset[2]] if rail
-      top = panels.find { |item| item.role == 'top' }
-      top.extent = [round2(top.extent[0] - dims.thick), top.extent[1], top.extent[2]] if top && !top.points
-      door_top = dims.height - reveal - gap                       # the top of the shortened fronts, above the carcass bottom
-      bottom = door_top - Defaults::FINGER_OVERLAP
-      # (the panel's front is flush with the front of the side panels and it runs from the outside of one side panel to the other,
-      # up to their top)
-      panel = panel('finger_panel', 'Finger Gap Panel', [dims.thick, dims.width, dims.height - bottom],
-                    [dims.depth - dims.thick, 0, bottom])
-      panel.front = true # the colour of the doors
-      [panel]
+      # Fronts that end at the same height (a pair of doors) share one gap and one panel, the highest first.
+      levels = fronts.group_by { |item| round2(item.offset[2] + item.extent[2]) }.sort_by { |top, _| -top }
+      result = levels.each_with_index.map do |(top, group), index|
+        gap = group.map { |item| gaps[item.object_id] }.max # (the panel reaches down behind the lowest of them)
+        group.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gaps[item.object_id])] }
+        highest = (top - limit).abs < 0.6
+        # The top front rail (or the front of a full top panel) steps back one board thickness, behind the panel.
+        if highest
+          rail = panels.find { |item| item.role == 'top_front_rail' }
+          rail.offset = [round2(rail.offset[0] - dims.thick), rail.offset[1], rail.offset[2]] if rail
+          full = panels.find { |item| item.role == 'top' }
+          full.extent = [round2(full.extent[0] - dims.thick), full.extent[1], full.extent[2]] if full && !full.points
+        end
+        ended = top - base_z                                   # where the front ended, above the carcass bottom
+        bottom = ended - gap - Defaults::FINGER_OVERLAP
+        # (the panel's front is flush with the front of the side panels and it runs from the outside of one side panel to the other,
+        # up to their top, or for a lower front up to where it ended)
+        panel = panel(index.zero? && highest ? 'finger_panel' : "finger_panel_#{index + 1}", 'Finger Gap Panel', [dims.thick, dims.width, (highest ? dims.height : ended) - bottom],
+                      [dims.depth - dims.thick, 0, bottom])
+        panel.front = true # the colour of the doors
+        panel
+      end
+      result
     end
     private_class_method :finger_pull_panels
 

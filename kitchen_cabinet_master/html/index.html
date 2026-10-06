@@ -48,6 +48,11 @@
           <span class="label">Front Edge Radius</span>
           <div class="input"><input id="frontRadius" type="text" inputmode="decimal" autocomplete="off" aria-label="Front edge radius: how round the front edges of the doors and drawer fronts are (0 = square)"><em>mm</em></div>
         </label>
+        <!-- The model without handles: the finger gap of every front, as a setting for the whole job (each cabinet keeps its own below). -->
+        <label class="field narrow" id="fingerGapGlobalField" hidden>
+          <span class="label">Door Height Reduction (finger gap)</span>
+          <div class="input"><input id="fingerGapGlobal" type="text" inputmode="decimal" autocomplete="off" aria-label="Door height reduction (finger gap) for every cabinet, or the selected one"><em>mm</em></div>
+        </label>
         <label class="field" data-feature="panel_thickness">
           <span class="label">Panel Thickness</span>
           <div class="thick-row">
@@ -317,6 +322,7 @@
           <span class="label">Drawer Front Height Reduction (finger gap)</span>
           <div class="input"><input id="fingerGapDrawer" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <label class="check" id="fingerAllField" hidden><input type="checkbox" id="fingerAll"><span>Finger gap on every front (not only the top one)</span></label>
         <!-- A housing for a freestanding fridge: the height of the lift-up cabinet over the fridge. -->
         <label class="field narrow" id="liftHeightField" hidden>
           <span class="label" id="liftHeightLabel">Lift-up Cabinet Height</span>

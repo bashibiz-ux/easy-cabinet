@@ -384,7 +384,7 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
                           handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place].freeze
