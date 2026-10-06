@@ -6,6 +6,9 @@ module KitchenCabinetMaster
   # cuts it. All numbers are millimetres, on the front face: y across the front (0 at its left), z up it (0 at its bottom).
   module FrontDesign
     DEFAULT = 'flat'
+    GLASS_FRAME = 'glass_frame' # not one to choose: the front of a glass door (a frame round an opening right through it)
+    GLASS_FRAME_WIDTH = 50.0
+    GLASS_THICKNESS = 4.0
     DESIGNS = [
       { 'id' => 'flat', 'name' => 'Flat (slab)' },
       { 'id' => 'shaker', 'name' => 'Shaker (recessed panel)' },
@@ -48,6 +51,7 @@ module KitchenCabinetMaster
       when 'flutes_h' then flutes_h_cuts(width, height, thickness)
       when 'line_frame' then line_frame_cuts(width, height, thickness)
       when 'edge_pull' then edge_pull_cuts(width, height, thickness)
+      when GLASS_FRAME then glass_frame_cuts(width, height, thickness)
       else []
       end
     end
@@ -143,6 +147,19 @@ module KitchenCabinetMaster
 
       [[45.0, width - 45.0, 45.0, height - 45.0, 3.0, 0.0, [2.0, thickness / 6.0].min]]
     end
+    # The frame of a glass door: an opening right through the board, GLASS_FRAME_WIDTH in from the edges (less on a small door).
+    # The pane goes in that opening.
+    def self.glass_opening(width, height)
+      f = [GLASS_FRAME_WIDTH, ([width, height].min - 80.0) / 2.0].min
+      f < 25.0 ? nil : [f, width - f, f, height - f]
+    end
+
+    def self.glass_frame_cuts(width, height, thickness)
+      opening = glass_opening(width, height)
+      opening ? [opening + [0.0, thickness]] : []
+    end
+    private_class_method :glass_frame_cuts
+
     # A groove 3 mm wide drawn as a rectangle 45 mm in from the edges.
     def self.line_frame_cuts(width, height, thickness)
       return [] if width < 120.0 || height < 120.0

@@ -112,6 +112,10 @@ module KitchenCabinetMaster
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
       out['pullout'] = truthy?(raw['pullout'])
+      out['glass_door'] = truthy?(raw['glass_door'])
+      out['lift_door'] = truthy?(raw['lift_door'])
+      glass = raw['glass_material'].to_s.strip
+      out['glass_material'] = glass unless glass.empty?
       out['finger_pull'] = truthy?(raw['finger_pull'])
       out['finger_all'] = truthy?(raw['finger_all'])
       gap = to_float(raw['finger_gap'])

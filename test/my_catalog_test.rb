@@ -102,7 +102,7 @@ class MyCatalogTest < Minitest::Test
     assert categories.count { |c| c.start_with?('Plain colours') } >= 3
     assert categories.count { |c| c.start_with?('V-Ray ready') } >= 2
     %w[Shutter\ -\ Light\ Beige Carcass\ -\ Light\ Gray White].each { |name| assert list.any? { |m| m['name'] == name }, name }
-    assert list.none? { |m| m['name'] =~ /Glass|\A(Gold|Red|Yellow|Coral|Mustard|Mint)\z|VR Gloss Red/ }, 'no loud colours, no glass, no gold'
+    assert list.select { |m| m['kinds'].include?('panel') }.none? { |m| m['name'] =~ /Glass|\A(Gold|Red|Yellow|Coral|Mustard|Mint)\z|VR Gloss Red/ }, 'no loud colours, no glass among the board materials, no gold'
   end
 
   def test_the_options_group_by_category_with_the_models_own_materials_first

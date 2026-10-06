@@ -253,7 +253,7 @@ module KitchenCabinetMaster
     # corner where the wall meets the floor (as far as the depth allows): rings of rectangles, each a little further in and out than the
     # one before, joined by flat strips. The first ring (the outline of the pocket's mouth, `radius` mm outside the wall) is where the
     # pocket joins the face. Pure maths.
-    def self.rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, radius, steps = FRONT_STEPS)
+    def self.rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, radius, steps = FRONT_STEPS, through = false)
       top = thickness - from
       depth = to - from
       ring = lambda do |x, grow|
@@ -264,7 +264,9 @@ module KitchenCabinetMaster
         ring.call(top - (radius * (1.0 - Math.cos(angle))), radius * (1.0 - Math.sin(angle)))
       end
       corner = [radius, depth - radius, ([y1 - y0, z1 - z0].min - 0.2) / 2.0].min
-      if corner >= 0.3
+      if through # an opening right through: the wall goes on to the back, with no floor
+        rings << ring.call(top - depth, 0.0)
+      elsif corner >= 0.3
         (0..steps).each do |step|
           angle = (Math::PI / 2.0) * step / steps
           rings << ring.call(top - depth + corner - (corner * Math.sin(angle)), -corner * (1.0 - Math.cos(angle)))
@@ -273,7 +275,7 @@ module KitchenCabinetMaster
         rings << ring.call(top - depth, 0.0)
       end
       rings = rings.each_with_object([]) { |item, kept| kept << item unless kept.last == item }
-      faces = [rings.last]
+      faces = through ? [] : [rings.last]
       rings.each_cons(2) { |a, b| 4.times { |e| faces << [a[e], a[(e + 1) % 4], b[(e + 1) % 4], b[e]] } }
       centre = [(y0 + y1) / 2.0, (z0 + z1) / 2.0]
       faces.map do |corners|
@@ -296,7 +298,12 @@ module KitchenCabinetMaster
           x = thickness - from
           mouth = [[x, y0 - s, z0 - s], [x, y1 + s, z0 - s], [x, y1 + s, z1 + s], [x, y0 - s, z1 + s]]
           add_mapped(entities, mouth, frame, false).erase! # a hole in the face, the pocket's mouth
-          rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, s, [y1 - y0, z1 - z0].min >= MIN_ROUND_POCKET ? FRONT_STEPS : GROOVE_STEPS).each { |corners| add_mapped(entities, corners, frame) }
+          through = to - from >= thickness - 0.01
+          if through # (an opening right through the board has its hole in the back too)
+            add_mapped(entities, [[0.0, y0, z0], [0.0, y1, z0], [0.0, y1, z1], [0.0, y0, z1]], frame, false).erase!
+          end
+          steps = [y1 - y0, z1 - z0].min >= MIN_ROUND_POCKET ? FRONT_STEPS : GROOVE_STEPS
+          rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, s, steps, through).each { |corners| add_mapped(entities, corners, frame) }
           next
         end
         cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)

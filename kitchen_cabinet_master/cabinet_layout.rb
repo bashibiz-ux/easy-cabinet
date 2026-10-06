@@ -491,6 +491,7 @@ module KitchenCabinetMaster
         )
       end
       lift_up!(doors.last) if lift_up_over_appliances?(params, dims)
+      doors.each { |door| lift_up!(door) } if params['lift_door'] == true # a lift-up unit: the flap is hinged on its top edge
       doors
     end
     private_class_method :door_panels

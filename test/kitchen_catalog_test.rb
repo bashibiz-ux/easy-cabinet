@@ -3,6 +3,7 @@
 # Every cabinet of the "Kitchen Cabinets" catalog must pass the panel's checks and lay out in every width it offers.
 # Run:  ruby test/kitchen_catalog_test.rb
 
+require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
@@ -799,5 +800,38 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_back_splash_can_have_its_own_material
     assert_equal '', ValidationManager.validate_worktop({ 'backsplash_material' => '' }).params['backsplash_material']
     assert_equal 'Oak', ValidationManager.validate_worktop({ 'backsplash_material' => ' Oak ' }).params['backsplash_material']
+  end
+
+  def test_glass_door_and_lift_up_units_are_in_both_models
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      wall = CatalogManager.cabinets(catalog, 'wall').to_h { |e| [e['id'], e] }
+      %w[wall_glass_1door wall_glass_2door].each { |id| assert wall[id]['glass'], "#{catalog} #{id}" }
+      %w[wall_liftup wall_liftup_short].each do |id|
+        assert wall[id]['lift_door'], "#{catalog} #{id}"
+        assert_equal 1, wall[id]['doors']
+      end
+      assert CatalogManager.cabinets(catalog, 'tall').find { |e| e['id'] == 'tall_glass_2door' }['glass']
+    end
+  end
+
+  def test_a_lift_up_unit_has_its_door_hinged_on_the_top_edge
+    _, plain = unit('wall', 'wall_1door', 800)
+    assert_equal ['left'], plain.doors.map(&:hinge)
+    result, lift = unit('wall', 'wall_liftup', 800, 'lift_door' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    door = lift.doors.first
+    assert_equal 'top', door.hinge
+    assert_in_delta door.offset[2] + door.extent[2], door.pivot[2], 0.01, 'turning about the top edge'
+    _, short = unit('wall', 'wall_liftup_short', 1200, 'lift_door' => true)
+    assert_equal ['top'], short.doors.map(&:hinge)
+  end
+
+  def test_the_glass_materials_are_see_through_and_for_the_panes
+    list = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].select { |m| m['kinds'] == ['glass'] }
+    assert_includes list.map { |m| m['name'] }, 'Glass - Clear'
+    assert_equal 5, list.length
+    assert(list.all? { |m| m['alpha'].to_f.positive? && m['alpha'] < 1.0 && m['category'] == 'Glass' })
+    assert_equal 'Glass - Clear', Defaults.params['glass_material']
+    assert_equal true, ValidationManager.validate({ 'glass_door' => true }).params['glass_door']
   end
 end

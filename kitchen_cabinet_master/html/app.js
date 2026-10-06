@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.54.2';
+  const APP_VERSION = '0.55.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -768,10 +768,11 @@
   function loadMaterials(materials) {
     const panel = list(materials && materials.panel);
     const toeKick = list(materials && materials.toe_kick);
+    const glass = list(materials && materials.glass);
     fillMine(materials, panel);
     state.colors = {};
     state.textures = {};
-    [...panel, ...toeKick].forEach((m) => {
+    [...panel, ...toeKick, ...glass].forEach((m) => {
       if (m.color) state.colors[m.id] = m.color;
       if (m.texture) state.textures[m.id] = m.texture; // the picture of a wood, stone or metal
     });
@@ -781,6 +782,7 @@
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
+    fillSelect($('glassMaterial'), glass.length ? glass : [{ id: 'Glass - Clear', name: 'Glass - Clear' }]);
     fillSelect($('wtSplashMaterial'), [{ id: '__same__', name: 'Same as worktop' }, ...panel]);
     fillSelect($('wbMaterial'), [{ id: '__door__', name: 'Same as wall unit door material' }, ...panel]);
     updateChips();
@@ -877,6 +879,7 @@
       finger_gap: hasFingerField() ? mmv('fingerGap') : '',
       finger_gap_drawer: hasFingerField() ? mmv('fingerGapDrawer') : '',
       finger_all: hasFingerField() && $('fingerAll').checked,
+      glass_material: $('glassMaterial').value,
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
@@ -961,6 +964,7 @@
     if (hasDrawerHeights()) setText('drawerCount', Number(p.drawer_count) || (currentCabinet() || {}).drawers || 1);
     if (hasLiftField()) setText('liftHeight', Number(p.housing_lift) || (currentCabinet() || {}).lift || 360);
     if (hasFingerField()) { setText('fingerGap', Number(p.finger_gap) || 35); setText('fingerGapDrawer', Number(p.finger_gap_drawer) || Number(p.finger_gap) || 35); $('fingerAll').checked = p.finger_all === true; }
+    setSelect('glassMaterial', p.glass_material || 'Glass - Clear');
     const typedHeights = String(p.drawer_heights || '').split(',');
     for (let i = 1; i <= 6; i += 1) setText(`drawerH${i}`, Number(typedHeights[i - 1]) > 0 ? Number(typedHeights[i - 1]) : '');
     if (p.sink) {
@@ -1168,6 +1172,8 @@
     const cabinet = currentCabinet() || {};
     return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
   };
+  // A glass door cabinet has a field for the glass.
+  const hasGlassField = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1201,6 +1207,7 @@
     setSoft($('fingerGapDrawerField'), !hasFingerDrawerField());
     setSoft($('fingerAllField'), !hasFingerAllField());
     setSoft($('shelvesField'), !hasShelvesField());
+    setSoft($('glassField'), !hasGlassField());
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
@@ -2210,7 +2217,7 @@
     ['catalogs', 'categories', 'directions', 'warnings', 'front_designs'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
-    m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), mine: list(m.materials && m.materials.mine) };
+    m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), glass: list(m.materials && m.materials.glass), mine: list(m.materials && m.materials.mine) };
     m.defaults = m.defaults || {};
     m.filler_defaults = m.filler_defaults || { width: 50, thickness: 18, height: 780, material: 'White' };
     m.end_panel_defaults = m.end_panel_defaults || { side: 'right', thickness: 18, material: 'White' };

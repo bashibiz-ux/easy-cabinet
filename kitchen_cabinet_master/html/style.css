@@ -312,6 +312,7 @@ h1 {
 .input select optgroup[label="EGGER - Woodgrain decors"] { background: #9c5a14; }
 .input select optgroup[label="EGGER - Plain decors"] { background: #3a6ea5; }
 .input select optgroup[label="Stone and concrete"] { background: #7a5bc4; }
+.input select optgroup[label="Glass"] { background: #3f9fb8; }
 .input select optgroup[label="Metal"] { background: #5f7d95; }
 .input select optgroup[label="PVC and edging"] { background: #6f7b86; }
 .input select optgroup[label="V-Ray ready - Gloss and satin"] { background: #cc2a6f; }

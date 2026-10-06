@@ -29,7 +29,8 @@ module KitchenCabinetMaster
       toe_kick.unshift({ 'id' => Defaults::SAME_AS_CARCASS, 'name' => 'Same as carcass material', 'color' => nil })
       toe_kick.unshift({ 'id' => Defaults::SAME_AS_DOOR, 'name' => 'Same as door material', 'color' => nil })
 
-      { 'panel' => panel, 'toe_kick' => toe_kick, 'mine' => custom_summary }
+      glass = merge([], presets_for('glass')) # (see-through materials for the panes of glass doors)
+      { 'panel' => panel, 'toe_kick' => toe_kick, 'glass' => glass, 'mine' => custom_summary }
     end
 
     # True if the name can be used: it exists in the model or is a known preset.

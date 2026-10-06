@@ -436,6 +436,86 @@
         }
       },
       {
+        "id": "wall_glass_1door",
+        "name": "Wall - glass door, 1 door",
+        "code": "WG",
+        "doors": 1,
+        "shelves": 2,
+        "glass": true,
+        "widths": [
+          300,
+          400,
+          450,
+          500,
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_glass_2door",
+        "name": "Wall - glass doors, 2 doors",
+        "code": "WG",
+        "doors": 2,
+        "shelves": 2,
+        "glass": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
+        "id": "wall_liftup",
+        "name": "Wall - lift-up door",
+        "code": "WL",
+        "doors": 1,
+        "shelves": 1,
+        "lift_door": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 480
+        }
+      },
+      {
+        "id": "wall_liftup_short",
+        "name": "Wall - lift-up door, short",
+        "code": "WL",
+        "doors": 1,
+        "shelves": 0,
+        "lift_door": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 360
+        }
+      },
+      {
         "id": "wall_short",
         "name": "Wall - short, 2 doors",
         "code": "WS",
@@ -540,6 +620,23 @@
         ],
         "split": 1000,
         "split_label": "Lower Door Height",
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 2160
+        }
+      },
+      {
+        "id": "tall_glass_2door",
+        "name": "Tall - glass doors, 2 doors",
+        "code": "TG",
+        "doors": 2,
+        "shelves": 4,
+        "glass": true,
+        "widths": [
+          600,
+          900
+        ],
         "defaults": {
           "width": 900,
           "depth": 560,

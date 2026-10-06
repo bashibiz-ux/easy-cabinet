@@ -197,4 +197,25 @@ class FrontRadiusTest < Minitest::Test
     assert_equal [[0.0, 0.0], [560.0, 0.0], [560.0, 300.0], [542.0, 300.0], [542.0, 345.0], [560.0, 345.0], [560.0, 733.0], [542.0, 733.0], [542.0, 780.0], [0.0, 780.0]], two
     assert_equal [[0.0, 0.0], [560.0, 0.0], [560.0, 780.0], [0.0, 780.0]], PG.notched_outline(560.0, 780.0, []), 'no notch: a plain board'
   end
+
+  def test_the_frame_of_a_glass_door_is_an_opening_right_through
+    assert_equal [50.0, 346.0, 50.0, 666.0], FrontDesign.glass_opening(396.0, 716.0)
+    assert_equal [[50.0, 346.0, 50.0, 666.0, 0.0, 18.0]], FrontDesign.cuts('glass_frame', 396.0, 716.0, 18.0)
+    assert_nil FrontDesign.glass_opening(100.0, 716.0), 'a door that small has no frame'
+    assert_empty FrontDesign.cuts('glass_frame', 100.0, 716.0, 18.0)
+    refute_includes FrontDesign.ids, 'glass_frame', 'not one to choose'
+    refute FrontDesign.valid?('glass_frame')
+  end
+
+  def test_an_opening_right_through_has_a_rounded_lip_and_no_floor
+    faces = PG.rounded_pocket_faces(50.0, 346.0, 50.0, 666.0, 0.0, 18.0, 18.0, 3.0, 16, true)
+    edges = Hash.new(0)
+    faces.each { |corners| corners.each_with_index { |p, i| edges[[key(p), key(corners[(i + 1) % corners.length])]] += 1 } }
+    open = edges.keys.reject { |a, b| edges.key?([b, a]) }
+    assert_equal [0.0, 18.0], open.flatten(1).map { |p| p[0] }.uniq.sort, 'open at the front (the mouth) and at the back (the hole in it)'
+    assert_equal 8, open.map(&:first).uniq.length
+    assert faces.none? { |corners| corners.all? { |p| p[0].zero? } }, 'no floor'
+    back = open.select { |a, b| a[0].zero? && b[0].zero? }.flatten(1).map { |p| [p[1], p[2]] }.uniq.sort
+    assert_equal [[50.0, 50.0], [50.0, 666.0], [346.0, 50.0], [346.0, 666.0]], back, 'the hole in the back is the opening'
+  end
 end

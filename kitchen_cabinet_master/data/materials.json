@@ -1438,6 +1438,61 @@
       ],
       "roughness": 0.55,
       "metalness": 0.0
+    },
+    {
+      "name": "Glass - Clear",
+      "color": "#BFD9E3",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.25,
+      "roughness": 0.02,
+      "metalness": 0.0
+    },
+    {
+      "name": "Glass - Frosted",
+      "color": "#DCE8EC",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.6,
+      "roughness": 0.45,
+      "metalness": 0.0
+    },
+    {
+      "name": "Glass - Smoked",
+      "color": "#3A4248",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.5,
+      "roughness": 0.05,
+      "metalness": 0.0
+    },
+    {
+      "name": "Glass - Bronze",
+      "color": "#8A6A4C",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.45,
+      "roughness": 0.05,
+      "metalness": 0.0
+    },
+    {
+      "name": "Glass - Green",
+      "color": "#A9CDB8",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.35,
+      "roughness": 0.03,
+      "metalness": 0.0
     }
   ]
 }
