@@ -838,7 +838,8 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_global_settings_the_panel_sends_are_taken_by_the_cabinet_manager
     source = File.read(File.expand_path('../kitchen_cabinet_master/cabinet_manager.rb', __dir__))
     numbers = source[/GLOBAL_NUMBERS = %w\[(.*?)\]/m, 1].split
-    %w[finger_gap finger_gap_drawer door_opening_angle].each { |key| assert_includes numbers, key }
+    %w[finger_gap finger_gap_drawer].each { |key| assert_includes numbers, key }
+    refute_includes numbers, 'door_opening_angle', 'the opening angle is the cabinet''s own'
     assert_includes source[/GLOBAL_FLAGS = %w\[(.*?)\]/m, 1].split, 'finger_all'
     assert_equal false, Defaults.params['finger_all']
     assert_equal true, ValidationManager.validate({ 'finger_all' => true }).params['finger_all']
