@@ -765,6 +765,10 @@ module KitchenCabinetMaster
       # Its outer face: flat, or in the front design that was selected (kept with it, so a later Update does not lose it).
       out['face'] = raw['face'].to_s == 'design' ? 'design' : 'flat'
       out['front_design'] = FrontDesign.clean(raw['front_design'])
+      # The radius of its rounded outer edges, as on the doors.
+      radius, problem = numeric_field(raw, 'front_radius', { label: 'Front edge radius', min: 0.0, max: 9.0 })
+      out['front_radius'] = radius.nil? ? Defaults.params['front_radius'] : radius
+      errors << problem if problem
 
       Result.new(out, errors)
     end

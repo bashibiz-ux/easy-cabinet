@@ -98,7 +98,8 @@ module KitchenCabinetMaster
         role: 'board', name: 'End Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
         offset: [0.0, 0.0, round2(base_z)],
-        shape: (design == FrontDesign::DEFAULT ? nil : "front_#{design}@#{params['side']}")
+        shape: (design == FrontDesign::DEFAULT && !params['front_radius'].to_f.positive? ? nil : "front_#{design}@#{params['side']}"),
+        round: params['front_radius'].to_f # (the outer edges are rounded)
       )
       with_overrides(Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: []), params)
     end

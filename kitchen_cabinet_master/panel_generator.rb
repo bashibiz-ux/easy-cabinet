@@ -67,10 +67,26 @@ module KitchenCabinetMaster
       definition
     end
 
+    # How a front (thickness along x, width along y, height along z, outer face at high x) is turned into a part: `map` takes a
+    # point of the front to one of the part, `flip` says the turn mirrors it (faces are then drawn the other way round), `outward` is
+    # the way the outer face looks in the part.
+    Frame = Struct.new(:map, :flip, :outward)
+    FRONT_FRAME = Frame.new(->(x, y, z) { [x, y, z] }, false, [1.0, 0.0, 0.0]).freeze
+
+    # The frame of an end panel `thickness` thick, whose outer face is the low-Y face on the left of a cabinet, the high-Y one on
+    # its right. (Across that face runs the depth, up it the height.)
+    def self.end_panel_frame(side, thickness)
+      if side.to_s == 'left'
+        Frame.new(->(x, y, z) { [y, thickness - x, z] }, false, [0.0, -1.0, 0.0])
+      else
+        Frame.new(->(x, y, z) { [y, x, z] }, true, [0.0, 1.0, 0.0])
+      end
+    end
+
     # A door or drawer front (size [thickness, width, height] in mm; its outer face is the high-X face) with the shapes of a design
     # cut into that face (see FrontDesign). A front too small for the design is a plain board. Named after its design and size, so
     # equal fronts share one definition.
-    # The four edges around the outer face are rounded with `radius` mm (0 = square edges), smooth like a worktop's front edge.
+    # The edges around the outer face are rounded with `radius` mm (0 = square edges), smooth like a worktop's front edge.
     def self.front_definition(model, size, design, radius = 0.0)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
       r = front_radius(dx, dy, dz, radius)
@@ -78,27 +94,51 @@ module KitchenCabinetMaster
       return definition(model, size) if cuts.empty? && r.zero?
 
       name = format('%<prefix>sFront %<design>s %<x>g x %<y>g x %<z>g r%<r>g s%<s>d', prefix: NAME_PREFIX, design: design, x: dx, y: dy, z: dz, r: r, s: FRONT_STEPS)
+      faced_definition(model, name, [dx, dy, dz], [dx, dy, dz], r, cuts, FRONT_FRAME)
+    end
+
+    # An end panel (size [depth, thickness, height] in mm) with its outer face rounded and the shapes of a design cut into it.
+    def self.panel_face_definition(model, size, design, side, radius = 0.0)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      r = front_radius(dy, dx, dz, radius)
+      cuts = FrontDesign.cuts(design, dx, dz, dy)
+      return definition(model, size) if cuts.empty? && r.zero?
+
+      name = format('%<prefix>sFace %<design>s %<side>s %<x>g x %<y>g x %<z>g r%<r>g s%<s>d', prefix: NAME_PREFIX, design: design, side: side, x: dx, y: dy, z: dz, r: r, s: FRONT_STEPS)
+      faced_definition(model, name, [dy, dx, dz], [dx, dy, dz], r, cuts, end_panel_frame(side, dy))
+    end
+
+    # `front` is [thickness, width, height] of the front in its own frame, `box` the size of the part (the same numbers in the
+    # part's own order).
+    def self.faced_definition(model, name, front, box, r, cuts, frame)
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
+      thickness, width, height = front
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       if r.positive?
-        rounded_front_faces(dx, dy, dz, r).each { |corners| definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+        rounded_front_faces(thickness, width, height, r).each { |corners| add_mapped(definition.entities, corners, frame) }
       else
-        build_box(definition.entities, dx.mm, dy.mm, dz.mm)
+        build_box(definition.entities, box[0].mm, box[1].mm, box[2].mm)
       end
       # (the rounded border is not flat: a cut stays inside the flat middle of the face)
-      cut_front(definition.entities, clip_cuts(cuts, dy, dz, r), dx, r)
+      cut_front(definition.entities, clip_cuts(cuts, width, height, r), thickness, r, frame)
       soften(definition.entities)
       definition
     end
 
+    def self.add_mapped(entities, corners, frame, flip = true)
+      corners = corners.reverse if flip && frame.flip
+      entities.add_face(corners.map { |x, y, z| frame.map.call(x, y, z).map(&:mm) })
+    end
+    private_class_method :add_mapped
+
     FRONT_STEPS = 16
 
     # The radius a front of this size can have: never more than its thickness less 1 mm, or under 1 mm from half its width or height.
-    def self.front_radius(dx, dy, dz, radius)
-      r = [radius.to_f, dx - 1.0, (dy / 2.0) - 1.0, (dz / 2.0) - 1.0].min
+    def self.front_radius(thickness, width, height, radius)
+      r = [radius.to_f, thickness - 1.0, (width / 2.0) - 1.0, (height / 2.0) - 1.0].min
       r < 0.2 ? 0.0 : (r * 100).round / 100.0
     end
 
@@ -150,26 +190,38 @@ module KitchenCabinetMaster
     end
     private_class_method :newell_normal
 
-    # A pocket big enough (20 mm either way) gets a rounded lip.
+    # A pocket big enough (20 mm either way) gets a rounded lip and rounded inner corners.
     MIN_ROUND_POCKET = 20.0
 
     def self.round_lip?(cut)
-      cut[4].zero? && [cut[1] - cut[0], cut[3] - cut[2]].min >= MIN_ROUND_POCKET
+      [cut[1] - cut[0], cut[3] - cut[2]].min >= MIN_ROUND_POCKET
     end
 
-    # The faces (arrays of [x, y, z] in mm, each facing into the pocket) of a pocket y0..y1 x z0..z1 cut `to` mm into a front `thickness`
-    # thick, whose lip (the edge where the face meets the pocket wall) is rounded with `radius`: rings of rectangles, each a little
-    # further in and out than the one before, then the straight wall and the flat bottom. The first ring (the outline of the pocket's
-    # mouth, `radius` mm outside the wall) is where the pocket joins the face. Pure maths.
-    def self.rounded_pocket_faces(y0, y1, z0, z1, to, thickness, radius)
+    # The faces (arrays of [x, y, z] in mm, each facing into the pocket) of a pocket y0..y1 x z0..z1 cut from `from` to `to` mm inside the
+    # face of a front `thickness` thick. Its lip (the edge where the face meets the wall) is rounded with `radius` and so is the inner
+    # corner where the wall meets the floor (as far as the depth allows): rings of rectangles, each a little further in and out than the
+    # one before, joined by flat strips. The first ring (the outline of the pocket's mouth, `radius` mm outside the wall) is where the
+    # pocket joins the face. Pure maths.
+    def self.rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, radius)
+      top = thickness - from
+      depth = to - from
+      ring = lambda do |x, grow|
+        [[x, y0 - grow, z0 - grow], [x, y1 + grow, z0 - grow], [x, y1 + grow, z1 + grow], [x, y0 - grow, z1 + grow]].map { |p| p.map { |v| v.round(4) } }
+      end
       rings = (0..FRONT_STEPS).map do |step|
         angle = (Math::PI / 2.0) * step / FRONT_STEPS
-        out = (radius * (1.0 - Math.sin(angle))).round(4)
-        x = (thickness - (radius * (1.0 - Math.cos(angle)))).round(4)
-        [[x, y0 - out, z0 - out], [x, y1 + out, z0 - out], [x, y1 + out, z1 + out], [x, y0 - out, z1 + out]]
+        ring.call(top - (radius * (1.0 - Math.cos(angle))), radius * (1.0 - Math.sin(angle)))
       end
-      floor = (thickness - to).round(4)
-      rings << [[floor, y0, z0], [floor, y1, z0], [floor, y1, z1], [floor, y0, z1]] if to - radius > 0.05
+      corner = [radius, depth - radius].min
+      if corner >= 0.3
+        (0..FRONT_STEPS).each do |step|
+          angle = (Math::PI / 2.0) * step / FRONT_STEPS
+          rings << ring.call(top - depth + corner - (corner * Math.sin(angle)), -corner * (1.0 - Math.cos(angle)))
+        end
+      else
+        rings << ring.call(top - depth, 0.0)
+      end
+      rings = rings.each_with_object([]) { |item, kept| kept << item unless kept.last == item }
       faces = [rings.last]
       rings.each_cons(2) { |a, b| 4.times { |e| faces << [a[e], a[(e + 1) % 4], b[(e + 1) % 4], b[e]] } }
       centre = [(y0 + y1) / 2.0, (z0 + z1) / 2.0]
@@ -184,60 +236,31 @@ module KitchenCabinetMaster
     end
 
     # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm. With `lip` above
-    # zero a big pocket in the face itself has its lip rounded (see rounded_pocket_faces).
-    def self.cut_front(entities, cuts, thickness, lip = 0.0)
+    # zero a big pocket has its lip and inner corners rounded (see rounded_pocket_faces).
+    def self.cut_front(entities, cuts, thickness, lip = 0.0, frame = FRONT_FRAME)
       cuts.each do |y0, y1, z0, z1, from, to|
-        s = [lip, to - 0.5].min # (the curve is never deeper than the pocket)
+        s = [lip, to - from - 0.5].min # (the curve is never deeper than the pocket)
         if s >= 0.3 && round_lip?([y0, y1, z0, z1, from, to])
-          x = thickness.mm
-          mouth = [[x, (y0 - s).mm, (z0 - s).mm], [x, (y1 + s).mm, (z0 - s).mm], [x, (y1 + s).mm, (z1 + s).mm], [x, (y0 - s).mm, (z1 + s).mm]]
-          entities.add_face(mouth).erase! # a hole in the face, the pocket's mouth
-          rounded_pocket_faces(y0, y1, z0, z1, to, thickness, s).each do |corners|
-            entities.add_face(corners.map { |px, py, pz| [px.mm, py.mm, pz.mm] })
-          end
+          x = thickness - from
+          mouth = [[x, y0 - s, z0 - s], [x, y1 + s, z0 - s], [x, y1 + s, z1 + s], [x, y0 - s, z1 + s]]
+          add_mapped(entities, mouth, frame, false).erase! # a hole in the face, the pocket's mouth
+          rounded_pocket_faces(y0, y1, z0, z1, from, to, thickness, s).each { |corners| add_mapped(entities, corners, frame) }
           next
         end
-        cut_flat(entities, y0, y1, z0, z1, from, to, thickness)
+        cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
       end
     end
 
-    def self.cut_flat(entities, y0, y1, z0, z1, from, to, thickness)
-      x = (thickness - from).mm
-      face = entities.add_face([x, y0.mm, z0.mm], [x, y1.mm, z0.mm], [x, y1.mm, z1.mm], [x, y0.mm, z1.mm])
+    def self.cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)
+      x = thickness - from
+      face = add_mapped(entities, [[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]], frame, false)
       depth = (to - from).mm
-      face.pushpull(face.normal.x.positive? ? -depth : depth)
+      normal = face.normal
+      outward = (normal.x * frame.outward[0]) + (normal.y * frame.outward[1]) + (normal.z * frame.outward[2])
+      face.pushpull(outward.positive? ? -depth : depth)
     end
-
-    # An end panel (size [depth, thickness, height] in mm) with the shapes of a design cut into its outer face: the low-Y face of a
-    # panel on the left of a cabinet, the high-Y face of one on its right. (Across the face runs the depth, up it the height.)
-    def self.panel_face_definition(model, size, design, side)
-      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
-      cuts = FrontDesign.cuts(design, dx, dz, dy)
-      return definition(model, size) if cuts.empty?
-
-      name = format('%<prefix>sFace %<design>s %<side>s %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, design: design, side: side, x: dx, y: dy, z: dz)
-      existing = model.definitions[name]
-      return existing if existing && AttributeManager.managed?(existing)
-
-      definition = model.definitions.add(name)
-      AttributeManager.mark_managed(definition)
-      build_box(definition.entities, dx.mm, dy.mm, dz.mm)
-      left = side.to_s == 'left'
-      cuts.each do |u0, u1, v0, v1, from, to|
-        y = (left ? from : dy - from).mm
-        face = definition.entities.add_face([u0.mm, y, v0.mm], [u1.mm, y, v0.mm], [u1.mm, y, v1.mm], [u0.mm, y, v1.mm])
-        depth = (to - from).mm
-        inward = left ? 1.0 : -1.0 # which way is into the board
-        face.pushpull(face.normal.y * inward > 0 ? depth : -depth)
-      rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not cut a design into an end panel: #{e.message}"
-      end
-      soften(definition.entities)
-      definition
-    end
-
     # A round bar or disc inside the box `size` ([x, y, z] in mm): a circle across the two short sides, pushed out along
     # `axis` ('x', 'y' or 'z'). Named after its size and axis, so equal bars share one definition.
     # Round things are drawn with many sides and their edges smoothed, so that they look round: 16 sides for a pin, 32 for a

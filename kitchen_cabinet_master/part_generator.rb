@@ -66,7 +66,7 @@ module KitchenCabinetMaster
         elsif board.points then PanelGenerator.polygon_definition(model, board.points, board.extent[2], holes)
         elsif board.shape.to_s.start_with?('front_')
           design, side = board.shape.to_s.delete_prefix('front_').split('@')
-          PanelGenerator.panel_face_definition(model, board.extent, design, side)
+          PanelGenerator.panel_face_definition(model, board.extent, design, side, board.round.to_f)
         elsif board.round.to_f.positive? then PanelGenerator.rounded_definition(model, board.extent, board.round, holes)
         else PanelGenerator.definition(model, board.extent, holes)
         end

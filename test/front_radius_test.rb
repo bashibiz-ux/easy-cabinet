@@ -77,7 +77,7 @@ class FrontRadiusTest < Minitest::Test
     assert_includes bad.errors.map { |e| e['field'] }, 'front_radius'
   end
 
-  def pocket(s = 3.0) = PG.rounded_pocket_faces(70.0, 330.0, 70.0, 630.0, 6.0, 18.0, s)
+  def pocket(s = 3.0) = PG.rounded_pocket_faces(70.0, 330.0, 70.0, 630.0, 0.0, 6.0, 18.0, s)
 
   def test_a_pocket_has_a_rounded_lip_that_joins_the_face_and_closes_up
     edges = Hash.new(0)
@@ -111,5 +111,20 @@ class FrontRadiusTest < Minitest::Test
     groove = [[0.0, 400.0, 347.0, 353.0, 0.0, 3.0]]
     assert PG.round_lip?(big.first)
     refute PG.round_lip?(groove.first), 'a groove stays plain'
+  end
+
+  def test_the_inner_corner_of_a_pocket_is_round_too
+    floor_edge = pocket.flatten(1).select { |p| p[0] > 12.0 && p[0] < 15.0 && p[1] > 70.0 && p[1] < 73.0 }
+    refute_empty floor_edge, 'points curve from the wall down to the floor'
+    shallow = PG.rounded_pocket_faces(70.0, 330.0, 70.0, 630.0, 3.6, 3.6 + 6.0, 18.0, 3.0)
+    assert_equal 18.0 - 3.6, shallow.flatten(1).map { |p| p[0] }.max, 'a step inside a recess starts at its floor'
+  end
+
+  def test_an_end_panel_has_the_outer_face_on_its_own_side
+    left = PG.end_panel_frame('left', 18.0)
+    right = PG.end_panel_frame('right', 18.0)
+    assert_equal [10.0, 0.0, 5.0], left.map.call(18.0, 10.0, 5.0), 'the outer face of a left panel is at low Y'
+    assert_equal [10.0, 18.0, 5.0], right.map.call(18.0, 10.0, 5.0), 'and of a right panel at high Y'
+    assert right.flip && !left.flip
   end
 end
