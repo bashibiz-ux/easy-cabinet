@@ -76,4 +76,40 @@ class FrontRadiusTest < Minitest::Test
     bad = ValidationManager.validate({ 'front_radius' => '30' })
     assert_includes bad.errors.map { |e| e['field'] }, 'front_radius'
   end
+
+  def pocket(s = 3.0) = PG.rounded_pocket_faces(70.0, 330.0, 70.0, 630.0, 6.0, 18.0, s)
+
+  def test_a_pocket_has_a_rounded_lip_that_joins_the_face_and_closes_up
+    edges = Hash.new(0)
+    pocket.each { |corners| corners.each_with_index { |p, i| edges[[key(p), key(corners[(i + 1) % corners.length])]] += 1 } }
+    open = edges.keys.reject { |a, b| edges.key?([b, a]) }
+    assert_equal 4, open.map(&:first).uniq.length, 'only the four corners of the mouth are open: it is where the pocket joins the face'
+    assert(open.all? { |a, b| a[0] == 18.0 && b[0] == 18.0 }, 'at the level of the face')
+    ys = open.flatten(1).map { |p| p[1] }.uniq.sort
+    assert_equal [67.0, 333.0], ys, 'the mouth is the radius wider than the wall'
+  end
+
+  def test_the_pocket_faces_face_into_the_pocket
+    pocket.each do |corners|
+      n = PG.send(:newell_normal, corners)
+      mid = corners.transpose.map { |v| v.sum / corners.length }
+      toward = [200.0 - mid[1], 350.0 - mid[2]]
+      length = Math.hypot(*toward)
+      assert_operator n[0] + (length < 1e-9 ? 0.0 : ((n[1] * toward[0]) + (n[2] * toward[1])) / length), :>, 0.0
+      corners.each_with_index do |p, i|
+        q = corners[(i + 1) % corners.length]
+        refute_operator Math.sqrt(p.zip(q).sum { |a, b| (a - b)**2 }), :<, 0.01
+      end
+    end
+    floor = pocket.min_by { |c| c.sum { |p| p[0] } }
+    assert_equal [12.0], floor.map { |p| p[0] }.uniq, 'the floor is 6 mm deep'
+  end
+
+  def test_a_pocket_with_a_rounded_lip_keeps_away_from_the_edge_of_the_front
+    big = [[0.0, 400.0, 100.0, 600.0, 0.0, 6.0]]
+    assert_equal [[6.0, 394.0, 100.0, 600.0, 0.0, 6.0]], PG.clip_cuts(big, 400.0, 700.0, 3.0)
+    groove = [[0.0, 400.0, 347.0, 353.0, 0.0, 3.0]]
+    assert PG.round_lip?(big.first)
+    refute PG.round_lip?(groove.first), 'a groove stays plain'
+  end
 end

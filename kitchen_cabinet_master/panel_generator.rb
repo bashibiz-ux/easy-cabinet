@@ -89,7 +89,7 @@ module KitchenCabinetMaster
         build_box(definition.entities, dx.mm, dy.mm, dz.mm)
       end
       # (the rounded border is not flat: a cut stays inside the flat middle of the face)
-      cut_front(definition.entities, clip_cuts(cuts, dy, dz, r), dx)
+      cut_front(definition.entities, clip_cuts(cuts, dy, dz, r), dx, r)
       soften(definition.entities)
       definition
     end
@@ -102,15 +102,16 @@ module KitchenCabinetMaster
       r < 0.2 ? 0.0 : (r * 100).round / 100.0
     end
 
-    # The cuts of a design kept inside the flat face (`radius` in from every edge); a cut that is left under 1 mm is dropped.
+    # The cuts of a design kept inside the flat face (`radius` in from every edge, twice that for a pocket with a rounded lip); a cut that is left under 1 mm is dropped.
     def self.clip_cuts(cuts, width, height, radius)
       return cuts unless radius.positive?
 
       cuts.filter_map do |y0, y1, z0, z1, from, to|
-        y0 = [y0, radius].max
-        y1 = [y1, width - radius].min
-        z0 = [z0, radius].max
-        z1 = [z1, height - radius].min
+        margin = round_lip?([y0, y1, z0, z1, from, to]) ? radius * 2.0 : radius # (a rounded lip needs room for its curve too)
+        y0 = [y0, margin].max
+        y1 = [y1, width - margin].min
+        z0 = [z0, margin].max
+        z1 = [z1, height - margin].min
         [y0, y1, z0, z1, from, to] if y1 - y0 >= 1.0 && z1 - z0 >= 1.0
       end
     end
@@ -149,16 +150,64 @@ module KitchenCabinetMaster
     end
     private_class_method :newell_normal
 
-    # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm.
-    def self.cut_front(entities, cuts, thickness)
+    # A pocket big enough (20 mm either way) gets a rounded lip.
+    MIN_ROUND_POCKET = 20.0
+
+    def self.round_lip?(cut)
+      cut[4].zero? && [cut[1] - cut[0], cut[3] - cut[2]].min >= MIN_ROUND_POCKET
+    end
+
+    # The faces (arrays of [x, y, z] in mm, each facing into the pocket) of a pocket y0..y1 x z0..z1 cut `to` mm into a front `thickness`
+    # thick, whose lip (the edge where the face meets the pocket wall) is rounded with `radius`: rings of rectangles, each a little
+    # further in and out than the one before, then the straight wall and the flat bottom. The first ring (the outline of the pocket's
+    # mouth, `radius` mm outside the wall) is where the pocket joins the face. Pure maths.
+    def self.rounded_pocket_faces(y0, y1, z0, z1, to, thickness, radius)
+      rings = (0..FRONT_STEPS).map do |step|
+        angle = (Math::PI / 2.0) * step / FRONT_STEPS
+        out = (radius * (1.0 - Math.sin(angle))).round(4)
+        x = (thickness - (radius * (1.0 - Math.cos(angle)))).round(4)
+        [[x, y0 - out, z0 - out], [x, y1 + out, z0 - out], [x, y1 + out, z1 + out], [x, y0 - out, z1 + out]]
+      end
+      floor = (thickness - to).round(4)
+      rings << [[floor, y0, z0], [floor, y1, z0], [floor, y1, z1], [floor, y0, z1]] if to - radius > 0.05
+      faces = [rings.last]
+      rings.each_cons(2) { |a, b| 4.times { |e| faces << [a[e], a[(e + 1) % 4], b[(e + 1) % 4], b[e]] } }
+      centre = [(y0 + y1) / 2.0, (z0 + z1) / 2.0]
+      faces.map do |corners|
+        normal = newell_normal(corners)
+        mid = corners.transpose.map { |values| values.sum / corners.length }
+        toward = [centre[0] - mid[1], centre[1] - mid[2]]
+        length = Math.sqrt((toward[0]**2) + (toward[1]**2))
+        inward = length < 1e-9 ? 0.0 : ((normal[1] * toward[0]) + (normal[2] * toward[1])) / length
+        (normal[0] + inward).negative? ? corners.reverse : corners
+      end
+    end
+
+    # Cuts each rectangle into the outer face: a face drawn on the plane `from` mm inside it, pushed in to `to` mm. With `lip` above
+    # zero a big pocket in the face itself has its lip rounded (see rounded_pocket_faces).
+    def self.cut_front(entities, cuts, thickness, lip = 0.0)
       cuts.each do |y0, y1, z0, z1, from, to|
-        x = (thickness - from).mm
-        face = entities.add_face([x, y0.mm, z0.mm], [x, y1.mm, z0.mm], [x, y1.mm, z1.mm], [x, y0.mm, z1.mm])
-        depth = (to - from).mm
-        face.pushpull(face.normal.x.positive? ? -depth : depth)
+        s = [lip, to - 0.5].min # (the curve is never deeper than the pocket)
+        if s >= 0.3 && round_lip?([y0, y1, z0, z1, from, to])
+          x = thickness.mm
+          mouth = [[x, (y0 - s).mm, (z0 - s).mm], [x, (y1 + s).mm, (z0 - s).mm], [x, (y1 + s).mm, (z1 + s).mm], [x, (y0 - s).mm, (z1 + s).mm]]
+          entities.add_face(mouth).erase! # a hole in the face, the pocket's mouth
+          rounded_pocket_faces(y0, y1, z0, z1, to, thickness, s).each do |corners|
+            entities.add_face(corners.map { |px, py, pz| [px.mm, py.mm, pz.mm] })
+          end
+          next
+        end
+        cut_flat(entities, y0, y1, z0, z1, from, to, thickness)
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
       end
+    end
+
+    def self.cut_flat(entities, y0, y1, z0, z1, from, to, thickness)
+      x = (thickness - from).mm
+      face = entities.add_face([x, y0.mm, z0.mm], [x, y1.mm, z0.mm], [x, y1.mm, z1.mm], [x, y0.mm, z1.mm])
+      depth = (to - from).mm
+      face.pushpull(face.normal.x.positive? ? -depth : depth)
     end
 
     # An end panel (size [depth, thickness, height] in mm) with the shapes of a design cut into its outer face: the low-Y face of a
