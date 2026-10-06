@@ -666,7 +666,10 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta 0.0, panel.offset[1], 0.01
     assert_equal plain.doors.map { |d| d.extent[2] - 35.0 }, pull.doors.map { |d| d.extent[2] }, 'the doors are 35 mm shorter'
     assert_equal plain.doors.map { |d| d.offset[2] }, pull.doors.map { |d| d.offset[2] }, 'from where they started'
-    assert_equal plain.doors.map { |d| d.offset[0] - 18.0 }, pull.doors.map { |d| d.offset[0] }, 'and stepped back by the thickness of the panel'
+    assert_equal plain.doors.map { |d| d.offset[0] }, pull.doors.map { |d| d.offset[0] }, 'and not moved in or out'
+    rail = pull.panels.find { |p| p.role == 'top_front_rail' }
+    assert_in_delta plain.panels.find { |p| p.role == 'top_front_rail' }.offset[0] - 18.0, rail.offset[0], 0.01, 'the top front rail steps back by the thickness of the panel'
+    assert_in_delta panel.offset[0], rail.offset[0] + rail.extent[0], 0.01, 'to just behind it'
     door_top = pull.doors.first.offset[2] + pull.doors.first.extent[2] - 100.0 # above the carcass bottom
     assert_in_delta door_top - 10.0, panel.offset[2], 0.01, 'the panel reaches 10 mm down behind the top of the doors'
     assert_in_delta 780.0, panel.offset[2] + panel.extent[2], 0.01, 'and up to the top of the carcass sides'

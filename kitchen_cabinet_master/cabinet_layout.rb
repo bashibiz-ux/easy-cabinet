@@ -133,7 +133,7 @@ module KitchenCabinetMaster
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
-      panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z)) # (the top fronts are shorter: the finger gap)
+      panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
       custom = params['custom_overrides']
       drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
@@ -144,10 +144,10 @@ module KitchenCabinetMaster
     # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with), and the gap that
     # leaves over them is how the fingers take hold. It is closed by a panel in the door material, flush with the front of the carcass
     # sides and from the outside of one to the outside of the other, up to their top. It reaches `FINGER_OVERLAP` down in front of the
-    # top of the doors, which step back by its thickness. When the doors are
+    # top of the doors, which stay where they are; the top front rail steps back by its thickness. When the doors are
     # made shorter or taller the panel follows. Not for the corner shapes, a unit with a panel over its oven, or wall and tall units.
     # The fronts are changed here; the panel is returned.
-    def self.finger_pull_panels(params, dims, doors, drawers, base_z)
+    def self.finger_pull_panels(params, dims, doors, drawers, base_z, panels)
       return [] unless params['finger_pull'] == true && params['cabinet_category'].to_s == 'base' && corner_style(params).nil? && !params['top_front'].to_f.positive?
 
       reveal = params['door_reveal'].to_f
@@ -156,11 +156,12 @@ module KitchenCabinetMaster
       fronts = (doors + drawers).select { |item| (item.offset[2] + item.extent[2] - limit).abs < 0.6 && item.extent[2] - gap >= 60.0 }
       return [] if fronts.empty?
 
-      # (the shortened fronts also step back one board thickness, behind the panel)
-      fronts.each do |item|
-        item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)]
-        item.offset = [round2(item.offset[0] - dims.thick), item.offset[1], item.offset[2]]
-      end
+      fronts.each { |item| item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - gap)] }
+      # The top front rail (or the front of a full top panel) steps back one board thickness, behind the panel.
+      rail = panels.find { |item| item.role == 'top_front_rail' }
+      rail.offset = [round2(rail.offset[0] - dims.thick), rail.offset[1], rail.offset[2]] if rail
+      top = panels.find { |item| item.role == 'top' }
+      top.extent = [round2(top.extent[0] - dims.thick), top.extent[1], top.extent[2]] if top && !top.points
       door_top = dims.height - reveal - gap                       # the top of the shortened fronts, above the carcass bottom
       bottom = door_top - Defaults::FINGER_OVERLAP
       # (the panel's front is flush with the front of the side panels and it runs from the outside of one side panel to the other,
