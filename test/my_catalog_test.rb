@@ -253,10 +253,11 @@ class MyCatalogTest < Minitest::Test
     assert_equal ['design', 'shaker'], follow.params.values_at('face', 'front_design')
     assert_empty follow.errors
     base = follow.params.merge('target_base_z' => 0.0)
-    assert_nil PartLayout.end_panel(base.merge('face' => 'flat')).board.shape, 'a flat end panel'
+    assert_nil PartLayout.end_panel(base.merge('face' => 'flat', 'front_radius' => 0.0)).board.shape, 'a flat end panel with square edges'
+    assert_equal ['front_flat@right', 3.0], PartLayout.end_panel(base.merge('face' => 'flat')).board.to_h.values_at(:shape, :round), 'a flat end panel has rounded edges'
     assert_equal 'front_shaker@right', PartLayout.end_panel(base).board.shape, 'cut in the design, on its outer (right) face'
     assert_equal 'front_fluted@left', PartLayout.end_panel(base.merge('side' => 'left', 'front_design' => 'fluted')).board.shape
-    assert_nil PartLayout.end_panel(base.merge('front_design' => 'flat')).board.shape, 'the flat design is no cut'
+    assert_nil PartLayout.end_panel(base.merge('front_design' => 'flat', 'front_radius' => 0.0)).board.shape, 'the flat design is no cut'
     assert_equal 'flat', Defaults.end_panel_params['face']
   end
 end
