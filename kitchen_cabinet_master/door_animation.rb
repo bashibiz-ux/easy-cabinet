@@ -13,7 +13,8 @@ module KitchenCabinetMaster
   #   right hinge -> rotate counter-clockwise (positive angle about +Z)
   module DoorAnimation
     OPEN_KEY = 'open'
-    FRAMES = 30 # frames from closed to open (it was 18: a bit slower now)
+    FRAMES = 36        # frames from closed to open (it was 18, then 30: slower again)
+    GLASS_FRAMES = 60  # a glass door is slower still: there is glass to carry
     ARC_STEP_DEGREES = 10.0
     HINGE_MARK = 20.0 # mm above and below the hinge point
 
@@ -107,6 +108,15 @@ module KitchenCabinetMaster
       end
     end
 
+    # How many frames a move takes: a glass door (it has a pane in it) takes longer than any other.
+    def self.frames_for(move)
+      glass = move.kind != :drawer && move.door.respond_to?(:definition) &&
+              move.door.definition.entities.any? { |entity| entity.respond_to?(:definition) && AttributeManager.role(entity) == 'door_glass' }
+      glass ? GLASS_FRAMES : FRAMES
+    rescue StandardError
+      FRAMES
+    end
+
     def self.stop_current(model)
       return unless @current
 
@@ -130,6 +140,8 @@ module KitchenCabinetMaster
         @operation_name = operation_name
         @frame = 0
         @done = false
+        @frames = moves.map { |move| DoorAnimation.frames_for(move) } # each door takes the time its kind takes
+        @frames = [FRAMES] if @frames.empty?
       end
 
       def start
@@ -142,9 +154,9 @@ module KitchenCabinetMaster
         return false if @done
 
         @frame += 1
-        apply(ease(@frame.to_f / FRAMES))
+        apply(@frame)
         view.show_frame
-        return true if @frame < FRAMES
+        return true if @frame < @frames.max
 
         finish
         false
@@ -164,7 +176,7 @@ module KitchenCabinetMaster
         return if @done
 
         @done = true
-        apply(1.0)
+        apply(@frames.max)
         @moves.each { |move| DoorAnimation.set_open(move.door, move.to.positive?) }
         @model.commit_operation if @started
       rescue StandardError => e
@@ -180,8 +192,9 @@ module KitchenCabinetMaster
 
       private
 
-      def apply(progress)
-        @moves.each do |move|
+      def apply(frame)
+        @moves.each_with_index do |move, index|
+          progress = ease([frame.to_f / @frames[index], 1.0].min)
           fraction = move.from + ((move.to - move.from) * progress)
           move.door.transformation = if move.kind == :drawer
                                         DrawerAnimation.transformation(move.spec, move.depth, fraction)

@@ -43,4 +43,27 @@ class DoorAngleTest < Minitest::Test
     assert_equal [700.0, 700.0], lines.map { |from, _| from[2] }
     assert_equal [0.0, 0.0], lines.map { |_, to| to[2] }, 'and end at the bottom corners'
   end
+
+  # A stand-in for a door container and what is inside it.
+  FakeEntity = Struct.new(:role) do
+    def definition = self
+    def get_attribute(_dictionary, _key) = role
+  end
+  FakeDoor = Struct.new(:children) do
+    def definition = Struct.new(:entities).new(children)
+  end
+
+  def move(children, kind = :door)
+    DoorAnimation::Move.new(door: FakeDoor.new(children), spec: door('left'), angle: 90.0, from: 0.0, to: 1.0, kind: kind)
+  end
+
+  def test_a_glass_door_takes_longer_to_open_than_any_other_and_both_are_slower_than_before
+    plain = DoorAnimation.frames_for(move([FakeEntity.new('panel')]))
+    glass = DoorAnimation.frames_for(move([FakeEntity.new('panel'), FakeEntity.new('door_glass')]))
+    assert_equal DoorAnimation::FRAMES, plain
+    assert_equal DoorAnimation::GLASS_FRAMES, glass
+    assert_operator glass, :>, plain
+    assert_operator plain, :>, 30, 'slower than the 30 frames of before'
+    assert_equal DoorAnimation::FRAMES, DoorAnimation.frames_for(move([FakeEntity.new('door_glass')], :drawer)), 'a drawer is not a glass door'
+  end
 end
