@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.56.1';
+  const APP_VERSION = '0.56.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1163,6 +1163,13 @@
   // The model without handles (a catalog with finger_pull) lets the height the doors of a base unit are reduced by be set.
   const hasFingerField = () => !!(currentCatalog() || {}).finger_pull && categoryKind() === 'cabinet' && $('category').value === 'base';
   // The drawer front of a unit with drawers has its own reduction; the door field is not shown on a unit of drawers alone.
+  // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
+  const hasShelvesField = () => {
+    const cabinet = currentCabinet() || {};
+    return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
+  };
+  // A glass door cabinet has a field for the glass.
+  const hasGlassField = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
