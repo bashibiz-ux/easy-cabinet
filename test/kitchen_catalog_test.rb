@@ -1114,6 +1114,15 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal DoorAnimation::GLASS_FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES, frames.call(true, true)
   end
 
+  def test_the_two_doors_of_a_bi_fold_always_take_the_same_frames_so_the_lower_one_never_comes_away_from_the_upper_one
+    move = ->(bifold, kind = :door) { DoorAnimation::Move.new(door: nil, spec: CabinetLayout::Door.new(role: 'door_1', hinge: 'top', bifold: bifold), angle: 90.0, from: 0.0, to: 1.0, kind: kind) }
+    plain_upper = DoorAnimation::FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES
+    glass_lower = DoorAnimation::GLASS_FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES
+    assert_equal [glass_lower, glass_lower], DoorAnimation.matched_frames([move.call(true), move.call(true)], [plain_upper, glass_lower])
+    assert_equal [glass_lower, glass_lower, 36], DoorAnimation.matched_frames([move.call(true), move.call(true), move.call(false, :drawer)], [plain_upper, glass_lower, 36])
+    assert_equal [36, 60], DoorAnimation.matched_frames([move.call(false), move.call(false)], [36, 60]), 'other doors keep their own time'
+  end
+
   def test_the_glass_door_units_are_not_in_the_cabinet_list_but_cabinets_made_from_them_keep_working
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
       %w[wall tall].each do |category|

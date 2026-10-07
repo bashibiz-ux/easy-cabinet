@@ -15,7 +15,7 @@ module KitchenCabinetMaster
     OPEN_KEY = 'open'
     FRAMES = 36        # frames from closed to open (it was 18, then 30: slower again)
     GLASS_FRAMES = 60  # a glass door is slower still: there is glass to carry
-    BIFOLD_EXTRA_FRAMES = 24 # both doors of a hydraulic bi-fold take this many frames longer: the lower one has to fold over
+    BIFOLD_EXTRA_FRAMES = 80 # both doors of a hydraulic bi-fold take this many frames longer (about 2.5 seconds in all, like the real mechanism)
     ARC_STEP_DEGREES = 10.0
     HINGE_MARK = 20.0 # mm above and below the hinge point
 
@@ -69,8 +69,9 @@ module KitchenCabinetMaster
     # The lower door of a hydraulic bi-fold goes with the door above it (it hangs from that door's outer edge) and is held by the mechanism so that it
     # hangs down from there, leaning with its top BIFOLD_LEAN degrees out: it turns the other way to the upper door, by the angle of the upper door plus the
     # lean (as in the video of the Titan bi-fold). (The pivot of the door is on the face of the one above, so the two do not run into each other.)
-    BIFOLD_LEAN = 10.0
-    FOLD_ANGLE = -(115.0 + BIFOLD_LEAN) # (negative: against the way the upper door turns; see BIFOLD_ANGLE)
+    BIFOLD_ANGLE = 113.0 # the upper door of a hydraulic bi-fold turns this far (its outer edge then stands about 150 mm above the top of the cabinet)
+    BIFOLD_LEAN = 12.0
+    FOLD_ANGLE = -(BIFOLD_ANGLE + BIFOLD_LEAN) # (negative: against the way the upper door turns)
 
     def self.fold_swing(spec, angle, fraction)
       lifted = spec.parent ? swing(spec.parent, angle, fraction) : Geom::Transformation.new
@@ -82,7 +83,6 @@ module KitchenCabinetMaster
     LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
     # A hydraulic bi-fold: the upper door turns up and out on its top edge until its outer edge stands a little above the top of the cabinet, and the lower door
     # hangs from that edge in front of the cabinet. That is what the mechanism does whatever the Opening Angle says.
-    BIFOLD_ANGLE = 115.0
 
     # How far a door really opens: the panel's Opening Angle, but never less than the door's own `swing`
     # (an L corner's doors open wide to show the inside) and, for a lift-up door, never more than it can.
@@ -139,6 +139,16 @@ module KitchenCabinetMaster
       FRAMES
     end
 
+    # The two doors of a bi-fold move as one: the lower one hangs from the upper one, so both take the same frames (a glass door takes longer than a
+    # plain one, and the lower door would otherwise come away from the upper while it is still moving). Pure.
+    def self.matched_frames(moves, frames)
+      linked = moves.each_index.select { |i| moves[i].kind != :drawer && moves[i].spec.respond_to?(:bifold) && moves[i].spec.bifold }
+      return frames if linked.empty?
+
+      longest = linked.map { |i| frames[i] }.max
+      frames.each_with_index.map { |count, i| linked.include?(i) ? longest : count }
+    end
+
     def self.stop_current(model)
       return unless @current
 
@@ -162,7 +172,7 @@ module KitchenCabinetMaster
         @operation_name = operation_name
         @frame = 0
         @done = false
-        @frames = moves.map { |move| DoorAnimation.frames_for(move) } # each door takes the time its kind takes
+        @frames = DoorAnimation.matched_frames(moves, moves.map { |move| DoorAnimation.frames_for(move) }) # each door takes the time its kind takes
         @frames = [FRAMES] if @frames.empty?
       end
 

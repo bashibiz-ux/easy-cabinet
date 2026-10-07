@@ -902,9 +902,14 @@ module KitchenCabinetMaster
       specs = layout.doors.to_h { |door| [door.role, [door, :door]] }
                     .merge(layout.drawers.to_h { |drawer| [drawer.role, [drawer, :drawer]] })
 
+      # (the two doors of a bi-fold always move together: both go if either has to)
+      linked = doors.select { |door| (item = specs[AttributeManager.role(door)]) && item[1] == :door && item[0].respond_to?(:bifold) && item[0].bifold }
+      together = linked.any? { |door| DoorAnimation.open?(door) != opening }
+
       doors.each_with_object([]) do |door, list|
         spec, kind = specs[AttributeManager.role(door)]
-        next if spec.nil? || DoorAnimation.open?(door) == opening
+        next if spec.nil?
+        next if DoorAnimation.open?(door) == opening && !(together && linked.include?(door))
 
         list << DoorAnimation::Move.new(door: door, spec: spec, angle: angle, depth: depth, kind: kind,
                                          from: opening ? 0.0 : 1.0, to: opening ? 1.0 : 0.0)
