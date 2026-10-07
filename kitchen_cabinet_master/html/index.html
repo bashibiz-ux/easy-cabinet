@@ -104,6 +104,11 @@
           <span class="label">Glass Door</span>
           <div class="input"><select id="glassDoor"></select></div>
         </label>
+        <!-- What the panes of glass are made of (clear, frosted, tinted ...): the selected cabinets, or every cabinet. -->
+        <label class="field" id="glassField">
+          <span class="label">Glass</span>
+          <div class="input has-chip"><i class="chip" data-chip-for="glassMaterial"></i><select id="glassMaterial" data-material></select></div>
+        </label>
         <!-- Your own catalogs: the cabinets selected in the model are kept under a name and listed here like any other model. -->
         <div class="btn-row">
           <button class="btn" type="button" data-action="save_to_catalog" title="Keep what is selected in the model in a catalog of your own, to insert again later: cabinets of this extension (rebuilt from their settings) or anything you drew (a group, a component, geometry: kept as a model file)">Save Selected to My Catalog</button>
@@ -334,11 +339,6 @@
           <label class="check"><input type="checkbox" id="sinkTray"><span>With drainer tray</span></label>
         </div>
         <label class="check" id="liftDoorField" hidden><input type="checkbox" id="liftDoor"><span>Lift-up door (hinged on the top edge)</span></label>
-        <!-- A glass door cabinet: what the pane is made of. -->
-        <label class="field" id="glassField" hidden>
-          <span class="label">Glass</span>
-          <div class="input has-chip"><i class="chip" data-chip-for="glassMaterial"></i><select id="glassMaterial" data-material></select></div>
-        </label>
         <!-- A housing for a freestanding fridge: the height of the lift-up cabinet over the fridge. -->
         <label class="field narrow" id="liftHeightField" hidden>
           <span class="label" id="liftHeightLabel">Lift-up Cabinet Height</span>

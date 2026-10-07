@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.62.0';
+  const APP_VERSION = '0.62.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1217,9 +1217,6 @@
     const cabinet = currentCabinet() || {};
     return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
   };
-  // A glass door cabinet has a field for the glass.
-  // (also when a glass front design is chosen: its doors are glass whatever the cabinet is)
-  const hasGlassField = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).glass || !!$('glassDoor').value);
   const hasLiftTick = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass && !(currentCabinet() || {}).lift_door && !(currentCabinet() || {}).bifold;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
@@ -1252,7 +1249,6 @@
     setSoft($('liftHeightField'), !hasLiftField());
     setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
-    setSoft($('glassField'), !hasGlassField());
     setSoft($('liftDoorField'), !hasLiftTick()); // (a lift-up or bi-fold unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
