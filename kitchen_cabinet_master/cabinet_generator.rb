@@ -318,6 +318,11 @@ module KitchenCabinetMaster
       reconcile(model, entities, [panel], frame_material || material, scope: ->(role) { role == DOOR_PANEL_ROLE }) do |_item, _existing|
         Geom::Transformation.new
       end
+      if frame_material # (the frame of aluminium or black is painted by its own look, so it turns that colour whatever the list of materials has)
+        look = FrontDesign::FRAME_LOOKS[frame_material]
+        framed = index_by_role(entities)[DOOR_PANEL_ROLE]
+        MaterialManager.apply(framed, frame_material, model, look && look[:color], look && look[:props]) if framed
+      end
       sync_door_glass(model, entities, door, params, openings)
       sync_drawer_box(model, entities, door, boxes) if drawer
       sync_handle(model, entities, door, params, bundle, openings.empty? ? nil : openings.first[0]) # (on the frame of a glass door)

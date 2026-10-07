@@ -14,6 +14,7 @@ module KitchenCabinetMaster
     GLASS_LOOKS = {
       GLASS_FRAME => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
       'glass_wide' => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
+      'glass_wide_grid' => { frame: GLASS_FRAME_WIDTH, bar: 20.0, split: :grid, frame_material: nil },
       'glass_aluminium' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Aluminium frame' },
       'glass_black' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Black frame' },
       'glass_two' => { frame: 15.0, bar: 15.0, split: :long, frame_material: 'Aluminium frame' },
@@ -38,6 +39,7 @@ module KitchenCabinetMaster
       { 'id' => 'glass_aluminium', 'name' => 'Full glass, aluminium frame' },
       { 'id' => 'glass_black', 'name' => 'Full glass, black frame' },
       { 'id' => 'glass_wide', 'name' => 'Wide door frame' },
+      { 'id' => 'glass_wide_grid', 'name' => 'Wide door frame with grid of panes' },
       { 'id' => 'glass_two', 'name' => 'Two panes, aluminium' },
       { 'id' => 'glass_grid', 'name' => 'Grid of panes, aluminium' }
     ].freeze
@@ -174,6 +176,13 @@ module KitchenCabinetMaster
     def self.glass?(id)
       GLASS_LOOKS.key?(id.to_s)
     end
+
+    # How the frame of a glass design looks, so that it can be made when the material is not in the model (or not in the list yet): colour,
+    # roughness and metalness.
+    FRAME_LOOKS = {
+      'Aluminium frame' => { color: '#AEB3B8', props: { 'roughness' => 0.35, 'metalness' => 0.9 } },
+      'Black frame' => { color: '#1E1F21', props: { 'roughness' => 0.45, 'metalness' => 0.6 } }
+    }.freeze
 
     # The material of the frame of a glass design: its own (an aluminium or black frame), or nil for the door material.
     def self.frame_material(id)

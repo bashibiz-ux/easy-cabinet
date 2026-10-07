@@ -113,16 +113,16 @@ module KitchenCabinetMaster
     def self.apply_front_design(raw)
       raw = {} unless raw.is_a?(Hash)
       design = raw['front_design'].to_s
-      return Response.fail('Choose one of the front designs in the list.') unless FrontDesign.valid?(design)
+      return Response.fail('Choose one of the normal doors in the list.') unless FrontDesign.valid?(design)
 
       model = Sketchup.active_model
       cabinets = selected_cabinets(model)
       selected_only = !cabinets.empty?
       if cabinets.empty?
-        return Response.fail('Select a cabinet to give it that front design, or clear the selection to give it to every cabinet.') unless model.selection.empty?
+        return Response.fail('Select a cabinet to give it that normal door, or clear the selection to give it to every cabinet.') unless model.selection.empty?
 
         cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
-        return Response.ok('No cabinets in the model yet. New cabinets will use this front design.') if cabinets.empty?
+        return Response.ok('No cabinets in the model yet. New cabinets will use this normal door.') if cabinets.empty?
       end
 
       plans = []
@@ -138,12 +138,12 @@ module KitchenCabinetMaster
       ids = cabinets.map { |cabinet| AttributeManager.cabinet_id(cabinet) }
       panels = following_end_panels(model, design, selected_only ? ids : nil)
       if plans.empty? && problems.empty? && panels.empty?
-        return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} the front design \"#{name}\".")
+        return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} the normal door \"#{name}\".")
       end
       return Response.fail(problems.first[1].first['message'], problems.first[1]) if plans.empty? && panels.empty?
 
       SelectionManager.suspend do
-        with_operation(model, 'Change Front Design') do
+        with_operation(model, 'Change Normal Door') do
           plans.each do |cabinet, params|
             params['cabinet_name'] = NamingManager.for_update(cabinet, params)
             CabinetGenerator.update(model, cabinet, params)
@@ -155,7 +155,7 @@ module KitchenCabinetMaster
         end
       end
       SelectionManager.push_selection(model)
-      done = "Front design \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}"
+      done = "Normal door \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}"
       done += " and #{panels.length} end panel#{'s' unless panels.length == 1}" unless panels.empty?
       Response.ok("#{done}.#{" #{problems.length} could not take it." unless problems.empty?}")
     end

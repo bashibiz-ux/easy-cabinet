@@ -1007,7 +1007,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_glass_doors_are_a_field_of_their_own_and_not_front_designs
     names = FrontDesign::GLASS_DESIGNS.to_h { |d| [d['id'], d['name']] }
-    assert_equal %w[glass_aluminium glass_black glass_wide glass_two glass_grid], names.keys
+    assert_equal %w[glass_aluminium glass_black glass_wide glass_wide_grid glass_two glass_grid], names.keys
     assert_match(/aluminium frame/i, names['glass_aluminium'])
     assert_match(/black frame/i, names['glass_black'])
     assert(FrontDesign.ids.none? { |id| id.start_with?('glass') }, 'not in the Front Design list')
@@ -1122,7 +1122,7 @@ class KitchenCatalogTest < Minitest::Test
       assert known && known['glass'] && known['bifold'], 'still known by its id'
       assert CatalogManager.cabinet(catalog, 'tall', 'tall_glass_2door')
       # the lift-up and bi-fold units without glass are still offered (glass comes from the Front Design)
-      %w[wall_liftup wall_liftup_stacked wall_liftup_bifold wall_liftup_short].each do |id|
+      %w[wall_liftup wall_liftup_stacked wall_liftup_bifold].each do |id|
         assert_includes CatalogManager.cabinets(catalog, 'wall').map { |e| e['id'] }, id
       end
     end
@@ -1317,10 +1317,39 @@ class KitchenCatalogTest < Minitest::Test
       assert_equal 780, heights['wall_liftup_stacked']
       assert_equal 390, wall['wall_liftup_stacked']['zone'], 'the top door is half'
       %w[wall_1door wall_2door wall_open wall_hood wall_corner_diagonal wall_corner_l wall_corner_blind].each { |id| assert_equal 780, heights[id], id }
-      assert_equal 'Wall - lift-up single door', wall['wall_liftup']['name']
-      assert_equal 'Wall - lift-up double door', wall['wall_liftup_stacked']['name']
+      assert_equal 'Wall - lift-up 1 door', wall['wall_liftup']['name']
+      assert_equal 'Wall - lift-up 2 door', wall['wall_liftup_stacked']['name']
+      assert_equal 'Wall - lift-up 2 door bi-fold', wall['wall_liftup_bifold']['name']
+      ids = CatalogManager.cabinets(catalog, 'wall').map { |e| e['id'] }
+      assert_equal ids.index('wall_liftup_stacked') + 1, ids.index('wall_liftup_bifold'), 'the bi-fold is listed right below the 2 door'
+      refute_includes ids, 'wall_liftup_short', 'the short lift-up is not offered'
+      assert CatalogManager.cabinet(catalog, 'wall', 'wall_liftup_short'), 'but a cabinet made from it still works'
       refute wall.key?('wall_liftup_double'), 'the double lift-up (two flaps side by side) is not offered'
       assert CatalogManager.cabinet(catalog, 'wall', 'wall_liftup_double'), 'but a cabinet made from it still works'
     end
+  end
+
+  def test_the_glass_frames_turn_aluminium_and_black_and_the_wide_frame_has_a_grid_of_panes
+    assert_equal 'Aluminium frame', FrontDesign.frame_material('glass_aluminium')
+    assert_equal 'Black frame', FrontDesign.frame_material('glass_black')
+    assert_nil FrontDesign.frame_material('glass_wide_grid'), 'the wide frame is in the door material'
+    assert_equal %w[Aluminium\ frame Black\ frame], FrontDesign::FRAME_LOOKS.keys
+    FrontDesign::FRAME_LOOKS.each_value do |look|
+      assert_match(/\A#\h{6}\z/, look[:color])
+      assert look[:props]['roughness'].between?(0.0, 1.0) && look[:props]['metalness'].between?(0.0, 1.0)
+    end
+    assert_equal 'Wide door frame with grid of panes', FrontDesign::GLASS_DESIGNS.find { |d| d['id'] == 'glass_wide_grid' }['name']
+    openings = FrontDesign.glass_openings('glass_wide_grid', 596.0, 716.0)
+    assert_equal 4, openings.length
+    assert_in_delta 50.0, openings.map(&:first).min, 0.001, 'a wide (50 mm) frame'
+    rows = openings.map { |o| o[2] }.uniq.sort
+    first_row_top = openings.find { |o| o[2] == rows[0] }[3]
+    assert_in_delta 20.0, rows[1] - first_row_top, 0.001, 'with 20 mm bars between the panes'
+    assert_equal 6, FrontDesign.glass_openings('glass_wide_grid', 596.0, 1000.0).length
+    assert_equal 'glass_wide_grid', ValidationManager.validate({ 'glass_design' => 'glass_wide_grid' }).params['glass_design']
+    # the colour of the aluminium is a real grey, not the white of a door
+    stored = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].to_h { |m| [m['name'], m['color']] }
+    assert_equal FrontDesign::FRAME_LOOKS['Aluminium frame'][:color], stored['Aluminium frame']
+    assert_equal FrontDesign::FRAME_LOOKS['Black frame'][:color], stored['Black frame']
   end
 end

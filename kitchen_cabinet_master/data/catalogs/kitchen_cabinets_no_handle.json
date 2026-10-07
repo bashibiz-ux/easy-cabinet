@@ -475,7 +475,7 @@
       },
       {
         "id": "wall_liftup",
-        "name": "Wall - lift-up single door",
+        "name": "Wall - lift-up 1 door",
         "code": "WL",
         "doors": 1,
         "shelves": 1,
@@ -581,26 +581,6 @@
         }
       },
       {
-        "id": "wall_liftup_bifold",
-        "name": "Wall - hydraulic bi-fold lift-up",
-        "code": "WBF",
-        "doors": 2,
-        "shelves": 1,
-        "bifold": true,
-        "widths": [
-          600,
-          800,
-          900,
-          1000,
-          1200
-        ],
-        "defaults": {
-          "width": 800,
-          "depth": 320,
-          "height": 780
-        }
-      },
-      {
         "id": "wall_glass_liftup_bifold",
         "hidden": true,
         "name": "Wall - hydraulic bi-fold lift-up, glass",
@@ -624,7 +604,7 @@
       },
       {
         "id": "wall_liftup_stacked",
-        "name": "Wall - lift-up double door",
+        "name": "Wall - lift-up 2 door",
         "code": "WLS",
         "doors": 2,
         "shelves": 0,
@@ -646,7 +626,28 @@
         }
       },
       {
+        "id": "wall_liftup_bifold",
+        "name": "Wall - lift-up 2 door bi-fold",
+        "code": "WBF",
+        "doors": 2,
+        "shelves": 1,
+        "bifold": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 780
+        }
+      },
+      {
         "id": "wall_liftup_short",
+        "hidden": true,
         "name": "Wall - lift-up door, short",
         "code": "WL",
         "doors": 1,

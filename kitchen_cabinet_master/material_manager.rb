@@ -78,8 +78,14 @@ module KitchenCabinetMaster
       true
     end
 
+    # The materials that come with the extension and your own. Read again when either file has changed (a hot reload keeps the old list).
     def self.presets
-      @presets ||= load_presets
+      stamp = [PRESETS_FILE, custom_file].map { |path| path && File.file?(path) ? File.mtime(path).to_i : 0 }
+      if @presets.nil? || @presets_stamp != stamp
+        @presets = load_presets
+        @presets_stamp = stamp
+      end
+      @presets
     end
 
     def self.reload!
