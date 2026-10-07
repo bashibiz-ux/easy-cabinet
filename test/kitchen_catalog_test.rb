@@ -11,7 +11,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation panel_generator].each { |f| require File.join(plugin, f) }
 
 class KitchenCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -1340,8 +1340,11 @@ class KitchenCatalogTest < Minitest::Test
       assert look[:props]['roughness'].between?(0.0, 1.0) && look[:props]['metalness'].between?(0.0, 1.0)
     end
     assert_equal 'Wide door frame with grid of panes', FrontDesign::GLASS_DESIGNS.find { |d| d['id'] == 'glass_wide_grid' }['name']
-    openings = FrontDesign.glass_openings('glass_wide_grid', 596.0, 716.0)
+    openings = FrontDesign.glass_openings('glass_wide_grid', 596.0, 650.0)
     assert_equal 4, openings.length
+    assert_equal 6, FrontDesign.glass_openings('glass_wide_grid', 596.0, 716.0).length, 'a third row of panes (one more bar) from 700 mm high'
+    assert_equal 4, FrontDesign.glass_openings('glass_wide_grid', 596.0, 699.0).length
+    assert_equal 4, FrontDesign.glass_openings('glass_grid', 596.0, 716.0).length, 'the narrow-frame grid keeps three rows from 800'
     assert_in_delta 50.0, openings.map(&:first).min, 0.001, 'a wide (50 mm) frame'
     rows = openings.map { |o| o[2] }.uniq.sort
     first_row_top = openings.find { |o| o[2] == rows[0] }[3]
@@ -1366,5 +1369,21 @@ class KitchenCatalogTest < Minitest::Test
     assert on.call('door_1', { 'door_count' => 1, 'glass_doors' => 'upper' }), 'a unit with one door ignores it'
     assert_equal 'upper', ValidationManager.validate({ 'glass_doors' => 'upper' }).params['glass_doors']
     assert_equal 'all', ValidationManager.validate({ 'glass_doors' => 'nonsense' }).params['glass_doors']
+  end
+
+  def test_fluted_glass_has_round_flutes_up_the_pane
+    assert_equal 'Glass - Fluted', FrontDesign::FLUTED_GLASS
+    outline = PanelGenerator.fluted_outline(4.0, 300.0)
+    xs = outline.map(&:first)
+    ys = outline.map(&:last)
+    assert_in_delta 0.0, xs.min, 1e-9, 'a flat back'
+    assert_in_delta 4.0, xs.max, 1e-6, 'the flutes reach the full thickness'
+    assert_in_delta 0.0, ys.min, 1e-9
+    assert_in_delta 300.0, ys.max, 1e-9
+    assert_equal 26, outline.count { |x, _y| (x - 2.5).abs < 1e-6 }, '25 flutes of 12 mm: 26 valleys on the 2.5 mm sheet'
+    assert outline.each_cons(2).all? { |a, b| a != b }, 'no repeated points'
+    area = outline.each_with_index.sum { |(x, y), i| nx, ny = outline[(i + 1) % outline.length]; (x * ny) - (nx * y) } / 2.0
+    assert_operator area.abs, :>, 300.0 * 2.5, 'more than the bare sheet'
+    assert_operator area.abs, :<, 300.0 * 4.0, 'less than a full slab'
   end
 end

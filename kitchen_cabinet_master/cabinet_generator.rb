@@ -335,8 +335,10 @@ module KitchenCabinetMaster
     # `openings` (not a glass door, or too small for a frame) any pane there was is taken away.
     def self.sync_door_glass(model, entities, door, params, openings)
       thickness = FrontDesign::GLASS_THICKNESS
+      fluted = params['glass_material'].to_s == FrontDesign::FLUTED_GLASS # (real flutes up the pane)
       panes = openings.each_with_index.map do |(y0, y1, z0, z1), index|
         CabinetLayout::Panel.new(role: index.zero? ? DOOR_GLASS_ROLE : "#{DOOR_GLASS_ROLE}_#{index + 1}", name: "#{door.name} Glass #{index + 1}",
+                                 shape: fluted ? 'fluted' : nil,
                                  extent: [thickness, y1 - y0 - 0.4, z1 - z0 - 0.4].map { |v| v.round(2) },
                                  offset: [(door.extent[0] - thickness) / 2.0, y0 + 0.2, z0 + 0.2].map { |v| v.round(2) })
       end
@@ -680,6 +682,7 @@ module KitchenCabinetMaster
     def self.place_item(model, entities, instance, item, transformation)
       definition =
         if item.points then PanelGenerator.polygon_definition(model, item.points, item.extent[2])
+        elsif item.shape.to_s == 'fluted' then PanelGenerator.fluted_definition(model, item.extent)
         elsif item.shape.to_s == 'notch' then PanelGenerator.notched_definition(model, item.extent, item.path)
         elsif item.shape.to_s.start_with?('front_') then PanelGenerator.front_definition(model, item.extent, item.shape.to_s.delete_prefix('front_'), item.round.to_f)
         else PanelGenerator.definition(model, item.extent)

@@ -114,6 +114,41 @@ module KitchenCabinetMaster
       definition
     end
 
+    FLUTE_PITCH = 12.0 # the width of one flute of fluted glass
+    FLUTE_STEPS = 6    # the straight pieces a flute's curve is drawn with
+
+    # The outline [[x, y], ...] (mm) of a pane of fluted glass seen from the top: a flat back at x = 0 and, on the outer face, a row of round
+    # ribs (flutes) side by side across `width`, standing `rise` out of a sheet `thickness - rise` thick. Pure maths.
+    def self.fluted_outline(thickness, width, rise = nil, pitch = FLUTE_PITCH, steps = FLUTE_STEPS)
+      rise ||= [thickness * 0.4, 1.5].min
+      base = thickness - rise
+      count = [(width / pitch).round, 1].max
+      step = width / count.to_f
+      points = [[0.0, 0.0], [0.0, width]]
+      (count - 1).downto(0) do |k|
+        (0..steps).each do |i|
+          s = 1.0 - (i.to_f / steps) # from the high-Y end of the flute to its low-Y end
+          points << [base + (rise * Math.sqrt([1.0 - (((2.0 * s) - 1.0)**2), 0.0].max)), (k + s) * step]
+        end
+      end
+      points.each_with_object([]) { |p, list| list << p unless list.last && (list.last[0] - p[0]).abs < 1e-9 && (list.last[1] - p[1]).abs < 1e-9 }
+    end
+
+    # A pane of fluted glass (size [thickness, width, height] in mm; the flutes on the high-X face, running up the pane).
+    def self.fluted_definition(model, size)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      name = format('%<prefix>sFluted %<x>g x %<y>g x %<z>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz)
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      face = definition.entities.add_face(fluted_outline(dx, dy).map { |x, y| [x.mm, y.mm, 0] })
+      face.pushpull(face.normal.z.positive? ? dz.mm : -dz.mm)
+      soften(definition.entities)
+      definition
+    end
+
     # A door or drawer front (size [thickness, width, height] in mm; its outer face is the high-X face) with the shapes of a design
     # cut into that face (see FrontDesign). A front too small for the design is a plain board. Named after its design and size, so
     # equal fronts share one definition.
