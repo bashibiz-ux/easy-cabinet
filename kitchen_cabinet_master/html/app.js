@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.61.0';
+  const APP_VERSION = '0.61.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -667,30 +667,22 @@
     try { localStorage.setItem('kcm.unit', unit); } catch (_) { /* a private window: not remembered */ }
     drawPreview();
   }
+  // Fills a list. The lists have no headings: an item that comes with a `group` (a kind or a category) is put with the others of its group, in the
+  // order the groups first appear, and in the order given within a group; so whatever is added later to a list sits with its own kind.
   function fillSelect(el, items, { placeholder = null } = {}) {
     const previous = el.value;
     el.innerHTML = '';
     if (placeholder) el.append(new Option(placeholder, ''));
-    const groups = {};
-    list(items).forEach((item) => {
-      let parent = el;
-      if (item.group) {
-        if (!groups[item.group]) {
-          groups[item.group] = document.createElement('optgroup');
-          groups[item.group].label = item.group;
-          if (item.group.startsWith('My materials')) { // each category of yours in a colour of its own
-            const hue = [...item.group].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 360;
-            groups[item.group].style.background = `hsl(${hue}, 55%, 38%)`;
-          }
-          el.append(groups[item.group]);
-        }
-        parent = groups[item.group];
-      }
-      parent.append(new Option(item.name, item.id));
-    });
+    const entries = list(items);
+    const order = [];
+    entries.forEach((item) => { if (item.group && !order.includes(item.group)) order.push(item.group); });
+    const rank = (item) => (item.group ? order.indexOf(item.group) : -1);
+    entries
+      .map((item, index) => ({ item, index }))
+      .sort((a, b) => (rank(a.item) - rank(b.item)) || (a.index - b.index))
+      .forEach(({ item }) => el.append(new Option(item.name, item.id)));
     if ([...el.options].some((o) => o.value === previous)) el.value = previous;
   }
-
   function setSelect(id, value) {
     const el = $(id);
     const text = String(value === undefined || value === null ? '' : value);

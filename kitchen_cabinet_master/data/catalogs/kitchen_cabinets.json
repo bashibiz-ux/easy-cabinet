@@ -9,7 +9,6 @@
   ],
   "handle_bundles": [
     "sample_bar_handles",
-    "long_bar_handles",
     "d_handles",
     "t_bar_handles",
     "edge_pull_handles",
@@ -639,7 +638,7 @@
         "name": "Wall - lift-up doors, one above the other",
         "code": "WLS",
         "doors": 2,
-        "shelves": 1,
+        "shelves": 0,
         "stacked": true,
         "lift_door": true,
         "zone": 360,

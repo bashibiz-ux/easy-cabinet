@@ -126,6 +126,7 @@ module KitchenCabinetMaster
       dims.height = full_height
       panels << blind_panel(params, dims) if blind?(params) # the fixed front stays full height
       zone = front_zone(params, dims)
+      panels << stacked_divider(params, dims) if params['door_stacked'] == true && params['door_count'].to_i == 2 && corner_style(params).nil?
       panels.concat(zone_panels(params, dims, zone))
       fridge = fridge_layout(params, dims)
       panels.concat(fridge_panels(dims, fridge)) if fridge
@@ -140,6 +141,18 @@ module KitchenCabinetMaster
                                  drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
+
+    # Two doors one above the other have a shelf between them, flush with the front of the carcass, in the gap between the doors (its middle on the
+    # middle of the gap), as the middle of a two-layer lift-up unit is.
+    def self.stacked_divider(params, dims)
+      top = params['front_zone'].to_f
+      top = dims.height * 0.35 unless top.positive? && top < dims.height - 200.0
+      gap = params['door_gap'].to_f
+      middle = dims.height - top - (gap / 2.0) # (the gap runs from height - top - gap to height - top, as stacked_doors lays the doors out)
+      z = (middle - (dims.thick / 2.0)).clamp(dims.thick, dims.height - (2 * dims.thick))
+      panel('divider', 'Middle Shelf', [dims.interior_d, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, z])
+    end
+    private_class_method :stacked_divider
 
     # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with; a drawer front by
     # `finger_gap_drawer`), and the gap that leaves over them is how the fingers take hold. It is closed by a panel in the door

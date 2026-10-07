@@ -1131,7 +1131,8 @@ class KitchenCatalogTest < Minitest::Test
   def all_bundles = CatalogManager.handle_bundles.map { |b| CatalogManager.handle_bundle(b['id']) }
 
   def test_every_handle_of_every_package_is_drawn_without_faces_sketchup_would_refuse
-    assert_operator all_bundles.length, :>=, 11
+    assert_equal 10, all_bundles.length
+    refute all_bundles.any? { |b| b['id'] == 'long_bar_handles' }, 'the long bar handles are gone'
     all_bundles.each do |bundle|
       bundle['lengths'].each do |length|
         [false, true].each do |flip|
@@ -1288,5 +1289,21 @@ class KitchenCatalogTest < Minitest::Test
     none, nothing = HandleManager.model_params({ 'handle_id' => '' }, 'base')
     assert_nil nothing
     assert_equal '', none['handle_id']
+  end
+
+  def test_two_stacked_doors_have_a_shelf_between_them_flush_with_the_carcass
+    _, unit = unit('wall', 'wall_liftup_stacked', 800, 'lift_door' => true)
+    divider = unit.panels.find { |p| p.role == 'divider' }
+    assert divider, 'a middle shelf'
+    lower, upper = unit.doors.sort_by { |d| d.offset[2] }
+    gap_middle = (lower.offset[2] + lower.extent[2] + upper.offset[2]) / 2.0 # (the middle of the gap between the doors)
+    assert_in_delta gap_middle, divider.offset[2] + (divider.extent[2] / 2.0), 0.05, 'its middle is on the gap between the doors'
+    top = unit.panels.find { |p| p.role == 'top' }
+    assert_in_delta top.offset[0] + top.extent[0], divider.offset[0] + divider.extent[0], 0.01, 'flush with the front of the carcass (as the top panel is)'
+    assert_in_delta top.extent[1], divider.extent[1], 0.01, 'from side to side'
+    assert_in_delta 18.0, divider.extent[2], 0.01
+    assert_empty unit.panels.select { |p| p.role.start_with?('shelf_') }, 'no loose shelf as well'
+    _, plain = unit('wall', 'wall_2door', 800)
+    assert_empty plain.panels.select { |p| p.role == 'divider' }, 'two doors side by side have none'
   end
 end
