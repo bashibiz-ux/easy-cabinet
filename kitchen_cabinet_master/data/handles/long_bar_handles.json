@@ -1,0 +1,81 @@
+{
+    "id":  "long_bar_handles",
+    "name":  "Long bar handles",
+    "group":  "Bars",
+    "version":  2,
+    "profile":  "bar",
+    "projection":  40,
+    "section":  14,
+    "lengths":  [
+                    600,
+                    800,
+                    1000,
+                    1200
+                ],
+    "default_length":  800,
+    "finishes":  [
+                     {
+                         "name":  "Brushed steel",
+                         "material":  "Handle Brushed steel",
+                         "color":  "#B8BDC2",
+                         "roughness":  0.35,
+                         "metalness":  0.95
+                     },
+                     {
+                         "name":  "Matt black",
+                         "material":  "Handle Matt black",
+                         "color":  "#1C1C1E",
+                         "roughness":  0.6,
+                         "metalness":  0.2
+                     },
+                     {
+                         "name":  "Brass",
+                         "material":  "Handle Brass",
+                         "color":  "#B58B3C",
+                         "roughness":  0.3,
+                         "metalness":  0.95
+                     },
+                     {
+                         "name":  "Chrome",
+                         "material":  "Handle Chrome",
+                         "color":  "#D9DCDF",
+                         "roughness":  0.08,
+                         "metalness":  1
+                     },
+                     {
+                         "name":  "Brushed nickel",
+                         "material":  "Handle Brushed nickel",
+                         "color":  "#A9A9A2",
+                         "roughness":  0.35,
+                         "metalness":  0.9
+                     },
+                     {
+                         "name":  "Antique brass",
+                         "material":  "Handle Antique brass",
+                         "color":  "#8A6A3B",
+                         "roughness":  0.45,
+                         "metalness":  0.85
+                     },
+                     {
+                         "name":  "Copper",
+                         "material":  "Handle Copper",
+                         "color":  "#B06A45",
+                         "roughness":  0.3,
+                         "metalness":  0.95
+                     },
+                     {
+                         "name":  "Gunmetal",
+                         "material":  "Handle Gunmetal",
+                         "color":  "#4A4D52",
+                         "roughness":  0.35,
+                         "metalness":  0.9
+                     },
+                     {
+                         "name":  "Satin gold",
+                         "material":  "Handle Satin gold",
+                         "color":  "#C9A659",
+                         "roughness":  0.3,
+                         "metalness":  0.95
+                     }
+                 ]
+}

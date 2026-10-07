@@ -412,7 +412,7 @@ module KitchenCabinetMaster
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_FLAGS = %w[finger_all].freeze # ticks (true / false)
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
-                          handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place door_opening_direction glass_material].freeze
+                          handle_id handle_finish handle_material handle_orientation handle_position handle_horizontal_place door_opening_direction glass_material drawer_handle_id].freeze
 
     # Door gap, door reveal, door distance, panel thickness, back panel thickness, the
     # Handle section and the materials of the Material section are settings for the whole job: changing one changes
@@ -856,6 +856,10 @@ module KitchenCabinetMaster
       if !handle_id.empty? && CatalogManager.handle_bundle(handle_id).nil?
         errors << { 'field' => 'handle_id', 'message' => 'That handle bundle could not be found.' }
       end
+      drawer_handle = raw['drawer_handle_id'].to_s.strip
+      if !drawer_handle.empty? && CatalogManager.handle_bundle(drawer_handle).nil?
+        errors << { 'field' => 'drawer_handle_id', 'message' => 'That drawer handle bundle could not be found.' }
+      end
 
       errors
     end
@@ -865,12 +869,23 @@ module KitchenCabinetMaster
     # handle is offered in that length and finish and fits on every door.
     def self.handle_errors(params)
       bundle = CatalogManager.handle_bundle(params['handle_id'])
-      return [] unless bundle
+      own = CatalogManager.handle_bundle(params['drawer_handle_id'])
+      return [] unless bundle || own
 
-      HandleManager.apply_defaults!(params, bundle)
-      return [] unless params['door_count'].positive?
-
-      HandleManager.errors(params, CabinetLayout.compute(params), bundle)
+      HandleManager.apply_defaults!(params, bundle) if bundle
+      layout = nil
+      errors = []
+      if bundle && params['door_count'].positive?
+        layout = CabinetLayout.compute(params)
+        errors = HandleManager.errors(params, layout, bundle)
+      end
+      # The drawers with a handle of their own: it has to fit on each drawer front too.
+      if own && (params['drawer_count'].to_i.positive? || params['pullout'])
+        layout ||= CabinetLayout.compute(params)
+        drawer_params = HandleManager.drawer_params(params, own)
+        errors += HandleManager.errors(drawer_params, CabinetLayout::Layout.new(doors: layout.drawers), own) if errors.empty?
+      end
+      errors
     end
     private_class_method :handle_errors
 

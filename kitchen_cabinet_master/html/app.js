@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.59.0';
+  const APP_VERSION = '0.60.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -401,8 +401,8 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'fingerAllGlobal', 'thickness', 'backThickness', 'topPanel',
-    'handle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'thickness', 'backThickness', 'topPanel',
+    'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
     'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtSplash', 'wtMaterial', 'wtSplashMaterial',
@@ -744,7 +744,9 @@
 
     const allowed = catalog && Array.isArray(catalog.handle_bundles) ? catalog.handle_bundles : null;
     const before = $('handle').value;
-    fillSelect($('handle'), list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id)), { placeholder: 'None' });
+    const offered = list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id));
+    fillSelect($('handle'), offered, { placeholder: 'None' });
+    fillSelect($('drawerHandle'), offered, { placeholder: 'Same as doors' });
     // A cabinet comes with a handle: the first one the model offers, unless one is already chosen.
     if (catalog && !$('handle').value && $('handle').options.length > 1) $('handle').selectedIndex = 1;
     if ($('handle').value !== before) onHandleChange(true);
@@ -840,6 +842,7 @@
       catalog_id: $('catalog').value,
       front_design: $('frontDesign').value,
       handle_id: $('handle').value,
+      drawer_handle_id: $('drawerHandle').value,
       base_material: $('baseMaterial').value,
       wall_material: $('wallMaterial').value,
       tall_material: $('tallMaterial').value,
@@ -936,6 +939,7 @@
       setSelect('handle', p.handle_id || '');
       onHandleChange(false);
     }
+    if ('drawer_handle_id' in p) setSelect('drawerHandle', p.drawer_handle_id || '');
     Object.entries(TEXT_PARAMS).forEach(([key, id]) => {
       // A wall unit stores a toe-kick height of 0 (it hangs); that must not become the
       // starting height of the next base or tall unit, which stand on a 100 mm toe kick.
@@ -1100,7 +1104,7 @@
     return list(entries)
       .map((entry, index) => ({ entry, index, group: cabinetGroup(entry) }))
       .sort((a, b) => (CABINET_GROUPS.indexOf(a.group) - CABINET_GROUPS.indexOf(b.group)) || (a.index - b.index))
-      .map(({ entry, group }) => Object.assign({}, entry, { group }));
+      .map(({ entry }) => entry); // (in order, with no headings: a new kind of unit goes in with the others of its kind)
   }
 
   async function refreshCabinets({ selectId = null, keepValues = false } = {}) {
@@ -1927,7 +1931,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['frontDesign', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -1971,6 +1975,7 @@
     fingerAllGlobal: ['finger_all', 'fingerAllGlobal'],
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     handle: ['handle_id', 'handle'],
+    drawerHandle: ['drawer_handle_id', 'drawerHandle'],
     handleLength: ['handle_length', 'handleLength'],
     handleFinish: ['handle_finish', 'handleFinish'],
     handleMaterial: ['handle_material', 'handleMaterial'],
@@ -2271,6 +2276,7 @@
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
     fillSelect($('frontDesign'), m.front_designs.length ? m.front_designs : [{ id: 'flat', name: 'Flat (slab)' }]);
     fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
+    fillSelect($('drawerHandle'), m.handle_bundles, { placeholder: 'Same as doors' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
     fillSelect($('direction'), m.directions);
@@ -2344,12 +2350,14 @@
     });
     $('sinkTray').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
-      // Choosing another cabinet fills the fields for the next Insert; it does not change the
-      // cabinet selected in the model (select it again, or press Update, to change it).
-      if (state.selectedKind) { state.liveHold = true; clearTimeout(state.liveTimer); }
+      // Choosing another cabinet fills the fields for the next Insert. It does not change the cabinet selected in the model (select it again,
+      // or press Update, to change it) unless the tick under the list says so.
+      const follow = $('liveCabinet').checked && state.selectedKind === 'cabinet' && categoryKind() === 'cabinet';
+      if (state.selectedKind && !follow) { state.liveHold = true; clearTimeout(state.liveTimer); }
       applyCabinetDefaults();
       drawPreview();
       lockActions();
+      if (follow) liveAfterCabinetChange();
     });
     $('widthPreset').addEventListener('change', () => {
       if ($('widthPreset').value !== 'custom') {

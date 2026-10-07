@@ -804,13 +804,13 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_glass_door_and_lift_up_units_are_in_both_models
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
-      wall = CatalogManager.cabinets(catalog, 'wall').to_h { |e| [e['id'], e] }
+      wall = CatalogManager.cabinets(catalog, 'wall', with_hidden: true).to_h { |e| [e['id'], e] }
       %w[wall_glass_1door wall_glass_2door].each { |id| assert wall[id]['glass'], "#{catalog} #{id}" }
       %w[wall_liftup wall_liftup_short].each do |id|
         assert wall[id]['lift_door'], "#{catalog} #{id}"
         assert_equal 1, wall[id]['doors']
       end
-      assert CatalogManager.cabinets(catalog, 'tall').find { |e| e['id'] == 'tall_glass_2door' }['glass']
+      assert CatalogManager.cabinets(catalog, 'tall', with_hidden: true).find { |e| e['id'] == 'tall_glass_2door' }['glass']
     end
   end
 
@@ -861,7 +861,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_glass_lift_up_unit_is_in_both_wall_lists
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
-      entry = CatalogManager.cabinets(catalog, 'wall').find { |e| e['id'] == 'wall_glass_liftup' }
+      entry = CatalogManager.cabinets(catalog, 'wall', with_hidden: true).find { |e| e['id'] == 'wall_glass_liftup' }
       assert entry, catalog
       assert entry['glass'] && entry['lift_door'] && entry['doors'] == 1
       assert_equal [600, 800, 900, 1000, 1200], entry['widths']
@@ -922,17 +922,17 @@ class KitchenCatalogTest < Minitest::Test
     base = HandleManager.placement(door('left'), handle_settings(bundle), bundle)
     assert base['horizontal'] && !base['flip']
     assert_in_delta 298.0, base['u'], 0.01, 'centred across the door'
-    assert_in_delta 716.0 - 12.0, base['v'], 0.01, 'the plate reaches up to the top edge (24 mm high, no offset)'
+    assert_in_delta 716.0 - 14.0, base['v'], 0.01, 'the plate reaches up to the top edge (28 mm high, no offset)'
     wall = HandleManager.placement(door('left'), handle_settings(bundle, 'wall'), bundle)
     assert wall['flip']
-    assert_in_delta 12.0, wall['v'], 0.01, 'a wall unit: on the bottom edge'
+    assert_in_delta 14.0, wall['v'], 0.01, 'a wall unit: on the bottom edge'
     lift = HandleManager.placement(door('top'), handle_settings(bundle), bundle)
     assert lift['flip'], 'a lift-up door is taken hold of at its bottom edge'
     drawer = HandleManager.placement(door('center', 596.0, 200.0), handle_settings(bundle), bundle)
     assert drawer['horizontal'] && !drawer['flip']
-    assert_in_delta 200.0 - 12.0, drawer['v'], 0.01
+    assert_in_delta 200.0 - 14.0, drawer['v'], 0.01
     tall = HandleManager.placement(door('left', 596.0, 2000.0), handle_settings(bundle, 'tall'), bundle)
-    assert_in_delta 2000.0 - 12.0, tall['v'], 0.01, 'a tall unit: on the top edge too'
+    assert_in_delta 2000.0 - 14.0, tall['v'], 0.01, 'a tall unit: on the top edge too'
     # it always runs along the edge, whatever orientation was chosen
     vertical = HandleManager.placement(door('left'), handle_settings(bundle, 'base', 'handle_orientation' => 'vertical'), bundle)
     assert vertical['horizontal']
@@ -947,7 +947,7 @@ class KitchenCatalogTest < Minitest::Test
     bundle = CatalogManager.handle_bundle('cup_handles')
     spot = HandleManager.placement(door('center', 596.0, 200.0), handle_settings(bundle), bundle)
     assert spot['horizontal']
-    assert_in_delta 200.0 - 5.0 - 11.0, spot['v'], 0.01, 'its default offset is 5 mm under the edge'
+    assert_in_delta 200.0 - 5.0 - 12.0, spot['v'], 0.01, 'its default offset is 5 mm under the edge'
     assert_in_delta 298.0, spot['u'], 0.01
   end
 
@@ -1068,7 +1068,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_bi_fold_and_the_double_lift_up_units_are_in_both_wall_lists
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
-      wall = CatalogManager.cabinets(catalog, 'wall').to_h { |e| [e['id'], e] }
+      wall = CatalogManager.cabinets(catalog, 'wall', with_hidden: true).to_h { |e| [e['id'], e] }
       assert wall['wall_liftup_bifold']['bifold'] && !wall['wall_liftup_bifold']['glass']
       assert wall['wall_glass_liftup_bifold']['bifold'] && wall['wall_glass_liftup_bifold']['glass']
       assert wall['wall_liftup_double']['lift_door'] && wall['wall_liftup_double']['doors'] == 2
@@ -1091,5 +1091,128 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal DoorAnimation::FRAMES, frames.call(false, false)
     assert_equal DoorAnimation::FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES, frames.call(true, false)
     assert_equal DoorAnimation::GLASS_FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES, frames.call(true, true)
+  end
+
+  def test_the_glass_door_units_are_not_in_the_cabinet_list_but_cabinets_made_from_them_keep_working
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      %w[wall tall].each do |category|
+        offered = CatalogManager.cabinets(catalog, category).map { |e| e['id'] }
+        assert(offered.none? { |id| id.include?('glass') }, "#{catalog} #{category}: no glass door in the list")
+      end
+      assert_includes CatalogManager.cabinets(catalog, 'wall', with_hidden: true).map { |e| e['id'] }, 'wall_glass_1door'
+      known = CatalogManager.cabinet(catalog, 'wall', 'wall_glass_liftup_bifold')
+      assert known && known['glass'] && known['bifold'], 'still known by its id'
+      assert CatalogManager.cabinet(catalog, 'tall', 'tall_glass_2door')
+      # the lift-up and bi-fold units without glass are still offered (glass comes from the Front Design)
+      %w[wall_liftup wall_liftup_double wall_liftup_bifold wall_liftup_short].each do |id|
+        assert_includes CatalogManager.cabinets(catalog, 'wall').map { |e| e['id'] }, id
+      end
+    end
+  end
+
+  def all_bundles = CatalogManager.handle_bundles.map { |b| CatalogManager.handle_bundle(b['id']) }
+
+  def test_every_handle_of_every_package_is_drawn_without_faces_sketchup_would_refuse
+    assert_operator all_bundles.length, :>=, 11
+    all_bundles.each do |bundle|
+      bundle['lengths'].each do |length|
+        [false, true].each do |flip|
+          faces = HandleManager.handle_faces(bundle, length.to_f, flip)
+          assert_operator faces.length, :>, 6, "#{bundle['id']} #{length}"
+          faces.each do |face|
+            assert_operator face.length, :>=, 3
+            face.each_with_index do |p, i|
+              q = face[(i + 1) % face.length]
+              distance = Math.sqrt(p.zip(q).sum { |a, b| (a - b)**2 })
+              assert_operator distance, :>, 0.0255, "#{bundle['id']} #{length}: two corners of a face are the same point"
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_the_shell_bows_and_pulls_are_closed_solids
+    %w[edge_pull_handles slim_edge_pull_handles cup_handles shell_handles d_handles t_bar_handles].each do |id|
+      bundle = CatalogManager.handle_bundle(id)
+      faces = HandleManager.handle_faces(bundle, bundle['default_length'].to_f)
+      edges = Hash.new(0)
+      faces.each { |c| c.each_with_index { |p, i| edges[[p.map { |v| v.round(3) }, c[(i + 1) % c.length].map { |v| v.round(3) }]] += 1 } }
+      open = edges.keys.reject { |a, b| edges.key?([b, a]) }
+      assert_empty open, "#{id}: every edge is shared with a face the other way round"
+    end
+  end
+
+  def test_the_handles_are_in_groups_and_all_in_the_model_with_handles
+    groups = CatalogManager.handle_bundles.to_h { |b| [b['id'], b['group']] }
+    assert_equal 'Bars', groups['sample_bar_handles']
+    assert_equal 'D handles & T bars', groups['d_handles']
+    assert_equal 'Edge pulls', groups['slim_edge_pull_handles']
+    assert_equal 'Cups & shells', groups['shell_handles']
+    assert_equal 'Knobs', groups['ball_knobs']
+    assert(groups.values.none?(&:nil?))
+    offered = CatalogManager.catalog('kitchen_cabinets')['handle_bundles']
+    assert_equal groups.keys.sort, offered.sort
+  end
+
+  def test_a_d_handle_is_sold_by_the_distance_between_its_legs
+    bundle = CatalogManager.handle_bundle('d_handles')
+    assert_equal [64, 96, 128, 160, 192, 256, 320], bundle['lengths']
+    half_along, half_across = HandleManager.footprint(bundle, 128.0)
+    assert_in_delta (128.0 + 7.0) / 2.0, half_along, 0.001, 'a leg thick longer than the distance between them'
+    assert_in_delta 7.0, half_across, 0.001
+    spot = HandleManager.placement(door('left'), handle_settings(bundle, 'base', 'handle_orientation' => 'horizontal'), bundle)
+    assert spot['horizontal']
+    assert_in_delta half_along, spot['half_u'], 0.001
+    outline = HandleManager.dbar_outline(128.0, 32.0, 7.0, 12.0)
+    assert_in_delta 64.0 + 3.5, outline.map(&:last).max, 0.001
+    assert_in_delta 32.0, outline.map(&:first).max, 0.001
+    square = HandleManager.dbar_outline(160.0, 30.0, 8.0, 0.0)
+    assert_equal 8, square.length, 'a T bar has square corners: eight points'
+  end
+
+  def test_a_handle_on_a_glass_door_sits_on_the_frame_not_over_the_glass
+    bundle = CatalogManager.handle_bundle('sample_bar_handles')
+    settings = handle_settings(bundle, 'base', 'handle_orientation' => 'vertical')
+    plain = HandleManager.placement(door('left'), settings, bundle)
+    on_frame = HandleManager.placement(door('left'), settings, bundle, 15.0)
+    assert_in_delta 596.0 - 7.5, on_frame['u'], 0.001, 'the middle of the frame on the free edge'
+    assert_in_delta plain['v'], on_frame['v'], 0.001, 'at the same height'
+    right = HandleManager.placement(door('right'), settings, bundle, 15.0)
+    assert_in_delta 7.5, right['u'], 0.001
+    lift = HandleManager.placement(door('top'), handle_settings(bundle), bundle, 15.0)
+    assert_in_delta 7.5, lift['v'], 0.001, 'a lift-up door: on the bottom rail'
+    assert_in_delta 298.0, lift['u'], 0.001
+    edge = CatalogManager.handle_bundle('edge_pull_handles')
+    assert_equal HandleManager.placement(door('left'), handle_settings(edge), edge), HandleManager.placement(door('left'), handle_settings(edge), edge, 15.0)
+  end
+
+  def test_the_drawers_can_have_a_handle_of_their_own
+    doors = CatalogManager.handle_bundle('sample_bar_handles')
+    cups = CatalogManager.handle_bundle('cup_handles')
+    params = Defaults.params.merge('handle_id' => doors['id'], 'handle_length' => 160.0, 'handle_finish' => 'Brass', 'cabinet_category' => 'base', 'drawer_handle_id' => cups['id'])
+    HandleManager.apply_defaults!(params, doors)
+    own = HandleManager.drawer_params(params, cups)
+    assert_equal cups['id'], own['handle_id']
+    assert_equal 96.0, own['handle_length'], 'the cup handle has its own length'
+    assert_equal 'Brass', own['handle_finish'], 'the finish of the doors if the package has it'
+    assert_equal 5.0, own['handle_vertical_offset'], 'and its own offsets'
+    assert_equal 160.0, params['handle_length'], 'the doors are left as they were'
+    other = HandleManager.drawer_params(params.merge('handle_finish' => 'Aluminium'), cups)
+    assert_equal 'Brushed steel', other['handle_finish'], 'otherwise its first finish'
+    assert_equal '', Defaults.params['drawer_handle_id']
+    assert_equal 'edge_pull_handles', ValidationManager.validate({ 'drawer_handle_id' => ' edge_pull_handles ' }).params['drawer_handle_id']
+  end
+
+  def test_the_knob_styles_have_their_own_shapes
+    bundle = CatalogManager.handle_bundle('ball_knobs')
+    profile = HandleManager.knob_profile(32.0, 40.0, 'ball')
+    assert_in_delta 40.0, profile.map(&:last).max, 0.01, 'stands off the door by its projection'
+    assert_in_delta 16.0, profile.map(&:first).max, 0.05, 'a ball as wide as its diameter'
+    cylinder = HandleManager.knob_profile(30.0, 24.0, 'cylinder')
+    assert_in_delta 24.0, cylinder.map(&:last).max, 0.01
+    assert_in_delta 15.0, cylinder.map(&:first).max, 0.01
+    refute_equal HandleManager.knob_profile(32.0, 28.0), HandleManager.knob_profile(32.0, 28.0, 'cylinder')
+    assert_equal 'ball', bundle['style']
   end
 end

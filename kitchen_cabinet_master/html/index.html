@@ -114,14 +114,20 @@
           <span class="label">Handle Bundle</span>
           <div class="input"><select id="handle"></select></div>
         </label>
+        <label class="field">
+          <span class="label">Drawer Handle</span>
+          <div class="input"><select id="drawerHandle" aria-label="The handle of the drawers, when it is not the doors' handle"></select></div>
+        </label>
 
         <div id="handleOptions" hidden>
           <label class="field">
             <span class="label">Length</span>
             <div class="input"><select id="handleLength"></select></div>
           </label>
-          <!-- The finish is not offered: a handle takes its bundle's first finish, and Handle Material below picks any other colour. -->
-          <div hidden><select id="handleFinish" data-material></select></div>
+          <label class="field">
+            <span class="label">Finish</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="handleFinish"></i><select id="handleFinish" data-material></select></div>
+          </label>
           <label class="field">
             <span class="label">Handle Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="handleMaterial"></i><select id="handleMaterial" data-material></select></div>
@@ -229,6 +235,7 @@
           <span class="label">Cabinet</span>
           <div class="input"><select id="cabinet"></select></div>
         </label>
+        <label class="check cabinet-only"><input type="checkbox" id="liveCabinet"><span>Change the selected cabinet when I pick another one in this list</span></label>
         <label class="field cabinet-only">
           <span class="label">Standard Width</span>
           <div class="input"><select id="widthPreset"></select></div>

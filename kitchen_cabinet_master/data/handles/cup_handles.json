@@ -1,10 +1,12 @@
 {
     "id":  "cup_handles",
     "name":  "Cup handles",
-    "version":  1,
+    "group":  "Cups \u0026 shells",
+    "version":  2,
     "profile":  "cup",
-    "projection":  22,
-    "section":  22,
+    "projection":  24,
+    "section":  24,
+    "thickness":  2.5,
     "lengths":  [
                     64,
                     96,

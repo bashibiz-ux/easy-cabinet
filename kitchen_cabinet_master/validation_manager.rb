@@ -112,6 +112,7 @@ module KitchenCabinetMaster
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
       out['pullout'] = truthy?(raw['pullout'])
+      out['drawer_handle_id'] = raw['drawer_handle_id'].to_s.strip
       out['glass_door'] = truthy?(raw['glass_door'])
       out['lift_door'] = truthy?(raw['lift_door'])
       out['bifold'] = truthy?(raw['bifold'])

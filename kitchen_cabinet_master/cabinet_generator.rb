@@ -323,7 +323,7 @@ module KitchenCabinetMaster
       end
       sync_door_glass(model, entities, door, params, openings)
       sync_drawer_box(model, entities, door, boxes) if drawer
-      sync_handle(model, entities, door, params, bundle)
+      sync_handle(model, entities, door, params, bundle, openings.empty? ? nil : openings.first[0]) # (on the frame of a glass door)
       sync_door_symbol(model, container, door, params)
     end
     private_class_method :sync_door_contents
@@ -382,15 +382,23 @@ module KitchenCabinetMaster
     end
     private_class_method :sync_door_symbol
 
-    def self.sync_handle(model, entities, door, params, bundle)
+    def self.sync_handle(model, entities, door, params, bundle, frame = nil)
       existing = index_by_role(entities)[HANDLE_ROLE]
+      # The drawers can have a handle of their own, not the doors'.
+      if door.role.start_with?(DRAWER_PREFIX) && !params['drawer_handle_id'].to_s.empty?
+        own = CatalogManager.handle_bundle(params['drawer_handle_id'])
+        if own
+          bundle = own
+          params = HandleManager.drawer_params(params, own)
+        end
+      end
       unless bundle && door.handle != false # no handle on this door (an L corner has one, on its narrower door)
         discard_instance(model, existing) if existing
         return
       end
 
       settings = HandleManager.settings(params, bundle)
-      spot = HandleManager.placement(door, settings, bundle)
+      spot = HandleManager.placement(door, settings, bundle, frame)
       definition = HandleManager.definition(model, bundle, settings['length'], spot['flip'] == true)
       handle = place_instance(model, entities, existing, HANDLE_ROLE, definition,
                               HandleManager.transformation(spot, door.extent[0]))

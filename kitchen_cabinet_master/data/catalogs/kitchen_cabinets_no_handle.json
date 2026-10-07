@@ -433,6 +433,7 @@
       },
       {
         "id": "wall_glass_1door",
+        "hidden": true,
         "name": "Wall - glass door, 1 door",
         "code": "WG",
         "doors": 1,
@@ -453,6 +454,7 @@
       },
       {
         "id": "wall_glass_2door",
+        "hidden": true,
         "name": "Wall - glass doors, 2 doors",
         "code": "WG",
         "doors": 2,
@@ -493,6 +495,7 @@
       },
       {
         "id": "wall_glass_liftup",
+        "hidden": true,
         "name": "Wall - glass lift-up door",
         "code": "WGL",
         "doors": 1,
@@ -534,6 +537,7 @@
       },
       {
         "id": "wall_glass_liftup_double",
+        "hidden": true,
         "name": "Wall - glass lift-up doors, double",
         "code": "WGLD",
         "doors": 2,
@@ -555,6 +559,7 @@
       },
       {
         "id": "wall_glass_liftup_short",
+        "hidden": true,
         "name": "Wall - glass lift-up door, short",
         "code": "WGL",
         "doors": 1,
@@ -596,6 +601,7 @@
       },
       {
         "id": "wall_glass_liftup_bifold",
+        "hidden": true,
         "name": "Wall - hydraulic bi-fold lift-up, glass",
         "code": "WGBF",
         "doors": 2,
@@ -748,6 +754,7 @@
       },
       {
         "id": "tall_glass_2door",
+        "hidden": true,
         "name": "Tall - glass doors, 2 doors",
         "code": "TG",
         "doors": 2,

@@ -56,16 +56,20 @@ module KitchenCabinetMaster
       end
 
       # Cabinets of one category. Each entry carries id, name, doors, shelves, defaults.
-      def cabinets(catalog_id, category)
+      # The cabinets of a category as the Cabinet list offers them. An entry marked hidden is not offered any more (the glass door units:
+      # the doors are glass through the Front Design now) but is still known, so a cabinet made from it keeps working.
+      def cabinets(catalog_id, category, with_hidden: false)
         found = catalog(catalog_id)
         return [] unless found
 
         list = found.dig('categories', category.to_s)
-        list.is_a?(Array) ? list : []
+        return [] unless list.is_a?(Array)
+
+        with_hidden ? list : list.reject { |c| c['hidden'] == true }
       end
 
       def cabinet(catalog_id, category, cabinet_id)
-        cabinets(catalog_id, category).find { |c| c['id'] == cabinet_id.to_s }
+        cabinets(catalog_id, category, with_hidden: true).find { |c| c['id'] == cabinet_id.to_s }
       end
 
       # Everything the panel needs to offer a bundle's choices.
@@ -286,6 +290,7 @@ module KitchenCabinetMaster
           'id' => bundle['id'],
           'name' => bundle['name'],
           'profile' => bundle['profile'],
+          'group' => bundle['group'].to_s.empty? ? nil : bundle['group'],
           'lengths' => lengths,
           'default_length' => lengths.include?(bundle['default_length']) ? bundle['default_length'] : lengths.first,
           'finishes' => bundle['finishes'].map { |f| { 'id' => f['name'], 'name' => f['name'], 'color' => f['color'] } },

@@ -15,9 +15,13 @@ module KitchenCabinetMaster
     TOLERANCE = 1e-6
     KNOB_SEGMENTS = 48
     TALL_PULL_OUT_MIN = 1200.0 # a drawer front at least this high is a tall pull-out
+    GRIP_PROFILES = %w[bar dbar].freeze      # handles with a grip along the door, up it or across it as chosen
     EDGE_PROFILES = %w[edge_pull cup].freeze # handles that sit on the top (or bottom) edge of a front, always along it
     EDGE_THICKNESS = 2.5                     # the sheet of an edge pull or a cup
     EDGE_LIP = 22.0                          # how far an edge pull's lip hangs down
+    DBAR_THICKNESS = 7.0                     # the legs and the grip of a D handle or a T bar
+    DBAR_WIDTH = 14.0                        # how wide they are across the door
+    ARC_STEPS = 6                            # the straight pieces a bend is drawn with
 
     # Fills in anything the panel left blank from the bundle's own defaults, so what
     # is stored on the cabinet is always the complete, effective set of values.
@@ -34,6 +38,15 @@ module KitchenCabinetMaster
       params['handle_custom_x'] ||= defaults['custom_x'].to_f
       params['handle_custom_z'] ||= defaults['custom_z'].to_f
       params
+    end
+
+    # The handle settings of the drawers when they have a bundle of their own: its own length, position and offsets, and the finish of the doors'
+    # handle if the bundle has it. Returns a copy of params.
+    def self.drawer_params(params, bundle)
+      copy = params.merge('handle_id' => bundle['id'], 'handle_length' => nil, 'handle_orientation' => '', 'handle_position' => '', 'handle_horizontal_place' => '',
+                          'handle_side_offset' => nil, 'handle_vertical_offset' => nil, 'handle_custom_x' => nil, 'handle_custom_z' => nil)
+      copy['handle_finish'] = bundle['finishes'].any? { |f| f['name'] == params['handle_finish'] } ? params['handle_finish'] : ''
+      apply_defaults!(copy, bundle)
     end
 
     # The complete settings for one bundle as a Hash (also stored as 'handle_settings').
@@ -83,21 +96,38 @@ module KitchenCabinetMaster
     # Where the handle's centre goes on a door face, measured from the door's
     # low-Y (left) edge and its bottom edge, plus the handle's footprint.
     # Returns { 'u', 'v', 'half_u', 'half_v', 'horizontal' }.
-    def self.placement(door, settings, bundle)
+    # rame is how wide the frame of a glass door is: the handle then sits on the frame, not over the glass.
+    def self.placement(door, settings, bundle, frame = nil)
       return edge_placement(door, settings, bundle) if EDGE_PROFILES.include?(bundle['profile'])
+
+      on_frame(plain_placement(door, settings, bundle), door, frame)
+    end
+
+    # Moves a handle that would be over the glass of a glass door onto the frame, along the nearer edge. Pure maths.
+    def self.on_frame(spot, door, frame)
+      return spot unless frame.to_f.positive?
+
+      half = frame / 2.0
+      if spot['horizontal']
+        spot.merge('v' => spot['v'] < door.extent[2] / 2.0 ? half : door.extent[2] - half)
+      else
+        spot.merge('u' => spot['u'] < door.extent[1] / 2.0 ? half : door.extent[1] - half)
+      end
+    end
+
+    def self.plain_placement(door, settings, bundle)
 
       door_w = door.extent[1]
       door_h = door.extent[2]
       length = settings['length']
-      horizontal = settings['orientation'] == 'horizontal' && bundle['profile'] == 'bar'
+      horizontal = settings['orientation'] == 'horizontal' && GRIP_PROFILES.include?(bundle['profile'])
       # A lift-up door and a drawer front always take a horizontal handle, whatever orientation is chosen.
-      horizontal = true if %w[top fold center].include?(door.hinge) && bundle['profile'] == 'bar'
+      horizontal = true if %w[top fold center].include?(door.hinge) && GRIP_PROFILES.include?(bundle['profile'])
       pull_out = settings['pullout'] == true && door.hinge == 'center'
       horizontal = false if pull_out # ... except on a pull-out unit, whose handle is always vertical
 
       # A knob is round (its length is the diameter); a bar is `length` long and `section` wide.
-      half_along = length / 2.0
-      half_across = bundle['profile'] == 'knob' ? half_along : section(bundle) / 2.0
+      half_along, half_across = footprint(bundle, length)
       half_u, half_v = horizontal ? [half_along, half_across] : [half_across, half_along]
 
       side = settings['side_offset']
@@ -229,26 +259,33 @@ module KitchenCabinetMaster
 
     # Finds or builds the shared handle definition for this geometry.
     def self.definition(model, bundle, length, flip = false)
-      profile = bundle['profile']
-      section = section(bundle)
-      projection = projection(bundle)
-      name = format('Handle %<profile>s %<length>g x %<section>g x %<projection>g smooth',
-                    profile: profile, length: length, section: section, projection: projection)
-      name += ' up' if flip && EDGE_PROFILES.include?(profile)
+      name = format('Handle %<id>s %<length>g x %<section>g x %<projection>g v2', id: bundle['id'], length: length, section: section(bundle), projection: projection(bundle))
+      name += ' up' if flip && EDGE_PROFILES.include?(bundle['profile'])
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
-      if profile == 'knob'
-        build_knob(definition.entities, length, projection)
-      elsif EDGE_PROFILES.include?(profile)
-        build_edge(definition.entities, profile, length, section, projection, flip)
-      else
-        build_bar(model, definition.entities, length, section, projection)
-      end
+      handle_faces(bundle, length, flip).each { |points| definition.entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      PanelGenerator.soften(definition.entities)
       definition
+    end
+
+    # The faces (arrays of [x, y, z] in mm, each facing outwards) of a handle, in its own frame: X out of the door, Y across it,
+    # Z along the grip, the origin in the middle of the back. `flip` hangs an edge pull or a cup from the bottom edge. Pure maths.
+    def self.handle_faces(bundle, length, flip = false)
+      section = section(bundle)
+      projection = projection(bundle)
+      case bundle['profile']
+      when 'knob' then knob_faces(length, projection, KNOB_SEGMENTS, bundle['style'].to_s)
+      when 'dbar' then dbar_faces(length, projection, bundle)
+      when 'edge_pull'
+        outline = edge_pull_outline(projection, section, flip, bundle['lip'] || EDGE_LIP, bundle['thickness'] || EDGE_THICKNESS)
+        loft_faces([[-length / 2.0, outline], [length / 2.0, outline]])
+      when 'cup' then cup_faces(length, projection, flip, bundle['thickness'] || EDGE_THICKNESS)
+      else bar_faces(length, section, projection)
+      end
     end
 
     # The material name and colour for a finish of the bundle.
@@ -271,71 +308,150 @@ module KitchenCabinetMaster
       lengths.include?(bundle['default_length']) ? bundle['default_length'].to_f : lengths.first.to_f
     end
 
-    # An edge pull (a J-pull: a plate on the door face with a lip over the finger gap) or a cup (a quarter-round scoop), drawn as its outline
-    # pushed out along the handle's length (Z), with the outline's Y being up the door once the handle is turned along it.
-    def self.build_edge(entities, profile, length, section, projection, flip)
-      outline = profile == 'cup' ? cup_outline(projection, flip) : edge_pull_outline(projection, section, flip)
-      extrude_faces(outline, length / 2.0).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
-      PanelGenerator.soften(entities)
+    # How far a handle reaches along the grip, and across it, half each: a D handle is `length` between its legs (the way they are sold), so it is
+    # a leg thick longer than that.
+    def self.footprint(bundle, length)
+      case bundle['profile']
+      when 'knob' then [length / 2.0, length / 2.0]
+      when 'dbar' then [(length + (bundle['thickness'] || DBAR_THICKNESS).to_f) / 2.0, (bundle['width'] || DBAR_WIDTH).to_f / 2.0]
+      else [length / 2.0, section(bundle) / 2.0]
+      end
     end
-    private_class_method :build_edge
 
-    # The outline [[x, y], ...] of an edge pull seen from the end: x out of the door, y up it, centred on the plate that sits on the door's face
-    # (section high). The top edge of the door is at y = section / 2; a sheet EDGE_THICKNESS thick runs out over it and turns down into a lip
-    # (projection out, EDGE_LIP down). lip hangs it from the bottom edge instead. Pure maths.
-    def self.edge_pull_outline(projection, section, flip = false)
-      t = EDGE_THICKNESS
+    # Points on an arc of the circle (cx, cy, r) from one angle to another, in degrees. Pure maths.
+    def self.arc(cx, cy, r, from, to, steps = ARC_STEPS)
+      (0..steps).map do |k|
+        a = (from + ((to - from) * k / steps.to_f)) * Math::PI / 180.0
+        [cx + (r * Math.cos(a)), cy + (r * Math.sin(a))]
+      end
+    end
+
+    # Rounds off the numbers and drops a point that is the same as the one before it (and the last, if it is the first).
+    def self.tidy(points)
+      kept = points.map { |x, y| [(x * 1000).round / 1000.0, (y * 1000).round / 1000.0] }.each_with_object([]) { |p, list| list << p unless list.last == p }
+      kept.pop if kept.length > 1 && kept.first == kept.last
+      kept
+    end
+
+    # The outline [[x, y], ...] of an edge pull seen from the end: x out of the door, y up it, centred on the plate that sits on the door's
+    # face (section high). The top edge of the door is at y = section / 2; a sheet t thick runs out over it and turns down into a lip
+    # (projection out, lip down), with the bends rounded as bent sheet is. flip hangs it from the bottom edge instead. Pure maths.
+    def self.edge_pull_outline(projection, section, flip = false, lip = EDGE_LIP, t = EDGE_THICKNESS)
       top = section / 2.0
-      lip = [section - 2.0, EDGE_LIP].min
-      points = [[0.0, top], [projection, top], [projection, top - lip], [projection - t, top - lip], [projection - t, top - t], [t, top - t], [t, -top], [0.0, -top]]
+      lip = [lip, section - 2.0].min
+      ro = [t * 1.4, projection / 3.0].min # the outside of the bend at the front, the inside of it one sheet less
+      ri = [ro - t, 0.4].max
+      points = [[0.0, top], [projection - ro, top]]
+      points += arc(projection - ro, top - ro, ro, 90.0, 0.0)
+      points += [[projection, top - lip], [projection - t, top - lip]]
+      points += arc(projection - t - ri, top - t - ri, ri, 0.0, 90.0, 4)
+      points += arc(t + ri, top - t - ri, ri, 90.0, 180.0, 4)
+      points += [[t, -top], [0.0, -top]]
+      points = tidy(points)
       flip ? points.map { |x, y| [x, -y] } : points
     end
 
-    # The outline of a cup: a quarter-round sheet, its outside a quarter circle of radius projection from the foot on the door face up to the lip,
-    # EDGE_THICKNESS thick, open upwards (the finger goes in over the lip). Centred on its own height. Pure maths.
-    def self.cup_outline(projection, flip = false, steps = 12)
-      t = EDGE_THICKNESS
+    # The faces of a cup (a shell handle): a quarter-round sheet, its outside a quarter circle of radius projection from the foot on the door face
+    # up to the lip, open upwards, t thick, `length` long, its ends closing in like the end of a shell (a quarter of an ellipse in plan). Pure maths.
+    def self.cup_faces(length, projection, flip = false, t = EDGE_THICKNESS)
+      outline = cup_outline(projection, flip, 12, t)
+      middle = flip ? -projection / 2.0 : projection / 2.0 # (the middle of the quarter circle: the ends are quarters of a sphere about it)
+      end_len = [projection, length / 2.0].min
+      steps = 8
+      half = length / 2.0
+      ends = (0..steps).map do |k|
+        s = k.to_f / steps
+        scale = Math.sqrt([1.0 - (s**2), 0.0].max) # a quarter of an ellipse in plan
+        [half - end_len + (end_len * s), [scale, 0.12].max]
+      end
+      shaped = ends.map { |z, s| [z, scale_about(outline, 0.0, middle, s)] }
+      loft_faces(shaped.reverse.map { |z, o| [-z, o] } + shaped)
+    end
+
+    # The outline of a cup: the quarter-round sheet seen from the end, centred on its own height. Pure maths.
+    def self.cup_outline(projection, flip = false, steps = 12, t = EDGE_THICKNESS)
       r = projection
       centre = r / 2.0
-      outer = (0..steps).map { |k| a = (-Math::PI / 2.0) + ((Math::PI / 2.0) * k / steps); [r * Math.cos(a), centre + (r * Math.sin(a))] }
-      inner = (0..steps).map { |k| a = -((Math::PI / 2.0) * k / steps); [(r - t) * Math.cos(a), centre + ((r - t) * Math.sin(a))] } # (back from the lip to the foot)
-      points = (outer + inner).map { |x, y| [(x * 1000).round / 1000.0, (y * 1000).round / 1000.0] }
-      points = points.each_with_object([]) { |p, kept| kept << p unless kept.last == p }
+      outer = arc(0.0, centre, r, -90.0, 0.0, steps)
+      inner = arc(0.0, centre, r - t, 0.0, -90.0, steps) # (back from the lip to the foot)
+      points = tidy(outer + inner)
       flip ? points.map { |x, y| [x, -y] } : points
     end
+
+    def self.scale_about(points, cx, cy, s)
+      points.map { |x, y| [cx + ((x - cx) * s), cy + ((y - cy) * s)] }
+    end
+    private_class_method :scale_about
+
+    # The faces of a D handle or a T bar: a flat bow standing off the door on two legs, `length` between the legs, as wide as its width, with
+    # the outer bends rounded by `corner` (a T bar has square corners). Frame as in handle_faces. Pure maths.
+    def self.dbar_faces(length, projection, bundle)
+      t = (bundle['thickness'] || DBAR_THICKNESS).to_f
+      width = (bundle['width'] || DBAR_WIDTH).to_f
+      outline = dbar_outline(length, projection, t, (bundle['corner'] || 0).to_f)
+      loft_faces([[-width / 2.0, outline], [width / 2.0, outline]]).map { |points| points.map { |x, u, e| [x, e, u] }.reverse } # (x out, u along the grip, e across it)
+    end
+
+    # The outline [[x, u], ...] of a bow seen from above: two legs t thick at u = +-length / 2, joined by a grip at the outside (x = projection),
+    # the outer corners rounded with `corner`. Pure maths.
+    def self.dbar_outline(length, projection, t, corner)
+      half_o = (length / 2.0) + (t / 2.0)
+      half_i = (length / 2.0) - (t / 2.0)
+      ro = [corner, projection - t, half_o].min
+      ro = 0.0 if ro < 0.3
+      ri = ro.positive? ? [ro - t, 0.0].max : 0.0
+      points = [[0.0, -half_o], [projection - ro, -half_o]]
+      points += arc(projection - ro, -half_o + ro, ro, -90.0, 0.0) if ro.positive?
+      points += [[projection, -half_o + ro], [projection, half_o - ro]]
+      points += arc(projection - ro, half_o - ro, ro, 0.0, 90.0) if ro.positive?
+      points += [[projection - ro, half_o], [0.0, half_o], [0.0, half_i], [projection - t - ri, half_i]]
+      points += arc(projection - t - ri, half_i - ri, ri, 90.0, 0.0) if ri.positive?
+      points += [[projection - t, half_i - ri], [projection - t, -half_i + ri]]
+      points += arc(projection - t - ri, -half_i + ri, ri, 0.0, -90.0) if ri.positive?
+      points += [[projection - t - ri, -half_i], [0.0, -half_i]]
+      tidy(points)
+    end
+
+    # The faces (arrays of [x, y, z] in mm, each facing outwards) of a shape made of outlines [[x, y], ...] placed at heights z, all with the same
+    # number of points: a strip between each pair of neighbouring ones along every edge, and an end cap at each end. [[z, outline], ...] in the
+    # order of z. Pure maths.
+    def self.loft_faces(sections)
+      first = sections.first[1]
+      area = first.each_with_index.sum { |(x, y), i| nx, ny = first[(i + 1) % first.length]; (x * ny) - (nx * y) }
+      sections = sections.map { |z, outline| [z, area.negative? ? outline.reverse : outline] } # (the outlines go round counter-clockwise)
+      count = sections.first[1].length
+      faces = [sections.last[1].map { |x, y| [x, y, sections.last[0]] }, sections.first[1].reverse.map { |x, y| [x, y, sections.first[0]] }]
+      sections.each_cons(2) do |(z0, a), (z1, b)|
+        count.times do |i|
+          j = (i + 1) % count
+          faces << [[a[i][0], a[i][1], z0], [a[j][0], a[j][1], z0], [b[j][0], b[j][1], z1], [b[i][0], b[i][1], z1]]
+        end
+      end
+      faces.filter_map { |face| collapse(face) }
+    end
+
+    # A strip whose two ends have closed to a point (the end of a shell) is a triangle; one with two points that are the same loses one.
+    def self.collapse(corners)
+      points = corners.each_with_index.reject { |p, i| i.positive? && same_point?(p, corners[i - 1]) }.map(&:first)
+      points.pop if points.length > 1 && same_point?(points.first, points.last)
+      points.length >= 3 ? points : nil
+    end
+    private_class_method :collapse
 
     # The faces (arrays of [x, y, z] in mm, each facing outwards) of an outline pushed out half mm either way along Z: two end caps and a strip
     # along every edge. Pure maths.
     def self.extrude_faces(outline, half)
-      area = outline.each_with_index.sum { |(x, y), i| nx, ny = outline[(i + 1) % outline.length]; (x * ny) - (nx * y) }
-      points = area.negative? ? outline.reverse : outline # going round counter-clockwise
-      faces = [points.map { |x, y| [x, y, half] }, points.reverse.map { |x, y| [x, y, -half] }]
-      points.each_with_index do |(ax, ay), i|
-        bx, by = points[(i + 1) % points.length]
-        faces << [[ax, ay, -half], [bx, by, -half], [bx, by, half], [ax, ay, half]]
-      end
-      faces
+      loft_faces([[-half, outline], [half, outline]])
     end
 
-    # A bar: a round grip with domed ends along Z, held off the door by two round posts on small roses (see bar_faces), drawn
-    # with 48 sides and smooth edges.
-    def self.build_bar(_model, entities, length, section, projection)
-      bar_faces(length, section, projection).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
-      PanelGenerator.soften(entities)
-    end
-    private_class_method :build_bar
 
-    # A knob: a turned round knob standing off the door (a lathe shape: a small rose on the door, a slim neck, a domed head
-    # with a rounded rim), drawn with 48 sides and smooth edges. `diameter` is the head's width.
-    def self.build_knob(entities, diameter, projection)
-      knob_faces(diameter, projection).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
-      PanelGenerator.soften(entities)
-    end
-    private_class_method :build_knob
 
     # The outline of the knob as [radius, height above the door] from the middle of its base to the middle of its top.
     # Pure maths.
-    def self.knob_profile(diameter, projection)
+    def self.knob_profile(diameter, projection, style = '')
+      return cylinder_knob_profile(diameter, projection) if style == 'cylinder'
+      return ball_knob_profile(diameter, projection) if style == 'ball'
+
       head = diameter / 2.0
       rose = [diameter * 0.34, head].min
       neck = diameter * 0.17
@@ -359,8 +475,31 @@ module KitchenCabinetMaster
 
     # The faces of the knob (arrays of [x, y, z] in mm, each facing outwards): the outline turned about the X axis (out of the
     # door), `segments` sides round. Pure maths.
-    def self.knob_faces(diameter, projection, segments = KNOB_SEGMENTS)
-      lathe_faces(knob_profile(diameter, projection), segments, ->(axial, a, b) { [axial, a, b] })
+    def self.knob_faces(diameter, projection, segments = KNOB_SEGMENTS, style = '')
+      lathe_faces(knob_profile(diameter, projection, style), segments, ->(axial, a, b) { [axial, a, b] })
+    end
+
+    # A straight cylinder knob with a softly rounded top edge, flat on the door. [[radius, height], ...] Pure maths.
+    def self.cylinder_knob_profile(diameter, projection)
+      head = diameter / 2.0
+      round = [2.5, projection / 3.0, head / 2.0].min
+      points = [[0.0, 0.0], [head, 0.0], [head, projection - round]]
+      points += arc(head - round, projection - round, round, 0.0, 90.0, 6).drop(1)
+      points << [0.0, projection]
+      points.map { |r, z| [(r * 1000).round / 1000.0, (z * 1000).round / 1000.0] }
+    end
+
+    # A ball on a slim neck with a small rose on the door. [[radius, height], ...] Pure maths.
+    def self.ball_knob_profile(diameter, projection)
+      r = diameter / 2.0
+      neck = diameter * 0.12
+      centre = [projection - r, r * 0.6].max # the ball's middle
+      rose = [diameter * 0.3, r].min
+      join = centre - Math.sqrt((r * r) - (neck * neck)) # where the neck meets the ball
+      points = [[0.0, 0.0], [rose, 0.0], [rose, 1.0], [neck * 1.6, 2.2], [neck, 3.4], [neck, [join, 3.6].max]]
+      start = -Math.acos(neck / r) * 180.0 / Math::PI
+      points += arc(0.0, centre, r, start, 90.0, 16).map { |x, y| [x, y] }
+      points.map { |rad, z| [(rad * 1000).round / 1000.0, (z * 1000).round / 1000.0] }
     end
 
     # A shape turned on a lathe: the outline [[radius, along the axis], ...] (running up the right-hand side of the shape, from

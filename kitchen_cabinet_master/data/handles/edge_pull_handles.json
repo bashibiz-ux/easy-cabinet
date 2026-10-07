@@ -1,10 +1,13 @@
 {
     "id":  "edge_pull_handles",
     "name":  "Edge pulls (J-pull)",
-    "version":  1,
+    "group":  "Edge pulls",
+    "version":  2,
     "profile":  "edge_pull",
-    "projection":  20,
-    "section":  24,
+    "projection":  22,
+    "section":  28,
+    "lip":  24,
+    "thickness":  3,
     "lengths":  [
                     300,
                     400,

@@ -54,7 +54,7 @@ module KitchenCabinetMaster
     # ---- handles ----------------------------------------------------------------
     # A bundle file (data/handles/*.json) names a profile and lists the lengths and
     # finishes it offers. "length" is the bar length, or the diameter of a knob.
-    HANDLE_PROFILES = %w[bar knob edge_pull cup].freeze
+    HANDLE_PROFILES = %w[bar knob dbar edge_pull cup].freeze
 
     HANDLE_ORIENTATIONS = [
       { 'id' => 'vertical',   'name' => 'Vertical' },
@@ -141,6 +141,7 @@ module KitchenCabinetMaster
       'handle_id'              => '',
       # Blank = use the bundle's own default. The numeric handle values
       # (length, offsets, custom position) only appear once they are set.
+      'drawer_handle_id'       => '', # blank = the drawers have the same handle as the doors
       'handle_finish'          => '',
       'handle_material'        => '', # blank = the material of the chosen finish
       'handle_orientation'     => '',

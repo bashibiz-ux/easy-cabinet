@@ -78,5 +78,6 @@
                          "metalness":  0.95
                      }
                  ],
-    "section":  10
+    "section":  10,
+    "group":  "Bars"
 }
