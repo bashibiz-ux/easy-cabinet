@@ -804,16 +804,16 @@ module KitchenCabinetMaster
     # open. The animation runs as one undoable step.
     def self.toggle_all
       model = Sketchup.active_model
-      selected = SelectionManager.selected_cabinet(model)
-      cabinets = if selected
-                   [selected]
+      selected = selected_cabinets(model) # one, or several picked together
+      cabinets = if selected.any?
+                   selected
                  else
                    model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
                  end
       return Response.fail('There are no cabinets in the model yet.') if cabinets.empty?
 
       openables = cabinets.to_h { |cabinet| [cabinet, CabinetGenerator.openables_of(cabinet)] }
-      return Response.fail("#{selected.name} has no doors or drawers.") if selected && openables.values.all?(&:empty?)
+      return Response.fail(selected.length == 1 ? "#{selected.first.name} has no doors or drawers." : 'None of the selected cabinets has doors or drawers.') if selected.any? && openables.values.all?(&:empty?)
       return Response.fail('None of the cabinets has doors or drawers.') if openables.values.all?(&:empty?)
 
       opening = openables.values.flatten.none? { |door| DoorAnimation.open?(door) }
@@ -821,7 +821,7 @@ module KitchenCabinetMaster
       return Response.ok('Nothing to do: the doors and drawers are already in that position.') if moves.empty?
 
       DoorAnimation.run(model, moves, opening ? 'Open Doors' : 'Close Doors')
-      scope = selected ? selected.name : "#{cabinets.length} cabinet#{'s' unless cabinets.length == 1}"
+      scope = selected.length == 1 ? selected.first.name : "#{cabinets.length} cabinet#{'s' unless cabinets.length == 1}"
       Response.ok("#{opening ? 'Opening' : 'Closing'} #{moves.length} item#{'s' unless moves.length == 1} in #{scope}.")
     end
     private_class_method :toggle_all

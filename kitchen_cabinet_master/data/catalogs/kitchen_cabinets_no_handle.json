@@ -475,7 +475,7 @@
       },
       {
         "id": "wall_liftup",
-        "name": "Wall - lift-up door",
+        "name": "Wall - lift-up single door",
         "code": "WL",
         "doors": 1,
         "shelves": 1,
@@ -490,7 +490,7 @@
         "defaults": {
           "width": 800,
           "depth": 320,
-          "height": 480
+          "height": 390
         }
       },
       {
@@ -517,6 +517,7 @@
       },
       {
         "id": "wall_liftup_double",
+        "hidden": true,
         "name": "Wall - lift-up doors, double",
         "code": "WLD",
         "doors": 2,
@@ -596,7 +597,7 @@
         "defaults": {
           "width": 800,
           "depth": 320,
-          "height": 720
+          "height": 780
         }
       },
       {
@@ -623,13 +624,13 @@
       },
       {
         "id": "wall_liftup_stacked",
-        "name": "Wall - lift-up doors, one above the other",
+        "name": "Wall - lift-up double door",
         "code": "WLS",
         "doors": 2,
         "shelves": 0,
         "stacked": true,
         "lift_door": true,
-        "zone": 360,
+        "zone": 390,
         "zone_label": "Top Door Height",
         "widths": [
           600,
@@ -641,7 +642,7 @@
         "defaults": {
           "width": 800,
           "depth": 320,
-          "height": 720
+          "height": 780
         }
       },
       {
@@ -677,7 +678,7 @@
         "defaults": {
           "width": 600,
           "depth": 320,
-          "height": 360
+          "height": 390
         }
       },
       {

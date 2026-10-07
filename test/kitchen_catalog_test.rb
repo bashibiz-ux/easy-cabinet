@@ -1122,7 +1122,7 @@ class KitchenCatalogTest < Minitest::Test
       assert known && known['glass'] && known['bifold'], 'still known by its id'
       assert CatalogManager.cabinet(catalog, 'tall', 'tall_glass_2door')
       # the lift-up and bi-fold units without glass are still offered (glass comes from the Front Design)
-      %w[wall_liftup wall_liftup_double wall_liftup_bifold wall_liftup_short].each do |id|
+      %w[wall_liftup wall_liftup_stacked wall_liftup_bifold wall_liftup_short].each do |id|
         assert_includes CatalogManager.cabinets(catalog, 'wall').map { |e| e['id'] }, id
       end
     end
@@ -1243,7 +1243,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta lower.offset[2] + lower.extent[2], lower.pivot[2], 0.01, 'the lower door lifts on its own top edge'
     assert_in_delta upper.offset[2] + upper.extent[2], upper.pivot[2], 0.01, 'the upper one on its top edge'
     assert_operator upper.offset[2], :>, lower.offset[2] + lower.extent[2], 'one above the other, with a gap'
-    assert_in_delta 360.0 - 2.0, upper.extent[2], 0.01, 'the top door as high as the catalog says'
+    assert_in_delta 390.0 - 2.0, upper.extent[2], 0.01, 'the top door as high as the catalog says'
     assert_nil lower.parent
     refute lower.bifold || upper.bifold, 'not folded together'
     _, plain = unit('wall', 'wall_liftup_stacked', 800)
@@ -1305,5 +1305,22 @@ class KitchenCatalogTest < Minitest::Test
     assert_empty unit.panels.select { |p| p.role.start_with?('shelf_') }, 'no loose shelf as well'
     _, plain = unit('wall', 'wall_2door', 800)
     assert_empty plain.panels.select { |p| p.role == 'divider' }, 'two doors side by side have none'
+  end
+
+  def test_the_wall_units_start_at_780_the_lift_up_single_and_short_ones_at_390_and_the_double_lift_up_is_gone_from_the_list
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      wall = CatalogManager.cabinets(catalog, 'wall').to_h { |e| [e['id'], e] }
+      heights = wall.transform_values { |e| e['defaults']['height'] }
+      assert_equal 390, heights['wall_liftup'], catalog
+      assert_equal 390, heights['wall_short']
+      assert_equal 780, heights['wall_liftup_bifold']
+      assert_equal 780, heights['wall_liftup_stacked']
+      assert_equal 390, wall['wall_liftup_stacked']['zone'], 'the top door is half'
+      %w[wall_1door wall_2door wall_open wall_hood wall_corner_diagonal wall_corner_l wall_corner_blind].each { |id| assert_equal 780, heights[id], id }
+      assert_equal 'Wall - lift-up single door', wall['wall_liftup']['name']
+      assert_equal 'Wall - lift-up double door', wall['wall_liftup_stacked']['name']
+      refute wall.key?('wall_liftup_double'), 'the double lift-up (two flaps side by side) is not offered'
+      assert CatalogManager.cabinet(catalog, 'wall', 'wall_liftup_double'), 'but a cabinet made from it still works'
+    end
   end
 end
