@@ -9,7 +9,9 @@
   ],
   "handle_bundles": [
     "sample_bar_handles",
-    "sample_knobs"
+    "sample_knobs",
+    "edge_pull_handles",
+    "cup_handles"
   ],
   "features": [
     "base",

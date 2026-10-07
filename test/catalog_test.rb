@@ -44,7 +44,7 @@ class CatalogTest < Minitest::Test
 
   def test_the_catalog_lists_its_handle_bundles
     bundles = CatalogManager.catalogs.first['handle_bundles']
-    assert_equal %w[sample_bar_handles sample_knobs], bundles.sort
+    assert_equal %w[cup_handles edge_pull_handles sample_bar_handles sample_knobs], bundles.sort
     assert_equal bundles.sort, CatalogManager.handle_bundles.map { |b| b['id'] }.sort
   end
   def test_a_catalog_without_a_features_list_offers_everything

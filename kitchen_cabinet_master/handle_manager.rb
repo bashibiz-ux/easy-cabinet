@@ -15,6 +15,9 @@ module KitchenCabinetMaster
     TOLERANCE = 1e-6
     KNOB_SEGMENTS = 48
     TALL_PULL_OUT_MIN = 1200.0 # a drawer front at least this high is a tall pull-out
+    EDGE_PROFILES = %w[edge_pull cup].freeze # handles that sit on the top (or bottom) edge of a front, always along it
+    EDGE_THICKNESS = 2.5                     # the sheet of an edge pull or a cup
+    EDGE_LIP = 22.0                          # how far an edge pull's lip hangs down
 
     # Fills in anything the panel left blank from the bundle's own defaults, so what
     # is stored on the cabinet is always the complete, effective set of values.
@@ -81,6 +84,8 @@ module KitchenCabinetMaster
     # low-Y (left) edge and its bottom edge, plus the handle's footprint.
     # Returns { 'u', 'v', 'half_u', 'half_v', 'horizontal' }.
     def self.placement(door, settings, bundle)
+      return edge_placement(door, settings, bundle) if EDGE_PROFILES.include?(bundle['profile'])
+
       door_w = door.extent[1]
       door_h = door.extent[2]
       length = settings['length']
@@ -151,6 +156,19 @@ module KitchenCabinetMaster
       { 'u' => u, 'v' => v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
     end
 
+    # An edge pull or a cup sits on the top edge of a door or drawer front (the bottom edge of a wall unit's door, and of a lift-up
+    # door), centred across it and always along it. lip says it hangs from the bottom edge. Pure maths.
+    def self.edge_placement(door, settings, bundle)
+      door_h = door.extent[2]
+      half_u = settings['length'] / 2.0
+      half_v = [section(bundle) / 2.0, door_h / 2.0].min
+      at_bottom = door.hinge == 'top' || resolved_position(settings['position'], settings['category']) == 'bottom'
+      offset = settings['vertical_offset'].to_f
+      v = at_bottom ? offset + half_v : door_h - offset - half_v
+      { 'u' => door.extent[1] / 2.0, 'v' => v.clamp(half_v, [door_h - half_v, half_v].max), 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true, 'flip' => at_bottom }
+    end
+    private_class_method :edge_placement
+
     # Hand height on a tall unit's door, kept a handle-offset clear of the door's edges, so on a door that
     # lies wholly above or below it (the lower door of a fridge) the handle sits near its edge, not on the gap.
     def self.hand_height(door, door_h, half_v, margin)
@@ -210,12 +228,13 @@ module KitchenCabinetMaster
     end
 
     # Finds or builds the shared handle definition for this geometry.
-    def self.definition(model, bundle, length)
+    def self.definition(model, bundle, length, flip = false)
       profile = bundle['profile']
       section = section(bundle)
       projection = projection(bundle)
       name = format('Handle %<profile>s %<length>g x %<section>g x %<projection>g smooth',
                     profile: profile, length: length, section: section, projection: projection)
+      name += ' up' if flip && EDGE_PROFILES.include?(profile)
 
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
@@ -224,6 +243,8 @@ module KitchenCabinetMaster
       AttributeManager.mark_managed(definition)
       if profile == 'knob'
         build_knob(definition.entities, length, projection)
+      elsif EDGE_PROFILES.include?(profile)
+        build_edge(definition.entities, profile, length, section, projection, flip)
       else
         build_bar(model, definition.entities, length, section, projection)
       end
@@ -233,7 +254,8 @@ module KitchenCabinetMaster
     # The material name and colour for a finish of the bundle.
     def self.finish_material(bundle, finish_name)
       finish = bundle['finishes'].find { |f| f['name'] == finish_name } || bundle['finishes'].first
-      [finish['material'].to_s.empty? ? finish['name'] : finish['material'], finish['color']]
+      props = finish.slice('roughness', 'metalness').select { |_key, value| value.is_a?(Numeric) } # the look of the metal (PBR)
+      [finish['material'].to_s.empty? ? finish['name'] : finish['material'], finish['color'], props.empty? ? nil : props]
     end
 
     def self.section(bundle)
@@ -247,6 +269,52 @@ module KitchenCabinetMaster
     def self.default_length(bundle)
       lengths = bundle['lengths']
       lengths.include?(bundle['default_length']) ? bundle['default_length'].to_f : lengths.first.to_f
+    end
+
+    # An edge pull (a J-pull: a plate on the door face with a lip over the finger gap) or a cup (a quarter-round scoop), drawn as its outline
+    # pushed out along the handle's length (Z), with the outline's Y being up the door once the handle is turned along it.
+    def self.build_edge(entities, profile, length, section, projection, flip)
+      outline = profile == 'cup' ? cup_outline(projection, flip) : edge_pull_outline(projection, section, flip)
+      extrude_faces(outline, length / 2.0).each { |points| entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      PanelGenerator.soften(entities)
+    end
+    private_class_method :build_edge
+
+    # The outline [[x, y], ...] of an edge pull seen from the end: x out of the door, y up it, centred on the plate that sits on the door's face
+    # (section high). The top edge of the door is at y = section / 2; a sheet EDGE_THICKNESS thick runs out over it and turns down into a lip
+    # (projection out, EDGE_LIP down). lip hangs it from the bottom edge instead. Pure maths.
+    def self.edge_pull_outline(projection, section, flip = false)
+      t = EDGE_THICKNESS
+      top = section / 2.0
+      lip = [section - 2.0, EDGE_LIP].min
+      points = [[0.0, top], [projection, top], [projection, top - lip], [projection - t, top - lip], [projection - t, top - t], [t, top - t], [t, -top], [0.0, -top]]
+      flip ? points.map { |x, y| [x, -y] } : points
+    end
+
+    # The outline of a cup: a quarter-round sheet, its outside a quarter circle of radius projection from the foot on the door face up to the lip,
+    # EDGE_THICKNESS thick, open upwards (the finger goes in over the lip). Centred on its own height. Pure maths.
+    def self.cup_outline(projection, flip = false, steps = 12)
+      t = EDGE_THICKNESS
+      r = projection
+      centre = r / 2.0
+      outer = (0..steps).map { |k| a = (-Math::PI / 2.0) + ((Math::PI / 2.0) * k / steps); [r * Math.cos(a), centre + (r * Math.sin(a))] }
+      inner = (0..steps).map { |k| a = -((Math::PI / 2.0) * k / steps); [(r - t) * Math.cos(a), centre + ((r - t) * Math.sin(a))] } # (back from the lip to the foot)
+      points = (outer + inner).map { |x, y| [(x * 1000).round / 1000.0, (y * 1000).round / 1000.0] }
+      points = points.each_with_object([]) { |p, kept| kept << p unless kept.last == p }
+      flip ? points.map { |x, y| [x, -y] } : points
+    end
+
+    # The faces (arrays of [x, y, z] in mm, each facing outwards) of an outline pushed out half mm either way along Z: two end caps and a strip
+    # along every edge. Pure maths.
+    def self.extrude_faces(outline, half)
+      area = outline.each_with_index.sum { |(x, y), i| nx, ny = outline[(i + 1) % outline.length]; (x * ny) - (nx * y) }
+      points = area.negative? ? outline.reverse : outline # going round counter-clockwise
+      faces = [points.map { |x, y| [x, y, half] }, points.reverse.map { |x, y| [x, y, -half] }]
+      points.each_with_index do |(ax, ay), i|
+        bx, by = points[(i + 1) % points.length]
+        faces << [[ax, ay, -half], [bx, by, -half], [bx, by, half], [ax, ay, half]]
+      end
+      faces
     end
 
     # A bar: a round grip with domed ends along Z, held off the door by two round posts on small roses (see bar_faces), drawn

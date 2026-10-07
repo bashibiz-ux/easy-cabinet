@@ -1,0 +1,68 @@
+{
+    "id":  "edge_pull_handles",
+    "name":  "Edge pulls (J-pull)",
+    "version":  1,
+    "profile":  "edge_pull",
+    "projection":  20,
+    "section":  24,
+    "lengths":  [
+                    300,
+                    400,
+                    500,
+                    550,
+                    700,
+                    900,
+                    1100
+                ],
+    "default_length":  550,
+    "finishes":  [
+                     {
+                         "name":  "Aluminium",
+                         "material":  "Handle Aluminium",
+                         "color":  "#C9CDD1",
+                         "roughness":  0.35,
+                         "metalness":  0.9
+                     },
+                     {
+                         "name":  "Black anodised",
+                         "material":  "Handle Black anodised",
+                         "color":  "#1D1D1F",
+                         "roughness":  0.4,
+                         "metalness":  0.8
+                     },
+                     {
+                         "name":  "Stainless steel",
+                         "material":  "Handle Stainless steel",
+                         "color":  "#B8BDC2",
+                         "roughness":  0.3,
+                         "metalness":  0.95
+                     },
+                     {
+                         "name":  "Champagne anodised",
+                         "material":  "Handle Champagne anodised",
+                         "color":  "#C8B79A",
+                         "roughness":  0.4,
+                         "metalness":  0.85
+                     },
+                     {
+                         "name":  "Bronze anodised",
+                         "material":  "Handle Bronze anodised",
+                         "color":  "#6B5A48",
+                         "roughness":  0.45,
+                         "metalness":  0.8
+                     },
+                     {
+                         "name":  "White",
+                         "material":  "Handle White",
+                         "color":  "#EDEDEA",
+                         "roughness":  0.5,
+                         "metalness":  0.1
+                     }
+                 ],
+    "defaults":  {
+                     "vertical_offset":  0,
+                     "side_offset":  0,
+                     "horizontal_place":  "middle",
+                     "position":  "auto"
+                 }
+}

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.57.2';
+  const APP_VERSION = '0.58.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1051,7 +1051,7 @@
       setText('handleCustomX', d.custom_x);
       setText('handleCustomZ', d.custom_z);
     }
-    $('handleOrientation').disabled = bundle.profile === 'knob'; // a round knob has no orientation
+    $('handleOrientation').disabled = bundle.profile === 'knob' || EDGE_PROFILES.includes(bundle.profile); // a round knob has no orientation, an edge pull or a cup always runs along the edge
     syncHandlePosition();
     updateChips();
     drawPreview();
@@ -1075,6 +1075,34 @@
    * Catalog / category / cabinet
    * ---------------------------------------------------------------------- */
 
+  // The cabinets of the Cabinet list are sorted into groups by what they are, in this order (and as listed within a group).
+  const CABINET_GROUPS = ['Door units', 'Glass door units', 'Lift-up units', 'Drawer units', 'Door and drawer units', 'Pull-outs', 'Sink units',
+    'Hob, oven & hood', 'Fridge units', 'Open units', 'Corner units', 'My models'];
+
+  function cabinetGroup(entry) {
+    const drawers = Number(entry.drawers) || 0;
+    const doors = Number(entry.doors) || 0;
+    if (entry.component) return 'My models';
+    if (entry.corner) return 'Corner units';
+    if (entry.glass) return 'Glass door units';
+    if (entry.lift_door) return 'Lift-up units';
+    if (entry.fridge || entry.free_housing || entry.freestanding) return 'Fridge units';
+    if (entry.sink) return 'Sink units';
+    if (entry.hob || entry.hood || entry.appliances || entry.lower) return 'Hob, oven & hood';
+    if (entry.pullout) return 'Pull-outs';
+    if (drawers > 0 && doors > 0) return 'Door and drawer units';
+    if (drawers > 0) return 'Drawer units';
+    if (doors > 0) return 'Door units';
+    return 'Open units';
+  }
+
+  function groupCabinets(entries) {
+    return list(entries)
+      .map((entry, index) => ({ entry, index, group: cabinetGroup(entry) }))
+      .sort((a, b) => (CABINET_GROUPS.indexOf(a.group) - CABINET_GROUPS.indexOf(b.group)) || (a.index - b.index))
+      .map(({ entry, group }) => Object.assign({}, entry, { group }));
+  }
+
   async function refreshCabinets({ selectId = null, keepValues = false } = {}) {
     if (categoryKind() !== 'cabinet') return; // a filler, end panel or toe kick has no catalog cabinets
     const catalogId = $('catalog').value;
@@ -1090,12 +1118,13 @@
       }
     }
 
-    fillSelect($('cabinet'), state.cabinets, {
+    const grouped = groupCabinets(state.cabinets);
+    fillSelect($('cabinet'), grouped, {
       placeholder: state.cabinets.length ? null : 'No cabinets in this category'
     });
     $('cabinet').value = selectId && state.cabinets.some((c) => c.id === selectId)
       ? selectId
-      : (state.cabinets[0] ? state.cabinets[0].id : '');
+      : (grouped[0] ? grouped[0].id : '');
 
     if (!keepValues) applyCabinetDefaults();
     else { fillWidthPreset((currentCabinet() || {}).widths); fillApplianceChoices(currentCabinet()); syncZoneField(); }
@@ -1347,19 +1376,22 @@
 
   const numOr = (value, fallback) => (Number.isFinite(num(value)) ? num(value) : fallback);
 
+  const EDGE_PROFILES = ['edge_pull', 'cup']; // handles that sit on the top (or bottom) edge of a front, always along it
+
   // The chosen handle, or null when there is none. Lengths in millimetres.
   function handleSpec() {
     const bundle = currentBundle();
     const length = num($('handleLength').value);
     if (!bundle || !(length > 0)) return null;
     const knob = bundle.profile === 'knob';
+    const edge = EDGE_PROFILES.includes(bundle.profile);
     return {
       knob,
       length,
-      horizontal: !knob && $('handleOrientation').value === 'horizontal',
+      horizontal: edge || (!knob && $('handleOrientation').value === 'horizontal'),
       position: $('handlePosition').value || 'auto',
       category: $('category').value,
-      middle: !knob && $('handleOrientation').value === 'horizontal' && $('handleHPlace').value === 'middle',
+      middle: edge || (!knob && $('handleOrientation').value === 'horizontal' && $('handleHPlace').value === 'middle'),
       side: numOr(mmv('handleSide'), 0),
       vertical: numOr(mmv('handleVert'), 0),
       customX: numOr(mmv('handleCustomX'), 50),

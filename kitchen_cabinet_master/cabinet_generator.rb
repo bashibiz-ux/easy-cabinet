@@ -381,7 +381,7 @@ module KitchenCabinetMaster
 
       settings = HandleManager.settings(params, bundle)
       spot = HandleManager.placement(door, settings, bundle)
-      definition = HandleManager.definition(model, bundle, settings['length'])
+      definition = HandleManager.definition(model, bundle, settings['length'], spot['flip'] == true)
       handle = place_instance(model, entities, existing, HANDLE_ROLE, definition,
                               HandleManager.transformation(spot, door.extent[0]))
       handle.name = 'Handle'
@@ -393,8 +393,8 @@ module KitchenCabinetMaster
                         end
 
       if settings['material'].to_s.empty?
-        material_name, color = HandleManager.finish_material(bundle, settings['finish'])
-        MaterialManager.apply(handle, material_name, model, color)
+        material_name, color, props = HandleManager.finish_material(bundle, settings['finish'])
+        MaterialManager.apply(handle, material_name, model, color, props)
       else
         MaterialManager.apply(handle, settings['material'], model) # a material picked from the model
       end

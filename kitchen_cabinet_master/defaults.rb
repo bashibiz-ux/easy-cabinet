@@ -54,7 +54,7 @@ module KitchenCabinetMaster
     # ---- handles ----------------------------------------------------------------
     # A bundle file (data/handles/*.json) names a profile and lists the lengths and
     # finishes it offers. "length" is the bar length, or the diameter of a knob.
-    HANDLE_PROFILES = %w[bar knob].freeze
+    HANDLE_PROFILES = %w[bar knob edge_pull cup].freeze
 
     HANDLE_ORIENTATIONS = [
       { 'id' => 'vertical',   'name' => 'Vertical' },

@@ -262,12 +262,36 @@ module KitchenCabinetMaster
                 Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
         instance = entities.add_instance(definition, target * local)
         instance.name = entry['name'].to_s
+        # What marks it as a model of your own (it is not a cabinet of the extension, so it has no settings of its own): its kind, and
+        # the material of that kind (Base, Wall or Tall material) from the Material section goes on it, like on a cabinet.
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
+        paint_custom_model(model, instance, raw)
         instance
       end
       SelectionManager.select(instance)
       Response.ok("#{entry['name']} inserted.")
     end
     private_class_method :insert_component
+
+    CUSTOM_MATERIAL_KEYS = %w[base_material wall_material tall_material].freeze
+
+    # The models of your own that were inserted from a catalog.
+    def self.custom_models(model)
+      model.entities.grep(Sketchup::ComponentInstance).select { |instance| instance.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true }
+    end
+    private_class_method :custom_models
+
+    # Paints a model of your own with the material of its kind (raw has base_material, wall_material, tall_material). True if it was painted.
+    def self.paint_custom_model(model, instance, raw)
+      category = instance.get_attribute(AttributeManager::DICTIONARY, 'custom_category').to_s
+      name = raw["#{category}_material"].to_s.strip
+      return false if name.empty? || !MaterialManager.available?(model, name)
+
+      MaterialManager.apply(instance, name, model)
+    end
+    private_class_method :paint_custom_model
     def self.remove_from_catalog(raw)
       raw = {} unless raw.is_a?(Hash)
       removed = CatalogManager.remove_custom(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
@@ -407,8 +431,23 @@ module KitchenCabinetMaster
       GLOBAL_FLAGS.each { |key| overrides[key] = ValidationManager.truthy_value?(raw[key]) if raw.key?(key) }
 
       model = Sketchup.active_model
+      # A material picked in the Material section also goes on the models of your own: on the selected ones alone when some are selected
+      # (and no cabinet), otherwise on all of them.
+      painted = 0
+      if (overrides.keys & CUSTOM_MATERIAL_KEYS).any?
+        chosen = custom_models(model)
+        picked = chosen.select { |item| model.selection.include?(item) }
+        only_these = picked.any? && selected_cabinets(model).empty?
+        chosen = picked if only_these
+        unless chosen.empty?
+          with_operation(model, 'Apply Material To My Models') { chosen.each { |item| painted += 1 if paint_custom_model(model, item, overrides) } }
+        end
+        return Response.ok("#{painted} of your own model#{'s' unless painted == 1} painted.") if only_these
+      end
       cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
-      return Response.ok('No cabinets in the model yet. New cabinets will use these settings.') if cabinets.empty?
+      if cabinets.empty?
+        return Response.ok(painted.positive? ? "#{painted} of your own model#{'s' unless painted == 1} painted." : 'No cabinets in the model yet. New cabinets will use these settings.')
+      end
 
       plans = []
       problems = []

@@ -866,4 +866,115 @@ class KitchenCatalogTest < Minitest::Test
     _, unit = unit('wall', 'wall_glass_liftup', 800, 'lift_door' => true)
     assert_equal ['top'], unit.doors.map(&:hinge)
   end
+
+  PG_NEWELL = lambda do |corners|
+    n = [0.0, 0.0, 0.0]
+    corners.each_with_index do |(x, y, z), i|
+      nx, ny, nz = corners[(i + 1) % corners.length]
+      n[0] += (y - ny) * (z + nz)
+      n[1] += (z - nz) * (x + nx)
+      n[2] += (x - nx) * (y + ny)
+    end
+    n
+  end
+
+  def door(hinge, width = 596.0, height = 716.0)
+    CabinetLayout::Door.new(role: 'door_1', name: 'Door 1', extent: [18.0, width, height], offset: [0.0, 0.0, 100.0], hinge: hinge,
+                            pivot: [0.0, 0.0, 700.0], rotation: 0.0)
+  end
+
+  def handle_settings(bundle, category = 'base', extra = {})
+    params = Defaults.params.merge('handle_id' => bundle['id'], 'cabinet_category' => category).merge(extra)
+    HandleManager.apply_defaults!(params, bundle)
+    HandleManager.settings(params, bundle)
+  end
+
+  def test_the_edge_pull_and_cup_bundles_are_in_the_model_with_handles
+    assert_includes CatalogManager.catalog('kitchen_cabinets')['handle_bundles'], 'edge_pull_handles'
+    assert_includes CatalogManager.catalog('kitchen_cabinets')['handle_bundles'], 'cup_handles'
+    %w[edge_pull_handles cup_handles].each do |id|
+      bundle = CatalogManager.handle_bundle(id)
+      assert bundle, id
+      assert_includes Defaults::HANDLE_PROFILES, bundle['profile']
+      assert_operator bundle['finishes'].length, :>=, 5
+      assert(bundle['finishes'].all? { |f| f['roughness'].is_a?(Numeric) && f['metalness'].is_a?(Numeric) && f['color'] =~ /\A#\h{6}\z/ })
+    end
+  end
+
+  def test_the_bars_and_knobs_have_the_extra_finishes_with_a_look_of_their_own
+    %w[sample_bar_handles sample_knobs cup_handles].each do |id|
+      bundle = CatalogManager.handle_bundle(id)
+      names = bundle['finishes'].map { |f| f['name'] }
+      %w[Chrome Brushed\ nickel Antique\ brass Copper Gunmetal Satin\ gold Brushed\ steel Matt\ black Brass].each { |n| assert_includes names, n, "#{id} #{n}" }
+      assert_equal names.uniq.length, names.length
+    end
+    chrome = HandleManager.finish_material(CatalogManager.handle_bundle('sample_bar_handles'), 'Chrome')
+    assert_equal ['Handle Chrome', '#D9DCDF', { 'roughness' => 0.08, 'metalness' => 1.0 }], chrome
+    black = HandleManager.finish_material(CatalogManager.handle_bundle('sample_bar_handles'), 'Matt black')
+    assert_operator black[2]['roughness'], :>, chrome[2]['roughness'], 'matt is rougher than chrome'
+  end
+
+  def test_an_edge_pull_sits_on_the_top_edge_of_a_door_and_a_wall_doors_bottom_edge
+    bundle = CatalogManager.handle_bundle('edge_pull_handles')
+    base = HandleManager.placement(door('left'), handle_settings(bundle), bundle)
+    assert base['horizontal'] && !base['flip']
+    assert_in_delta 298.0, base['u'], 0.01, 'centred across the door'
+    assert_in_delta 716.0 - 12.0, base['v'], 0.01, 'the plate reaches up to the top edge (24 mm high, no offset)'
+    wall = HandleManager.placement(door('left'), handle_settings(bundle, 'wall'), bundle)
+    assert wall['flip']
+    assert_in_delta 12.0, wall['v'], 0.01, 'a wall unit: on the bottom edge'
+    lift = HandleManager.placement(door('top'), handle_settings(bundle), bundle)
+    assert lift['flip'], 'a lift-up door is taken hold of at its bottom edge'
+    drawer = HandleManager.placement(door('center', 596.0, 200.0), handle_settings(bundle), bundle)
+    assert drawer['horizontal'] && !drawer['flip']
+    assert_in_delta 200.0 - 12.0, drawer['v'], 0.01
+    tall = HandleManager.placement(door('left', 596.0, 2000.0), handle_settings(bundle, 'tall'), bundle)
+    assert_in_delta 2000.0 - 12.0, tall['v'], 0.01, 'a tall unit: on the top edge too'
+    # it always runs along the edge, whatever orientation was chosen
+    vertical = HandleManager.placement(door('left'), handle_settings(bundle, 'base', 'handle_orientation' => 'vertical'), bundle)
+    assert vertical['horizontal']
+    assert_empty HandleManager.errors(Defaults.params.merge('handle_id' => bundle['id'], 'handle_length' => 550.0, 'handle_finish' => 'Aluminium'),
+                                      CabinetLayout::Layout.new(doors: [door('left')]), bundle)
+    too_long = HandleManager.errors(Defaults.params.merge('handle_id' => bundle['id'], 'handle_length' => 700.0, 'handle_finish' => 'Aluminium'),
+                                    CabinetLayout::Layout.new(doors: [door('left')]), bundle)
+    assert_equal ['handle_length'], too_long.map { |e| e['field'] }, 'a pull longer than the door does not fit'
+  end
+
+  def test_a_cup_sits_a_little_below_the_top_edge_of_a_drawer_front
+    bundle = CatalogManager.handle_bundle('cup_handles')
+    spot = HandleManager.placement(door('center', 596.0, 200.0), handle_settings(bundle), bundle)
+    assert spot['horizontal']
+    assert_in_delta 200.0 - 5.0 - 11.0, spot['v'], 0.01, 'its default offset is 5 mm under the edge'
+    assert_in_delta 298.0, spot['u'], 0.01
+  end
+
+  def test_the_outlines_of_the_edge_pull_and_the_cup_are_simple_shapes_that_close_up
+    [HandleManager.edge_pull_outline(20.0, 24.0), HandleManager.edge_pull_outline(20.0, 24.0, true), HandleManager.cup_outline(22.0), HandleManager.cup_outline(22.0, true)].each do |outline|
+      area = outline.each_with_index.sum { |(x, y), i| nx, ny = outline[(i + 1) % outline.length]; (x * ny) - (nx * y) }.abs / 2.0
+      assert_operator area, :>, 20.0
+      assert(outline.all? { |x, _| x >= -0.001 && x <= 22.001 }, 'out of the door face, not into it')
+      outline.each_with_index do |p, i|
+        q = outline[(i + 1) % outline.length]
+        assert_operator Math.hypot(p[0] - q[0], p[1] - q[1]), :>, 0.026, 'no two neighbouring points are the same point'
+      end
+    end
+    up = HandleManager.edge_pull_outline(20.0, 24.0).map(&:last)
+    assert_in_delta 12.0, up.max, 0.001
+    assert_in_delta(-12.0, up.min, 0.001)
+    assert_in_delta(-12.0, HandleManager.edge_pull_outline(20.0, 24.0, true).map(&:last).max.then { |m| -m }, 0.001)
+  end
+
+  def test_an_extruded_outline_has_closed_outward_faces
+    [HandleManager.edge_pull_outline(20.0, 24.0), HandleManager.cup_outline(22.0)].each do |outline|
+      faces = HandleManager.extrude_faces(outline, 25.0)
+      edges = Hash.new(0)
+      faces.each { |c| c.each_with_index { |p, i| edges[[p.map { |v| v.round(4) }, c[(i + 1) % c.length].map { |v| v.round(4) }]] += 1 } }
+      assert(edges.keys.all? { |a, b| edges.key?([b, a]) }, 'every edge is shared with a face the other way round')
+      assert_equal outline.length + 2, faces.length
+      caps = faces.select { |c| c.map { |p| p[2] }.uniq.length == 1 }
+      assert_equal [-25.0, 25.0], caps.map { |c| c.first[2] }.sort, 'an end cap at each end'
+      assert_operator PG_NEWELL.call(caps.find { |c| c.first[2] == 25.0 })[2], :>, 0.0, 'facing out along +Z'
+      assert_operator PG_NEWELL.call(caps.find { |c| c.first[2] == -25.0 })[2], :<, 0.0, 'and along -Z'
+    end
+  end
 end
