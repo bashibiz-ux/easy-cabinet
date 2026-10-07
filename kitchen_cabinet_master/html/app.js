@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.60.0';
+  const APP_VERSION = '0.61.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -525,6 +525,15 @@
   };
 
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
+  async function applyGlassDesign() {
+    try {
+      const res = await call('apply_glass_design', { glass_design: $('glassDoor').value });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    }
+  }
+
   async function applyFrontDesign() {
     try {
       const res = await call('apply_front_design', { front_design: $('frontDesign').value });
@@ -744,7 +753,7 @@
 
     const allowed = catalog && Array.isArray(catalog.handle_bundles) ? catalog.handle_bundles : null;
     const before = $('handle').value;
-    const offered = list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id));
+    const offered = arrangeHandles(list(state.meta.handle_bundles).filter((b) => !allowed || allowed.includes(b.id)));
     fillSelect($('handle'), offered, { placeholder: 'None' });
     fillSelect($('drawerHandle'), offered, { placeholder: 'Same as doors' });
     // A cabinet comes with a handle: the first one the model offers, unless one is already chosen.
@@ -841,6 +850,7 @@
     return {
       catalog_id: $('catalog').value,
       front_design: $('frontDesign').value,
+      glass_design: $('glassDoor').value,
       handle_id: $('handle').value,
       drawer_handle_id: $('drawerHandle').value,
       base_material: $('baseMaterial').value,
@@ -1022,6 +1032,18 @@
    * Handle bundle options
    * ---------------------------------------------------------------------- */
 
+  // The handle packages in order of what they are (bars, D handles and T bars, edge pulls, cups, knobs), as they are listed within one kind, with no
+  // headings. A package of a kind not listed here goes after them.
+  const HANDLE_KINDS = ['Bars', 'D handles & T bars', 'Edge pulls', 'Cups & shells', 'Knobs'];
+
+  function arrangeHandles(bundles) {
+    const rank = (b) => { const i = HANDLE_KINDS.indexOf(b.group); return i < 0 ? HANDLE_KINDS.length : i; };
+    return list(bundles)
+      .map((b, index) => ({ b, index }))
+      .sort((x, y) => (rank(x.b) - rank(y.b)) || (x.index - y.index))
+      .map(({ b }) => Object.assign({}, b, { group: undefined })); // (the group only says where it goes)
+  }
+
   function currentBundle() {
     const id = $('handle').value;
     return (state.meta && list(state.meta.handle_bundles).find((b) => b.id === id)) || null;
@@ -1055,6 +1077,7 @@
       setText('handleCustomX', d.custom_x);
       setText('handleCustomZ', d.custom_z);
     }
+    ['handleSide', 'handleVert', 'handleHPlace'].forEach((id) => { $(id).disabled = EDGE_PROFILES.includes(bundle.profile); }); // an edge pull or a cup sits on the edge as its package says
     $('handleOrientation').disabled = bundle.profile === 'knob' || EDGE_PROFILES.includes(bundle.profile); // a round knob has no orientation, an edge pull or a cup always runs along the edge
     syncHandlePosition();
     updateChips();
@@ -1204,7 +1227,7 @@
   };
   // A glass door cabinet has a field for the glass.
   // (also when a glass front design is chosen: its doors are glass whatever the cabinet is)
-  const hasGlassField = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).glass || String($('frontDesign').value).startsWith('glass_'));
+  const hasGlassField = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).glass || !!$('glassDoor').value);
   const hasLiftTick = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass && !(currentCabinet() || {}).lift_door && !(currentCabinet() || {}).bifold;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
@@ -1350,6 +1373,7 @@
     followCabinet({ height: params.height, front: params.envelope_depth, top: params.cabinet_category === 'wall' ? params.top_z - params.base_z : params.top_z });
     setSelect('catalog', resolveCatalogId(params.catalog_id));
     setSelect('frontDesign', params.front_design || 'flat'); // the design of the selected cabinet's fronts
+    setSelect('glassDoor', params.glass_design || ''); // and its glass door
     syncZoneField(); // (a glass design brings the Glass field)
     applyCatalogFeatures();
     setSelect('category', params.cabinet_category);
@@ -1931,7 +1955,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2251,7 +2275,7 @@
     Object.keys(FALLBACK_LISTS).forEach((key) => {
       if (!list(m[key]).length) m[key] = FALLBACK_LISTS[key];
     });
-    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs'].forEach((key) => { m[key] = list(m[key]); });
+    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs', 'glass_designs'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), glass: list(m.materials && m.materials.glass), mine: list(m.materials && m.materials.mine) };
@@ -2275,8 +2299,9 @@
     ]);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
     fillSelect($('frontDesign'), m.front_designs.length ? m.front_designs : [{ id: 'flat', name: 'Flat (slab)' }]);
-    fillSelect($('handle'), m.handle_bundles, { placeholder: 'None' });
-    fillSelect($('drawerHandle'), m.handle_bundles, { placeholder: 'Same as doors' });
+    fillSelect($('glassDoor'), [{ id: '', name: 'None' }, ...list(m.glass_designs)]);
+    fillSelect($('handle'), arrangeHandles(m.handle_bundles), { placeholder: 'None' });
+    fillSelect($('drawerHandle'), arrangeHandles(m.handle_bundles), { placeholder: 'Same as doors' });
     // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
     fillSelect($('direction'), m.directions);
@@ -2343,7 +2368,8 @@
     $('doorSplit').addEventListener('change', syncZoneField);
     $('drawerCount').addEventListener('input', syncZoneField);
     $('frontDesign').addEventListener('change', applyFrontDesign);
-    $('frontDesign').addEventListener('change', syncZoneField); // a glass design brings the Glass field
+    $('glassDoor').addEventListener('change', applyGlassDesign);
+    $('glassDoor').addEventListener('change', syncZoneField); // a glass door brings the Glass field
     $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;
       $('myName').value = id;

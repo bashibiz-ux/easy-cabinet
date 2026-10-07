@@ -30,12 +30,16 @@ module KitchenCabinetMaster
       { 'id' => 'beaded', 'name' => 'Beaded (fine vertical grooves)' },
       { 'id' => 'flutes_h', 'name' => 'Horizontal grooves' },
       { 'id' => 'line_frame', 'name' => 'Line frame (grooved outline)' },
-      { 'id' => 'edge_pull', 'name' => 'Edge pull (finger groove along the top)' },
-      { 'id' => 'glass_aluminium', 'name' => 'Glass - full glass, aluminium frame' },
-      { 'id' => 'glass_black', 'name' => 'Glass - full glass, black frame' },
-      { 'id' => 'glass_wide', 'name' => 'Glass - wide door frame' },
-      { 'id' => 'glass_two', 'name' => 'Glass - two panes, aluminium' },
-      { 'id' => 'glass_grid', 'name' => 'Glass - grid of panes, aluminium' }
+      { 'id' => 'edge_pull', 'name' => 'Edge pull (finger groove along the top)' }
+    ].freeze
+
+    # The glass doors (the Glass Door field of the Models section; the doors of a cabinet are a frame with panes in it).
+    GLASS_DESIGNS = [
+      { 'id' => 'glass_aluminium', 'name' => 'Full glass, aluminium frame' },
+      { 'id' => 'glass_black', 'name' => 'Full glass, black frame' },
+      { 'id' => 'glass_wide', 'name' => 'Wide door frame' },
+      { 'id' => 'glass_two', 'name' => 'Two panes, aluminium' },
+      { 'id' => 'glass_grid', 'name' => 'Grid of panes, aluminium' }
     ].freeze
 
     def self.ids
@@ -44,6 +48,11 @@ module KitchenCabinetMaster
 
     def self.valid?(id)
       ids.include?(id.to_s)
+    end
+
+    # The glass door to use for a stored value: one of the glass doors, or blank (no glass).
+    def self.clean_glass(id)
+      GLASS_DESIGNS.any? { |design| design['id'] == id.to_s } ? id.to_s : ''
     end
 
     # The design to use for a stored value: an unknown or blank one is the flat front.

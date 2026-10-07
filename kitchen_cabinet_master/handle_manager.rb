@@ -193,7 +193,8 @@ module KitchenCabinetMaster
       half_u = settings['length'] / 2.0
       half_v = [section(bundle) / 2.0, door_h / 2.0].min
       at_bottom = %w[top fold].include?(door.hinge) || resolved_position(settings['position'], settings['category']) == 'bottom'
-      offset = settings['vertical_offset'].to_f
+      # (an edge pull is flush with the edge, a cup a little under it: the package says how far, not the offsets of the panel that a bar uses)
+      offset = ((bundle['defaults'] || {})['vertical_offset'] || 0).to_f
       v = at_bottom ? offset + half_v : door_h - offset - half_v
       { 'u' => door.extent[1] / 2.0, 'v' => v.clamp(half_v, [door_h - half_v, half_v].max), 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true, 'flip' => at_bottom }
     end
@@ -306,6 +307,35 @@ module KitchenCabinetMaster
     def self.default_length(bundle)
       lengths = bundle['lengths']
       lengths.include?(bundle['default_length']) ? bundle['default_length'].to_f : lengths.first.to_f
+    end
+
+    # The handle settings a model of your own keeps: what the Handle section said when it was inserted (changed later by the same section).
+    MODEL_KEYS = %w[handle_id handle_length handle_finish handle_material handle_orientation handle_position handle_horizontal_place
+                    handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z door_opening_direction].freeze
+    MODEL_NUMBERS = %w[handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
+
+    # A door as big as the front of a model of your own (width across it, height up it), for placing a handle on it by the same rules as on a
+    # cabinet's door. The hinge is on the side the Door Opening Direction says, so a vertical handle sits on the other one.
+    def self.model_door(width, height, direction)
+      CabinetLayout::Door.new(role: 'door_1', name: 'Door', extent: [0.0, width, height], offset: [0.0, 0.0, 0.0],
+                              hinge: direction.to_s == 'right' ? 'right' : 'left', pivot: [0.0, 0.0, 0.0], rotation: 0.0)
+    end
+
+    # The settings of a handle on a model of your own, made complete and valid for its package: what is blank, or not offered by the package,
+    # takes the package's own. Returns [params, bundle], the bundle nil when there is no handle package.
+    def self.model_params(settings, category)
+      params = Defaults.params.merge('cabinet_category' => category.to_s, 'pullout' => false)
+      MODEL_KEYS.each do |key|
+        value = settings[key]
+        params[key] = MODEL_NUMBERS.include?(key) ? ValidationManager.to_float(value) : value.to_s
+      end
+      bundle = CatalogManager.handle_bundle(params['handle_id'])
+      return [params, nil] unless bundle
+
+      apply_defaults!(params, bundle)
+      params['handle_length'] = default_length(bundle) unless bundle['lengths'].any? { |length| (length.to_f - params['handle_length'].to_f).abs < TOLERANCE }
+      params['handle_finish'] = bundle['finishes'].first['name'] unless bundle['finishes'].any? { |finish| finish['name'] == params['handle_finish'] }
+      [params, bundle]
     end
 
     # How far a handle reaches along the grip, and across it, half each: a D handle is `length` between its legs (the way they are sold), so it is

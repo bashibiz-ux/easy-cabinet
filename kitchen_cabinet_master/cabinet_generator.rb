@@ -307,14 +307,11 @@ module KitchenCabinetMaster
       # A door can be a frame round panes of glass: in the glass design that was chosen, or the wide frame of a glass cabinet. A drawer front
       # is never glass, and a door too small for the frame stays a plain board.
       glass_design = if drawer then nil
-                     elsif FrontDesign.glass?(chosen) then chosen
+                     elsif !FrontDesign.clean_glass(params['glass_design']).empty? then params['glass_design'] # (the Glass Door of the Models section)
                      elsif params['glass_door'] == true then FrontDesign::GLASS_FRAME
                      end
       openings = glass_design ? FrontDesign.glass_openings(glass_design, door.extent[1], door.extent[2]) : []
-      design = if !openings.empty? then glass_design
-               elsif FrontDesign.glass?(chosen) then FrontDesign::DEFAULT
-               else chosen
-               end
+      design = openings.empty? ? chosen : glass_design
       frame_material = openings.empty? ? nil : FrontDesign.frame_material(glass_design) # (aluminium or black, or the door material)
       panel = CabinetLayout::Panel.new(role: DOOR_PANEL_ROLE, name: "#{door.name} Panel", extent: door.extent, shape: "front_#{design}", round: params['front_radius'].to_f,
                                        offset: [0, 0, 0])
@@ -410,6 +407,12 @@ module KitchenCabinetMaster
                         else false
                         end
 
+      paint_handle(model, handle, bundle, settings)
+    end
+    private_class_method :sync_handle
+
+    # The material of a handle: the one picked in the Handle section, or the finish of its package.
+    def self.paint_handle(model, handle, bundle, settings)
       if settings['material'].to_s.empty?
         material_name, color, props = HandleManager.finish_material(bundle, settings['finish'])
         MaterialManager.apply(handle, material_name, model, color, props)
@@ -417,7 +420,6 @@ module KitchenCabinetMaster
         MaterialManager.apply(handle, settings['material'], model) # a material picked from the model
       end
     end
-    private_class_method :sync_handle
 
     # The FLOOR-level plan symbol, one container for the whole cabinet. Always
     # built; the "Door opening direction on the floor" tick only flips its

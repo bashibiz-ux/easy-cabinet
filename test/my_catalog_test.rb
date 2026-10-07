@@ -190,7 +190,7 @@ class MyCatalogTest < Minitest::Test
   end
   def test_front_designs_cut_shapes_into_a_front_and_leave_a_small_one_flat
     ids = FrontDesign::DESIGNS.map { |d| d['id'] }
-    assert_equal %w[flat shaker slim_shaker stepped fluted grooved three_panel beaded flutes_h line_frame edge_pull glass_aluminium glass_black glass_wide glass_two glass_grid], ids
+    assert_equal %w[flat shaker slim_shaker stepped fluted grooved three_panel beaded flutes_h line_frame edge_pull], ids
     assert_empty FrontDesign.cuts('flat', 600, 700, 18)
     ids.reject { |id| id == 'flat' }.each do |id|
       cuts = FrontDesign.cuts(id, 596, 716, 18)

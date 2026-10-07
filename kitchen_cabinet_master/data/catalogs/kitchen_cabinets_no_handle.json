@@ -622,6 +622,29 @@
         }
       },
       {
+        "id": "wall_liftup_stacked",
+        "name": "Wall - lift-up doors, one above the other",
+        "code": "WLS",
+        "doors": 2,
+        "shelves": 1,
+        "stacked": true,
+        "lift_door": true,
+        "zone": 360,
+        "zone_label": "Top Door Height",
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 720
+        }
+      },
+      {
         "id": "wall_liftup_short",
         "name": "Wall - lift-up door, short",
         "code": "WL",

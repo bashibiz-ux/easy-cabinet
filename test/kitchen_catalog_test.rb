@@ -998,20 +998,28 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Aluminium frame', FrontDesign.frame_material('glass_aluminium')
     assert_equal 'Black frame', FrontDesign.frame_material('glass_black')
     assert_nil FrontDesign.frame_material('glass_wide'), 'a wide frame is in the door material'
-    FrontDesign::DESIGNS.map { |d| d['id'] }.select { |id| FrontDesign.glass?(id) }.each do |id|
+    FrontDesign::GLASS_DESIGNS.map { |d| d['id'] }.each do |id|
       FrontDesign.glass_openings(id, 450.0, 600.0).each do |y0, y1, z0, z1|
         assert y0 >= 12.0 && y1 <= 450.0 - 12.0 && z0 >= 12.0 && z1 <= 600.0 - 12.0, "#{id}: the openings stay inside the frame"
       end
     end
   end
 
-  def test_a_glass_front_design_is_one_of_the_choices_with_aluminium_and_black_frames
-    names = FrontDesign::DESIGNS.to_h { |d| [d['id'], d['name']] }
+  def test_the_glass_doors_are_a_field_of_their_own_and_not_front_designs
+    names = FrontDesign::GLASS_DESIGNS.to_h { |d| [d['id'], d['name']] }
+    assert_equal %w[glass_aluminium glass_black glass_wide glass_two glass_grid], names.keys
     assert_match(/aluminium frame/i, names['glass_aluminium'])
     assert_match(/black frame/i, names['glass_black'])
-    assert_equal 'glass_aluminium', ValidationManager.validate({ 'front_design' => 'glass_aluminium' }).params['front_design']
+    assert(FrontDesign.ids.none? { |id| id.start_with?('glass') }, 'not in the Front Design list')
+    assert_equal 'glass_aluminium', ValidationManager.validate({ 'glass_design' => 'glass_aluminium' }).params['glass_design']
+    assert_equal '', ValidationManager.validate({ 'glass_design' => 'zigzag' }).params['glass_design']
+    assert_equal '', ValidationManager.validate({ 'glass_design' => 'glass_frame' }).params['glass_design'], 'the frame of a glass cabinet is not one to choose'
+    assert_equal '', Defaults.params['glass_design']
+    legacy = ValidationManager.validate({ 'front_design' => 'glass_black' }).params
+    assert_equal 'glass_black', legacy['glass_design'], 'a cabinet made when the glass doors were front designs has that glass door'
+    assert_equal 'flat', legacy['front_design']
+    assert_equal 'Full glass, aluminium frame', FrontDesign::GLASS_DESIGNS.first['name']
   end
-
   BIFOLD = 'wall_liftup_bifold'
 
   def test_a_hydraulic_bi_fold_is_two_doors_one_above_the_other
@@ -1040,32 +1048,42 @@ class KitchenCatalogTest < Minitest::Test
     [pivot[0] + (dx * Math.cos(a)) + (dz * Math.sin(a)), pivot[1] - (dx * Math.sin(a)) + (dz * Math.cos(a))]
   end
 
-  def test_the_lower_door_of_a_bi_fold_folds_up_against_the_front_of_the_upper_door_without_going_through_it
+  def test_the_bi_fold_goes_up_and_over_with_the_lower_door_folded_against_the_upper_one_and_never_through_the_cabinet
     _, unit = unit('wall', BIFOLD, 800, 'bifold' => true)
     upper, lower = unit.doors
     thick = upper.extent[0]
     pu = [upper.pivot[0], upper.pivot[2]]
     pf = [lower.pivot[0], lower.pivot[2]]
-    lift = ->(p) { about_y(p, pu, -DoorAnimation::LIFT_MAX_ANGLE) }
-    both = ->(p) { lift.call(about_y(p, pf, -DoorAnimation::FOLD_ANGLE)) }
-    front_top = [upper.pivot[0], upper.pivot[2]]
-    front_bottom = [upper.pivot[0], upper.offset[2]]
-    top = lift.call(front_top)
-    bottom = lift.call(front_bottom)
-    along = [bottom[0] - top[0], bottom[1] - top[1]]
-    assert_operator Math.hypot(*along), :>, 100.0
-    out = about_y([1.0, 0.0], [0.0, 0.0], -DoorAnimation::LIFT_MAX_ANGLE) # where the front of the upper door looks when it is lifted
-    corners = [[lower.offset[0], lower.offset[2]], [lower.offset[0] + thick, lower.offset[2]], [lower.offset[0], lower.offset[2] + lower.extent[2]],
-               [lower.offset[0] + thick, lower.offset[2] + lower.extent[2]]]
-    corners.map { |c| both.call(c) }.each do |c|
+    alpha = DoorAnimation.angle_for(upper, 90.0)
+    assert_equal DoorAnimation::BIFOLD_ANGLE, alpha, 'the mechanism lifts the upper door right over, whatever the opening angle says'
+    pose = lambda do |point, fraction, lower_door|
+      point = about_y(point, pf, -DoorAnimation::FOLD_ANGLE * fraction) if lower_door
+      about_y(point, pu, -alpha * fraction)
+    end
+    corners = lambda do |door|
+      [[door.offset[0], door.offset[2]], [door.offset[0] + thick, door.offset[2]], [door.offset[0], door.offset[2] + door.extent[2]],
+       [door.offset[0] + thick, door.offset[2] + door.extent[2]]]
+    end
+    # at the end the lower door lies on the front of the upper one (one door thick away) and is never behind it
+    top = pose.call(pu, 1.0, false)
+    out = about_y([1.0, 0.0], [0.0, 0.0], -alpha) # which way the front of the upper door looks when it is up
+    corners.call(lower).map { |c| pose.call(c, 1.0, true) }.each do |c|
       distance = ((c[0] - top[0]) * out[0]) + ((c[1] - top[1]) * out[1])
       assert_operator distance, :>=, -0.01, 'every corner of the folded lower door is outside the front of the upper door'
+      assert_operator distance, :<=, thick + 0.01, 'and lies on it'
     end
-    folded_back = corners.map { |c| both.call(c) }
-    assert_operator (folded_back.map { |c| ((c[0] - top[0]) * out[0]) + ((c[1] - top[1]) * out[1]) }.max), :<=, thick + 0.01, 'and lies on it (one door thick)'
-    assert_equal corners.map { |c| c.map { |v| v.round(6) } }, corners.map { |c| about_y(about_y(c, pf, 0.0), pu, 0.0).map { |v| v.round(6) } }, 'closed: nothing moves'
+    # all the way up, neither door ever goes into the cabinet
+    (0..20).map { |k| k / 20.0 }.each do |fraction|
+      (corners.call(upper).map { |c| pose.call(c, fraction, false) } + corners.call(lower).map { |c| pose.call(c, fraction, true) }).each do |c|
+        inside = c[0] < upper.offset[0] - 0.01 && c[1] < upper.pivot[2] - 0.01 # (behind the front of the cabinet and under its top)
+        refute inside, "at #{fraction} a door is inside the cabinet"
+      end
+    end
+    # closed: nothing moves
+    assert_equal corners.call(lower).map { |c| c.map { |v| v.round(6) } }, corners.call(lower).map { |c| pose.call(c, 0.0, true).map { |v| v.round(6) } }
+    # and it stands up above the cabinet at the end
+    assert_operator corners.call(lower).map { |c| pose.call(c, 1.0, true)[1] }.max, :>, upper.pivot[2] + (upper.extent[2] * 0.5), 'high above the cabinet'
   end
-
   def test_the_bi_fold_and_the_double_lift_up_units_are_in_both_wall_lists
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
       wall = CatalogManager.cabinets(catalog, 'wall', with_hidden: true).to_h { |e| [e['id'], e] }
@@ -1214,5 +1232,61 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta 15.0, cylinder.map(&:first).max, 0.01
     refute_equal HandleManager.knob_profile(32.0, 28.0), HandleManager.knob_profile(32.0, 28.0, 'cylinder')
     assert_equal 'ball', bundle['style']
+  end
+
+  def test_two_layers_of_lift_up_doors_each_lift_on_their_own_top_edge
+    result, unit = unit('wall', 'wall_liftup_stacked', 800, 'lift_door' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    lower, upper = unit.doors.sort_by { |d| d.offset[2] }
+    assert_equal %w[top top], [lower.hinge, upper.hinge]
+    assert_in_delta lower.offset[2] + lower.extent[2], lower.pivot[2], 0.01, 'the lower door lifts on its own top edge'
+    assert_in_delta upper.offset[2] + upper.extent[2], upper.pivot[2], 0.01, 'the upper one on its top edge'
+    assert_operator upper.offset[2], :>, lower.offset[2] + lower.extent[2], 'one above the other, with a gap'
+    assert_in_delta 360.0 - 2.0, upper.extent[2], 0.01, 'the top door as high as the catalog says'
+    assert_nil lower.parent
+    refute lower.bifold || upper.bifold, 'not folded together'
+    _, plain = unit('wall', 'wall_liftup_stacked', 800)
+    assert_equal %w[left left], plain.doors.map(&:hinge), 'without the lift-up flag they are hinged doors'
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      entry = CatalogManager.cabinets(catalog, 'wall').find { |e| e['id'] == 'wall_liftup_stacked' }
+      assert entry && entry['stacked'] && entry['lift_door'], catalog
+    end
+  end
+
+  def test_an_edge_pull_ignores_the_offsets_of_the_panel_and_sits_where_its_package_says
+    bundle = CatalogManager.handle_bundle('edge_pull_handles')
+    far = handle_settings(bundle, 'base', 'handle_vertical_offset' => 25.0, 'handle_side_offset' => 25.0)
+    assert_equal 25.0, far['vertical_offset'], 'the panel does say 25 (a bar handle\'s offset left over)'
+    spot = HandleManager.placement(door('left'), far, bundle)
+    assert_in_delta 716.0 - 14.0, spot['v'], 0.01, 'but the pull is flush with the top edge'
+    cup = CatalogManager.handle_bundle('cup_handles')
+    spot = HandleManager.placement(door('center', 596.0, 200.0), handle_settings(cup, 'base', 'handle_vertical_offset' => 40.0), cup)
+    assert_in_delta 200.0 - 5.0 - 12.0, spot['v'], 0.01, 'a cup is 5 mm under the edge'
+  end
+
+  def test_a_model_of_your_own_gets_a_handle_by_the_same_rules
+    bundle = CatalogManager.handle_bundle('sample_bar_handles')
+    settings = { 'handle_id' => bundle['id'], 'handle_length' => '160', 'handle_finish' => 'Brass', 'handle_orientation' => 'horizontal', 'door_opening_direction' => 'right' }
+    params, found = HandleManager.model_params(settings, 'base')
+    assert_equal bundle['id'], found['id']
+    assert_equal 160.0, params['handle_length']
+    assert_equal 'Brass', params['handle_finish']
+    assert_equal 'base', params['cabinet_category']
+    door = HandleManager.model_door(600.0, 720.0, 'right')
+    assert_equal 'right', door.hinge
+    assert_equal [0.0, 600.0, 720.0], door.extent
+    spot = HandleManager.placement(door, HandleManager.settings(params, found), found)
+    assert spot['horizontal']
+    assert_in_delta 300.0, spot['u'], 0.01, 'centred across the front of the model'
+    assert_operator spot['v'], :>, 600.0, 'near the top of a base unit'
+    wall, = HandleManager.model_params(settings, 'wall')
+    assert_operator HandleManager.placement(door, HandleManager.settings(wall, found), found)['v'], :<, 100.0, 'near the bottom of a wall unit'
+    # a length the package does not have, and a finish it does not have, take the package's own
+    odd, = HandleManager.model_params(settings.merge('handle_length' => '999', 'handle_finish' => 'Zinc'), 'base')
+    assert_equal bundle['default_length'].to_f, odd['handle_length']
+    assert_equal bundle['finishes'].first['name'], odd['handle_finish']
+    none, nothing = HandleManager.model_params({ 'handle_id' => '' }, 'base')
+    assert_nil nothing
+    assert_equal '', none['handle_id']
   end
 end

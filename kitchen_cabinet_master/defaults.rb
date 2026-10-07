@@ -178,6 +178,7 @@ module KitchenCabinetMaster
       'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
+      'glass_design' => '',         # the doors are frames with panes of glass in this design (see FrontDesign::GLASS_DESIGNS); blank = no glass
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
       'finger_pull' => false,       # the model without handles: a finger gap over the doors of a base unit, closed by a panel
       'finger_gap' => 35.0,         # how much shorter the doors are (the gap over them)

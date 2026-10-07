@@ -23,6 +23,7 @@ module KitchenCabinetMaster
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
       when 'apply_front_design' then apply_front_design(raw)
+      when 'apply_glass_design' then apply_glass_design(raw)
       when 'save_to_catalog' then save_to_catalog(raw)
       when 'remove_from_catalog' then remove_from_catalog(raw)
       else Response.fail("Unknown action \"#{action}\".")
@@ -160,6 +161,52 @@ module KitchenCabinetMaster
     end
     private_class_method :apply_front_design
 
+    # The glass door chosen in the Models section goes on the selected cabinets (one, or several picked together); with nothing selected, on every
+    # cabinet. Their doors become frames with panes of glass in them (the drawer fronts stay as they are); "None" takes the glass away.
+    def self.apply_glass_design(raw)
+      raw = {} unless raw.is_a?(Hash)
+      design = FrontDesign.clean_glass(raw['glass_design'])
+      return Response.fail('Choose one of the glass doors in the list.') unless raw['glass_design'].to_s.strip.empty? || !design.empty?
+
+      model = Sketchup.active_model
+      cabinets = selected_cabinets(model)
+      if cabinets.empty?
+        return Response.fail('Select a cabinet to give it that glass door, or clear the selection to give it to every cabinet.') unless model.selection.empty?
+
+        cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+        return Response.ok('No cabinets in the model yet. New cabinets will use this glass door.') if cabinets.empty?
+      end
+
+      plans = []
+      problems = []
+      cabinets.each do |cabinet|
+        stored = AttributeManager.read(cabinet)
+        next if stored['glass_design'].to_s == design
+
+        params, errors = restyle_params(model, stored, 'glass_design' => design)
+        errors.empty? ? plans << [cabinet, params] : problems << [cabinet, errors]
+      end
+      name = design.empty? ? 'no glass' : FrontDesign::GLASS_DESIGNS.find { |item| item['id'] == design }['name']
+      if plans.empty?
+        return Response.fail(problems.first[1].first['message'], problems.first[1]) unless problems.empty?
+
+        return Response.ok("#{cabinets.length == 1 ? 'The cabinet already has' : 'They already have'} \"#{name}\".")
+      end
+
+      SelectionManager.suspend do
+        with_operation(model, 'Change Glass Door') do
+          plans.each do |cabinet, params|
+            params['cabinet_name'] = NamingManager.for_update(cabinet, params)
+            CabinetGenerator.update(model, cabinet, params)
+            PartManager.follow_door(model, cabinet)
+          end
+        end
+      end
+      SelectionManager.push_selection(model)
+      Response.ok("\"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}.#{" #{problems.length} could not take it." unless problems.empty?}")
+    end
+    private_class_method :apply_glass_design
+
     # The end panels that are set to follow the front design (and are not in it yet): [[panel, new params], ...]. With `only` (the ids of
     # the cabinets that were changed) just the end panels standing against those; otherwise every one.
     def self.following_end_panels(model, design, only)
@@ -262,18 +309,76 @@ module KitchenCabinetMaster
                 Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
         instance = entities.add_instance(definition, target * local)
         instance.name = entry['name'].to_s
+        box = [low.x.to_mm, low.y.to_mm, low.z.to_mm, definition.bounds.width.to_mm, definition.bounds.height.to_mm, definition.bounds.depth.to_mm].map { |v| v.round(2) }
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
         # What marks it as a model of your own (it is not a cabinet of the extension, so it has no settings of its own): its kind, and
         # the material of that kind (Base, Wall or Tall material) from the Material section goes on it, like on a cabinet.
         instance.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
         instance.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
         instance.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
         paint_custom_model(model, instance, raw)
+        settings = raw.slice(*CUSTOM_HANDLE_KEYS)
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
+        sync_custom_handle(model, instance, settings) # a handle on its front, from the Handle section
         instance
       end
       SelectionManager.select(instance)
       Response.ok("#{entry['name']} inserted.")
     end
     private_class_method :insert_component
+
+    CUSTOM_HANDLE_KEYS = HandleManager::MODEL_KEYS
+    CUSTOM_HANDLE_NAME = 'Handle'
+
+    # The handle settings a model of your own keeps.
+    def self.custom_handle_settings(instance)
+      text = instance.get_attribute(AttributeManager::DICTIONARY, 'custom_handle').to_s
+      text.empty? ? {} : JSON.parse(text)
+    rescue JSON::ParserError
+      {}
+    end
+    private_class_method :custom_handle_settings
+
+    # Puts the handle on the front of a model of your own (or takes it away when there is no handle package): inside the model, on its front face
+    # (the low-Y side of it as it was drawn), by the rules of its kind (top of a base unit, bottom of a wall unit, hand height of a tall one).
+    # The box was kept when the model was inserted: [low X, low Y, low Z, width, depth, height] in mm.
+    def self.sync_custom_handle(model, instance, settings)
+      box = begin
+        JSON.parse(instance.get_attribute(AttributeManager::DICTIONARY, 'custom_box').to_s)
+      rescue JSON::ParserError
+        nil
+      end
+      params, bundle = HandleManager.model_params(settings, instance.get_attribute(AttributeManager::DICTIONARY, 'custom_category'))
+      find = -> { instance.definition.entities.grep(Sketchup::ComponentInstance).find { |item| item.name == CUSTOM_HANDLE_NAME } }
+      if bundle.nil? || !box.is_a?(Array) || box.length < 6
+        find.call&.erase!
+        return false
+      end
+
+      instance.make_unique if instance.definition.count_instances > 1 # (this model's own handle, not every copy's)
+      existing = find.call
+      handle_settings = HandleManager.settings(params, bundle)
+      spot = HandleManager.placement(HandleManager.model_door(box[3].to_f, box[5].to_f, params['door_opening_direction']), handle_settings, bundle)
+      definition = HandleManager.definition(model, bundle, handle_settings['length'], spot['flip'] == true)
+      front = Geom::Transformation.translation(Geom::Vector3d.new(box[0].to_f.mm, box[1].to_f.mm, box[2].to_f.mm)) *
+              Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), -Math::PI / 2)
+      transformation = front * HandleManager.transformation(spot, 0.0)
+      handle = existing || instance.definition.entities.add_instance(definition, transformation)
+      handle.definition = definition unless handle.definition == definition
+      handle.transformation = transformation
+      handle.name = CUSTOM_HANDLE_NAME
+      CabinetGenerator.paint_handle(model, handle, bundle, handle_settings)
+      true
+    end
+    private_class_method :sync_custom_handle
+
+    # The Handle section changed: keeps the new values with the model and puts its handle right.
+    def self.refresh_custom_handle(model, instance, overrides)
+      settings = custom_handle_settings(instance).merge(overrides.slice(*CUSTOM_HANDLE_KEYS))
+      instance.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
+      sync_custom_handle(model, instance, settings)
+    end
+    private_class_method :refresh_custom_handle
 
     CUSTOM_MATERIAL_KEYS = %w[base_material wall_material tall_material].freeze
 
@@ -434,13 +539,20 @@ module KitchenCabinetMaster
       # A material picked in the Material section also goes on the models of your own: on the selected ones alone when some are selected
       # (and no cabinet), otherwise on all of them.
       painted = 0
-      if (overrides.keys & CUSTOM_MATERIAL_KEYS).any?
+      handle_changed = (overrides.keys & CUSTOM_HANDLE_KEYS).any?
+      if (overrides.keys & CUSTOM_MATERIAL_KEYS).any? || handle_changed
         chosen = custom_models(model)
         picked = chosen.select { |item| model.selection.include?(item) }
         only_these = picked.any? && selected_cabinets(model).empty?
         chosen = picked if only_these
         unless chosen.empty?
-          with_operation(model, 'Apply Material To My Models') { chosen.each { |item| painted += 1 if paint_custom_model(model, item, overrides) } }
+          with_operation(model, 'Apply Settings To My Models') do
+            chosen.each do |item|
+              done = paint_custom_model(model, item, overrides)
+              done = true if handle_changed && refresh_custom_handle(model, item, overrides)
+              painted += 1 if done
+            end
+          end
         end
         return Response.ok("#{painted} of your own model#{'s' unless painted == 1} painted.") if only_these
       end

@@ -472,7 +472,11 @@ module KitchenCabinetMaster
       return fridge_doors(params, dims, base_z) if params['fridge'] == true
       return oven_doors(params, dims, base_z) if lower_door?(params)
       return split_doors(params, dims, base_z) if params['door_split'] == true
-      return stacked_doors(params, dims, base_z) if params['door_stacked'] == true && count == 2
+      if params['door_stacked'] == true && count == 2
+        doors = stacked_doors(params, dims, base_z)
+        doors.each { |door| lift_up!(door) } if params['lift_door'] == true # two layers of lift-up doors: each lifts on its own top edge, apart from the other
+        return doors
+      end
 
       gap = params['door_gap'].to_f
       reveal = params['door_reveal'].to_f

@@ -79,6 +79,9 @@ module KitchenCabinetMaster
     private_class_method :fold_swing
 
     LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
+    # A hydraulic bi-fold goes over the top: the upper door turns outwards on its top edge until it stands up above the cabinet (leaning out 30 degrees),
+    # and the lower one has folded up against it. That is what the mechanism does whatever the Opening Angle says.
+    BIFOLD_ANGLE = 150.0
 
     # How far a door really opens: the panel's Opening Angle, but never less than the door's own `swing`
     # (an L corner's doors open wide to show the inside) and, for a lift-up door, never more than it can.
@@ -86,6 +89,7 @@ module KitchenCabinetMaster
       angle = angle.to_f
       angle = [angle, spec.swing.to_f].max if spec.respond_to?(:swing) && spec.swing
       angle = [angle, LIFT_MAX_ANGLE].min if %w[top fold].include?(spec.hinge)
+      angle = BIFOLD_ANGLE if spec.respond_to?(:bifold) && spec.bifold && spec.hinge == 'top'
       angle
     end
 
