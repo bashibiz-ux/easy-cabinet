@@ -992,7 +992,8 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 2, two.length, 'two panes along the longer side'
     assert_in_delta 15.0, two[1][2] - two[0][3], 0.001, 'a 15 mm bar between them'
     grid = FrontDesign.glass_openings('glass_grid', 596.0, 716.0)
-    assert_equal 4, grid.length
+    assert_equal 6, grid.length, 'three rows from 700 mm high'
+    assert_equal 4, FrontDesign.glass_openings('glass_grid', 596.0, 650.0).length
     assert_equal 6, FrontDesign.glass_openings('glass_grid', 596.0, 1000.0).length, 'taller: three rows'
     assert_empty FrontDesign.glass_openings('glass_aluminium', 90.0, 716.0), 'too narrow for a frame'
     assert_empty FrontDesign.glass_openings('shaker', 596.0, 716.0)
@@ -1049,14 +1050,15 @@ class KitchenCatalogTest < Minitest::Test
     [pivot[0] + (dx * Math.cos(a)) + (dz * Math.sin(a)), pivot[1] - (dx * Math.sin(a)) + (dz * Math.cos(a))]
   end
 
-  def test_the_bi_fold_goes_up_and_over_with_the_lower_door_folded_against_the_upper_one_and_never_through_the_cabinet
+  def test_the_bi_fold_lifts_the_upper_door_up_and_out_and_the_lower_door_hangs_from_its_edge_in_front_of_the_cabinet
     _, unit = unit('wall', BIFOLD, 800, 'bifold' => true)
     upper, lower = unit.doors
     thick = upper.extent[0]
     pu = [upper.pivot[0], upper.pivot[2]]
     pf = [lower.pivot[0], lower.pivot[2]]
     alpha = DoorAnimation.angle_for(upper, 90.0)
-    assert_equal DoorAnimation::BIFOLD_ANGLE, alpha, 'the mechanism lifts the upper door right over, whatever the opening angle says'
+    assert_equal DoorAnimation::BIFOLD_ANGLE, alpha, 'the mechanism lifts the upper door the same way, whatever the opening angle says'
+    assert_operator alpha, :>, 90.0, 'its outer edge ends above the top of the cabinet'
     pose = lambda do |point, fraction, lower_door|
       point = about_y(point, pf, -DoorAnimation::FOLD_ANGLE * fraction) if lower_door
       about_y(point, pu, -alpha * fraction)
@@ -1065,14 +1067,16 @@ class KitchenCatalogTest < Minitest::Test
       [[door.offset[0], door.offset[2]], [door.offset[0] + thick, door.offset[2]], [door.offset[0], door.offset[2] + door.extent[2]],
        [door.offset[0] + thick, door.offset[2] + door.extent[2]]]
     end
-    # at the end the lower door lies on the front of the upper one (one door thick away) and is never behind it
-    top = pose.call(pu, 1.0, false)
-    out = about_y([1.0, 0.0], [0.0, 0.0], -alpha) # which way the front of the upper door looks when it is up
-    corners.call(lower).map { |c| pose.call(c, 1.0, true) }.each do |c|
-      distance = ((c[0] - top[0]) * out[0]) + ((c[1] - top[1]) * out[1])
-      assert_operator distance, :>=, -0.01, 'every corner of the folded lower door is outside the front of the upper door'
-      assert_operator distance, :<=, thick + 0.01, 'and lies on it'
-    end
+    # the lower door hangs down from the edge of the upper one, its top leaning out by BIFOLD_LEAN degrees
+    top = pose.call([lower.offset[0] + thick, lower.offset[2] + lower.extent[2]], 1.0, true)
+    bottom = pose.call([lower.offset[0] + thick, lower.offset[2]], 1.0, true)
+    assert_operator top[1], :>, bottom[1], 'hanging, not folded over'
+    lean = Math.atan2(top[0] - bottom[0], top[1] - bottom[1]) * 180.0 / Math::PI
+    assert_in_delta DoorAnimation::BIFOLD_LEAN, lean, 0.01
+    # at the end it is in front of the cabinet, clear of it
+    corners.call(lower).map { |c| pose.call(c, 1.0, true) }.each { |c| assert_operator c[0], :>, upper.offset[0] + 100.0, 'well out in front of the cabinet' }
+    # the upper door ends with its outer edge above the cabinet's top
+    assert_operator pose.call([upper.offset[0] + thick, upper.offset[2]], 1.0, false)[1], :>, upper.pivot[2], 'above the top of the cabinet'
     # all the way up, neither door ever goes into the cabinet
     (0..20).map { |k| k / 20.0 }.each do |fraction|
       (corners.call(upper).map { |c| pose.call(c, fraction, false) } + corners.call(lower).map { |c| pose.call(c, fraction, true) }).each do |c|
@@ -1082,8 +1086,6 @@ class KitchenCatalogTest < Minitest::Test
     end
     # closed: nothing moves
     assert_equal corners.call(lower).map { |c| c.map { |v| v.round(6) } }, corners.call(lower).map { |c| pose.call(c, 0.0, true).map { |v| v.round(6) } }
-    # and it stands up above the cabinet at the end
-    assert_operator corners.call(lower).map { |c| pose.call(c, 1.0, true)[1] }.max, :>, upper.pivot[2] + (upper.extent[2] * 0.5), 'high above the cabinet'
   end
   def test_the_bi_fold_and_the_double_lift_up_units_are_in_both_wall_lists
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
@@ -1344,7 +1346,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 4, openings.length
     assert_equal 6, FrontDesign.glass_openings('glass_wide_grid', 596.0, 716.0).length, 'a third row of panes (one more bar) from 700 mm high'
     assert_equal 4, FrontDesign.glass_openings('glass_wide_grid', 596.0, 699.0).length
-    assert_equal 4, FrontDesign.glass_openings('glass_grid', 596.0, 716.0).length, 'the narrow-frame grid keeps three rows from 800'
+    assert_equal FrontDesign.glass_openings('glass_wide_grid', 596.0, 716.0).length, FrontDesign.glass_openings('glass_grid', 596.0, 716.0).length, 'every grid design has its third row from 700 mm high'
     assert_in_delta 50.0, openings.map(&:first).min, 0.001, 'a wide (50 mm) frame'
     rows = openings.map { |o| o[2] }.uniq.sort
     first_row_top = openings.find { |o| o[2] == rows[0] }[3]

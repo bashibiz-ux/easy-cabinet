@@ -66,10 +66,11 @@ module KitchenCabinetMaster
       )
     end
 
-    # The lower door of a bi-fold lift-up goes with the door above it as that lifts (it is hinged on its bottom edge), and folds up against it
-    # about that edge: FOLD_ANGLE turned by the time it is open, front to front with the door above. (The pivot of the door is on its
-    # front face, so the folded door lies just outside the one above, not through it.)
-    FOLD_ANGLE = 180.0
+    # The lower door of a hydraulic bi-fold goes with the door above it (it hangs from that door's outer edge) and is held by the mechanism so that it
+    # hangs down from there, leaning with its top BIFOLD_LEAN degrees out: it turns the other way to the upper door, by the angle of the upper door plus the
+    # lean (as in the video of the Titan bi-fold). (The pivot of the door is on the face of the one above, so the two do not run into each other.)
+    BIFOLD_LEAN = 10.0
+    FOLD_ANGLE = -(115.0 + BIFOLD_LEAN) # (negative: against the way the upper door turns; see BIFOLD_ANGLE)
 
     def self.fold_swing(spec, angle, fraction)
       lifted = spec.parent ? swing(spec.parent, angle, fraction) : Geom::Transformation.new
@@ -79,9 +80,9 @@ module KitchenCabinetMaster
     private_class_method :fold_swing
 
     LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
-    # A hydraulic bi-fold goes over the top: the upper door turns outwards on its top edge until it stands up above the cabinet (leaning out 30 degrees),
-    # and the lower one has folded up against it. That is what the mechanism does whatever the Opening Angle says.
-    BIFOLD_ANGLE = 150.0
+    # A hydraulic bi-fold: the upper door turns up and out on its top edge until its outer edge stands a little above the top of the cabinet, and the lower door
+    # hangs from that edge in front of the cabinet. That is what the mechanism does whatever the Opening Angle says.
+    BIFOLD_ANGLE = 115.0
 
     # How far a door really opens: the panel's Opening Angle, but never less than the door's own `swing`
     # (an L corner's doors open wide to show the inside) and, for a lift-up door, never more than it can.

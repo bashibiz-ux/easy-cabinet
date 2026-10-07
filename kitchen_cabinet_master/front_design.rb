@@ -9,13 +9,14 @@ module KitchenCabinetMaster
     GLASS_FRAME = 'glass_frame' # not one to choose: the front of a glass door cabinet (a frame round an opening right through it)
     GLASS_FRAME_WIDTH = 50.0
     GLASS_THICKNESS = 4.0
+    THIRD_ROW_HEIGHT = 700.0 # a door this high or higher has three rows of panes in a grid (two below that)
     FLUTED_GLASS = 'Glass - Fluted' # the glass material whose panes get real flutes
     # The glass designs: a frame rame mm wide round openings right through the door, ar mm bars between several panes, made of the door
     # material (rame_material nil) or of its own (an aluminium or a black frame). split says how the panes are laid out.
     GLASS_LOOKS = {
       GLASS_FRAME => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
       'glass_wide' => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
-      'glass_wide_grid' => { frame: GLASS_FRAME_WIDTH, bar: 20.0, split: :grid, frame_material: nil, third_row: 700.0 }, # (a third row of panes from 700 mm high)
+      'glass_wide_grid' => { frame: GLASS_FRAME_WIDTH, bar: 20.0, split: :grid, frame_material: nil },
       'glass_aluminium' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Aluminium frame' },
       'glass_black' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Black frame' },
       'glass_two' => { frame: 15.0, bar: 15.0, split: :long, frame_material: 'Aluminium frame' },
@@ -213,7 +214,7 @@ module KitchenCabinetMaster
       frame = [frame, ([width, height].min - 80.0) / 2.0].min if frame >= GLASS_FRAME_WIDTH # (a wide frame is narrower on a small door)
       return [] if frame < 12.0 || [width, height].min < 100.0
 
-      cols, rows = glass_layout(look[:split], width, height, look[:third_row] || 800.0)
+      cols, rows = glass_layout(look[:split], width, height, THIRD_ROW_HEIGHT)
       bar = look[:bar]
       pane_w = (width - (2 * frame) - ((cols - 1) * bar)) / cols
       pane_h = (height - (2 * frame) - ((rows - 1) * bar)) / rows
@@ -229,7 +230,7 @@ module KitchenCabinetMaster
     end
 
     # How many panes across and up a door has: none (one pane), two along the longer side, or a grid.
-    def self.glass_layout(split, width, height, third_row = 800.0)
+    def self.glass_layout(split, width, height, third_row = THIRD_ROW_HEIGHT)
       case split
       when :long then height >= width ? [1, height < 350.0 ? 1 : 2] : [width < 350.0 ? 1 : 2, 1]
       when :grid then [width >= 300.0 ? 2 : 1, height >= third_row ? 3 : (height >= 350.0 ? 2 : 1)]
