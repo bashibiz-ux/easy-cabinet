@@ -177,16 +177,18 @@ module KitchenCabinetMaster
         return Response.ok('No cabinets in the model yet. New cabinets will use this glass door.') if cabinets.empty?
       end
 
+      doors = %w[upper lower].include?(raw['glass_doors'].to_s) ? raw['glass_doors'].to_s : 'all' # (on two doors one above the other: which is glass)
       plans = []
       problems = []
       cabinets.each do |cabinet|
         stored = AttributeManager.read(cabinet)
-        next if stored['glass_design'].to_s == design
+        next if stored['glass_design'].to_s == design && (stored['glass_doors'].to_s.empty? ? 'all' : stored['glass_doors'].to_s) == doors
 
-        params, errors = restyle_params(model, stored, 'glass_design' => design)
+        params, errors = restyle_params(model, stored, 'glass_design' => design, 'glass_doors' => doors)
         errors.empty? ? plans << [cabinet, params] : problems << [cabinet, errors]
       end
       name = design.empty? ? 'no glass' : FrontDesign::GLASS_DESIGNS.find { |item| item['id'] == design }['name']
+      name += { 'upper' => ' (upper door)', 'lower' => ' (lower door)' }.fetch(doors, '') unless design.empty?
       if plans.empty?
         return Response.fail(problems.first[1].first['message'], problems.first[1]) unless problems.empty?
 

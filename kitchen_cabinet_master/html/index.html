@@ -104,6 +104,11 @@
           <span class="label">Glass Door</span>
           <div class="input"><select id="glassDoor"></select></div>
         </label>
+        <!-- Two doors one above the other (lift-up 2 door): the glass on the upper door, the lower door, or both. -->
+        <label class="field" id="glassDoorsField" hidden>
+          <span class="label">Glass On</span>
+          <div class="input"><select id="glassDoors"><option value="all">Both doors</option><option value="upper">Upper door</option><option value="lower">Lower door</option></select></div>
+        </label>
         <!-- What the panes of glass are made of (clear, frosted, tinted ...): the selected cabinets, or every cabinet. -->
         <label class="field" id="glassField">
           <span class="label">Glass</span>

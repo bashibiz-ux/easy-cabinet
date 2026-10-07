@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.62.1';
+  const APP_VERSION = '0.63.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -527,7 +527,7 @@
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
   async function applyGlassDesign() {
     try {
-      const res = await call('apply_glass_design', { glass_design: $('glassDoor').value });
+      const res = await call('apply_glass_design', { glass_design: $('glassDoor').value, glass_doors: $('glassDoors').value });
       setStatus(res.ok ? 'ok' : 'error', res.message);
     } catch (error) {
       setStatus('error', error.message);
@@ -843,6 +843,7 @@
       catalog_id: $('catalog').value,
       front_design: $('frontDesign').value,
       glass_design: $('glassDoor').value,
+      glass_doors: $('glassDoors').value,
       handle_id: $('handle').value,
       drawer_handle_id: $('drawerHandle').value,
       base_material: $('baseMaterial').value,
@@ -1217,7 +1218,9 @@
     const cabinet = currentCabinet() || {};
     return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
   };
-  const hasLiftTick = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass && !(currentCabinet() || {}).lift_door && !(currentCabinet() || {}).bifold;
+  // Two doors one above the other (a lift-up 2 door unit or its bi-fold) can have the glass on one of them.
+  const hasTwoDoors = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).stacked || !!(currentCabinet() || {}).bifold);
+  const hasLiftTick =() => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass && !(currentCabinet() || {}).lift_door && !(currentCabinet() || {}).bifold;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1249,6 +1252,7 @@
     setSoft($('liftHeightField'), !hasLiftField());
     setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
+    setSoft($('glassDoorsField'), !hasTwoDoors());
     setSoft($('liftDoorField'), !hasLiftTick()); // (a lift-up or bi-fold unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
@@ -1362,6 +1366,7 @@
     setSelect('catalog', resolveCatalogId(params.catalog_id));
     setSelect('frontDesign', params.front_design || 'flat'); // the design of the selected cabinet's fronts
     setSelect('glassDoor', params.glass_design || ''); // and its glass door
+    setSelect('glassDoors', params.glass_doors || 'all'); // (on which of two doors)
     syncZoneField(); // (a glass design brings the Glass field)
     applyCatalogFeatures();
     setSelect('category', params.cabinet_category);
@@ -1943,7 +1948,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'glassDoors','myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2357,6 +2362,7 @@
     $('drawerCount').addEventListener('input', syncZoneField);
     $('frontDesign').addEventListener('change', applyFrontDesign);
     $('glassDoor').addEventListener('change', applyGlassDesign);
+    $('glassDoors').addEventListener('change', applyGlassDesign);
     $('glassDoor').addEventListener('change', syncZoneField); // a glass door brings the Glass field
     $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;

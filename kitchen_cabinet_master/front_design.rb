@@ -52,6 +52,19 @@ module KitchenCabinetMaster
       ids.include?(id.to_s)
     end
 
+    # Two doors one above the other (a lift-up 2 door unit, or its bi-fold) can have the glass on the upper one, the lower one, or both
+    # (`glass_doors`: 'upper', 'lower', anything else is both). The bi-fold's first door is the upper one, the stacked doors' second.
+    def self.glass_on_door?(role, params)
+      return true unless (params['door_stacked'] == true || params['bifold'] == true) && params['door_count'].to_i == 2
+
+      upper = params['bifold'] == true ? 'door_1' : 'door_2'
+      case params['glass_doors'].to_s
+      when 'upper' then role == upper
+      when 'lower' then role != upper
+      else true
+      end
+    end
+
     # The glass door to use for a stored value: one of the glass doors, or blank (no glass).
     def self.clean_glass(id)
       GLASS_DESIGNS.any? { |design| design['id'] == id.to_s } ? id.to_s : ''

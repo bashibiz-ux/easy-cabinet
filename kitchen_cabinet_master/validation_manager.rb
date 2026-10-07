@@ -136,6 +136,7 @@ module KitchenCabinetMaster
       out['glass_design'] = FrontDesign.clean_glass(raw['glass_design'])
       # (a cabinet made while the glass doors were front designs has that glass door now)
       out['glass_design'] = FrontDesign.clean_glass(raw['front_design']) if out['glass_design'].empty? && FrontDesign.glass?(raw['front_design'])
+      out['glass_doors'] = %w[upper lower].include?(raw['glass_doors'].to_s) ? raw['glass_doors'].to_s : 'all'
       lift = to_float(raw['housing_lift'])
       out['housing_lift'] = lift if lift && lift >= 0
       mode = raw['lower_mode'].to_s

@@ -1352,4 +1352,18 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal FrontDesign::FRAME_LOOKS['Aluminium frame'][:color], stored['Aluminium frame']
     assert_equal FrontDesign::FRAME_LOOKS['Black frame'][:color], stored['Black frame']
   end
+
+  def test_the_glass_can_be_on_the_upper_door_the_lower_door_or_both_of_a_two_door_unit
+    on = ->(role, params) { FrontDesign.glass_on_door?(role, params) }
+    stacked = { 'door_stacked' => true, 'door_count' => 2 }
+    assert on.call('door_1', stacked.merge('glass_doors' => 'all')) && on.call('door_2', stacked.merge('glass_doors' => 'all'))
+    assert on.call('door_2', stacked.merge('glass_doors' => 'upper')) && !on.call('door_1', stacked.merge('glass_doors' => 'upper')) # (the stacked doors' second is the upper)
+    assert on.call('door_1', stacked.merge('glass_doors' => 'lower')) && !on.call('door_2', stacked.merge('glass_doors' => 'lower'))
+    bifold = { 'bifold' => true, 'door_count' => 2 }
+    assert on.call('door_1', bifold.merge('glass_doors' => 'upper')) && !on.call('door_2', bifold.merge('glass_doors' => 'upper')) # (the bi-fold's first is the upper)
+    assert on.call('door_2', bifold.merge('glass_doors' => 'lower')) && !on.call('door_1', bifold.merge('glass_doors' => 'lower'))
+    assert on.call('door_1', { 'door_count' => 1, 'glass_doors' => 'upper' }), 'a unit with one door ignores it'
+    assert_equal 'upper', ValidationManager.validate({ 'glass_doors' => 'upper' }).params['glass_doors']
+    assert_equal 'all', ValidationManager.validate({ 'glass_doors' => 'nonsense' }).params['glass_doors']
+  end
 end

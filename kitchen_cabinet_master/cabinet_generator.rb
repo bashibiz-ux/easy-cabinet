@@ -307,7 +307,8 @@ module KitchenCabinetMaster
       # A door can be a frame round panes of glass: in the glass design that was chosen, or the wide frame of a glass cabinet. A drawer front
       # is never glass, and a door too small for the frame stays a plain board.
       glass_design = if drawer then nil
-                     elsif !FrontDesign.clean_glass(params['glass_design']).empty? then params['glass_design'] # (the Glass Door of the Models section)
+                     elsif !FrontDesign.clean_glass(params['glass_design']).empty? # (the Glass Door of the Models section)
+                       params['glass_design'] if FrontDesign.glass_on_door?(door.role, params)
                      elsif params['glass_door'] == true then FrontDesign::GLASS_FRAME
                      end
       openings = glass_design ? FrontDesign.glass_openings(glass_design, door.extent[1], door.extent[2]) : []
