@@ -829,7 +829,8 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_glass_materials_are_see_through_and_for_the_panes
     list = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].select { |m| m['kinds'] == ['glass'] }
     assert_includes list.map { |m| m['name'] }, 'Glass - Clear'
-    assert_equal 11, list.length
+    assert_equal 12, list.length
+    assert_includes list.map { |m| m['name'] }, 'Glass - Fluted'
     %w[Glass\ -\ Brown\ tinted Glass\ -\ Grey\ tinted Glass\ -\ Blue\ tinted Glass\ -\ Ultra\ clear Glass\ -\ Satin\ white Glass\ -\ Black\ reflective].each { |n| assert_includes list.map { |m| m['name'] }, n }
     frames = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].select { |m| m['kinds'] == ['frame'] }.map { |m| m['name'] }
     assert_equal ['Aluminium frame', 'Black frame'], frames.sort

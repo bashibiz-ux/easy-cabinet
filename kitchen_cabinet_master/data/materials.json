@@ -1462,6 +1462,17 @@
       "metalness": 0.0
     },
     {
+      "name": "Glass - Fluted",
+      "color": "#CFE0E4",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.5,
+      "roughness": 0.3,
+      "metalness": 0.0
+    },
+    {
       "name": "Glass - Smoked",
       "color": "#3A4248",
       "category": "Glass",

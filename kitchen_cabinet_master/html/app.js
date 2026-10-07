@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.64.0';
+  const APP_VERSION = '0.65.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -528,7 +528,7 @@
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
   async function applyGlassDesign() {
     try {
-      const res = await call('apply_glass_design', { glass_design: $('glassDoor').value, glass_doors: $('glassDoors').value });
+      const res = await call('apply_glass_design', { glass_design: $('glassDoor').value });
       setStatus(res.ok ? 'ok' : 'error', res.message);
     } catch (error) {
       setStatus('error', error.message);
@@ -1378,7 +1378,6 @@
     setLegLabels(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape');
     syncApplianceFields(isApplianceCabinet());
     syncZoneField();
-    setSoft($('carcassRaiseField'), !(kind === 'cabinet' && $('category').value === 'wall'));
   }
 
   async function loadCabinet(params) {
@@ -1970,7 +1969,7 @@
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'glassDoors','myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2384,7 +2383,6 @@
     $('drawerCount').addEventListener('input', syncZoneField);
     $('frontDesign').addEventListener('change', applyFrontDesign);
     $('glassDoor').addEventListener('change', applyGlassDesign);
-    $('glassDoors').addEventListener('change', applyGlassDesign);
     $('glassDoor').addEventListener('change', syncZoneField); // a glass door brings the Glass field
     $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;

@@ -505,20 +505,24 @@ module KitchenCabinetMaster
     # the next toe kick, say) is left as it was, and the reply says so.
     def self.apply_toe_kicks(raw)
       raw = stringify(raw)
-      answer = apply_to_toe_kicks(raw)
+      # These fields are for what is selected (toe kicks, cabinets) alone: with nothing selected they are only the values of the next toe kick.
+      model = Sketchup.active_model
+      kicks_selected = model.selection.any? { |item| AttributeManager.part_kind(item) == 'toe_kick' }
+      cabinets_selected = !CabinetManager.send(:selected_cabinets, model).empty?
+      return Response.ok('Select the toe kicks or cabinets to change. Nothing is selected, so these values are for the next toe kick you insert.') unless kicks_selected || cabinets_selected
 
-      # A higher toe kick lifts every cabinet that stands on it (and what is attached).
+      answer = kicks_selected ? apply_to_toe_kicks(raw) : Response.ok('')
+
+      # A higher toe kick lifts the selected cabinets standing on it (and what is attached).
       height = raw['toe_kick_height'].to_s.strip
       return answer if height.empty? || !answer['ok']
-
-      model = Sketchup.active_model
-      return answer if model.selection.any? { |item| AttributeManager.part_kind(item) == 'toe_kick' } && !model.selection.any? { |item| AttributeManager.cabinet?(item) } # (only those toe kicks)
+      return answer if kicks_selected && !cabinets_selected # (only those toe kicks)
 
       lifted = CabinetManager.send(:apply_all, 'toe_kick_height' => height)
       return answer unless lifted['ok']
 
       note = lifted['message'].to_s
-      note.empty? || note.start_with?('Every cabinet', 'No cabinets') ? answer : Response.ok("#{answer['message']} #{note}")
+      note.empty? || note.start_with?('Every cabinet', 'No cabinets') ? answer : Response.ok("#{answer['message']} #{note}".strip)
     end
     private_class_method :apply_toe_kicks
 

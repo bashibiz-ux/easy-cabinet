@@ -36,8 +36,12 @@ module KitchenCabinetMaster
   # The cabinets' side of a toe kick height change is tested elsewhere; here it is recorded.
   module CabinetManager
     @lifts = []
+    @chosen = []
     class << self
       attr_reader :lifts
+      attr_accessor :chosen
+
+      def selected_cabinets(_model) = @chosen
 
       def apply_all(raw)
         @lifts << raw
@@ -92,14 +96,16 @@ end
 
 class FakeSketchModel
   attr_reader :entities, :operations
+  attr_accessor :picked
 
   def initialize(entities)
     @entities = entities
     @operations = []
+    @picked = []
   end
 
   def active_entities = @entities
-  def selection = []
+  def selection = @picked
   def active_path = nil
   def start_operation(*args) = @operations << [:start, *args]
   def commit_operation = @operations << [:commit]
@@ -116,6 +122,7 @@ class ToeKickAllTest < Minitest::Test
     Sketchup.define_singleton_method(:active_model) { @active_model }
     PartGenerator.updates.clear
     CabinetManager.lifts.clear
+    CabinetManager.chosen = []
     @count = 0
   end
 
@@ -126,6 +133,7 @@ class ToeKickAllTest < Minitest::Test
               'target_depth' => 560.0, 'target_door_material' => 'White', 'target_carcass_material' => 'White' }.merge(extra)
     item = Kick.new(attrs, y, @bag)
     @bag.add(item)
+    @model.picked << item # (the toe kicks are selected: these fields are for what is selected)
     item
   end
 
@@ -181,14 +189,19 @@ class ToeKickAllTest < Minitest::Test
     assert_match(/on top of/, result['message'])
   end
 
-  def test_with_no_toe_kicks_it_says_so
+  def test_with_nothing_selected_nothing_changes
+    kick(y: 0.0)
+    @model.picked.clear
     result = apply('toe_kick_height' => '120')
     assert result['ok']
-    assert_match(/No toe kicks/, result['message'])
+    assert_match(/Select the toe kicks/, result['message'])
+    assert_empty PartGenerator.updates
+    assert_empty CabinetManager.lifts
   end
 
   def test_a_higher_toe_kick_lifts_the_cabinets_too
     kick(y: 0.0)
+    CabinetManager.chosen = [Object.new]
     result = apply('toe_kick_height' => '150')
     assert_equal [{ 'toe_kick_height' => '150' }], CabinetManager.lifts
     assert_match(/3 cabinets updated/, result['message'])
@@ -202,12 +215,14 @@ class ToeKickAllTest < Minitest::Test
 
   def test_the_cabinets_are_lifted_even_when_the_toe_kicks_already_have_that_height
     kick(y: 0.0)
+    CabinetManager.chosen = [Object.new]
     apply('toe_kick_height' => '100')
     assert_equal 1, CabinetManager.lifts.length
   end
 
   def test_nothing_is_lifted_when_the_toe_kick_change_is_refused
     kick(y: 0.0)
+    CabinetManager.chosen = [Object.new]
     apply('toe_kick_height' => '9000')
     assert_empty CabinetManager.lifts
   end
@@ -217,6 +232,7 @@ class ToeKickAllTest < Minitest::Test
   def mover(attrs, z = 0.0)
     item = Mover.new(attrs, z)
     @bag.add(item)
+    @model.picked << item # (the toe kicks are selected: these fields are for what is selected)
     item
   end
 
