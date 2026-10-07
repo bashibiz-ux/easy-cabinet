@@ -114,6 +114,7 @@ module KitchenCabinetMaster
       out['pullout'] = truthy?(raw['pullout'])
       out['glass_door'] = truthy?(raw['glass_door'])
       out['lift_door'] = truthy?(raw['lift_door'])
+      out['bifold'] = truthy?(raw['bifold'])
       glass = raw['glass_material'].to_s.strip
       out['glass_material'] = glass unless glass.empty?
       out['finger_pull'] = truthy?(raw['finger_pull'])

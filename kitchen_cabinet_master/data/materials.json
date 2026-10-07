@@ -1493,6 +1493,92 @@
       "alpha": 0.35,
       "roughness": 0.03,
       "metalness": 0.0
+    },
+    {
+      "name": "Glass - Ultra clear",
+      "color": "#D3E6EC",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.15,
+      "roughness": 0.01,
+      "metalness": 0
+    },
+    {
+      "name": "Glass - Satin white",
+      "color": "#F2F5F6",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.75,
+      "roughness": 0.5,
+      "metalness": 0
+    },
+    {
+      "name": "Glass - Grey tinted",
+      "color": "#6B7378",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.4,
+      "roughness": 0.04,
+      "metalness": 0
+    },
+    {
+      "name": "Glass - Brown tinted",
+      "color": "#6A4E3A",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.45,
+      "roughness": 0.04,
+      "metalness": 0
+    },
+    {
+      "name": "Glass - Blue tinted",
+      "color": "#7FA3B8",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.35,
+      "roughness": 0.03,
+      "metalness": 0
+    },
+    {
+      "name": "Glass - Black reflective",
+      "color": "#1A1E22",
+      "category": "Glass",
+      "kinds": [
+        "glass"
+      ],
+      "alpha": 0.7,
+      "roughness": 0.02,
+      "metalness": 0.4
+    },
+    {
+      "name": "Aluminium frame",
+      "color": "#C7CBCF",
+      "category": "Metal",
+      "kinds": [
+        "frame"
+      ],
+      "roughness": 0.35,
+      "metalness": 0.9
+    },
+    {
+      "name": "Black frame",
+      "color": "#1E1F21",
+      "category": "Metal",
+      "kinds": [
+        "frame"
+      ],
+      "roughness": 0.45,
+      "metalness": 0.6
     }
   ]
 }

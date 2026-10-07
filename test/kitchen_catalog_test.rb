@@ -11,7 +11,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout validation_manager catalog_manager handle_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation].each { |f| require File.join(plugin, f) }
 
 class KitchenCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -829,7 +829,10 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_glass_materials_are_see_through_and_for_the_panes
     list = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].select { |m| m['kinds'] == ['glass'] }
     assert_includes list.map { |m| m['name'] }, 'Glass - Clear'
-    assert_equal 5, list.length
+    assert_equal 11, list.length
+    %w[Glass\ -\ Brown\ tinted Glass\ -\ Grey\ tinted Glass\ -\ Blue\ tinted Glass\ -\ Ultra\ clear Glass\ -\ Satin\ white Glass\ -\ Black\ reflective].each { |n| assert_includes list.map { |m| m['name'] }, n }
+    frames = JSON.parse(File.read(File.join(DATA_DIR, 'materials.json')))['materials'].select { |m| m['kinds'] == ['frame'] }.map { |m| m['name'] }
+    assert_equal ['Aluminium frame', 'Black frame'], frames.sort
     assert(list.all? { |m| m['alpha'].to_f.positive? && m['alpha'] < 1.0 && m['category'] == 'Glass' })
     assert_equal 'Glass - Clear', Defaults.params['glass_material']
     assert_equal true, ValidationManager.validate({ 'glass_door' => true }).params['glass_door']
@@ -976,5 +979,117 @@ class KitchenCatalogTest < Minitest::Test
       assert_operator PG_NEWELL.call(caps.find { |c| c.first[2] == 25.0 })[2], :>, 0.0, 'facing out along +Z'
       assert_operator PG_NEWELL.call(caps.find { |c| c.first[2] == -25.0 })[2], :<, 0.0, 'and along -Z'
     end
+  end
+
+  def test_the_glass_designs_cut_openings_right_through_a_door_for_the_panes
+    one = FrontDesign.glass_openings('glass_aluminium', 596.0, 716.0)
+    assert_equal [[15.0, 581.0, 15.0, 701.0]], one, 'full glass in a 15 mm frame'
+    assert_equal one, FrontDesign.glass_openings('glass_black', 596.0, 716.0)
+    assert_equal [[50.0, 546.0, 50.0, 666.0]], FrontDesign.glass_openings('glass_wide', 596.0, 716.0)
+    assert_equal FrontDesign.glass_openings('glass_wide', 596.0, 716.0), FrontDesign.glass_openings('glass_frame', 596.0, 716.0)
+    two = FrontDesign.glass_openings('glass_two', 596.0, 716.0)
+    assert_equal 2, two.length, 'two panes along the longer side'
+    assert_in_delta 15.0, two[1][2] - two[0][3], 0.001, 'a 15 mm bar between them'
+    grid = FrontDesign.glass_openings('glass_grid', 596.0, 716.0)
+    assert_equal 4, grid.length
+    assert_equal 6, FrontDesign.glass_openings('glass_grid', 596.0, 1000.0).length, 'taller: three rows'
+    assert_empty FrontDesign.glass_openings('glass_aluminium', 90.0, 716.0), 'too narrow for a frame'
+    assert_empty FrontDesign.glass_openings('shaker', 596.0, 716.0)
+    assert_equal 'Aluminium frame', FrontDesign.frame_material('glass_aluminium')
+    assert_equal 'Black frame', FrontDesign.frame_material('glass_black')
+    assert_nil FrontDesign.frame_material('glass_wide'), 'a wide frame is in the door material'
+    FrontDesign::DESIGNS.map { |d| d['id'] }.select { |id| FrontDesign.glass?(id) }.each do |id|
+      FrontDesign.glass_openings(id, 450.0, 600.0).each do |y0, y1, z0, z1|
+        assert y0 >= 12.0 && y1 <= 450.0 - 12.0 && z0 >= 12.0 && z1 <= 600.0 - 12.0, "#{id}: the openings stay inside the frame"
+      end
+    end
+  end
+
+  def test_a_glass_front_design_is_one_of_the_choices_with_aluminium_and_black_frames
+    names = FrontDesign::DESIGNS.to_h { |d| [d['id'], d['name']] }
+    assert_match(/aluminium frame/i, names['glass_aluminium'])
+    assert_match(/black frame/i, names['glass_black'])
+    assert_equal 'glass_aluminium', ValidationManager.validate({ 'front_design' => 'glass_aluminium' }).params['front_design']
+  end
+
+  BIFOLD = 'wall_liftup_bifold'
+
+  def test_a_hydraulic_bi_fold_is_two_doors_one_above_the_other
+    result, unit = unit('wall', BIFOLD, 800, 'bifold' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    upper, lower = unit.doors
+    assert_equal %w[top fold], [upper.hinge, lower.hinge]
+    assert_equal false, upper.handle, 'no handle on the upper door'
+    assert_nil lower.handle
+    assert_same upper, lower.parent
+    assert upper.bifold && lower.bifold
+    assert_in_delta upper.extent[2], lower.extent[2], 0.01, 'half the door height each'
+    assert_in_delta 800.0 - 4.0, upper.extent[1], 0.01, 'across the whole width'
+    assert_in_delta result.params['door_gap'], upper.offset[2] - (lower.offset[2] + lower.extent[2]), 0.01, 'the door gap between them'
+    assert_in_delta upper.offset[2] + upper.extent[2], upper.pivot[2], 0.01, 'the upper one turns about its top edge'
+    assert_in_delta upper.offset[2], lower.pivot[2], 0.01, 'the lower one about the bottom edge of the upper one'
+    assert_in_delta upper.pivot[0], lower.pivot[0], 0.01, 'on the front face'
+    assert_in_delta result.params['height'] - (2 * result.params['door_reveal']), upper.extent[2] + lower.extent[2] + result.params['door_gap'], 0.05, 'together as high as one door'
+  end
+
+  # Where a point goes when it is turned `degrees` about the horizontal line along Y through (px, pz): x' = x cos + z sin (a turn about +Y).
+  def about_y(point, pivot, degrees)
+    a = degrees * Math::PI / 180.0
+    dx = point[0] - pivot[0]
+    dz = point[1] - pivot[1]
+    [pivot[0] + (dx * Math.cos(a)) + (dz * Math.sin(a)), pivot[1] - (dx * Math.sin(a)) + (dz * Math.cos(a))]
+  end
+
+  def test_the_lower_door_of_a_bi_fold_folds_up_against_the_front_of_the_upper_door_without_going_through_it
+    _, unit = unit('wall', BIFOLD, 800, 'bifold' => true)
+    upper, lower = unit.doors
+    thick = upper.extent[0]
+    pu = [upper.pivot[0], upper.pivot[2]]
+    pf = [lower.pivot[0], lower.pivot[2]]
+    lift = ->(p) { about_y(p, pu, -DoorAnimation::LIFT_MAX_ANGLE) }
+    both = ->(p) { lift.call(about_y(p, pf, -DoorAnimation::FOLD_ANGLE)) }
+    front_top = [upper.pivot[0], upper.pivot[2]]
+    front_bottom = [upper.pivot[0], upper.offset[2]]
+    top = lift.call(front_top)
+    bottom = lift.call(front_bottom)
+    along = [bottom[0] - top[0], bottom[1] - top[1]]
+    assert_operator Math.hypot(*along), :>, 100.0
+    out = about_y([1.0, 0.0], [0.0, 0.0], -DoorAnimation::LIFT_MAX_ANGLE) # where the front of the upper door looks when it is lifted
+    corners = [[lower.offset[0], lower.offset[2]], [lower.offset[0] + thick, lower.offset[2]], [lower.offset[0], lower.offset[2] + lower.extent[2]],
+               [lower.offset[0] + thick, lower.offset[2] + lower.extent[2]]]
+    corners.map { |c| both.call(c) }.each do |c|
+      distance = ((c[0] - top[0]) * out[0]) + ((c[1] - top[1]) * out[1])
+      assert_operator distance, :>=, -0.01, 'every corner of the folded lower door is outside the front of the upper door'
+    end
+    folded_back = corners.map { |c| both.call(c) }
+    assert_operator (folded_back.map { |c| ((c[0] - top[0]) * out[0]) + ((c[1] - top[1]) * out[1]) }.max), :<=, thick + 0.01, 'and lies on it (one door thick)'
+    assert_equal corners.map { |c| c.map { |v| v.round(6) } }, corners.map { |c| about_y(about_y(c, pf, 0.0), pu, 0.0).map { |v| v.round(6) } }, 'closed: nothing moves'
+  end
+
+  def test_the_bi_fold_and_the_double_lift_up_units_are_in_both_wall_lists
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      wall = CatalogManager.cabinets(catalog, 'wall').to_h { |e| [e['id'], e] }
+      assert wall['wall_liftup_bifold']['bifold'] && !wall['wall_liftup_bifold']['glass']
+      assert wall['wall_glass_liftup_bifold']['bifold'] && wall['wall_glass_liftup_bifold']['glass']
+      assert wall['wall_liftup_double']['lift_door'] && wall['wall_liftup_double']['doors'] == 2
+      assert wall['wall_glass_liftup_double']['lift_door'] && wall['wall_glass_liftup_double']['glass']
+      assert wall['wall_glass_liftup_short']['lift_door'] && wall['wall_glass_liftup_short']['glass'] && wall['wall_glass_liftup_short']['defaults']['height'] == 360
+    end
+    _, double = unit('wall', 'wall_liftup_double', 1200, 'lift_door' => true)
+    assert_equal %w[top top], double.doors.map(&:hinge)
+    assert_in_delta double.doors[0].extent[1], double.doors[1].extent[1], 0.01
+  end
+
+  def test_the_bi_fold_takes_longer_and_the_glass_one_longest
+    frames = lambda do |bifold, glass|
+      pane = Struct.new(:role) { def definition = self; def get_attribute(_d, _k) = role }.new('door_glass')
+      children = glass ? [pane] : []
+      spec = CabinetLayout::Door.new(role: 'door_1', hinge: 'top', pivot: [0, 0, 0], offset: [0, 0, 0], extent: [18, 600, 300], bifold: bifold)
+      door = Struct.new(:children) { def definition = Struct.new(:entities).new(children) }.new(children)
+      DoorAnimation.frames_for(DoorAnimation::Move.new(door: door, spec: spec, angle: 90.0, from: 0.0, to: 1.0, kind: :door))
+    end
+    assert_equal DoorAnimation::FRAMES, frames.call(false, false)
+    assert_equal DoorAnimation::FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES, frames.call(true, false)
+    assert_equal DoorAnimation::GLASS_FRAMES + DoorAnimation::BIFOLD_EXTRA_FRAMES, frames.call(true, true)
   end
 end

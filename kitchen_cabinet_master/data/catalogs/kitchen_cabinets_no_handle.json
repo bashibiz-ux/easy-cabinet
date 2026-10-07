@@ -513,6 +513,109 @@
         }
       },
       {
+        "id": "wall_liftup_double",
+        "name": "Wall - lift-up doors, double",
+        "code": "WLD",
+        "doors": 2,
+        "shelves": 1,
+        "lift_door": true,
+        "widths": [
+          900,
+          1000,
+          1200,
+          1500,
+          1800
+        ],
+        "defaults": {
+          "width": 1200,
+          "depth": 320,
+          "height": 480
+        }
+      },
+      {
+        "id": "wall_glass_liftup_double",
+        "name": "Wall - glass lift-up doors, double",
+        "code": "WGLD",
+        "doors": 2,
+        "shelves": 1,
+        "glass": true,
+        "lift_door": true,
+        "widths": [
+          900,
+          1000,
+          1200,
+          1500,
+          1800
+        ],
+        "defaults": {
+          "width": 1200,
+          "depth": 320,
+          "height": 480
+        }
+      },
+      {
+        "id": "wall_glass_liftup_short",
+        "name": "Wall - glass lift-up door, short",
+        "code": "WGL",
+        "doors": 1,
+        "shelves": 0,
+        "glass": true,
+        "lift_door": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 360
+        }
+      },
+      {
+        "id": "wall_liftup_bifold",
+        "name": "Wall - hydraulic bi-fold lift-up",
+        "code": "WBF",
+        "doors": 2,
+        "shelves": 1,
+        "bifold": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 720
+        }
+      },
+      {
+        "id": "wall_glass_liftup_bifold",
+        "name": "Wall - hydraulic bi-fold lift-up, glass",
+        "code": "WGBF",
+        "doors": 2,
+        "shelves": 1,
+        "glass": true,
+        "bifold": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 720
+        }
+      },
+      {
         "id": "wall_liftup_short",
         "name": "Wall - lift-up door, short",
         "code": "WL",

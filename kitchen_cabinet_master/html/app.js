@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.58.0';
+  const APP_VERSION = '0.59.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -883,7 +883,7 @@
       finger_gap_drawer: hasFingerField() ? mmv('fingerGapGlobal') : '',
       finger_all: hasFingerField() && $('fingerAllGlobal').checked,
       glass_material: $('glassMaterial').value,
-      lift_door: hasGlassField() && $('liftDoor').checked, // a glass door unit can lift up instead of swinging
+      lift_door: hasLiftTick() && $('liftDoor').checked, // a glass door unit can lift up instead of swinging
       drawer_heights: hasDrawerHeights() ? collectDrawerHeights() : '',
       drawer_number: hasDrawerHeights() ? String(drawerCount()) : '',
       sink_bowls: $('sinkBowls').value,
@@ -1076,7 +1076,7 @@
    * ---------------------------------------------------------------------- */
 
   // The cabinets of the Cabinet list are sorted into groups by what they are, in this order (and as listed within a group).
-  const CABINET_GROUPS = ['Door units', 'Glass door units', 'Lift-up units', 'Drawer units', 'Door and drawer units', 'Pull-outs', 'Sink units',
+  const CABINET_GROUPS = ['Door units', 'Glass door units', 'Lift-up units', 'Glass lift-up units', 'Drawer units', 'Door and drawer units', 'Pull-outs', 'Sink units',
     'Hob, oven & hood', 'Fridge units', 'Open units', 'Corner units', 'My models'];
 
   function cabinetGroup(entry) {
@@ -1084,8 +1084,8 @@
     const doors = Number(entry.doors) || 0;
     if (entry.component) return 'My models';
     if (entry.corner) return 'Corner units';
-    if (entry.glass) return 'Glass door units';
-    if (entry.lift_door) return 'Lift-up units';
+    if (entry.glass) return entry.lift_door || entry.bifold ? 'Glass lift-up units' : 'Glass door units';
+    if (entry.lift_door || entry.bifold) return 'Lift-up units';
     if (entry.fridge || entry.free_housing || entry.freestanding) return 'Fridge units';
     if (entry.sink) return 'Sink units';
     if (entry.hob || entry.hood || entry.appliances || entry.lower) return 'Hob, oven & hood';
@@ -1193,14 +1193,15 @@
   const hasLiftField = () => hasCatalogField('lift_label');
   // The model without handles (a catalog with finger_pull) lets the height the doors of a base unit are reduced by be set.
   const hasFingerField = () => !!(currentCatalog() || {}).finger_pull && categoryKind() === 'cabinet' && $('category').value === 'base';
-  // The drawer front of a unit with drawers has its own reduction; the door field is not shown on a unit of drawers alone.
   // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
   const hasShelvesField = () => {
     const cabinet = currentCabinet() || {};
     return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
   };
   // A glass door cabinet has a field for the glass.
-  const hasGlassField = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass;
+  // (also when a glass front design is chosen: its doors are glass whatever the cabinet is)
+  const hasGlassField = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).glass || String($('frontDesign').value).startsWith('glass_'));
+  const hasLiftTick = () => categoryKind() === 'cabinet' && !!(currentCabinet() || {}).glass && !(currentCabinet() || {}).lift_door && !(currentCabinet() || {}).bifold;
   const hasSinkField = () => hasCatalogField('sink');
   // A unit of drawers alone can have each drawer front's height set.
   function hasDrawerHeights() {
@@ -1233,7 +1234,7 @@
     setSoft($('fingerAllGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('shelvesField'), !hasShelvesField());
     setSoft($('glassField'), !hasGlassField());
-    setSoft($('liftDoorField'), !hasGlassField() || !!(currentCabinet() || {}).lift_door); // (a lift-up unit needs no tick)
+    setSoft($('liftDoorField'), !hasLiftTick()); // (a lift-up or bi-fold unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
@@ -1345,6 +1346,7 @@
     followCabinet({ height: params.height, front: params.envelope_depth, top: params.cabinet_category === 'wall' ? params.top_z - params.base_z : params.top_z });
     setSelect('catalog', resolveCatalogId(params.catalog_id));
     setSelect('frontDesign', params.front_design || 'flat'); // the design of the selected cabinet's fronts
+    syncZoneField(); // (a glass design brings the Glass field)
     applyCatalogFeatures();
     setSelect('category', params.cabinet_category);
     updateCategoryUi();
@@ -1963,6 +1965,7 @@
     doorDistance: ['door_distance', 'doorDistance'],
     angle: ['door_opening_angle', 'angle'],
     direction: ['door_opening_direction', 'direction'],
+    glassMaterial: ['glass_material', 'glassMaterial'],
     frontRadius: ['front_radius', 'frontRadius'],
     fingerGapGlobal: ['finger_gap', 'fingerGapGlobal'],
     fingerAllGlobal: ['finger_all', 'fingerAllGlobal'],
@@ -2334,6 +2337,7 @@
     $('doorSplit').addEventListener('change', syncZoneField);
     $('drawerCount').addEventListener('input', syncZoneField);
     $('frontDesign').addEventListener('change', applyFrontDesign);
+    $('frontDesign').addEventListener('change', syncZoneField); // a glass design brings the Glass field
     $('myFrom').addEventListener('change', () => { // choosing a material of the model offers its name
       const id = $('myFrom').value;
       $('myName').value = id;

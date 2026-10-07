@@ -302,36 +302,46 @@ module KitchenCabinetMaster
     # carries the door's position), and the handle sits on the panel's front face.
     def self.sync_door_contents(model, container, door, params, material, bundle, boxes = nil)
       entities = container.definition.entities
-      glass = params['glass_door'] == true && !door.role.start_with?(DRAWER_PREFIX) && FrontDesign.glass_opening(door.extent[1], door.extent[2])
-      design = glass ? FrontDesign::GLASS_FRAME : FrontDesign.clean(params['front_design']) # (a glass door is a frame round its glass)
+      drawer = door.role.start_with?(DRAWER_PREFIX)
+      chosen = FrontDesign.clean(params['front_design'])
+      # A door can be a frame round panes of glass: in the glass design that was chosen, or the wide frame of a glass cabinet. A drawer front
+      # is never glass, and a door too small for the frame stays a plain board.
+      glass_design = if drawer then nil
+                     elsif FrontDesign.glass?(chosen) then chosen
+                     elsif params['glass_door'] == true then FrontDesign::GLASS_FRAME
+                     end
+      openings = glass_design ? FrontDesign.glass_openings(glass_design, door.extent[1], door.extent[2]) : []
+      design = if !openings.empty? then glass_design
+               elsif FrontDesign.glass?(chosen) then FrontDesign::DEFAULT
+               else chosen
+               end
+      frame_material = openings.empty? ? nil : FrontDesign.frame_material(glass_design) # (aluminium or black, or the door material)
       panel = CabinetLayout::Panel.new(role: DOOR_PANEL_ROLE, name: "#{door.name} Panel", extent: door.extent, shape: "front_#{design}", round: params['front_radius'].to_f,
                                        offset: [0, 0, 0])
-      reconcile(model, entities, [panel], material, scope: ->(role) { role == DOOR_PANEL_ROLE }) do |_item, _existing|
+      reconcile(model, entities, [panel], frame_material || material, scope: ->(role) { role == DOOR_PANEL_ROLE }) do |_item, _existing|
         Geom::Transformation.new
       end
-      sync_door_glass(model, entities, door, params, glass)
-      sync_drawer_box(model, entities, door, boxes) if door.role.start_with?(DRAWER_PREFIX)
+      sync_door_glass(model, entities, door, params, openings)
+      sync_drawer_box(model, entities, door, boxes) if drawer
       sync_handle(model, entities, door, params, bundle)
       sync_door_symbol(model, container, door, params)
     end
     private_class_method :sync_door_contents
 
-    # The pane of a glass door: a thin sheet of glass in the opening of the frame, in the middle of its thickness. Without
-    # opening (not a glass door, or too small for a frame) any pane there was is taken away.
-    def self.sync_door_glass(model, entities, door, params, opening)
-      panes = []
-      if opening
-        y0, y1, z0, z1 = opening
-        thickness = FrontDesign::GLASS_THICKNESS
-        panes << CabinetLayout::Panel.new(role: DOOR_GLASS_ROLE, name: "#{door.name} Glass", extent: [thickness, y1 - y0 - 0.4, z1 - z0 - 0.4].map { |v| v.round(2) },
-                                          offset: [(door.extent[0] - thickness) / 2.0, y0 + 0.2, z0 + 0.2].map { |v| v.round(2) })
+    # The panes of a glass door: a thin sheet of glass in each opening of the frame, in the middle of its thickness. Without
+    # `openings` (not a glass door, or too small for a frame) any pane there was is taken away.
+    def self.sync_door_glass(model, entities, door, params, openings)
+      thickness = FrontDesign::GLASS_THICKNESS
+      panes = openings.each_with_index.map do |(y0, y1, z0, z1), index|
+        CabinetLayout::Panel.new(role: index.zero? ? DOOR_GLASS_ROLE : "#{DOOR_GLASS_ROLE}_#{index + 1}", name: "#{door.name} Glass #{index + 1}",
+                                 extent: [thickness, y1 - y0 - 0.4, z1 - z0 - 0.4].map { |v| v.round(2) },
+                                 offset: [(door.extent[0] - thickness) / 2.0, y0 + 0.2, z0 + 0.2].map { |v| v.round(2) })
       end
-      reconcile(model, entities, panes, params['glass_material'].to_s, scope: ->(role) { role == DOOR_GLASS_ROLE }) do |pane, _existing|
+      reconcile(model, entities, panes, params['glass_material'].to_s, scope: ->(role) { role.start_with?(DOOR_GLASS_ROLE) }) do |pane, _existing|
         Geom::Transformation.new(pane.offset.map(&:mm))
       end
     end
     private_class_method :sync_door_glass
-
     # The inner box of a drawer: inside its container, so it slides out with the front.
     def self.sync_drawer_box(model, entities, drawer, boxes)
       panels = boxes ? Array(boxes[:panels][drawer.role]) : []

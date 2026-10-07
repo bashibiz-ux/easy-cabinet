@@ -184,6 +184,7 @@ module KitchenCabinetMaster
       'finger_all' => false,        # every front of the unit has its finger gap (not only the top one)
       'glass_door' => false,        # the doors are a frame with a pane of glass in it (glass door cabinets)
       'glass_material' => 'Glass - Clear',
+      'bifold' => false,            # a hydraulic bi-fold lift-up: two doors, one above the other, folding together as they lift
       'lift_door' => false,         # the door of the unit is a lift-up door (hinged on its top edge)
       'pullout' => false,           # a pull-out unit: just the front, no box inside it
       'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge

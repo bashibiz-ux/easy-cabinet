@@ -94,6 +94,7 @@ module KitchenCabinetMaster
       base_z = params['target_base_z'].to_f
       # The outer face follows the front design when the end panel is set to ("face" = "design"), else it is flat.
       design = params['face'].to_s == 'design' ? FrontDesign.clean(params['front_design']) : FrontDesign::DEFAULT
+      design = FrontDesign::DEFAULT if FrontDesign.glass?(design) # (an end panel has no glass)
       board = CabinetLayout::Panel.new(
         role: 'board', name: 'End Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],

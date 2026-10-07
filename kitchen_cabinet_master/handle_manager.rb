@@ -91,7 +91,7 @@ module KitchenCabinetMaster
       length = settings['length']
       horizontal = settings['orientation'] == 'horizontal' && bundle['profile'] == 'bar'
       # A lift-up door and a drawer front always take a horizontal handle, whatever orientation is chosen.
-      horizontal = true if %w[top center].include?(door.hinge) && bundle['profile'] == 'bar'
+      horizontal = true if %w[top fold center].include?(door.hinge) && bundle['profile'] == 'bar'
       pull_out = settings['pullout'] == true && door.hinge == 'center'
       horizontal = false if pull_out # ... except on a pull-out unit, whose handle is always vertical
 
@@ -110,7 +110,7 @@ module KitchenCabinetMaster
       # A horizontal handle can be centred across the door instead of sitting at its
       # free edge: still at the top of the door, `vertical` (the offset) below the edge.
       # A lift-up door is taken hold of along its bottom edge: the handle is centred there.
-      if door.hinge == 'top'
+      if %w[top fold].include?(door.hinge)
         return { 'u' => door_w / 2.0, 'v' => vertical + half_v, 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => horizontal }
       end
       # A drawer is not at "hand height": its handle is at its top. Only a full-height pull-out (a tall unit's) is taken hold of at hand height,
@@ -162,7 +162,7 @@ module KitchenCabinetMaster
       door_h = door.extent[2]
       half_u = settings['length'] / 2.0
       half_v = [section(bundle) / 2.0, door_h / 2.0].min
-      at_bottom = door.hinge == 'top' || resolved_position(settings['position'], settings['category']) == 'bottom'
+      at_bottom = %w[top fold].include?(door.hinge) || resolved_position(settings['position'], settings['category']) == 'bottom'
       offset = settings['vertical_offset'].to_f
       v = at_bottom ? offset + half_v : door_h - offset - half_v
       { 'u' => door.extent[1] / 2.0, 'v' => v.clamp(half_v, [door_h - half_v, half_v].max), 'half_u' => half_u, 'half_v' => half_v, 'horizontal' => true, 'flip' => at_bottom }

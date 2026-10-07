@@ -6,9 +6,19 @@ module KitchenCabinetMaster
   # cuts it. All numbers are millimetres, on the front face: y across the front (0 at its left), z up it (0 at its bottom).
   module FrontDesign
     DEFAULT = 'flat'
-    GLASS_FRAME = 'glass_frame' # not one to choose: the front of a glass door (a frame round an opening right through it)
+    GLASS_FRAME = 'glass_frame' # not one to choose: the front of a glass door cabinet (a frame round an opening right through it)
     GLASS_FRAME_WIDTH = 50.0
     GLASS_THICKNESS = 4.0
+    # The glass designs: a frame rame mm wide round openings right through the door, ar mm bars between several panes, made of the door
+    # material (rame_material nil) or of its own (an aluminium or a black frame). split says how the panes are laid out.
+    GLASS_LOOKS = {
+      GLASS_FRAME => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
+      'glass_wide' => { frame: GLASS_FRAME_WIDTH, bar: 0.0, split: nil, frame_material: nil },
+      'glass_aluminium' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Aluminium frame' },
+      'glass_black' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Black frame' },
+      'glass_two' => { frame: 15.0, bar: 15.0, split: :long, frame_material: 'Aluminium frame' },
+      'glass_grid' => { frame: 15.0, bar: 15.0, split: :grid, frame_material: 'Aluminium frame' }
+    }.freeze
     DESIGNS = [
       { 'id' => 'flat', 'name' => 'Flat (slab)' },
       { 'id' => 'shaker', 'name' => 'Shaker (recessed panel)' },
@@ -20,7 +30,12 @@ module KitchenCabinetMaster
       { 'id' => 'beaded', 'name' => 'Beaded (fine vertical grooves)' },
       { 'id' => 'flutes_h', 'name' => 'Horizontal grooves' },
       { 'id' => 'line_frame', 'name' => 'Line frame (grooved outline)' },
-      { 'id' => 'edge_pull', 'name' => 'Edge pull (finger groove along the top)' }
+      { 'id' => 'edge_pull', 'name' => 'Edge pull (finger groove along the top)' },
+      { 'id' => 'glass_aluminium', 'name' => 'Glass - full glass, aluminium frame' },
+      { 'id' => 'glass_black', 'name' => 'Glass - full glass, black frame' },
+      { 'id' => 'glass_wide', 'name' => 'Glass - wide door frame' },
+      { 'id' => 'glass_two', 'name' => 'Glass - two panes, aluminium' },
+      { 'id' => 'glass_grid', 'name' => 'Glass - grid of panes, aluminium' }
     ].freeze
 
     def self.ids
@@ -51,7 +66,7 @@ module KitchenCabinetMaster
       when 'flutes_h' then flutes_h_cuts(width, height, thickness)
       when 'line_frame' then line_frame_cuts(width, height, thickness)
       when 'edge_pull' then edge_pull_cuts(width, height, thickness)
-      when GLASS_FRAME then glass_frame_cuts(width, height, thickness)
+      when *GLASS_LOOKS.keys then glass_openings(design, width, height).map { |opening| opening + [0.0, thickness] }
       else []
       end
     end
@@ -147,19 +162,54 @@ module KitchenCabinetMaster
 
       [[45.0, width - 45.0, 45.0, height - 45.0, 3.0, 0.0, [2.0, thickness / 6.0].min]]
     end
-    # The frame of a glass door: an opening right through the board, GLASS_FRAME_WIDTH in from the edges (less on a small door).
-    # The pane goes in that opening.
+    def self.glass?(id)
+      GLASS_LOOKS.key?(id.to_s)
+    end
+
+    # The material of the frame of a glass design: its own (an aluminium or black frame), or nil for the door material.
+    def self.frame_material(id)
+      GLASS_LOOKS.dig(id.to_s, :frame_material)
+    end
+
+    # The openings right through a glass door `width` x `height`, as [[y0, y1, z0, z1], ...]: the frame is `frame` wide round them and
+    # `bar` wide between them. [] when the door is too small for the design (it is then a plain board). The panes of glass go in them.
+    def self.glass_openings(design, width, height)
+      look = GLASS_LOOKS[design.to_s]
+      return [] unless look
+
+      frame = look[:frame]
+      frame = [frame, ([width, height].min - 80.0) / 2.0].min if frame >= GLASS_FRAME_WIDTH # (a wide frame is narrower on a small door)
+      return [] if frame < 12.0 || [width, height].min < 100.0
+
+      cols, rows = glass_layout(look[:split], width, height)
+      bar = look[:bar]
+      pane_w = (width - (2 * frame) - ((cols - 1) * bar)) / cols
+      pane_h = (height - (2 * frame) - ((rows - 1) * bar)) / rows
+      return [] if pane_w < 40.0 || pane_h < 40.0
+
+      (0...rows).flat_map do |row|
+        (0...cols).map do |col|
+          y0 = frame + (col * (pane_w + bar))
+          z0 = frame + (row * (pane_h + bar))
+          [y0, y0 + pane_w, z0, z0 + pane_h].map { |v| (v * 1000).round / 1000.0 }
+        end
+      end
+    end
+
+    # How many panes across and up a door has: none (one pane), two along the longer side, or a grid.
+    def self.glass_layout(split, width, height)
+      case split
+      when :long then height >= width ? [1, height < 350.0 ? 1 : 2] : [width < 350.0 ? 1 : 2, 1]
+      when :grid then [width >= 300.0 ? 2 : 1, height >= 800.0 ? 3 : (height >= 350.0 ? 2 : 1)]
+      else [1, 1]
+      end
+    end
+    private_class_method :glass_layout
+
+    # The first (or only) opening of the glass door of a glass cabinet.
     def self.glass_opening(width, height)
-      f = [GLASS_FRAME_WIDTH, ([width, height].min - 80.0) / 2.0].min
-      f < 25.0 ? nil : [f, width - f, f, height - f]
+      glass_openings(GLASS_FRAME, width, height).first
     end
-
-    def self.glass_frame_cuts(width, height, thickness)
-      opening = glass_opening(width, height)
-      opening ? [opening + [0.0, thickness]] : []
-    end
-    private_class_method :glass_frame_cuts
-
     # A groove 3 mm wide drawn as a rectangle 45 mm in from the edges.
     def self.line_frame_cuts(width, height, thickness)
       return [] if width < 120.0 || height < 120.0

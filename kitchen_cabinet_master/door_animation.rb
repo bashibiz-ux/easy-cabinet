@@ -15,6 +15,7 @@ module KitchenCabinetMaster
     OPEN_KEY = 'open'
     FRAMES = 36        # frames from closed to open (it was 18, then 30: slower again)
     GLASS_FRAMES = 60  # a glass door is slower still: there is glass to carry
+    BIFOLD_EXTRA_FRAMES = 24 # both doors of a hydraulic bi-fold take this many frames longer: the lower one has to fold over
     ARC_STEP_DEGREES = 10.0
     HINGE_MARK = 20.0 # mm above and below the hinge point
 
@@ -56,6 +57,7 @@ module KitchenCabinetMaster
         return Geom::Transformation.rotation(Geom::Point3d.new(*spec.pivot.map(&:mm)), Geom::Vector3d.new(0, 1, 0),
                                              -angle * fraction * Math::PI / 180.0)
       end
+      return fold_swing(spec, angle, fraction) if spec.hinge == 'fold'
 
       Geom::Transformation.rotation(
         Geom::Point3d.new(*spec.pivot.map(&:mm)),
@@ -64,6 +66,18 @@ module KitchenCabinetMaster
       )
     end
 
+    # The lower door of a bi-fold lift-up goes with the door above it as that lifts (it is hinged on its bottom edge), and folds up against it
+    # about that edge: FOLD_ANGLE turned by the time it is open, front to front with the door above. (The pivot of the door is on its
+    # front face, so the folded door lies just outside the one above, not through it.)
+    FOLD_ANGLE = 180.0
+
+    def self.fold_swing(spec, angle, fraction)
+      lifted = spec.parent ? swing(spec.parent, angle, fraction) : Geom::Transformation.new
+      folded = Geom::Transformation.rotation(Geom::Point3d.new(*spec.pivot.map(&:mm)), Geom::Vector3d.new(0, 1, 0), -FOLD_ANGLE * fraction * Math::PI / 180.0)
+      lifted * folded
+    end
+    private_class_method :fold_swing
+
     LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
 
     # How far a door really opens: the panel's Opening Angle, but never less than the door's own `swing`
@@ -71,7 +85,7 @@ module KitchenCabinetMaster
     def self.angle_for(spec, angle)
       angle = angle.to_f
       angle = [angle, spec.swing.to_f].max if spec.respond_to?(:swing) && spec.swing
-      angle = [angle, LIFT_MAX_ANGLE].min if spec.hinge == 'top'
+      angle = [angle, LIFT_MAX_ANGLE].min if %w[top fold].include?(spec.hinge)
       angle
     end
 
@@ -112,7 +126,10 @@ module KitchenCabinetMaster
     def self.frames_for(move)
       glass = move.kind != :drawer && move.door.respond_to?(:definition) &&
               move.door.definition.entities.any? { |entity| entity.respond_to?(:definition) && AttributeManager.role(entity) == 'door_glass' }
-      glass ? GLASS_FRAMES : FRAMES
+      # (a hydraulic bi-fold takes its time: the lower door has to fold over)
+      frames = glass ? GLASS_FRAMES : FRAMES
+      frames += BIFOLD_EXTRA_FRAMES if move.spec.respond_to?(:bifold) && move.spec.bifold
+      frames
     rescue StandardError
       FRAMES
     end
@@ -220,7 +237,7 @@ module KitchenCabinetMaster
     # them showing the movement. (The other symbol, on the door itself, is
     # door_symbol_segments; the two are switched on and off independently.)
     def self.indicator_segments(doors, angle, base_z)
-      shown = doors.reject { |door| door.hinge == 'top' } # a lift-up door has no plan line
+      shown = doors.reject { |door| %w[top fold].include?(door.hinge) } # a lift-up door has no plan line
       # one arrow per drawer column (stacked drawers share it)
       shown = shown.reject.with_index { |door, i| door.hinge == 'center' && shown.first(i).any? { |o| o.hinge == 'center' && o.offset[1] == door.offset[1] && o.extent[1] == door.extent[1] } }
       shown.flat_map { |door| plan_indicator(door, angle, base_z) }
@@ -230,7 +247,7 @@ module KitchenCabinetMaster
     # Base Z is left out on purpose: the indicator container moves with the toe
     # kick, so a change of toe-kick height must not rebuild the lines.
     def self.indicator_signature(doors, angle, base_z)
-      shapes = doors.reject { |d| d.hinge == 'top' }
+      shapes = doors.reject { |d| %w[top fold].include?(d.hinge) }
                     .map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2), angle_for(d, angle)] }
       shapes.push(angle.to_f).inspect
     end
@@ -281,7 +298,7 @@ module KitchenCabinetMaster
     def self.door_symbol_segments(door)
       thickness, width, height = door.extent
       x = thickness + ELEVATION_STANDOFF
-      if door.hinge == 'top' # a lift-up door: from the middle of the top edge to the bottom corners
+      if %w[top fold].include?(door.hinge) # a lift-up door: from the middle of the top edge to the bottom corners
         apex = [x, width / 2.0, height]
         return [[apex, [x, 0.0, 0.0]], [apex, [x, width, 0.0]]]
       end

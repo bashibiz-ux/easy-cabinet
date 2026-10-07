@@ -190,7 +190,7 @@ class MyCatalogTest < Minitest::Test
   end
   def test_front_designs_cut_shapes_into_a_front_and_leave_a_small_one_flat
     ids = FrontDesign::DESIGNS.map { |d| d['id'] }
-    assert_equal %w[flat shaker slim_shaker stepped fluted grooved three_panel beaded flutes_h line_frame edge_pull], ids
+    assert_equal %w[flat shaker slim_shaker stepped fluted grooved three_panel beaded flutes_h line_frame edge_pull glass_aluminium glass_black glass_wide glass_two glass_grid], ids
     assert_empty FrontDesign.cuts('flat', 600, 700, 18)
     ids.reject { |id| id == 'flat' }.each do |id|
       cuts = FrontDesign.cuts(id, 596, 716, 18)
@@ -200,7 +200,7 @@ class MyCatalogTest < Minitest::Test
         assert_operator y1, :>, y0
         assert_operator z1, :>, z0
         assert_operator to, :>, from
-        assert_operator to, :<, 18, "#{id}: never through the board"
+        FrontDesign.glass?(id) ? assert_equal(18.0, to, "#{id}: a glass design cuts right through") : assert_operator(to, :<, 18, "#{id}: never through the board")
       end
     end
     shaker = FrontDesign.cuts('shaker', 596, 716, 18).first
@@ -233,7 +233,7 @@ class MyCatalogTest < Minitest::Test
         assert_operator cuts.length, :<=, 60, "#{id} #{w}x#{h}: not an endless number of grooves"
         cuts.each do |y0, y1, z0, z1, from, to|
           assert y0 >= -1e-9 && y1 <= w + 1e-9 && z0 >= -1e-9 && z1 <= h + 1e-9, "#{id} #{w}x#{h}: inside the front"
-          assert y1 > y0 && z1 > z0 && to > from && to < 18
+          assert y1 > y0 && z1 > z0 && to > from && (to < 18 || FrontDesign.glass?(id)) # (a glass design cuts right through)
         end
       end
     end

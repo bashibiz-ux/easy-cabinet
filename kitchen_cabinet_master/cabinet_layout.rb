@@ -38,7 +38,7 @@ module KitchenCabinetMaster
     # enough to see inside); nil = just the Opening Angle of the panel.
     # `handle` false = this door gets no handle (an L corner has one handle, on its narrower door); `grip` 'top' or
     # 'bottom' puts the handle next to that edge (the two doors of a fridge have theirs next to the gap between them).
-    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, keyword_init: true)
+    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, :parent, :bifold, keyword_init: true)
     Layout = Struct.new(:base_z, :top_z, :panels, :doors, :drawers, :toe_kick, :drawer_boxes, :appliances, keyword_init: true)
     # `return_depth` is only meaningful for a corner unit: how far its shortened
     # right-side panel and front-return panel extend (see corner geometry
@@ -468,6 +468,7 @@ module KitchenCabinetMaster
       return corner_door(params, dims, base_z) if style == 'diagonal'
       return l_doors(params, dims, base_z) if style == 'l_shape'
       return blind_doors(params, dims, base_z) if style == 'blind'
+      return bifold_doors(params, dims, base_z) if params['bifold'] == true && count == 2
       return fridge_doors(params, dims, base_z) if params['fridge'] == true
       return oven_doors(params, dims, base_z) if lower_door?(params)
       return split_doors(params, dims, base_z) if params['door_split'] == true
@@ -496,6 +497,26 @@ module KitchenCabinetMaster
     end
     private_class_method :door_panels
 
+    # A hydraulic bi-fold lift-up: two doors across the whole width, one above the other. The upper one is hinged on its top edge like a lift-up
+    # door and carries no handle; the lower one ('fold' hinge: on the bottom edge of the upper one, `parent`) folds up against it as it lifts,
+    # and has the handle (on its bottom edge). Each is half of the door height (less the door gap between them).
+    def self.bifold_doors(params, dims, base_z)
+      gap = params['door_gap'].to_f
+      reveal = params['door_reveal'].to_f
+      door_w = round2(dims.width - (2 * reveal))
+      door_h, door_z = door_span(params, dims)
+      each = (door_h - gap) / 2.0
+      front = dims.depth + door_distance(params)
+      upper_z = door_z + each + gap
+      upper = Door.new(role: 'door_1', name: 'Upper Door', extent: [dims.thick, door_w, each].map { |v| round2(v) },
+                       offset: [front, reveal, base_z + upper_z].map { |v| round2(v) }, hinge: 'top',
+                       pivot: [front + dims.thick, reveal, base_z + upper_z + each].map { |v| round2(v) }, rotation: 0.0, handle: false, bifold: true)
+      lower = Door.new(role: 'door_2', name: 'Lower Door', extent: [dims.thick, door_w, each].map { |v| round2(v) },
+                       offset: [front, reveal, base_z + door_z].map { |v| round2(v) }, hinge: 'fold',
+                       pivot: [front + dims.thick, reveal, base_z + upper_z].map { |v| round2(v) }, rotation: 0.0, parent: upper, bifold: true)
+      [upper, lower]
+    end
+    private_class_method :bifold_doors
     # With two ovens, or an oven and a microwave, the door over the appliances is a lift-up door.
     def self.lift_up_over_appliances?(params, dims)
       zone = front_zone(params, dims)
