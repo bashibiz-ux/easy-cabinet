@@ -185,6 +185,50 @@ module KitchenCabinetMaster
         text.to_s.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/\A_+|_+\z/, '')[0, 60].then { |s| s.empty? ? 'cabinet' : s }
       end
 
+      # A handle you drew (a model file, `size` its [X, Y, Z] extent in mm) as a handle package of your own: kept in your folder, offered in the
+      # Handle lists like any package. The longer of its X and Z is the grip (`along`), Y is how far it stands out. Returns the package.
+      def handle_from_model(name, size, file)
+        along = size[2] > size[0] ? 'z' : 'x'
+        length = [size[0], size[2]].max
+        section = [size[0], size[2]].min
+        metal = data[:handles].values.find { |b| b['profile'] == 'bar' }
+        finishes = [{ 'name' => 'As drawn', 'color' => '#9A9A9A', 'keep' => true }] + (metal ? metal['finishes'].reject { |f| f['keep'] } : [])
+        { 'id' => "custom_#{slug(name)}", 'name' => name.to_s.strip, 'group' => 'My handles', 'profile' => 'model', 'custom' => true, 'component' => file,
+          'along' => along, 'lengths' => [(length * 10).round / 10.0], 'default_length' => (length * 10).round / 10.0, 'section' => [(section * 10).round / 10.0, 1.0].max,
+          'projection' => [(size[1] * 10).round / 10.0, 1.0].max, 'finishes' => finishes, 'defaults' => { 'vertical_offset' => 40 } }
+      end
+
+      # Keeps a handle package of your own (replacing one of the same name).
+      def save_custom_handle(bundle)
+        root = user_root
+        raise 'There is no folder to keep your own handles in.' unless root
+
+        write_custom(File.join(root, 'handles', "#{bundle['id']}.json"), bundle)
+        bundle['id']
+      end
+
+      # Takes a handle of your own away (and its model file). Returns true if it was one of yours.
+      def remove_custom_handle(id)
+        bundle = handle_bundle(id)
+        root = user_root
+        return false unless bundle && bundle['custom'] == true && root
+
+        File.delete(File.join(root, 'handles', "#{bundle['id']}.json")) if File.file?(File.join(root, 'handles', "#{bundle['id']}.json"))
+        path = handle_path(bundle)
+        File.delete(path) if path && File.file?(path)
+        reload!
+        true
+      rescue SystemCallError => e
+        warn "[Kitchen Cabinet Master] Could not remove the handle #{id}: #{e.message}"
+        false
+      end
+
+      # The model file of a handle drawn by you.
+      def handle_path(bundle)
+        root = user_root
+        bundle['component'].to_s.empty? || root.nil? ? nil : File.join(root, bundle['component'])
+      end
+
       private
 
       def data
@@ -291,6 +335,7 @@ module KitchenCabinetMaster
           'name' => bundle['name'],
           'profile' => bundle['profile'],
           'group' => bundle['group'].to_s.empty? ? nil : bundle['group'],
+          'custom' => bundle['custom'] == true,
           'lengths' => lengths,
           'default_length' => lengths.include?(bundle['default_length']) ? bundle['default_length'] : lengths.first,
           'finishes' => bundle['finishes'].map { |f| { 'id' => f['name'], 'name' => f['name'], 'color' => f['color'] } },

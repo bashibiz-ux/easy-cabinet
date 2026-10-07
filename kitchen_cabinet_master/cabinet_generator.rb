@@ -420,6 +420,11 @@ module KitchenCabinetMaster
     # The material of a handle: the one picked in the Handle section, or the finish of its package.
     def self.paint_handle(model, handle, bundle, settings)
       if settings['material'].to_s.empty?
+        if HandleManager.keeps_look?(bundle, settings['finish']) # a handle you drew, as you drew it
+          handle.material = nil
+          return
+        end
+
         material_name, color, props = HandleManager.finish_material(bundle, settings['finish'])
         MaterialManager.apply(handle, material_name, model, color, props)
       else

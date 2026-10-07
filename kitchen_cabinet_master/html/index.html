@@ -134,6 +134,12 @@
           <div class="input"><select id="drawerHandle" aria-label="The handle of the drawers, when it is not the doors' handle"></select></div>
         </label>
 
+        <!-- Handles of your own: a handle you drew (selected in the model) or a model file, kept as a handle package. -->
+        <div class="btn-row">
+          <button class="btn" type="button" data-action="add_handle" title="Add a handle of your own to the lists: select the handle you drew in the model (a group or component), or select nothing and choose a SketchUp model file. Draw it as seen from the front of a door: the grip along the red axis, the back of the handle on the high-Y side, the handle standing out towards low Y.">Add My Handle...</button>
+          <button class="btn" type="button" data-action="remove_handle" id="removeHandle" title="Take the chosen handle out of the lists (only handles you added yourself)">Remove My Handle</button>
+        </div>
+
         <div id="handleOptions" hidden>
           <label class="field">
             <span class="label">Length</span>

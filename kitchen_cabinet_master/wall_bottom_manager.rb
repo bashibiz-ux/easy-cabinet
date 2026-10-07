@@ -41,7 +41,7 @@ module KitchenCabinetMaster
       runs = Worktop.runs(items)
       existing = pieces_in(model)
       # With a wall bottom panel selected the settings are for the run it belongs to; with none selected, for every run.
-      keys = [true, 'true', 1, '1'].include?(raw['selected_only']) ? selected_run_keys(model) : []
+      keys = selected_run_keys(model) # (the pieces selected, one or several; none selected: every run)
       unless keys.empty?
         runs = runs.select { |run| keys.include?(run_key(run)) }
         existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }

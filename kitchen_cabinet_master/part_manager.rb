@@ -511,6 +511,9 @@ module KitchenCabinetMaster
       height = raw['toe_kick_height'].to_s.strip
       return answer if height.empty? || !answer['ok']
 
+      model = Sketchup.active_model
+      return answer if model.selection.any? { |item| AttributeManager.part_kind(item) == 'toe_kick' } && !model.selection.any? { |item| AttributeManager.cabinet?(item) } # (only those toe kicks)
+
       lifted = CabinetManager.send(:apply_all, 'toe_kick_height' => height)
       return answer unless lifted['ok']
 
@@ -529,6 +532,9 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       kicks = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'toe_kick' }
       return Response.ok('No toe kicks in the model yet. A new toe kick will use these values.') if kicks.empty?
+
+      picked = kicks.select { |item| model.selection.include?(item) } # (toe kicks selected, one or several: the values are for them alone)
+      kicks = picked unless picked.empty?
 
       plans = []
       problems = []

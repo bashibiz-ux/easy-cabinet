@@ -224,7 +224,7 @@ module KitchenCabinetMaster
       return Response.fail('There are no base units to put a worktop on. Insert a base unit first.') if runs.empty?
 
       # With a worktop piece selected the settings are for the run it belongs to; with none selected they are for every run.
-      keys = [true, 'true', 1, '1'].include?(raw['selected_only']) ? selected_run_keys(model) : []
+      keys = selected_run_keys(model) # (the pieces selected, one or several; none selected: every run)
       unless keys.empty?
         runs = runs.select { |run| keys.include?(run_key(run)) }
         existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }

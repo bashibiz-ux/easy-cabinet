@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 end
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager material_manager part_layout].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager material_manager part_layout handle_manager].each { |f| require File.join(plugin, f) }
 
 class MyCatalogTest < Minitest::Test
   include KitchenCabinetMaster
@@ -259,5 +259,61 @@ class MyCatalogTest < Minitest::Test
     assert_equal 'front_fluted@left', PartLayout.end_panel(base.merge('side' => 'left', 'front_design' => 'fluted')).board.shape
     assert_nil PartLayout.end_panel(base.merge('front_design' => 'flat', 'front_radius' => 0.0)).board.shape, 'the flat design is no cut'
     assert_equal 'flat', Defaults.end_panel_params['face']
+  end
+
+  def test_a_handle_you_drew_is_kept_as_a_handle_package_listed_with_the_others
+    bundle = CatalogManager.handle_from_model('My Long Bar', [200.0, 30.0, 12.0], 'models/handle_my_long_bar.skp')
+    assert_equal 'custom_my_long_bar', bundle['id']
+    assert_equal 'model', bundle['profile']
+    assert_equal [200.0], bundle['lengths']
+    assert_equal 12.0, bundle['section']
+    assert_equal 30.0, bundle['projection']
+    assert_equal 'x', bundle['along']
+    assert_equal 'z', CatalogManager.handle_from_model('Tall', [12.0, 30.0, 200.0], 'models/t.skp')['along'], 'a handle drawn up the blue axis'
+    assert_equal 'As drawn', bundle['finishes'].first['name']
+    assert HandleManager.keeps_look?(bundle, 'As drawn')
+    refute HandleManager.keeps_look?(bundle, bundle['finishes'][1]['name'])
+    assert_nil CatalogManager.send(:handle_problem, bundle)
+
+    CatalogManager.save_custom_handle(bundle)
+    assert File.file?(File.join(@dir, 'handles', 'custom_my_long_bar.json'))
+    listed = CatalogManager.handle_bundles.find { |b| b['id'] == 'custom_my_long_bar' }
+    assert listed && listed['custom'] == true && listed['group'] == 'My handles'
+    refute CatalogManager.handle_bundles.find { |b| b['id'] == 'sample_bar_handles' }['custom']
+    refute CatalogManager.remove_custom_handle('sample_bar_handles'), 'a bundled handle cannot be removed'
+
+    FileUtils.mkdir_p(File.join(@dir, 'models'))
+    File.write(File.join(@dir, 'models', 'handle_my_long_bar.skp'), 'x')
+    assert CatalogManager.remove_custom_handle('custom_my_long_bar')
+    assert_nil CatalogManager.handle_bundle('custom_my_long_bar')
+    refute File.exist?(File.join(@dir, 'models', 'handle_my_long_bar.skp'))
+  end
+
+  def test_a_handle_you_drew_is_turned_into_the_handle_frame_with_its_back_on_the_door
+    # the frame: X out of the door, Y across it, Z along the grip. As drawn (grip along X, back on the high-Y side, standing out towards low Y).
+    apply = lambda do |axes, point|
+      x, y, z, origin = axes
+      [0, 1, 2].map { |i| (x[i] * point[0]) + (y[i] * point[1]) + (z[i] * point[2]) + origin[i] }
+    end
+    min = [10.0, 5.0, 2.0]
+    max = [210.0, 35.0, 14.0]
+    axes = HandleManager.model_axes('x', min, max)
+    back = apply.call(axes, [110.0, 35.0, 8.0]) # the middle of the back
+    assert_in_delta 0.0, back[0], 1e-9
+    assert_in_delta 0.0, back[1], 1e-9
+    assert_in_delta 0.0, back[2], 1e-9
+    front = apply.call(axes, [110.0, 5.0, 8.0])
+    assert_in_delta 30.0, front[0], 1e-9, 'it stands out 30 from the door'
+    end_of_grip = apply.call(axes, [210.0, 35.0, 8.0])
+    assert_in_delta 100.0, end_of_grip[2], 1e-9, 'its length runs along Z'
+    det = lambda do |x, y, z|
+      (x[0] * ((y[1] * z[2]) - (y[2] * z[1]))) - (x[1] * ((y[0] * z[2]) - (y[2] * z[0]))) + (x[2] * ((y[0] * z[1]) - (y[1] * z[0])))
+    end
+    assert_equal 1, det.call(*axes.first(3)), 'a turn, not a mirror image'
+    tall = HandleManager.model_axes('z', [0.0, 0.0, 0.0], [12.0, 30.0, 200.0])
+    assert_equal 1, det.call(*tall.first(3))
+    top = apply.call(tall, [6.0, 30.0, 200.0])
+    assert_in_delta 100.0, top[2], 1e-9
+    assert_in_delta 0.0, top[0], 1e-9
   end
 end

@@ -15,7 +15,7 @@ module KitchenCabinetMaster
     TOLERANCE = 1e-6
     KNOB_SEGMENTS = 48
     TALL_PULL_OUT_MIN = 1200.0 # a drawer front at least this high is a tall pull-out
-    GRIP_PROFILES = %w[bar dbar].freeze      # handles with a grip along the door, up it or across it as chosen
+    GRIP_PROFILES = %w[bar dbar model].freeze # handles with a grip along the door, up it or across it as chosen
     EDGE_PROFILES = %w[edge_pull cup].freeze # handles that sit on the top (or bottom) edge of a front, always along it
     EDGE_THICKNESS = 2.5                     # the sheet of an edge pull or a cup
     EDGE_LIP = 22.0                          # how far an edge pull's lip hangs down
@@ -268,10 +268,40 @@ module KitchenCabinetMaster
 
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
+      if bundle['profile'] == 'model' # a handle you drew: its model file, set in the handle's frame (a plain bar if the file is gone)
+        return definition if place_model(model, definition, bundle)
+      end
       handle_faces(bundle, length, flip).each { |points| definition.entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
       PanelGenerator.soften(definition.entities)
       definition
     end
+
+    # Where a handle you drew goes in the handle's frame (see the top of this file): its back (the high-Y side, as seen from the front) on the
+    # door, its front standing out towards low Y, its grip along X (or along Z when that is the longer one, `along`), centred. Returns
+    # [the axes of the model's X, Y, Z in the frame, and where its origin is, from its bounds in model units]. Pure maths.
+    def self.model_axes(along, min, max)
+      xc = (min[0] + max[0]) / 2.0
+      zc = (min[2] + max[2]) / 2.0
+      if along.to_s == 'z'
+        [[0, 1, 0], [-1, 0, 0], [0, 0, 1], [max[1], -xc, -zc]]
+      else
+        [[0, 0, 1], [-1, 0, 0], [0, -1, 0], [max[1], zc, -xc]]
+      end
+    end
+
+    # Fills the definition of a handle you drew with its model file. False if the file is missing.
+    def self.place_model(model, definition, bundle)
+      path = CatalogManager.handle_path(bundle)
+      return false unless path && File.file?(path)
+
+      source = model.definitions.load(path)
+      bounds = source.bounds
+      x, y, z, origin = model_axes(bundle['along'], bounds.min.to_a, bounds.max.to_a)
+      axes = [x, y, z].map { |v| Geom::Vector3d.new(*v) }
+      definition.entities.add_instance(source, Geom::Transformation.axes(Geom::Point3d.new(*origin), *axes))
+      true
+    end
+    private_class_method :place_model
 
     # The faces (arrays of [x, y, z] in mm, each facing outwards) of a handle, in its own frame: X out of the door, Y across it,
     # Z along the grip, the origin in the middle of the back. `flip` hangs an edge pull or a cup from the bottom edge. Pure maths.
@@ -287,6 +317,12 @@ module KitchenCabinetMaster
       when 'cup' then cup_faces(length, projection, flip, bundle['thickness'] || EDGE_THICKNESS)
       else bar_faces(length, section, projection)
       end
+    end
+
+    # Does this finish leave the handle as it was drawn ("As drawn" of a handle you drew)?
+    def self.keeps_look?(bundle, finish_name)
+      finish = bundle['finishes'].find { |f| f['name'] == finish_name } || bundle['finishes'].first
+      finish['keep'] == true
     end
 
     # The material name and colour for a finish of the bundle.

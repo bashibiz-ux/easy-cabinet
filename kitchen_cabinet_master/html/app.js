@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.63.0';
+  const APP_VERSION = '0.64.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -521,7 +521,8 @@
   const CATALOG_PAYLOAD = {
     add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value }),
     remove_material: () => ({ name: $('myRemove').value }),
-    remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value })
+    remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
+    remove_handle: () => ({ handle_id: $('handle').value })
   };
 
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
@@ -548,6 +549,24 @@
     if (!data.materials) return;
     loadMaterials(data.materials);
     if (action === 'add_material') { $('myName').value = ''; $('myFrom').value = ''; }
+  }
+
+  // Adding or removing a handle of your own changes the Handle lists (the new one is chosen).
+  function handlesChanged(data, action) {
+    if (!Array.isArray(data.handle_bundles)) return;
+    state.meta.handle_bundles = data.handle_bundles.map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
+    const doors = $('handle').value;
+    const drawers = $('drawerHandle').value;
+    applyCatalogFeatures();
+    const has = (id) => state.meta.handle_bundles.some((b) => b.id === id);
+    if (action === 'add_handle' && data.handle_id) {
+      setSelect('handle', data.handle_id);
+    } else {
+      setSelect('handle', has(doors) ? doors : '');
+      setSelect('drawerHandle', has(drawers) ? drawers : '');
+    }
+    onHandleChange(true);
+    lockActions();
   }
 
   // Saving to or removing from your own catalogs changes the list of models.
@@ -761,6 +780,8 @@
     if (insert) insert.disabled = state.busy || !currentCatalog();
     const remove = removeFromCatalog;
     if (remove) remove.disabled = state.busy || !(currentCatalog() || {}).custom || !cabinet.value; // only your own catalogs
+    const removeOwn = $('removeHandle');
+    if (removeOwn) removeOwn.disabled = state.busy || !(currentBundle() || {}).custom; // only handles you added
   }
 
   function currentCabinet() {
@@ -1027,7 +1048,7 @@
 
   // The handle packages in order of what they are (bars, D handles and T bars, edge pulls, cups, knobs), as they are listed within one kind, with no
   // headings. A package of a kind not listed here goes after them.
-  const HANDLE_KINDS = ['Bars', 'D handles & T bars', 'Edge pulls', 'Cups & shells', 'Knobs'];
+  const HANDLE_KINDS = ['Bars', 'D handles & T bars', 'Edge pulls', 'Cups & shells', 'Knobs', 'My handles'];
 
   function arrangeHandles(bundles) {
     const rank = (b) => { const i = HANDLE_KINDS.indexOf(b.group); return i < 0 ? HANDLE_KINDS.length : i; };
@@ -1922,6 +1943,7 @@
         if (action === 'get_cut_list') renderCutList(res.data || {});
         if (action === 'save_to_catalog' || action === 'remove_from_catalog') await catalogsChanged(res.data || {}, action);
         if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
+        if (action === 'add_handle' || action === 'remove_handle') handlesChanged(res.data || {}, action);
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
@@ -2402,7 +2424,7 @@
       });
       $(inputId).addEventListener('input', syncThicknessPresets);
     });
-    $('handle').addEventListener('change', () => onHandleChange(true));
+    $('handle').addEventListener('change', () => { onHandleChange(true); lockActions(); });
     $('handlePosition').addEventListener('change', syncHandlePosition);
     $('handleOrientation').addEventListener('change', syncHandlePosition);
     $('handleHPlace').addEventListener('change', syncHandlePosition);

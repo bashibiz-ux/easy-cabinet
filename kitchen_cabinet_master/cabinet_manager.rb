@@ -26,6 +26,8 @@ module KitchenCabinetMaster
       when 'apply_glass_design' then apply_glass_design(raw)
       when 'save_to_catalog' then save_to_catalog(raw)
       when 'remove_from_catalog' then remove_from_catalog(raw)
+      when 'add_handle' then add_handle(raw)
+      when 'remove_handle' then remove_handle(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -329,6 +331,67 @@ module KitchenCabinetMaster
     end
     private_class_method :insert_component
 
+    # Adds a handle of your own to the Handle lists: what is selected in the model (a group, a component or geometry you drew as a handle), or,
+    # when nothing is selected, a SketchUp model file you choose. Drawn as seen from the front of a door: the grip along the red axis (or the
+    # blue one), the back of the handle on the high-Y side and the handle standing out towards low Y. It is kept as a handle package of
+    # its own, with the finish "As drawn" (and the metal finishes for what you left unpainted).
+    def self.add_handle(raw)
+      raw = {} unless raw.is_a?(Hash)
+      model = Sketchup.active_model
+      items = model.selection.to_a
+      items = [] if items.any? { |item| AttributeManager.cabinet?(item) || AttributeManager.part?(item) } # (a cabinet is not a handle)
+      from = raw['file'].to_s.strip
+      if items.empty? && from.empty?
+        return Response.fail('Select the handle you drew in the model, or choose a model file.') unless defined?(UI) && UI.respond_to?(:openpanel)
+
+        from = UI.openpanel('Choose the model file of your handle', '', 'SketchUp Model|*.skp||').to_s
+        return Response.fail('No handle was added.') if from.empty?
+      end
+      return Response.fail('That model file could not be found.') if items.empty? && !File.file?(from)
+
+      single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
+      name = raw['handle_name'].to_s.strip
+      guess = items.empty? ? File.basename(from, '.*').tr('_', ' ') : guess_name(single)
+      if name.empty? && defined?(UI) && UI.respond_to?(:inputbox)
+        answer = UI.inputbox(['Handle name'], [guess], 'Add my handle')
+        return Response.fail('No handle was added.') unless answer
+
+        name = answer[0].to_s.strip
+      end
+      name = guess if name.empty?
+      file = File.join('models', "handle_#{CatalogManager.slug(name)}.skp")
+      path = File.join(CatalogManager.user_dir.to_s, file)
+      FileUtils.mkdir_p(File.dirname(path))
+      size = items.empty? ? measure_model_file(model, from, path) : write_model_file(model, items, single, path)
+      return Response.fail('That could not be kept as a handle.') unless size && File.file?(path)
+
+      id = CatalogManager.save_custom_handle(CatalogManager.handle_from_model(name, size, file))
+      Response.ok("#{name} added to the handles: #{size.map { |v| v.round(1) }.join(' x ')} mm. Choose it in Handle Bundle.", { 'handle_id' => id, 'handle_bundles' => CatalogManager.handle_bundles })
+    end
+    private_class_method :add_handle
+
+    # Copies a model file into your folder and returns its size (X, Y, Z in mm).
+    def self.measure_model_file(model, from, path)
+      FileUtils.cp(from, path) unless File.expand_path(from) == File.expand_path(path)
+      size = nil
+      model.start_operation('Measure handle', true)
+      begin
+        size = bounds_mm(model.definitions.load(path).bounds)
+      ensure
+        model.abort_operation # the model is left as it was
+      end
+      size
+    end
+    private_class_method :measure_model_file
+
+    def self.remove_handle(raw)
+      raw = {} unless raw.is_a?(Hash)
+      return Response.fail('Only a handle you added yourself can be removed.') unless CatalogManager.remove_custom_handle(raw['handle_id'])
+
+      Response.ok('The handle was removed. Cabinets that have it need another one.', { 'handle_bundles' => CatalogManager.handle_bundles })
+    end
+    private_class_method :remove_handle
+
     CUSTOM_HANDLE_KEYS = HandleManager::MODEL_KEYS
     CUSTOM_HANDLE_NAME = 'Handle'
 
@@ -559,6 +622,8 @@ module KitchenCabinetMaster
         return Response.ok("#{painted} of your own model#{'s' unless painted == 1} painted.") if only_these
       end
       cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
+      chosen_cabinets = selected_cabinets(model) # (several picked together get the settings alone; none picked: every cabinet)
+      cabinets = chosen_cabinets unless chosen_cabinets.empty?
       if cabinets.empty?
         return Response.ok(painted.positive? ? "#{painted} of your own model#{'s' unless painted == 1} painted." : 'No cabinets in the model yet. New cabinets will use these settings.')
       end
@@ -713,12 +778,12 @@ module KitchenCabinetMaster
       toe_kicks = instances.select { |instance| AttributeManager.part_kind(instance) == 'toe_kick' }
       worktops = WorktopManager.pieces_in(model)
       # With something selected the ticks are for that item alone (its own cabinet, or the toe kick); with nothing selected, for all.
-      only = on.call(raw['selected_only'])
+      picked = selected_cabinets(model) # one, or several picked together
+      picked_kicks = toe_kicks.select { |item| model.selection.include?(item) }
+      only = on.call(raw['selected_only']) || !picked.empty? || !picked_kicks.empty?
       if only
-        cabinet = SelectionManager.selected_cabinet(model)
-        part = SelectionManager.selected_part(model)
-        cabinets = [cabinet].compact
-        toe_kicks = part && AttributeManager.part_kind(part) == 'toe_kick' ? [part] : []
+        cabinets = picked
+        toe_kicks = picked_kicks
       end
       if cabinets.empty? && toe_kicks.empty? && worktops.empty?
         return Response.ok('No cabinets in the model yet. New cabinets will use these settings.')
