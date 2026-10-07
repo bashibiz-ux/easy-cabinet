@@ -1397,4 +1397,23 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator area.abs, :>, 300.0 * 2.5, 'more than the bare sheet'
     assert_operator area.abs, :<, 300.0 * 4.0, 'less than a full slab'
   end
+
+  def test_the_bi_fold_moves_as_the_titan_video_shows_it
+    assert_in_delta 107.0, DoorAnimation::BIFOLD_ANGLE, 0.01
+    assert_in_delta 0.16 * DoorAnimation::BIFOLD_ANGLE, DoorAnimation::BIFOLD_LEAN, 0.6, 'the lower door leans by 0.16 times the angle of the upper one'
+    assert_in_delta(-(DoorAnimation::BIFOLD_ANGLE + DoorAnimation::BIFOLD_LEAN), DoorAnimation::FOLD_ANGLE, 0.001)
+    assert_in_delta 2.85, DoorAnimation.bifold_seconds(true), 0.001
+    assert_in_delta 1.75, DoorAnimation.bifold_seconds(false), 0.001
+    [true, false].each do |opening|
+      assert_in_delta(opening ? 0.0 : 1.0, DoorAnimation.bifold_openness(0.0, opening), 1e-9)
+      assert_in_delta(opening ? 1.0 : 0.0, DoorAnimation.bifold_openness(10.0, opening), 1e-9)
+      values = (0..60).map { |k| DoorAnimation.bifold_openness(k * 0.05, opening) }
+      ordered = opening ? values.each_cons(2).all? { |a, b| b >= a } : values.each_cons(2).all? { |a, b| b <= a }
+      assert ordered, 'it never goes back'
+    end
+    # opening: about 40 degrees a second at the start, 45 in the middle, slowing at the end; closing about twice as fast
+    assert_in_delta 107.0 * 0.12, 107.0 * DoorAnimation.bifold_openness(0.35, true), 2.0
+    assert_in_delta 107.0 * 0.569, 107.0 * DoorAnimation.bifold_openness(1.35, true), 2.0
+    assert_in_delta 107.0 * 0.4, 107.0 * DoorAnimation.bifold_openness(1.08, false), 2.0
+  end
 end

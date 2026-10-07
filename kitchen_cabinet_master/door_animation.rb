@@ -69,8 +69,11 @@ module KitchenCabinetMaster
     # The lower door of a hydraulic bi-fold goes with the door above it (it hangs from that door's outer edge) and is held by the mechanism so that it
     # hangs down from there, leaning with its top BIFOLD_LEAN degrees out: it turns the other way to the upper door, by the angle of the upper door plus the
     # lean (as in the video of the Titan bi-fold). (The pivot of the door is on the face of the one above, so the two do not run into each other.)
-    BIFOLD_ANGLE = 113.0 # the upper door of a hydraulic bi-fold turns this far (its outer edge then stands about 150 mm above the top of the cabinet)
-    BIFOLD_LEAN = 12.0
+    # Measured from the frames of the Titan bi-fold video (a fixed camera, the camera fitted to the cabinet, the doors followed frame by frame): the upper door
+    # turns BIFOLD_ANGLE degrees about its top edge (a rigid door, its lower edge ends about 100 mm above the top of the cabinet and 350 mm in front of it),
+    # and the lower door, hanging from that edge, leans with its top out by 0.16 times the angle of the upper door (BIFOLD_LEAN at the end).
+    BIFOLD_ANGLE = 107.0
+    BIFOLD_LEAN = 17.0
     FOLD_ANGLE = -(BIFOLD_ANGLE + BIFOLD_LEAN) # (negative: against the way the upper door turns)
 
     def self.fold_swing(spec, angle, fraction)
@@ -79,6 +82,31 @@ module KitchenCabinetMaster
       lifted * folded
     end
     private_class_method :fold_swing
+
+    # How far open (0..1) a bi-fold is, by the seconds since it started, as the video shows it: it opens in 2.85 seconds, starting at once at about 40 degrees
+    # a second, turning fastest in the middle and slowing down at the end; and it closes in 1.75 seconds, about twice as fast, slowly at first.
+    BIFOLD_OPENING = [[0.0, 0.0], [0.15, 0.05], [0.25, 0.086], [0.35, 0.12], [0.45, 0.159], [0.55, 0.198], [0.65, 0.241], [0.75, 0.285], [0.85, 0.333],
+                      [0.95, 0.38], [1.05, 0.428], [1.15, 0.47], [1.25, 0.515], [1.35, 0.569], [1.45, 0.616], [1.55, 0.656], [1.65, 0.697], [1.75, 0.746],
+                      [1.85, 0.778], [1.95, 0.821], [2.05, 0.852], [2.15, 0.885], [2.25, 0.913], [2.35, 0.935], [2.45, 0.955], [2.55, 0.972], [2.65, 0.985],
+                      [2.75, 0.996], [2.85, 1.0]].freeze
+    BIFOLD_CLOSING = [[0.0, 1.0], [0.08, 0.988], [0.18, 0.965], [0.28, 0.932], [0.38, 0.885], [0.48, 0.836], [0.58, 0.771], [0.68, 0.706], [0.78, 0.632],
+                      [0.88, 0.557], [0.98, 0.479], [1.08, 0.4], [1.18, 0.322], [1.28, 0.248], [1.38, 0.174], [1.48, 0.11], [1.58, 0.055], [1.68, 0.015],
+                      [1.75, 0.0]].freeze
+
+    # The openness (0 = closed, 1 = open) of a bi-fold `seconds` into its opening (or closing). Pure maths.
+    def self.bifold_openness(seconds, opening)
+      table = opening ? BIFOLD_OPENING : BIFOLD_CLOSING
+      return table.last[1] if seconds >= table.last[0]
+      return table.first[1] if seconds <= 0.0
+
+      later = table.index { |(time, _)| time >= seconds }
+      (t0, v0), (t1, v1) = table[later - 1], table[later]
+      v0 + ((v1 - v0) * (seconds - t0) / (t1 - t0))
+    end
+
+    def self.bifold_seconds(opening)
+      (opening ? BIFOLD_OPENING : BIFOLD_CLOSING).last[0]
+    end
 
     LIFT_MAX_ANGLE = 100.0 # a lift-up door opens no further than this
     # A hydraulic bi-fold: the upper door turns up and out on its top edge until its outer edge stands a little above the top of the cabinet, and the lower door
@@ -186,9 +214,10 @@ module KitchenCabinetMaster
         return false if @done
 
         @frame += 1
+        @started_at ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
         apply(@frame)
         view.show_frame
-        return true if @frame < @frames.max
+        return true unless complete?
 
         finish
         false
@@ -208,7 +237,7 @@ module KitchenCabinetMaster
         return if @done
 
         @done = true
-        apply(@frames.max)
+        apply(@frames.max, true)
         @moves.each { |move| DoorAnimation.set_open(move.door, move.to.positive?) }
         @model.commit_operation if @started
       rescue StandardError => e
@@ -224,9 +253,30 @@ module KitchenCabinetMaster
 
       private
 
-      def apply(frame)
+      # A bi-fold moves by the clock (as long as the real mechanism takes, whatever the frame rate), every other door by its frames.
+      def bifold?(move)
+        move.kind != :drawer && move.spec.respond_to?(:bifold) && move.spec.bifold ? true : false
+      end
+
+      def elapsed
+        @started_at ? Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started_at : 0.0
+      end
+
+      def complete?
+        frames_done = @moves.each_index.all? { |i| bifold?(@moves[i]) || @frame >= @frames[i] }
+        clock_done = @moves.all? { |move| !bifold?(move) || elapsed >= DoorAnimation.bifold_seconds(move.to > move.from) }
+        frames_done && clock_done
+      end
+
+      def apply(frame, final = false)
         @moves.each_with_index do |move, index|
-          progress = ease([frame.to_f / @frames[index], 1.0].min)
+          progress = if bifold?(move)
+                       opening = move.to > move.from
+                       openness = final ? (opening ? 1.0 : 0.0) : DoorAnimation.bifold_openness(elapsed, opening)
+                       opening ? openness : 1.0 - openness
+                     else
+                       ease([frame.to_f / @frames[index], 1.0].min)
+                     end
           fraction = move.from + ((move.to - move.from) * progress)
           move.door.transformation = if move.kind == :drawer
                                         DrawerAnimation.transformation(move.spec, move.depth, fraction)
