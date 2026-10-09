@@ -15,6 +15,7 @@ module KitchenCabinetMaster
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
+    KITCHEN_ACTIONS = %w[design_kitchen].freeze
 
     class << self
       def show
@@ -83,6 +84,7 @@ module KitchenCabinetMaster
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
         when *WORKTOP_ACTIONS then WorktopManager.perform(action, data)
+        when *KITCHEN_ACTIONS then KitchenManager.perform(action, data)
         when *CUT_LIST_ACTIONS then CutListManager.perform(action, data)
         when *PRESET_ACTIONS then PresetManager.perform(action, data)
         else Response.fail("Unknown action \"#{action}\".")

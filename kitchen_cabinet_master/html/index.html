@@ -121,7 +121,40 @@
         </div>
       </div>
     </section>
-    <!-- Handle -->
+    <!-- Auto Kitchen -->
+    <section class="card" id="sec-kitchen">
+      <button class="card-head" type="button" aria-expanded="false">Auto Kitchen</button>
+      <div class="card-body">
+        <p class="hint">Designs a whole kitchen in one click from the walls' lengths: the fridge, sink, hob and hood where they belong, the other units filling the walls, wall units over them, and a worktop. It uses the model, materials, handle and door design chosen in this panel, and starts where the next cabinet would go (at the origin in an empty model). Everything it makes is an ordinary cabinet you can change afterwards.</p>
+        <label class="field">
+          <span class="label">Layout</span>
+          <div class="input"><select id="kitchenLayout"><option value="straight">Straight (one wall)</option><option value="l">L shape (two walls)</option></select></div>
+        </label>
+        <div class="grid-2">
+          <label class="field">
+            <span class="label">Wall A Length</span>
+            <div class="input"><input id="kitchenWallA" type="text" inputmode="decimal" autocomplete="off" value="3600"><em>mm</em></div>
+          </label>
+          <label class="field" id="kitchenWallBField" hidden>
+            <span class="label">Wall B Length</span>
+            <div class="input"><input id="kitchenWallB" type="text" inputmode="decimal" autocomplete="off" value="2400"><em>mm</em></div>
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Fridge</span>
+          <div class="input"><select id="kitchenFridge"><option value="builtin">Built-in fridge (tall unit)</option><option value="free">Freestanding fridge housing</option><option value="none">No fridge</option></select></div>
+        </label>
+        <label class="check"><input type="checkbox" id="kitchenSink" checked><span>Sink unit</span></label>
+        <label class="check"><input type="checkbox" id="kitchenHob" checked><span>Hob unit</span></label>
+        <label class="check"><input type="checkbox" id="kitchenHood" checked><span>Hood cabinet over the hob</span></label>
+        <label class="check"><input type="checkbox" id="kitchenOven"><span>Oven housing (tall unit)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenWall" checked><span>Wall units</span></label>
+        <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
+        <div class="btn-row one">
+          <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
+        </div>
+      </div>
+    </section>    <!-- Handle -->
     <section class="card" id="sec-handle" data-feature="handle">
       <button class="card-head" type="button" aria-expanded="true">Handle</button>
       <div class="card-body">
