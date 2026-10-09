@@ -139,4 +139,83 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes text, 'hood'
     assert_equal 'oops', KitchenPlanner.describe(KitchenPlanner::Plan.new(error: 'oops', base: [], wall: []))
   end
+
+  def test_a_u_kitchen_has_two_corners_and_the_three_walls_are_filled
+    [[3000, 4200, 3000], [3300, 4800, 2700], [2700, 3600, 2700]].each do |a, b, c|
+      result = plan('layout' => 'u', 'wall_a' => a, 'wall_b' => b, 'wall_c' => c)
+      assert_nil result.error, "#{a} x #{b} x #{c}: #{result.error}"
+      assert_equal 2, result.base.count { |item| item.kind == :corner }
+      assert_in_delta a, run_sum(result.base, :a), 0.5
+      assert_in_delta b - 1000.0, run_sum(result.base, :b), 0.5, 'wall B between its two corners'
+      assert_in_delta c - 1000.0, run_sum(result.base, :c), 0.5
+      assert_equal %i[a b c], result.base.map(&:run).uniq
+      assert_equal 2, result.wall.count { |item| item.kind == :corner }
+      assert_equal %i[a b c], result.wall.map(&:run).uniq
+    end
+  end
+
+  def test_the_sink_is_in_the_middle_wall_of_a_u_and_the_hob_on_the_last_wall
+    result = plan('layout' => 'u', 'wall_a' => 3000, 'wall_b' => 4200, 'wall_c' => 3000)
+    assert_equal :b, result.base.find { |item| item.kind == :sink }.run
+    assert_equal :c, result.base.find { |item| item.kind == :hob }.run
+    assert_equal :c, result.wall.find { |item| item.kind == :hood }.run
+  end
+
+  def test_an_island_stands_parallel_to_wall_a_with_the_aisle_between
+    result = plan('wall_a' => 4200, 'island' => true)
+    island = result.island
+    assert island
+    assert_in_delta 4200.0, island.items.sum(&:width) + (4200.0 - island.length), 0.5
+    assert_in_delta island.length, island.items.sum(&:width), 0.5
+    assert_in_delta 580.0 + 1100.0 + 580.0, island.x, 0.01, 'its back is two unit depths and the aisle from wall A'
+    assert_in_delta 2100.0 + (island.length / 2.0), island.y, 0.5, 'centred along the wall'
+    assert(island.items.all? { |item| item.kind == :island && IDS['base'].include?(item.type) })
+    assert_nil plan('wall_a' => 4200).island
+  end
+
+  def test_an_island_keeps_clear_of_the_other_walls_of_an_l_or_u
+    l_shape = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 3000, 'island' => true, 'island_length' => 3000)
+    assert_operator l_shape.island.y, :<=, 3600.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of wall B'
+    assert(l_shape.notes.any? { |note| note.include?('island') })
+    narrow = plan('layout' => 'u', 'wall_a' => 3000, 'wall_b' => 3000, 'wall_c' => 3000, 'island' => true)
+    assert_nil narrow.island, 'no room between the legs of a narrow U'
+    assert(narrow.notes.any? { |note| note.include?('too narrow') })
+    wide = plan('layout' => 'u', 'wall_a' => 3600, 'wall_b' => 5200, 'wall_c' => 3000, 'island' => true)
+    assert wide.island
+    assert_operator wide.island.x, :<=, 5200.0 - 580.0 - wide.island.aisle + 0.01, 'clear of the units of wall C'
+  end
+
+  def test_the_sink_goes_under_the_first_window_and_the_wall_units_skip_the_windows
+    window = { 'wall' => 'a', 'from' => 1800, 'width' => 1200 }
+    result = plan('wall_a' => 4200, 'windows' => [window])
+    sink = result.base.find { |item| item.kind == :sink }
+    assert_in_delta 2400.0, sink.start + (sink.width / 2.0), 1.0, 'centred on the window'
+    result.wall.each do |item|
+      assert(item.start + item.width <= 1800.0 + 0.5 || item.start >= 3000.0 - 0.5, "#{item.kind} at #{item.start} is over the window")
+    end
+    gap = result.wall.find { |item| item.gap_before.positive? }
+    assert gap, 'a unit starts after the window'
+    assert_in_delta 1200.0, gap.gap_before, 0.5
+    assert_in_delta 3000.0, gap.start, 0.5
+    assert_in_delta 4200.0, run_sum(result.base, :a), 0.5, 'the base units still fill the wall'
+  end
+
+  def test_a_hob_under_a_window_has_no_hood_and_windows_on_other_walls_are_read
+    result = plan('wall_a' => 4200, 'windows' => [{ 'wall' => 'a', 'from' => 2400, 'width' => 1800 }])
+    refute_includes result.wall.map(&:kind), :hood
+    assert(result.notes.any? { |note| note.include?('window') })
+    on_b = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 3000, 'windows' => [{ 'wall' => 'b', 'from' => 1500, 'width' => 1500 }])
+    assert_equal :b, on_b.base.find { |item| item.kind == :sink }.run, 'the sink goes to the wall with the window'
+    assert_empty KitchenPlanner.normalise('windows' => [{ 'wall' => 'z', 'from' => 100, 'width' => 900 }, { 'wall' => 'a', 'from' => 100, 'width' => 50 }])['windows']
+    assert_equal 1, KitchenPlanner.normalise('windows' => [{ 'wall' => 'A', 'from' => '300', 'width' => '900' }])['windows'].length
+  end
+
+  def test_the_wall_units_next_to_a_corner_after_a_window_know_their_gap
+    result = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 3000, 'windows' => [{ 'wall' => 'a', 'from' => 1500, 'width' => 1000 }])
+    corner = result.wall.find { |item| item.kind == :corner }
+    before = result.wall.select { |item| item.run == :a && item.kind != :corner }
+    last_end = before.map { |item| item.start + item.width }.max
+    assert_in_delta corner.start - last_end, corner.gap_before, 0.5
+    result.wall.select { |item| item.run == :b }.each_cons(2) { |a, b| assert_in_delta a.start + a.width + b.gap_before, b.start, 0.5 }
+  end
 end

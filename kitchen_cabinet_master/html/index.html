@@ -128,7 +128,7 @@
         <p class="hint">Designs a whole kitchen in one click from the walls' lengths: the fridge, sink, hob and hood where they belong, the other units filling the walls, wall units over them, and a worktop. It uses the model, materials, handle and door design chosen in this panel, and starts where the next cabinet would go (at the origin in an empty model). Everything it makes is an ordinary cabinet you can change afterwards.</p>
         <label class="field">
           <span class="label">Layout</span>
-          <div class="input"><select id="kitchenLayout"><option value="straight">Straight (one wall)</option><option value="l">L shape (two walls)</option></select></div>
+          <div class="input"><select id="kitchenLayout"><option value="straight">Straight (one wall)</option><option value="l">L shape (two walls)</option><option value="u">U shape (three walls)</option></select></div>
         </label>
         <div class="grid-2">
           <label class="field">
@@ -140,6 +140,11 @@
             <div class="input"><input id="kitchenWallB" type="text" inputmode="decimal" autocomplete="off" value="2400"><em>mm</em></div>
           </label>
         </div>
+        <label class="field" id="kitchenWallCField" hidden>
+          <span class="label">Wall C Length</span>
+          <div class="input"><input id="kitchenWallC" type="text" inputmode="decimal" autocomplete="off" value="2400"><em>mm</em></div>
+        </label>
+        <p class="hint">Measure each wall from corner to corner. Wall A starts at its free end and runs to wall B; wall B runs from wall A to wall C (the middle wall of a U); wall C runs from wall B to its free end.</p>
         <label class="field">
           <span class="label">Fridge</span>
           <div class="input"><select id="kitchenFridge"><option value="builtin">Built-in fridge (tall unit)</option><option value="free">Freestanding fridge housing</option><option value="none">No fridge</option></select></div>
@@ -149,6 +154,28 @@
         <label class="check"><input type="checkbox" id="kitchenHood" checked><span>Hood cabinet over the hob</span></label>
         <label class="check"><input type="checkbox" id="kitchenOven"><span>Oven housing (tall unit)</span></label>
         <label class="check"><input type="checkbox" id="kitchenWall" checked><span>Wall units</span></label>
+        <label class="check"><input type="checkbox" id="kitchenIsland"><span>Island (parallel to wall A)</span></label>
+        <div class="grid-2" id="kitchenIslandFields" hidden>
+          <label class="field">
+            <span class="label">Island Length</span>
+            <div class="input"><input id="kitchenIslandLength" type="text" inputmode="decimal" autocomplete="off" value="1800"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Aisle Width</span>
+            <div class="input"><input id="kitchenIslandAisle" type="text" inputmode="decimal" autocomplete="off" value="1100"><em>mm</em></div>
+          </label>
+        </div>
+        <p class="group-title">Windows (the sink goes under the first one; wall units skip them)</p>
+        <div class="grid-3 kitchen-window">
+          <label class="field"><span class="label">Window 1 Wall</span><div class="input"><select id="kitchenWin1Wall"><option value="">None</option><option value="a">A</option><option value="b">B</option><option value="c">C</option></select></div></label>
+          <label class="field"><span class="label">From Start</span><div class="input"><input id="kitchenWin1From" type="text" inputmode="decimal" autocomplete="off" value="1500"><em>mm</em></div></label>
+          <label class="field"><span class="label">Width</span><div class="input"><input id="kitchenWin1Width" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
+        </div>
+        <div class="grid-3 kitchen-window">
+          <label class="field"><span class="label">Window 2 Wall</span><div class="input"><select id="kitchenWin2Wall"><option value="">None</option><option value="a">A</option><option value="b">B</option><option value="c">C</option></select></div></label>
+          <label class="field"><span class="label">From Start</span><div class="input"><input id="kitchenWin2From" type="text" inputmode="decimal" autocomplete="off" value="1000"><em>mm</em></div></label>
+          <label class="field"><span class="label">Width</span><div class="input"><input id="kitchenWin2Width" type="text" inputmode="decimal" autocomplete="off" value="900"><em>mm</em></div></label>
+        </div>
         <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
         <div class="btn-row one">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>

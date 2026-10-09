@@ -30,16 +30,18 @@ module KitchenCabinetMaster
       plan = KitchenPlanner.plan(raw['kitchen'])
       return Response.fail(plan.error) if plan.error
 
-      missing = (plan.base + plan.wall).map { |item| [item.category, item.type] }.uniq.reject { |category, type| CatalogManager.cabinet(catalog_id, category, type) }
+      island_items = plan.island ? plan.island.items : []
+      missing = (plan.base + plan.wall + island_items).map { |item| [item.category, item.type] }.uniq.reject { |category, type| CatalogManager.cabinet(catalog_id, category, type) }
       return Response.fail("This model has no #{missing.map { |category, type| "#{category} unit \"#{type}\"" }.join(', ')}. Choose a kitchen model that has the standard units.") unless missing.empty?
 
       model = Sketchup.active_model
       model.selection.clear
-      built = { base: [], wall: [] }
+      built = { base: [], wall: [], island: [] }
       begin
         CabinetManager.send(:with_operation, model, 'Design Kitchen') do
           plan.base.each { |item| built[:base] << build_unit(model, panel, catalog_id, item) }
           build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
+          build_island(model, panel, catalog_id, plan, built) if plan.island
         end
       rescue StandardError => e
         return Response.fail("The kitchen could not be built: #{e.message}")
@@ -49,7 +51,7 @@ module KitchenCabinetMaster
       message = "Kitchen designed: #{KitchenPlanner.describe(plan)}."
       message += " #{plan.notes.join(' ')}" unless plan.notes.empty?
       message += worktop_message(raw['worktop'])
-      Response.ok(message, { 'cabinets' => built[:base].length + built[:wall].length })
+      Response.ok(message, { 'cabinets' => built.values.sum(&:length) })
     end
 
     def self.worktop_message(values)
@@ -72,11 +74,28 @@ module KitchenCabinetMaster
           height = CatalogManager.cabinet(catalog_id, item.category, item.type).dig('defaults', 'height').to_f
           z = PlacementManager.wall_origin_z(model, { 'height' => height }, reference)
           override = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, z.mm - start.origin.z)) * start
+          override *= Geom::Transformation.translation(Geom::Vector3d.new(0, item.gap_before.to_f.mm, 0)) # (a window at the start of the wall)
         end
-        built[:wall] << build_unit(model, panel, catalog_id, item, override)
+        gap = nil
+        if !index.zero? && item.gap_before.to_f.positive? # the room a window leaves empty before this unit, along the wall of the unit before it
+          gap = built[:wall].last.transformation.yaxis
+          gap.length = item.gap_before.mm
+        end
+        built[:wall] << build_unit(model, panel, catalog_id, item, override, gap)
       end
     end
     private_class_method :build_wall
+
+    # The island: a row of units standing in the room, turned round so that their fronts look at the units of wall A. Its first unit is put by
+    # measure from the first unit of the kitchen (wall A, its start); the others follow it.
+    def self.build_island(model, panel, catalog_id, plan, built)
+      island = plan.island
+      frame = built[:base].first.transformation
+      place = frame * Geom::Transformation.translation(Geom::Vector3d.new(island.x.mm, island.y.mm, 0)) *
+              Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
+      island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
+    end
+    private_class_method :build_island
 
     def self.unit_raw(panel, entry, item, catalog_id)
       defaults = entry['defaults'] || {}
@@ -89,7 +108,7 @@ module KitchenCabinetMaster
     private_class_method :unit_raw
 
     # One unit, as Insert builds it. `override` is where it goes when that is not just after the last one.
-    def self.build_unit(model, panel, catalog_id, item, override = nil)
+    def self.build_unit(model, panel, catalog_id, item, override = nil, gap = nil)
       entry = CatalogManager.cabinet(catalog_id, item.category, item.type)
       params, failure = CabinetManager.send(:prepare, unit_raw(panel, entry, item, catalog_id))
       raise "#{entry['name']} #{format('%g', item.width)} mm: #{failure['message']}" if failure
@@ -100,6 +119,8 @@ module KitchenCabinetMaster
       if override
         entities = model.active_entities
         transformation = override
+      elsif gap
+        transformation = Geom::Transformation.translation(gap) * transformation
       end
       params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
       CabinetGenerator.build(model, entities, params, transformation)

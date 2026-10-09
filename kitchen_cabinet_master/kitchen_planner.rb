@@ -1,16 +1,19 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Plans a whole kitchen from a few answers (the walls' lengths, which appliances it has). Pure maths: no SketchUp objects.
+  # Plans a whole kitchen from a few answers (the walls' lengths, which appliances it has, the windows, an island). Pure maths: no SketchUp
+  # objects.
   #
-  # A kitchen is one or two RUNS of units along walls. A straight kitchen has run A; an L kitchen has run A, a corner unit and run B
-  # (the corner is at the far end of A; B carries on along the next wall, as when the units are inserted one after another by hand).
+  # A kitchen is one to three RUNS of units along walls. A straight kitchen has run A; an L kitchen has run A, a corner unit and run B; a U
+  # kitchen has A, a corner, B, a corner and C (a corner turns the row a quarter turn, as when the units are inserted one after another by hand).
+  # Every position is measured along its wall from the start of the run: run A from its free end, run B from wall A, run C from wall B.
   #
-  # The plan lists the base units (floor level, in the order they are placed) and the wall units (over them). Every unit is
-  # {category, type (a catalog id of the kitchen catalogs), width, kind} with the widths summing to the length of the wall.
+  # The plan lists the base units (floor level, in the order they are placed), the wall units (over them) and an island (units of its own).
+  # Every unit is {category, type (a catalog id of the kitchen catalogs), width, kind}; the widths of a wall add up to its length.
   module KitchenPlanner
-    Item = Struct.new(:category, :type, :width, :kind, :run, :start, keyword_init: true)
-    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, keyword_init: true)
+    Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, keyword_init: true)
+    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, keyword_init: true)
+    Island = Struct.new(:items, :x, :y, :length, :aisle, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
 
@@ -20,15 +23,16 @@ module KitchenCabinetMaster
     MIN_FILL = 300.0
     MAX_FILL = 900.0
     MIN_UNIT = 100.0
+    FRONT_DEPTH = 580.0  # a base unit with its doors, front to back
     FRIDGE = { 'builtin' => ['tall_fridge_builtin_2door', 600.0], 'free' => ['tall_fridge_housing_free', 900.0] }.freeze
     OVEN = ['tall_oven', 600.0].freeze
     SINK_WIDTH = 900.0
     HOB_WIDTH = 600.0
-    HOB_MAX = 900.0
+    RUNS = { 'straight' => [:a], 'l' => %i[a b], 'u' => %i[a b c] }.freeze
 
     DEFAULTS = {
-      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true
+      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'hob' => true,
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'island' => false, 'island_length' => 1800.0, 'island_aisle' => 1100.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -40,10 +44,28 @@ module KitchenCabinetMaster
         value.positive? ? value : DEFAULTS[key]
       end
       fridge = FRIDGE.key?(raw['fridge'].to_s) ? raw['fridge'].to_s : (raw.key?('fridge') ? 'none' : DEFAULTS['fridge'])
-      { 'layout' => raw['layout'].to_s == 'l' ? 'l' : 'straight', 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'fridge' => fridge,
+      layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
+      { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
-        'wall_units' => flag.call('wall_units') }
+        'wall_units' => flag.call('wall_units'), 'island' => flag.call('island'), 'island_length' => number.call('island_length'),
+        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
+
+    # The windows the walls have: [{ run, from, to }], the distance from the start of the wall. Anything unusable is left out.
+    def self.windows_of(list, runs)
+      Array(list).filter_map do |entry|
+        next unless entry.is_a?(Hash)
+
+        entry = entry.transform_keys(&:to_s)
+        run = entry['wall'].to_s.downcase.to_sym
+        from = entry['from'].to_s.tr(',', '.').to_f
+        width = entry['width'].to_s.tr(',', '.').to_f
+        next unless runs.include?(run) && width >= 200.0 && from >= 0.0
+
+        { run: run, from: from, to: from + width }
+      end
+    end
+    private_class_method :windows_of
 
     def self.plan(raw)
       build_plan(normalise(raw))
@@ -52,42 +74,60 @@ module KitchenCabinetMaster
     end
 
     def self.build_plan(o)
-      l_shape = o['layout'] == 'l'
+      runs = RUNS[o['layout']]
+      lengths = { a: o['wall_a'], b: o['wall_b'], c: o['wall_c'] }
       notes = []
       fridge_w = FRIDGE.key?(o['fridge']) ? FRIDGE[o['fridge']][1] : 0.0
       oven_w = o['oven_tower'] ? OVEN[1] : 0.0
 
-      free_a = o['wall_a'] - fridge_w - (l_shape ? CORNER_BASE : oven_w)
-      free_b = l_shape ? o['wall_b'] - CORNER_BASE - oven_w : 0.0
-      return failure("Wall A is too short (#{fmt(o['wall_a'])} mm) for the units it needs. Make it longer or leave something out.") if free_a < 300.0
-      return failure("Wall B is too short (#{fmt(o['wall_b'])} mm) for the corner and its units.") if l_shape && free_b < 300.0
+      reserve = lambda do |run|
+        index = runs.index(run)
+        [index.zero? ? fridge_w : CORNER_BASE, index == runs.length - 1 ? oven_w : CORNER_BASE]
+      end
+      free = runs.to_h { |run| [run, lengths[run] - reserve.call(run).sum] }
+      runs.each do |run|
+        return failure("Wall #{run.to_s.upcase} is too short (#{fmt(lengths[run])} mm) for the units it needs. Make it longer or leave something out.") if free[run] < 300.0
+      end
 
-      sink_run = o['sink'] ? :a : nil
-      hob_run = nil
-      hob_run = (l_shape && free_b >= 900.0 ? :b : :a) if o['hob']
+      sink_run, hob_run = appliance_runs(o, runs, free, notes)
+      window = o['windows'].find { |w| w[:run] == sink_run }
+      sink_center = window ? (window[:from] + window[:to]) / 2.0 : nil
 
       base = []
       base << Item.new(category: 'tall', type: FRIDGE[o['fridge']][0], width: fridge_w, kind: :fridge, run: :a, start: 0.0) if fridge_w.positive?
-      run_a = safe_run(:a, free_a, fridge_w, sink_run == :a, hob_run == :a, notes)
-      base.concat(run_a)
-      base << Item.new(category: 'base', type: 'base_corner_l', width: CORNER_BASE, kind: :corner, run: :a, start: o['wall_a'] - CORNER_BASE) if l_shape
-      run_b = []
-      if l_shape
-        run_b = safe_run(:b, free_b, CORNER_BASE, false, hob_run == :b, notes)
-        base.concat(run_b)
+      runs.each_with_index do |run, index|
+        base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center))
+        base << Item.new(category: 'base', type: 'base_corner_l', width: CORNER_BASE, kind: :corner, run: run, start: lengths[run] - CORNER_BASE) if index < runs.length - 1
       end
-      oven_run = l_shape ? :b : :a
       if oven_w.positive?
-        start = l_shape ? o['wall_b'] - oven_w : o['wall_a'] - oven_w
-        base << Item.new(category: 'tall', type: OVEN[0], width: oven_w, kind: :oven, run: oven_run, start: start)
+        base << Item.new(category: 'tall', type: OVEN[0], width: oven_w, kind: :oven, run: runs.last, start: lengths[runs.last] - oven_w)
       end
 
-      wall = o['wall_units'] ? wall_items(o, base, fridge_w, oven_w, l_shape, notes) : []
-      Plan.new(base: base, wall: wall, wall_start: fridge_w, notes: notes, error: nil)
+      wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_w, oven_w, notes) : []
+      island = o['island'] ? island_plan(o, runs, lengths, notes) : nil
+      Plan.new(base: base, wall: wall, wall_start: fridge_w, notes: notes, error: nil, island: island)
     end
 
+    # Which run takes the sink and which the hob. The sink goes under a window when there is one on a run it fits, else in the middle wall of a U,
+    # else on A. The hob goes on the last wall when there is room, else on A.
+    def self.appliance_runs(o, runs, free, notes)
+      sink_run = nil
+      if o['sink']
+        under_window = o['windows'].map { |w| w[:run] }.find { |run| free[run] >= SINK_WIDTH }
+        sink_run = under_window || (runs.length == 3 && free[:b] >= SINK_WIDTH ? :b : :a)
+      end
+      hob_run = nil
+      if o['hob']
+        candidate = runs.reverse.find { |run| run != :a && free[run] >= 900.0 && run != sink_run }
+        hob_run = candidate || :a
+        hob_run = runs.reverse.find { |run| free[run] >= 900.0 && run != sink_run } || hob_run if hob_run == sink_run && runs.length > 1
+      end
+      [sink_run, hob_run]
+    end
+    private_class_method :appliance_runs
+
     def self.failure(message)
-      Plan.new(base: [], wall: [], wall_start: 0.0, notes: [], error: message)
+      Plan.new(base: [], wall: [], wall_start: 0.0, notes: [], error: message, island: nil)
     end
     private_class_method :failure
 
@@ -95,29 +135,28 @@ module KitchenCabinetMaster
       format('%g', value)
     end
     private_class_method :fmt
-
     # ---- one run of base units --------------------------------------------------
 
     # run_items, but when the run is too short for its sink and hob the hob is left out (and then the sink made a narrow one), with a note.
-    def self.safe_run(run, free, start, with_sink, with_hob, notes)
-      run_items(run, free, start, with_sink, with_hob, notes)
+    def self.safe_run(run, free, start, with_sink, with_hob, notes, sink_center = nil)
+      run_items(run, free, start, with_sink, with_hob, notes, sink_center)
     rescue Short
       raise unless with_hob || with_sink
 
       notes.delete(ADJACENT)
       if with_hob
         notes << "There is no room for the hob in run #{run.to_s.upcase}: put it in by hand."
-        safe_run(run, free, start, with_sink, false, notes)
+        safe_run(run, free, start, with_sink, false, notes, sink_center)
       else
         notes << "The sink unit of run #{run.to_s.upcase} had to be a narrow one."
-        run_items(run, free, start, true, false, notes, 600.0)
+        run_items(run, free, start, true, false, notes, sink_center, 600.0)
       end
     end
     private_class_method :safe_run
 
     # The units of a run `free` mm long that starts `start` mm along its wall: the sink and the hob where they go, the rest filled with
     # equal units. A unit next to the hob is a unit of drawers, the others are doors with a unit of drawers now and then.
-    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_width = SINK_WIDTH)
+    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_center = nil, sink_width = SINK_WIDTH)
       sink = with_sink ? sink_width : nil
       hob = with_hob ? HOB_WIDTH : nil
       tokens = []
@@ -142,16 +181,22 @@ module KitchenCabinetMaster
         remaining = free - fixed.sum { |_, w| w }
         remaining = 0.0 if remaining.abs < 1.0
       end
-      widths = fill_widths(remaining, counts.sum)
+      seg_widths = nil
+      if sink && sink_center && counts.sum.positive? && remaining.positive? # the sink under its window
+        seg_widths = centered_segments(remaining, segs.map { |i| tokens[i][1] }, sink_center - (sink / 2.0) - start)
+        counts = seg_widths.map(&:length) if seg_widths
+      end
+      if seg_widths.nil?
+        widths = fill_widths(remaining, counts.sum)
+        cursor = 0
+        seg_widths = counts.map { |n| widths.slice(cursor, n).tap { cursor += n } }
+      end
       items = []
       position = start
-      cursor = 0
       fixed_cursor = 0
       tokens.each_with_index do |(kind, _), i|
         if kind == :seg
-          n = counts[segs.index(i)]
-          units = widths.slice(cursor, n)
-          cursor += n
+          units = seg_widths[segs.index(i)]
           anchor = tokens[i - 1] && tokens[i - 1][0] == :hob ? :hob : (tokens[i + 1] && tokens[i + 1][0] == :hob ? :hob_after : nil)
           ordered = anchor == :hob_after ? units.reverse : units
           made = ordered.each_with_index.map { |w, index| fill_unit(w, anchor ? index : index + 1, anchor, run) }
@@ -200,6 +245,40 @@ module KitchenCabinetMaster
     end
     private_class_method :counts_for
 
+    # The widths of the filling units of each segment of a run with its sink `before` mm from the start (the sink is between the first segment and
+    # the others), so that the sink is where it was asked to be. The first segment is `before` long (none when that is under 150 mm, else at
+    # least one 300 mm unit); the others share what is left, the one between the sink and the hob keeping at least its minimum. nil when it
+    # cannot be done.
+    def self.centered_segments(remaining, minimums, before)
+      return nil if minimums.length < 2
+
+      later_min = minimums.drop(1).sum
+      room_after = remaining - (later_min * MIN_FILL)
+      return nil if room_after < 0
+
+      first = before.clamp(0.0, room_after)
+      first = 0.0 if first < 150.0
+      first = MIN_FILL if first.positive? && first < MIN_FILL
+      first = [first, room_after].min
+      first = 0.0 if first < MIN_FILL - 0.5
+      later_length = remaining - first
+      if later_min.zero? && later_length < MIN_FILL - 0.5 # too little left after the sink for a unit: the units before it take it
+        first += later_length
+        later_length = 0.0
+      end
+      n_later = [(later_length / IDEAL).round, later_min].max
+      n_later += 1 while n_later.positive? && later_length / n_later > MAX_FILL
+      n_later -= 1 while n_later > later_min && later_length / n_later < MIN_FILL
+      counts = minimums.drop(1).dup
+      counts[-1] += n_later - counts.sum
+      n_first = first.zero? ? 0 : [(first / IDEAL).round, 1].max
+      n_first += 1 while n_first.positive? && first / n_first > MAX_FILL
+      n_first -= 1 while n_first > 1 && first / n_first < MIN_FILL
+      lengths = counts.map { |n| n_later.zero? ? 0.0 : later_length * n / n_later }
+      [fill_widths(first, n_first)] + counts.each_with_index.map { |n, i| fill_widths(lengths[i], n) }
+    end
+    private_class_method :centered_segments
+
     # `count` widths adding up to `total`, equal and to the nearest 5 mm, the last one taking what is left.
     def self.fill_widths(total, count)
       return [] if count.zero?
@@ -224,31 +303,89 @@ module KitchenCabinetMaster
 
     # ---- the wall units ---------------------------------------------------------
 
-    def self.wall_items(o, base, fridge_w, oven_w, l_shape, notes)
+    def self.wall_items(o, base, runs, lengths, fridge_w, oven_w, notes)
       items = []
       hob = base.find { |item| item.kind == :hob }
       hood = o['hood'] && hob
-      runs = l_shape ? %i[a b] : [:a]
-      runs.each do |run|
-        if run == :a
-          from = fridge_w
-          to = l_shape ? o['wall_a'] - CORNER_WALL : o['wall_a'] - oven_w
-        else
-          from = CORNER_WALL
-          to = o['wall_b'] - oven_w
+      runs.each_with_index do |run, index|
+        last = index == runs.length - 1
+        from = index.zero? ? fridge_w : CORNER_WALL
+        to = last ? lengths[run] - oven_w : lengths[run] - CORNER_WALL
+        blocked = o['windows'].select { |w| w[:run] == run }.map { |w| [[w[:from], from].max, [w[:to], to].min] }.select { |a, b| b > a }.sort
+        hood_here = hood && hob.run == run && hob.start >= from && hob.start + hob.width <= to
+        if hood_here && blocked.any? { |a, b| a < hob.start + hob.width && b > hob.start }
+          notes << 'The hob is under a window, so it has no hood.'
+          hood_here = false
         end
-        if hood && hob.run == run && hob.start >= from && hob.start + hob.width <= to
-          items.concat(wall_fill(from, hob.start, run, notes))
-          items << Item.new(category: 'wall', type: 'wall_hood', width: hob.width, kind: :hood, run: run, start: hob.start)
-          items.concat(wall_fill(hob.start + hob.width, to, run, notes))
-        else
-          items.concat(wall_fill(from, to, run, notes))
+        mine = []
+        spans(from, to, blocked).each do |s0, s1|
+          if hood_here && hob.start >= s0 && hob.start + hob.width <= s1
+            mine.concat(wall_fill(s0, hob.start, run, notes))
+            mine << Item.new(category: 'wall', type: 'wall_hood', width: hob.width, kind: :hood, run: run, start: hob.start)
+            mine.concat(wall_fill(hob.start + hob.width, s1, run, notes))
+          else
+            mine.concat(wall_fill(s0, s1, run, notes))
+          end
         end
-        items << Item.new(category: 'wall', type: 'wall_corner_l', width: CORNER_WALL, kind: :corner, run: :a, start: o['wall_a'] - CORNER_WALL) if l_shape && run == :a
+        mine << Item.new(category: 'wall', type: 'wall_corner_l', width: CORNER_WALL, kind: :corner, run: run, start: to) unless last
+        cursor = from
+        mine.each do |item| # the room a window leaves empty before a unit
+          gap = item.start - cursor
+          item.gap_before = gap > 0.5 ? gap.round(2) : 0.0
+          cursor = item.start + item.width
+        end
+        items.concat(mine)
       end
       items
     end
     private_class_method :wall_items
+
+    # What is left of [from, to] when the (sorted) intervals are taken out.
+    def self.spans(from, to, blocked)
+      list = []
+      cursor = from
+      blocked.each do |a, b|
+        list << [cursor, a] if a - cursor > 0.5
+        cursor = [cursor, b].max
+      end
+      list << [cursor, to] if to - cursor > 0.5
+      list
+    end
+    private_class_method :spans
+
+    # ---- an island ---------------------------------------------------------------
+
+    # A row of units standing free in the room, parallel to wall A, its fronts towards wall A (the working side), `aisle` mm from the units there.
+    # nil, with a note, when the room is too narrow or too short for it.
+    def self.island_plan(o, runs, lengths, notes)
+      aisle = o['island_aisle']
+      if runs.length == 3
+        space = lengths[:b] - (2 * FRONT_DEPTH) # between the units of A and of C
+        aisle = [aisle, (space - FRONT_DEPTH) / 2.0].min
+        if aisle < 900.0
+          notes << 'The room is too narrow for an island: it was left out.'
+          return nil
+        end
+      end
+      y_max = runs.length > 1 ? lengths[:a] - FRONT_DEPTH - aisle : lengths[:a]
+      if y_max < 600.0
+        notes << 'Wall A is too short for an island: it was left out.'
+        return nil
+      end
+      length = [o['island_length'], y_max].min
+      count = [(length / IDEAL).round, 1].max
+      count -= 1 while count > 1 && length / count < MIN_FILL
+      widths = fill_widths(length, count)
+      position = 0.0
+      items = widths.map do |w|
+        item = Item.new(category: 'base', type: w <= 900.0 ? 'base_3drawer' : 'base_2door', width: w, kind: :island, run: :island, start: position)
+        position += w
+        item
+      end
+      notes << "The island is #{fmt(length.round)} mm long (the room allows no more)." if length < o['island_length'] - 1.0
+      Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle)
+    end
+    private_class_method :island_plan
 
     def self.wall_fill(from, to, run, notes)
       length = to - from
@@ -283,6 +420,7 @@ module KitchenCabinetMaster
       parts << 'a fridge housing' if count.call(plan.base, :fridge).positive?
       parts << 'an oven housing' if count.call(plan.base, :oven).positive?
       parts << 'a hood' if count.call(plan.wall, :hood).positive?
+      parts << ('an island of ' + plan.island.items.length.to_s + ' units') if plan.island
       parts.join(', ')
     end
   end
