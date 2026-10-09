@@ -150,7 +150,7 @@ module KitchenCabinetMaster
       problems = WorktopManager.respond_to?(:problems) ? WorktopManager.problems.uniq : []
       ' Worktop and back splash added.' + (problems.empty? ? '' : " #{problems.join(' ')}")
     rescue StandardError => e
-      " (The worktop was not added: #{e.message})"
+      " (The worktop was not added: #{e.message}#{where(e)})"
     end
     private_class_method :worktop_message
 

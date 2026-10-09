@@ -591,7 +591,7 @@ module KitchenCabinetMaster
     def self.label_lift(model, params)
       return 0.0 unless %w[base corner].include?(params['cabinet_category'].to_s)
 
-      slab = WorktopManager.pieces_in(model).find { |item| AttributeManager.part_kind(item) == 'worktop' }
+      slab = WorktopManager.pieces_in(model).find { |item| AttributeManager.part_kind(item) == 'worktop' && !AttributeManager.read(item)['part_label'] } # (not a knee board)
       slab ? AttributeManager.read(slab)['worktop_thickness'].to_f : 0.0
     rescue StandardError
       0.0
