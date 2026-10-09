@@ -31,11 +31,12 @@ module KitchenCabinetMaster
     DISH_WIDTH = 600.0 # the space for a dishwasher, beside the sink
     # How the kitchen looks: doors everywhere; glass doors on the wall units; or wide lift-up wall units over drawers.
     STYLES = %w[classic glass lift].freeze
+    ISLAND_FEATURES = %w[none hob sink].freeze # what an island has built in
     RUNS = { 'straight' => [:a], 'l' => %i[a b], 'u' => %i[a b c] }.freeze
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'dishwasher' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_length' => 1800.0, 'island_aisle' => 1100.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -50,7 +51,7 @@ module KitchenCabinetMaster
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'dishwasher' => flag.call('dishwasher'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
-        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_length' => number.call('island_length'),
+        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
@@ -92,6 +93,12 @@ module KitchenCabinetMaster
         return failure("Wall #{run.to_s.upcase} is too short (#{fmt(lengths[run])} mm) for the units it needs. Make it longer or leave something out.") if free[run] < 300.0
       end
 
+      # An island with the hob or the sink in it takes it off the wall (planned first: the room may not allow the island).
+      island_lengths = o['mirror'] ? runs.to_h { |run| [run, lengths[runs.reverse[runs.index(run)]]] } : lengths
+      island = o['island'] ? island_plan(o, runs, island_lengths, notes) : nil
+      o = o.merge('hob' => false) if island && island.items.any? { |item| item.kind == :hob }
+      o = o.merge('sink' => false) if island && island.items.any? { |item| item.kind == :sink }
+
       sink_run, hob_run = appliance_runs(o, runs, free, notes)
       window = o['windows'].find { |w| w[:run] == sink_run }
       sink_center = window ? (window[:from] + window[:to]) / 2.0 : nil
@@ -112,7 +119,6 @@ module KitchenCabinetMaster
         base, wall, lengths = mirrored(base, wall, runs, lengths, oven_w)
         wall_start = oven_w
       end
-      island = o['island'] ? island_plan(o, runs, lengths, notes) : nil
       Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a])
     end
 
@@ -426,17 +432,34 @@ module KitchenCabinetMaster
         notes << 'Wall A is too short for an island: it was left out.'
         return nil
       end
-      length = [o['island_length'], y_max].min
-      count = [(length / IDEAL).round, 1].max
-      count -= 1 while count > 1 && length / count < MIN_FILL
-      widths = fill_widths(length, count)
-      position = 0.0
-      items = widths.map do |w|
-        item = Item.new(category: 'base', type: w <= 900.0 ? 'base_3drawer' : 'base_2door', width: w, kind: :island, run: :island, start: position)
-        position += w
-        item
+      feature = o['island_feature']
+      with_dish = feature == 'sink' && o['dishwasher']
+      needed = { 'hob' => HOB_WIDTH, 'sink' => SINK_WIDTH + (with_dish ? DISH_WIDTH : 0.0) }.fetch(feature, 0.0) + (2 * MIN_FILL)
+      if feature != 'none' && needed > y_max
+        notes << "The island is too short for its #{feature}: it is a plain island."
+        feature = 'none'
       end
-      notes << "The island is #{fmt(length.round)} mm long (the room allows no more)." if length < o['island_length'] - 1.0
+      wanted = feature == 'none' ? o['island_length'] : [o['island_length'], needed].max
+      length = [wanted, y_max].min
+      items = nil
+      if feature != 'none'
+        begin
+          items = run_items(:island, length, 0.0, feature == 'sink', feature == 'hob', notes, nil, style: 'lift', with_dish: with_dish)
+        rescue Short
+          notes << "The island has no room for its #{feature}: it is a plain island."
+        end
+      end
+      if items.nil?
+        count = [(length / IDEAL).round, 1].max
+        count -= 1 while count > 1 && length / count < MIN_FILL
+        position = 0.0
+        items = fill_widths(length, count).map do |w|
+          item = Item.new(category: 'base', type: w <= 900.0 ? 'base_3drawer' : 'base_2door', width: w, kind: :island, run: :island, start: position)
+          position += w
+          item
+        end
+      end
+      notes << "The island is #{fmt(length.round)} mm long (the room allows no more)." if length < wanted - 1.0
       Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle)
     end
     private_class_method :island_plan
@@ -505,6 +528,9 @@ module KitchenCabinetMaster
       parts << 'a fridge housing' if count.call(plan.base, :fridge).positive?
       parts << 'an oven housing' if count.call(plan.base, :oven).positive?
       parts << { 'glass' => 'glass doors on the wall units', 'lift' => 'lift-up wall units over drawers' }[plan.style] if %w[glass lift].include?(plan.style)
+      island_items = plan.island ? plan.island.items : []
+      parts << 'a hob on the island' if island_items.any? { |item| item.kind == :hob }
+      parts << 'a sink on the island' if island_items.any? { |item| item.kind == :sink }
       parts << 'a hood' if count.call(plan.wall, :hood).positive?
       parts << ('an island of ' + plan.island.items.length.to_s + ' units') if plan.island
       parts.join(', ')

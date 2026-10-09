@@ -332,4 +332,36 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator regular.island.y, :<=, 4200.0 - 580.0 - 1100.0 + 0.01
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
+
+  def test_an_island_can_have_the_hob_or_the_sink_which_then_leave_the_wall
+    hob = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob')
+    assert_equal [:hob], hob.island.items.map(&:kind).select { |kind| kind == :hob }
+    assert_equal 'base_hob', hob.island.items.find { |item| item.kind == :hob }.type
+    refute_includes hob.base.map(&:kind), :hob, 'the wall has no hob any more'
+    refute_includes hob.wall.map(&:kind), :hood, 'so no hood'
+    assert_includes hob.base.map(&:kind), :sink
+    assert_in_delta hob.island.length, hob.island.items.sum(&:width), 0.5
+    assert(hob.island.items.reject { |item| item.kind == :hob }.all? { |item| item.type == 'base_3drawer' }, 'drawers beside it')
+    assert_includes KitchenPlanner.describe(hob), 'hob on the island'
+    sink = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'sink')
+    assert_equal 'base_sink', sink.island.items.find { |item| item.kind == :sink }.type
+    assert_includes sink.island.items.map(&:kind), :dish, 'with its dishwasher space'
+    refute_includes sink.base.map(&:kind), :sink
+    refute_includes sink.base.map(&:kind), :dish
+    assert_includes sink.base.map(&:kind), :hob
+    assert_operator sink.island.length, :>=, 2100.0, 'long enough for the sink, the dishwasher space and a unit beside them'
+    assert_in_delta sink.island.length, sink.island.items.sum(&:width), 0.5
+    assert(sink.island.items.all? { |item| IDS['base'].include?(item.type) })
+    assert_equal 'none', KitchenPlanner.normalise('island_feature' => 'oven')['island_feature']
+    assert_nil plan('wall_a' => 4200, 'island_feature' => 'hob').island, 'no island, no feature: the hob stays on the wall'
+    assert_includes plan('wall_a' => 4200, 'island_feature' => 'hob').base.map(&:kind), :hob
+  end
+
+  def test_an_island_too_short_for_its_hob_or_sink_is_plain_and_the_wall_keeps_them
+    cramped = plan('layout' => 'l', 'wall_a' => 3000, 'wall_b' => 3000, 'island' => true, 'island_feature' => 'sink')
+    assert(cramped.notes.any? { |note| note.include?('too short for its sink') })
+    assert_includes cramped.base.map(&:kind), :sink, 'the sink stays on the wall'
+    assert(cramped.island.items.all? { |item| item.kind == :island })
+    assert_in_delta 3000.0, cramped.base.select { |item| item.run == :a }.sum(&:width), 0.5
+  end
 end

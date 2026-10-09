@@ -296,4 +296,13 @@ class KitchenManagerTest < Minitest::Test
     assert_in_delta made.first.transformation.ty + 600.0, walls.first.transformation.ty, 0.01
     assert_equal 'tall_fridge_builtin_2door', made.select { |built| built.params['cabinet_category'] == 'tall' }.last.params['cabinet_type']
   end
+
+  def test_an_island_with_the_hob_is_built_with_the_hob_unit_in_the_island_and_none_on_the_wall
+    design('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob')
+    hobs = made.select { |built| built.params['cabinet_type'] == 'base_hob' }
+    assert_equal 1, hobs.length
+    assert_in_delta(-1.0, hobs.first.transformation.xaxis.x, 1e-9, 'it stands in the island, turned towards wall A')
+    refute(made.any? { |built| built.params['cabinet_type'] == 'wall_hood' }, 'no hood on the wall')
+    assert_equal 1, made.count { |built| built.params['cabinet_type'] == 'base_sink' }
+  end
 end
