@@ -13,7 +13,7 @@ module KitchenCabinetMaster
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true) # extra: values this unit has of its own (a glass door)
     Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
-    Island = Struct.new(:items, :x, :y, :length, :aisle, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
+    Island = Struct.new(:items, :x, :y, :length, :aisle, :hood, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
 
@@ -36,7 +36,7 @@ module KitchenCabinetMaster
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'dishwasher' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -52,7 +52,7 @@ module KitchenCabinetMaster
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'dishwasher' => flag.call('dishwasher'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
         'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
-        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'windows' => windows_of(raw['windows'], RUNS[layout]) }
+        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
     # The windows the walls have: [{ run, from, to }], the distance from the start of the wall. Anything unusable is left out.
@@ -460,7 +460,9 @@ module KitchenCabinetMaster
         end
       end
       notes << "The island is #{fmt(length.round)} mm long (the room allows no more)." if length < wanted - 1.0
-      Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle)
+      hob = items.find { |item| item.kind == :hob }
+      hood = hob && o['hood'] ? { start: hob.start, width: hob.width, top: o['ceiling'] } : nil # a hood hung from the ceiling over the island's hob
+      Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle, hood: hood)
     end
     private_class_method :island_plan
 
@@ -529,7 +531,7 @@ module KitchenCabinetMaster
       parts << 'an oven housing' if count.call(plan.base, :oven).positive?
       parts << { 'glass' => 'glass doors on the wall units', 'lift' => 'lift-up wall units over drawers' }[plan.style] if %w[glass lift].include?(plan.style)
       island_items = plan.island ? plan.island.items : []
-      parts << 'a hob on the island' if island_items.any? { |item| item.kind == :hob }
+      parts << (plan.island.hood ? 'a hob with a ceiling hood on the island' : 'a hob on the island') if island_items.any? { |item| item.kind == :hob }
       parts << 'a sink on the island' if island_items.any? { |item| item.kind == :sink }
       parts << 'a hood' if count.call(plan.wall, :hood).positive?
       parts << ('an island of ' + plan.island.items.length.to_s + ' units') if plan.island

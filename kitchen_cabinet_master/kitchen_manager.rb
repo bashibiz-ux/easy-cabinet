@@ -45,7 +45,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       model.selection.clear
       all = []
-      parts = { toe_kicks: 0, end_panels: 0, notes: [] }
+      parts = { toe_kicks: 0, end_panels: 0, hoods: 0, notes: [] }
       begin
         run_operation(model, plans.length > 1 ? 'Design Kitchen Options' : 'Design Kitchen') do
           plans.each_with_index do |plan, index|
@@ -55,7 +55,7 @@ module KitchenCabinetMaster
               built[:base] << build_unit(model, panel, catalog_id, item, shifted)
             end
             build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
-            build_island(model, panel, catalog_id, plan, built) if plan.island
+            build_island(model, panel, catalog_id, plan, built, parts) if plan.island
             all << built
             add_parts(model, plan, built, raw, parts)
           end
@@ -174,13 +174,17 @@ module KitchenCabinetMaster
     private_class_method :build_wall
 
     # The island: a row of units standing in the room, turned round so that their fronts look at the units of wall A. Its first unit is put by
-    # measure from the first unit of the kitchen (wall A, its start); the others follow it.
-    def self.build_island(model, panel, catalog_id, plan, built)
+    # measure from the first unit of the kitchen (wall A, its start); the others follow it. A hob on it gets a hood hung from the ceiling.
+    def self.build_island(model, panel, catalog_id, plan, built, parts)
       island = plan.island
       frame = built[:base].first.transformation
       place = frame * Geom::Transformation.translation(Geom::Vector3d.new(island.x.mm, island.y.mm, 0)) *
               Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
+      return unless island.hood
+
+      IslandHood.build(model, model.active_entities, place, island.hood) # hung from the ceiling over the island's hob
+      parts[:hoods] += 1
     end
     private_class_method :build_island
 

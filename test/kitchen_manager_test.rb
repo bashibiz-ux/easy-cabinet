@@ -146,10 +146,13 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults catalog_manager kitchen_planner kitchen_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults catalog_manager kitchen_planner island_hood kitchen_manager].each { |f| require File.join(plugin, f) }
 
 class KitchenManagerTest < Minitest::Test
   include KitchenCabinetMaster
+
+  HoodSpy = []
+  IslandHood.singleton_class.send(:define_method, :build) { |_model, _entities, frame, hood| HoodSpy << [frame, hood] }
 
   def setup
     CatalogManager.user_root_override = Dir.mktmpdir('kcm') if defined?(Dir.mktmpdir)
@@ -157,6 +160,7 @@ class KitchenManagerTest < Minitest::Test
     CabinetGenerator.reset
     PartManager.reset
     WorktopManager.instance_variable_set(:@applied, nil)
+    HoodSpy.clear
   end
 
   def design(kitchen = {}, extra = {})
@@ -304,5 +308,15 @@ class KitchenManagerTest < Minitest::Test
     assert_in_delta(-1.0, hobs.first.transformation.xaxis.x, 1e-9, 'it stands in the island, turned towards wall A')
     refute(made.any? { |built| built.params['cabinet_type'] == 'wall_hood' }, 'no hood on the wall')
     assert_equal 1, made.count { |built| built.params['cabinet_type'] == 'base_sink' }
+  end
+
+  def test_an_island_hob_gets_its_hood_hung_over_the_hob_in_the_islands_frame
+    design({ 'wall_a' => 4200, 'island' => true, 'island_feature' => 'hob' })
+    assert_equal 1, HoodSpy.length
+    frame, hood = HoodSpy.first
+    assert_equal made.find { |built| built.params['cabinet_type'] == 'base_hob' }.params['width'], hood[:width]
+    assert_in_delta 180.0, frame.rotation_degrees, 0.5 if frame.respond_to?(:rotation_degrees)
+    design({ 'wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'hood' => false })
+    assert_equal 1, HoodSpy.length, 'no hood, none built'
   end
 end

@@ -333,6 +333,16 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
 
+  def test_an_island_hob_gets_a_hood_from_the_ceiling_unless_the_hood_is_off
+    island = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob').island
+    hob = island.items.find { |item| item.kind == :hob }
+    assert_equal({ start: hob.start, width: hob.width, top: 2400.0 }, island.hood)
+    assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob')), 'ceiling hood'
+    assert_equal 2700.0, plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'ceiling' => 2700).island.hood[:top]
+    assert_nil plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'hood' => false).island.hood
+    assert_nil plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'sink').island.hood
+    assert_nil plan('wall_a' => 4200, 'island' => true).island.hood
+  end
   def test_an_island_can_have_the_hob_or_the_sink_which_then_leave_the_wall
     hob = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob')
     assert_equal [:hob], hob.island.items.map(&:kind).select { |kind| kind == :hob }
@@ -342,7 +352,7 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes hob.base.map(&:kind), :sink
     assert_in_delta hob.island.length, hob.island.items.sum(&:width), 0.5
     assert(hob.island.items.reject { |item| item.kind == :hob }.all? { |item| item.type == 'base_3drawer' }, 'drawers beside it')
-    assert_includes KitchenPlanner.describe(hob), 'hob on the island'
+    assert_includes KitchenPlanner.describe(hob), 'on the island'
     sink = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'sink')
     assert_equal 'base_sink', sink.island.items.find { |item| item.kind == :sink }.type
     assert_includes sink.island.items.map(&:kind), :dish, 'with its dishwasher space'
