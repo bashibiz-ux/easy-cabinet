@@ -54,4 +54,17 @@ class IslandPendantsTest < Minitest::Test
     assert_equal 1980.0, high[:cord][0]
     assert_equal P.profile('dome'), P.profile('dome', 'medium', 'sky-high'), 'an unknown height is the usual one'
   end
+  def test_a_shade_with_a_wall_has_an_inside_and_a_single_skin_does_not
+    drum = P.profile('drum')
+    assert_nil P.inner_profile(drum, 0.0)
+    assert_equal [[144.0, 1700.0], [144.0, 1874.0]], P.inner_profile(drum, 6.0), 'an open shade keeps its opening and is lower inside at the top'
+    cone = P.inner_profile(P.profile('cone'), 12.0)
+    assert_equal [138.0, 38.0], cone.map(&:first)
+    globe = P.inner_profile(P.profile('globe'), 12.0)
+    assert_equal [0.0, 0.0], globe.values_at(0, -1).map(&:first)
+    assert_operator globe.map(&:first).max, :<, 120.0, 'a smaller ball inside'
+    light = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', thickness: 'thick' }).first
+    assert_equal [[138.0, 1700.0], [138.0, 1868.0]], light[:inner]
+    assert_nil P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', thickness: 'weird' }).first[:inner]
+  end
 end
