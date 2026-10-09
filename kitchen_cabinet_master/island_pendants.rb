@@ -5,7 +5,8 @@ module KitchenCabinetMaster
   # Pure maths in `positions` / `parts` (millimetres, in the frame of the island's first unit: Y along the island, X from its back to its front),
   # `build` draws them.
   module IslandPendants
-    SPACING = 800.0      # about one light for this much island
+    SPACING = 800.0      # about one light for this much island, unless asked otherwise
+    SPACINGS = [600.0, 800.0, 1000.0, 1200.0].freeze
     SHADE_RADIUS = 150.0
     SHADE_HEIGHT = 180.0
     SHADE_BOTTOM = 1700.0 # the underside of the shade above the floor (the worktop is at 900)
@@ -17,8 +18,8 @@ module KitchenCabinetMaster
     COLOURS = ['Stainless Steel', 'Matt Black Metal', 'Brass', 'Brushed Brass', 'Copper', 'Chrome', 'Gunmetal', 'PVC White', 'Navy Blue', 'Sage Green'].freeze
 
     # Where the lights are along an island of `length`: the middles of equal parts.
-    def self.positions(length)
-      count = [(length.to_f / SPACING).floor, 1].max
+    def self.positions(length, spacing = SPACING)
+      count = [(length.to_f / spacing.to_f).floor, 1].max
       count = 1 if length.to_f < 2 * SHADE_RADIUS
       Array.new(count) { |i| ((i + 0.5) * length.to_f / count).round(2) }
     end

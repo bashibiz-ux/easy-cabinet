@@ -39,4 +39,11 @@ class IslandPendantsTest < Minitest::Test
     light = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', size: 'large' }).first
     assert_equal 1952.0, light[:cord][0]
   end
+  def test_the_spacing_sets_how_many_lights_an_island_gets
+    assert_equal 6, P.positions(3600.0, 600.0).length
+    assert_equal 3, P.positions(3600.0, 1200.0).length
+    assert_equal [600.0, 1800.0, 3000.0], P.positions(3600.0, 1200.0)
+    assert_equal P.positions(3600.0), P.positions(3600.0, 800.0)
+    assert_equal [900.0], P.positions(1800.0, 1200.0)
+  end
 end
