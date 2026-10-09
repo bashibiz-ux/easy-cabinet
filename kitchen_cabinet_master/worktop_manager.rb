@@ -373,7 +373,7 @@ module KitchenCabinetMaster
             make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
           end
         rescue StandardError => e
-          problems << "The knee boards under the overhang could not be drawn: #{e.message}"
+          problems << "The knee boards under the overhang could not be drawn: #{e.message}#{Array(e.backtrace).find { |entry| entry.include?('kitchen_cabinet_master') }&.[](/\w+\.rb:\d+/)&.then { |line| " (at #{line})" }}"
         end
         make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge], holes_for(run, placed, slab))
         Worktop.splash(run, slab, params).each do |piece|

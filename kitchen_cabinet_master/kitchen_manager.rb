@@ -61,7 +61,7 @@ module KitchenCabinetMaster
           end
         end
       rescue StandardError => e
-        return Response.fail("The kitchen could not be built: #{e.message}")
+        return Response.fail("The kitchen could not be built: #{e.message}#{where(e)}")
       end
 
       SelectionManager.push_selection(model)
@@ -203,9 +203,16 @@ module KitchenCabinetMaster
     def self.extra(parts, name)
       yield
     rescue StandardError => e
-      parts[:notes] << "#{name} could not be drawn: #{e.message}"
+      parts[:notes] << "#{name} could not be drawn: #{e.message}#{where(e)}"
     end
     private_class_method :extra
+
+    # Where in the extension a failure happened, for the reply ( (at island_pendants.rb:93)).
+    def self.where(error)
+      line = Array(error.backtrace).find { |entry| entry.include?('kitchen_cabinet_master') }&.[](/\w+\.rb:\d+/)
+      line ? " (at #{line})" : ''
+    end
+    private_class_method :where
     private_class_method :build_island
 
     def self.unit_raw(panel, entry, item, catalog_id)
