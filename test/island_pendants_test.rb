@@ -30,4 +30,13 @@ class IslandPendantsTest < Minitest::Test
     assert_equal [0.0, 0.0], P.profile('globe').values_at(0, -1).map(&:first)
     assert_equal P.profile('drum'), P.profile('nonsense'), 'an unknown shape is a drum'
   end
+  def test_sizes_scale_the_shade_but_keep_its_underside_where_it_is
+    small = P.profile('drum', 'small')
+    large = P.profile('drum', 'large')
+    assert_equal [[112.5, 1700.0], [112.5, 1835.0]], small
+    assert_equal [[210.0, 1700.0], [210.0, 1952.0]], large
+    assert_equal P.profile('drum'), P.profile('drum', 'enormous'), 'an unknown size is the usual one'
+    light = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', size: 'large' }).first
+    assert_equal 1952.0, light[:cord][0]
+  end
 end

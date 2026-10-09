@@ -342,6 +342,9 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true)), 'pendant light'
     assert_equal 'Stainless Steel', island.pendants[:material]
     assert_equal 'drum', island.pendants[:shape]
+    assert_equal 'medium', island.pendants[:size]
+    assert_equal 'large', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_size' => 'large').island.pendants[:size]
+    assert_equal 'medium', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_size' => 'huge').island.pendants[:size]
     assert_equal 'dome', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_shape' => 'dome').island.pendants[:shape]
     assert_equal 'drum', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_shape' => 'star').island.pendants[:shape]
     assert_equal 'Brass', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Brass').island.pendants[:material]
