@@ -113,8 +113,10 @@ module KitchenCabinetMaster
         values = toe.transform_keys(&:to_s).merge('toe_kick_cover_row' => true)
         anchors = [built[:base].first, (built[:island].first if plan.island)].compact
         anchors.each do |anchor|
-          answer = against(model, anchor) { PartManager.send(:insert_toe_kick, values) }
-          answer['ok'] ? parts[:toe_kicks] += 1 : parts[:notes] << "A toe kick was not added: #{answer['message']}"
+          extra(parts, 'A toe kick') do
+            answer = against(model, anchor) { PartManager.send(:insert_toe_kick, values) }
+            answer['ok'] ? parts[:toe_kicks] += 1 : parts[:notes] << "A toe kick was not added: #{answer['message']}"
+          end
         end
       end
       panel = raw['end_panel']
@@ -125,8 +127,10 @@ module KitchenCabinetMaster
         next unless unit
 
         values = panel.transform_keys(&:to_s).merge('side' => target[:side], 'depth_auto' => true, 'height_auto' => true)
-        answer = against(model, unit) { PartManager.send(:insert_end_panel, values) }
-        answer['ok'] ? parts[:end_panels] += 1 : parts[:notes] << "An end panel was not added: #{answer['message']}"
+        extra(parts, 'An end panel') do
+          answer = against(model, unit) { PartManager.send(:insert_end_panel, values) }
+          answer['ok'] ? parts[:end_panels] += 1 : parts[:notes] << "An end panel was not added: #{answer['message']}"
+        end
       end
     ensure
       model.selection.clear
@@ -136,6 +140,9 @@ module KitchenCabinetMaster
     # Runs the block with only `unit` selected (what the part buttons take as the thing they go with).
     def self.against(model, unit)
       model.selection.clear
+      if defined?(Sketchup::Drawingelement) && !unit.is_a?(Sketchup::Drawingelement)
+        raise "the unit to work against is a #{unit.class}, not something that can be selected"
+      end
       model.selection.add(unit)
       yield
     end
