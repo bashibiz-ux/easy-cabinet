@@ -65,6 +65,16 @@ class WorktopTest < Minitest::Test
     assert_equal [0.0], Worktop.end_boards(run, slab, last: false).map { |board| board[:offset][1] }
     assert_empty Worktop.end_boards(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
   end
+  def test_an_l_corner_whose_arms_fill_the_whole_unit_gets_a_square_slab_not_a_slab_with_a_repeated_corner
+    corner = { x: 0.0, y: 0.0, hx: 0.0, hy: 1.0, width: 1000.0, depth: 560.0, top: 880.0, corner: true, corner_style: 'l_shape', return_depth: 560.0 }
+    run = Worktop.runs([corner]).first
+    run[:neighbor_depth] = 980.0
+    slab = Worktop.slab(run, Worktop::DEFAULTS)
+    assert_nil slab[:points]
+    assert_equal [1000.0, 1000.0, 20.0], slab[:extent]
+    run[:neighbor_depth] = 580.0
+    assert_equal 6, Worktop.slab(run, Worktop::DEFAULTS)[:points].length, 'a normal L is still an L'
+  end
   # ---- runs -------------------------------------------------------------------
 
   def test_units_in_a_line_get_one_worktop

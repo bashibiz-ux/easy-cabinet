@@ -501,11 +501,21 @@ module KitchenCabinetMaster
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
       rounded_polygon_faces(points, thick, r, edge).each do |corners|
-        definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] })
+        corners = distinct_corners(corners)
+        definition.entities.add_face(corners.map { |x, y, z| [x.mm, y.mm, z.mm] }) if corners.length >= 3
       end
       soften(definition.entities)
       cut_holes(definition.entities, holes, thick)
       definition
+    end
+
+    # A face's corners without any that repeats the one before it (or the first, at the end): SketchUp refuses a face with a point twice, and
+    # a rounding as thick as the slab (or a notch of no size) makes such corners.
+    def self.distinct_corners(corners)
+      same = ->(a, b) { a.zip(b).all? { |u, v| (u - v).abs < 0.001 } }
+      kept = corners.each_with_object([]) { |corner, list| list << corner unless list.any? && same.call(list.last, corner) }
+      kept.pop while kept.length > 1 && same.call(kept.last, kept.first)
+      kept
     end
 
     # The faces (arrays of [x, y, z] in mm, each facing outwards) of that solid. Pure maths:
@@ -665,6 +675,7 @@ module KitchenCabinetMaster
       end
       profile << [0.0, dz]
 
+      profile = distinct_corners(profile) # (a rounding as thick as the slab repeats a point)
       face = entities.add_face(profile.map { |x, z| [x.mm, 0, z.mm] })
       face.reverse! if face.normal.y < 0
       face.pushpull(dy.mm)

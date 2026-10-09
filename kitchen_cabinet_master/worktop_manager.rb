@@ -160,6 +160,9 @@ module KitchenCabinetMaster
       # As deep as the cabinets next to it (their doors included), with the same front overhang, and its two fronts rounded.
       a = [(neighbor_depth || da) + front, lb].min
       b = [(neighbor_depth || db) + front, la].min
+      # Arms as deep as the unit is long leave no L at all (two corners would be the same point): a plain square slab.
+      return { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: nil } if a >= lb - 0.5 || b >= la - 0.5
+
       points = [[0.0, 0.0], [0.0, la], [a, la], [a, b], [lb, b], [lb, 0.0]]
       { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: [2, 3] } # the fronts: points 2 to 3 and 3 to 4
     end
