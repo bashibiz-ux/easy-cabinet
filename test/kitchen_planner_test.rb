@@ -378,7 +378,7 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'drum', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_shape' => 'star').island.pendants[:shape]
     assert_equal 'Brass', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Brass').island.pendants[:material]
     assert_equal 'Stainless Steel', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Hot Pink').island.pendants[:material]
-    assert_nil plan('wall_a' => 4200, 'island' => true, 'island_pendants' => true).island.pendants, 'no seating, no lights'
+    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_pendants' => true).island.pendants[:back], 'no seating: the lights hang over the middle of the island'
     assert_nil plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island.pendants
   end
   def test_an_island_can_have_a_seating_overhang

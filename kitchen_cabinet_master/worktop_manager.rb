@@ -227,6 +227,7 @@ module KitchenCabinetMaster
     # applied). With `only_if_exists` it does nothing until a worktop has been applied
     # once: that is how live edits behave.
     def self.apply(raw, only_if_exists: nil)
+      @problems = []
       raw = raw.is_a?(Hash) ? raw.transform_keys(&:to_s) : {}
       only_if_exists = raw['only_if_exists'] if only_if_exists.nil?
       only_if_exists = [true, 'true', 1, '1'].include?(only_if_exists)
@@ -268,8 +269,12 @@ module KitchenCabinetMaster
       end
       SelectionManager.push_selection(model)
       Response.ok("#{count} worktop piece#{'s' unless count == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', params['worktop_thickness'])} mm thick" \
-                  "#{", back splash #{format('%g', params['backsplash_height'])} mm" if params['backsplash_height'].positive?}.")
+                  "#{", back splash #{format('%g', params['backsplash_height'])} mm" if params['backsplash_height'].positive?}." \
+                  "#{" #{problems.uniq.join(' ')}" unless problems.empty?}")
     end
+
+    # What went wrong with the extras of the worktop being made (see build).
+    def self.problems = (@problems ||= [])
 
     def self.remove
       model = Sketchup.active_model
@@ -357,14 +362,18 @@ module KitchenCabinetMaster
         lift = run[:top].mm - placed.origin.z
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
-        board = Worktop.support(run, slab)
-        Worktop.end_boards(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |leg| # (the knee support's uprights)
-          make_part(model, 'worktop', leg[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(0, leg[:offset][1].mm, leg[:offset][2].mm)),
-                    params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
-        end
-        if board # (made first, so the slab is the last piece of the run: refresh takes the run's settings from that one)
-          down = placed * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, board[:offset][2].mm))
-          make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
+        begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
+          board = Worktop.support(run, slab)
+          Worktop.end_boards(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |leg| # (the knee support's uprights)
+            make_part(model, 'worktop', leg[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(0, leg[:offset][1].mm, leg[:offset][2].mm)),
+                      params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
+          end
+          if board # (made before the slab, so the slab is the last piece of the run: refresh takes the run's settings from that one)
+            down = placed * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, board[:offset][2].mm))
+            make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
+          end
+        rescue StandardError => e
+          problems << "The knee boards under the overhang could not be drawn: #{e.message}"
         end
         make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge], holes_for(run, placed, slab))
         Worktop.splash(run, slab, params).each do |piece|

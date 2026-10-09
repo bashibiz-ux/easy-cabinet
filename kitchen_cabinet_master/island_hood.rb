@@ -38,6 +38,9 @@ module KitchenCabinetMaster
       end
       group.transformation = frame
       group
+    rescue StandardError
+      group.erase! if group&.valid? # (a half-made group is not left behind)
+      raise
     end
   end
 end

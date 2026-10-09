@@ -101,4 +101,7 @@ class IslandPendantsTest < Minitest::Test
     assert_nil P.parts(base.merge(cap: 'star')).first[:cap]
     assert_nil P.parts(base.merge(cap: 'round', top: 1700.0)).first[:cap], 'no cord, no plate'
   end
+  def test_with_no_seating_the_lights_hang_over_the_middle_of_the_island
+    assert_equal [290.0, 900.0], P.parts({ positions: [900.0], back: 0.0, top: 2400.0, shape: 'drum' }).first[:centre]
+  end
 end

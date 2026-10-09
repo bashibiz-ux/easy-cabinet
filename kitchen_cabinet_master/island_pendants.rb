@@ -49,7 +49,8 @@ module KitchenCabinetMaster
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
     # material:, shape:, size:, height:, thickness:, glow:, cord:, cord_colour:, cord_width:, cap: }); the cord stops at the ceiling.
     def self.parts(pendants)
-      x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
+      back = pendants[:back].to_f
+      x = back.positive? ? -back / 2.0 : 290.0 # over the middle of the overhang, where the stools are (with none: over the middle of the island)
       top = pendants[:top].to_f
       outline = profile(pendants[:shape].to_s, pendants[:size], pendants[:height])
       cord = CORDS[pendants[:cord].to_s]
@@ -107,6 +108,9 @@ module KitchenCabinetMaster
       end
       group.transformation = frame
       group
+    rescue StandardError
+      group.erase! if group&.valid? # (a half-made group is not left behind)
+      raise
     end
 
     # The shade: rings of SEGMENTS points at each point of the outline, joined by faces, with a flat cap on an end that has a radius.

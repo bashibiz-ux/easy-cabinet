@@ -342,4 +342,15 @@ class KitchenManagerTest < Minitest::Test
     design({ 'wall_a' => 4200, 'island' => true, 'island_seating' => 300 })
     assert_equal 1, PendantSpy.length, 'not asked, not built'
   end
+
+  def test_lights_that_cannot_be_drawn_do_not_stop_the_kitchen_and_the_reply_says_why
+    original = IslandPendants.method(:build)
+    IslandPendants.singleton_class.send(:define_method, :build) { |*| raise 'no room' }
+    result = design({ 'wall_a' => 4200, 'island' => true, 'island_pendants' => true })
+    assert result['ok'], result['message']
+    assert_includes result['message'], 'The pendant lights could not be drawn: no room'
+    assert_operator made.length, :>, 5, 'the kitchen is there'
+  ensure
+    IslandPendants.singleton_class.send(:define_method, :build) { |_model, _entities, frame, pendants| PendantSpy << [frame, pendants] }
+  end
 end

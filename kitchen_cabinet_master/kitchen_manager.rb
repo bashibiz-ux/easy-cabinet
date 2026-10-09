@@ -145,7 +145,10 @@ module KitchenCabinetMaster
       return '' unless values.is_a?(Hash)
 
       answer = WorktopManager.apply(values)
-      answer['ok'] ? ' Worktop and back splash added.' : " (The worktop was not added: #{answer['message']})"
+      return " (The worktop was not added: #{answer['message']})" unless answer['ok']
+
+      problems = WorktopManager.respond_to?(:problems) ? WorktopManager.problems.uniq : []
+      ' Worktop and back splash added.' + (problems.empty? ? '' : " #{problems.join(' ')}")
     rescue StandardError => e
       " (The worktop was not added: #{e.message})"
     end
@@ -183,14 +186,26 @@ module KitchenCabinetMaster
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
       built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_seating', island.seating.to_f) } # (the worktop reaches this far beyond the back, and has no back splash)
       if island.pendants # lights hung from the ceiling over the seating
-        IslandPendants.build(model, model.active_entities, place, island.pendants)
-        parts[:pendants] += island.pendants[:positions].length
+        extra(parts, 'The pendant lights') do
+          IslandPendants.build(model, model.active_entities, place, island.pendants)
+          parts[:pendants] += island.pendants[:positions].length
+        end
       end
       return unless island.hood
 
-      IslandHood.build(model, model.active_entities, place, island.hood) # hung from the ceiling over the island's hob
-      parts[:hoods] += 1
+      extra(parts, 'The island hood') do
+        IslandHood.build(model, model.active_entities, place, island.hood) # hung from the ceiling over the island's hob
+        parts[:hoods] += 1
+      end
     end
+
+    # Something extra (lights, a hood) that must not stop the kitchen: if it cannot be drawn the kitchen stays and the reply says why.
+    def self.extra(parts, name)
+      yield
+    rescue StandardError => e
+      parts[:notes] << "#{name} could not be drawn: #{e.message}"
+    end
+    private_class_method :extra
     private_class_method :build_island
 
     def self.unit_raw(panel, entry, item, catalog_id)
