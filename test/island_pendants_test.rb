@@ -91,4 +91,14 @@ class IslandPendantsTest < Minitest::Test
     assert_equal 16.0, P.parts(base.merge(cord_width: 'thick')).first[:cord_width]
     assert_equal 8.0, P.parts(base.merge(cord_width: 'rope')).first[:cord_width]
   end
+  def test_a_plate_sits_on_the_ceiling_where_the_cord_ends
+    base = { positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum' }
+    assert_nil P.parts(base).first[:cap]
+    round = P.parts(base.merge(cap: 'round')).first[:cap]
+    assert_equal({ shape: :round, half: 50.0, z: [2380.0, 2400.0] }, round)
+    assert_equal({ shape: :square, half: 50.0, z: [2380.0, 2400.0] }, P.parts(base.merge(cap: 'square')).first[:cap])
+    assert_equal 80.0, P.parts(base.merge(cap: 'wide')).first[:cap][:half]
+    assert_nil P.parts(base.merge(cap: 'star')).first[:cap]
+    assert_nil P.parts(base.merge(cap: 'round', top: 1700.0)).first[:cap], 'no cord, no plate'
+  end
 end
