@@ -1,3 +1,4 @@
+require 'json'
 require 'minitest/autorun'
 require_relative '../kitchen_cabinet_master/island_pendants'
 
@@ -66,5 +67,11 @@ class IslandPendantsTest < Minitest::Test
     light = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', thickness: 'thick' }).first
     assert_equal [[138.0, 1700.0], [138.0, 1868.0]], light[:inner]
     assert_nil P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', thickness: 'weird' }).first[:inner]
+  end
+  def test_the_glows_are_materials_of_the_extension
+    assert_nil P::GLOWS['none']
+    assert_equal 'Warm White', P::GLOWS['warm']
+    names = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/materials.json', __dir__))).values.flatten.grep(Hash).map { |m| m['name'] }
+    P::GLOWS.values.compact.each { |name| assert_includes names, name }
   end
 end

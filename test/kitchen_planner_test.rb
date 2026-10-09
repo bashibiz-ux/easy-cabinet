@@ -345,6 +345,12 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'medium', island.pendants[:size]
     assert_equal 'normal', island.pendants[:height]
     assert_equal 'surface', island.pendants[:thickness]
+    assert_equal 'none', island.pendants[:glow]
+    glowing = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'warm').island.pendants
+    assert_equal 'warm', glowing[:glow]
+    assert_equal 'thin', glowing[:thickness], 'a glow needs a wall to have an inside'
+    assert_equal 'thick', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'cool', 'island_pendant_thickness' => 'thick').island.pendants[:thickness]
+    assert_equal 'none', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'rainbow').island.pendants[:glow]
     assert_equal 'thin', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_thickness' => 'thin').island.pendants[:thickness]
     assert_equal 'surface', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_thickness' => 'brick').island.pendants[:thickness]
     assert_equal 'high', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_height' => 'high').island.pendants[:height]

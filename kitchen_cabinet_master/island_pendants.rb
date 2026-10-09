@@ -13,6 +13,8 @@ module KitchenCabinetMaster
     CORD = 8.0
     SHAPES = %w[drum cone dome globe].freeze # a straight drum, a cone, a half sphere, a ball
     SEGMENTS = 24
+    GLOWS = { 'none' => nil, 'warm' => 'Warm White', 'cool' => 'Chalk White', 'cream' => 'Cream' }.freeze # what the inside of the shade is painted for a glow
+    GLOW_WALL = 'thin' # a glow needs a wall to have an inside
     THICKNESSES = { 'surface' => 0.0, 'thin' => 3.0, 'medium' => 6.0, 'thick' => 12.0 }.freeze # the wall of the shade, mm (surface: a single skin)
     HEIGHTS = { 'low' => 1600.0, 'normal' => 1700.0, 'high' => 1800.0 }.freeze # where the underside of the shade hangs above the floor
     SIZES = { 'small' => 0.75, 'medium' => 1.0, 'large' => 1.4 }.freeze # how much of the usual shade (across and tall); the underside stays put
@@ -41,7 +43,7 @@ module KitchenCabinetMaster
     end
 
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
-    # material:, shape:, size:, height:, thickness: }); the cord stops at the ceiling.
+    # material:, shape:, size:, height:, thickness:, glow: }); the cord stops at the ceiling.
     def self.parts(pendants)
       x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
       top = pendants[:top].to_f
@@ -72,11 +74,16 @@ module KitchenCabinetMaster
       group = entities.add_group
       group.name = 'Island Pendants'
       material = MaterialManager.ensure_material(model, pendants[:material] || MATERIAL)
+      glow_name = GLOWS[pendants[:glow].to_s]
+      glow = glow_name && MaterialManager.ensure_material(model, glow_name)
       parts(pendants).each_with_index do |light, index|
         one = group.entities.add_group
         one.name = "Island Pendant #{index + 1}"
         x, y = light[:centre]
-        lathe(one.entities, x, y, light[:profile], light[:inner])
+        inside = light[:inner] && glow ? one.entities.add_group : nil # (its own group, so that it can be painted on its own)
+        inside.name = 'Glow' if inside
+        lathe(one.entities, x, y, light[:profile], light[:inner], inside ? inside.entities : one.entities)
+        inside.material = glow if inside && glow
         cylinder(one.entities, x, y, light[:cord], CORD / 2.0) if light[:cord][1] - light[:cord][0] > 1.0
         one.material = material if material
       end
@@ -85,13 +92,13 @@ module KitchenCabinetMaster
     end
 
     # The shade: rings of SEGMENTS points at each point of the outline, joined by faces, with a flat cap on an end that has a radius.
-    def self.lathe(entities, x, y, outline, inner = nil)
+    def self.lathe(entities, x, y, outline, inner = nil, inside_entities = entities)
       rings = turned(x, y, outline)
       skin(entities, rings, inner.nil?) # (with a wall, the opening below stays open)
       return unless inner
 
       inside = turned(x, y, inner)
-      skin(entities, inside, false)
+      skin(inside_entities, inside, false)
       return if outline.first[0].zero? # (a closed shade has no rim)
 
       SEGMENTS.times do |k| # the rim: the flat ring between the outer and the inner wall at the opening
