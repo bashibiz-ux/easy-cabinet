@@ -20,4 +20,20 @@ class DistinctCornersTest < Minitest::Test
       assert_equal corners.map { |c| c.map { |v| v.round(3) } }.uniq.length, corners.length
     end
   end
+  def test_corners_closer_than_sketchup_tells_apart_are_one_corner
+    corners = [[0.0, 0.0, 20.0], [0.0, 0.0, 19.9786], [10.0, 0.0, 19.0], [10.0, 5.0, 19.0]]
+    assert_equal [[0.0, 0.0, 20.0], [10.0, 0.0, 19.0], [10.0, 5.0, 19.0]], P.distinct_corners(corners)
+  end
+
+  def test_every_face_of_a_rounded_l_slab_has_corners_sketchup_can_tell_apart
+    [[10.0, 20.0], [5.0, 20.0], [10.0, 30.0]].each do |r, t|
+      pts = [[0.0, 0.0], [0.0, 1000.0], [600.0, 1000.0], [600.0, 600.0], [1000.0, 600.0], [1000.0, 0.0]]
+      P.rounded_polygon_faces(pts, t, r, [2, 3]).each do |face|
+        c = P.distinct_corners(face)
+        c.combination(2).each do |p, q|
+          assert_operator Math.sqrt(p.zip(q).sum { |u, v| (u - v)**2 }), :>=, 0.0254, "r=#{r} t=#{t}"
+        end
+      end
+    end
+  end
 end

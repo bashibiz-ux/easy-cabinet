@@ -510,9 +510,10 @@ module KitchenCabinetMaster
     end
 
     # A face's corners without any that repeats the one before it (or the first, at the end): SketchUp refuses a face with a point twice, and
-    # a rounding as thick as the slab (or a notch of no size) makes such corners.
+    # a rounding as thick as the slab (or a notch of no size) makes such corners; so does the first step of a rounded edge, 0.02 mm from the top.
+    SAME_POINT_MM = 0.05 # SketchUp takes points closer than 0.001 inch (0.0254 mm) for one point
     def self.distinct_corners(corners)
-      same = ->(a, b) { a.zip(b).all? { |u, v| (u - v).abs < 0.001 } }
+      same = ->(a, b) { Math.sqrt(a.zip(b).sum { |u, v| (u - v)**2 }) < SAME_POINT_MM }
       kept = corners.each_with_object([]) { |corner, list| list << corner unless list.any? && same.call(list.last, corner) }
       kept.pop while kept.length > 1 && same.call(kept.last, kept.first)
       kept
