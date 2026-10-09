@@ -13,6 +13,8 @@ module KitchenCabinetMaster
     CORD = 8.0
     SHAPES = %w[drum cone dome globe].freeze # a straight drum, a cone, a half sphere, a ball
     SEGMENTS = 24
+    CORDS = { 'auto' => nil, 'short' => 500.0, 'medium' => 800.0, 'long' => 1200.0 }.freeze # how far a light hangs below the ceiling (auto: at the Height)
+    MIN_BOTTOM = 1400.0 # the lowest a shade can hang: 500 mm over the worktop
     GLOWS = { 'none' => nil, 'warm' => 'Warm White', 'cool' => 'Chalk White', 'cream' => 'Cream' }.freeze # what the inside of the shade is painted for a glow
     GLOW_WALL = 'thin' # a glow needs a wall to have an inside
     THICKNESSES = { 'surface' => 0.0, 'thin' => 3.0, 'medium' => 6.0, 'thick' => 12.0 }.freeze # the wall of the shade, mm (surface: a single skin)
@@ -29,9 +31,9 @@ module KitchenCabinetMaster
     end
 
     # The outline of a shade, from its underside to its top, as [radius, height above the floor] points that are turned round its axis.
-    def self.profile(shape, size = 'medium', height = 'normal')
+    def self.profile(shape, size = 'medium', height = 'normal', bottom = nil)
       scale = SIZES.fetch(size.to_s, 1.0)
-      b = HEIGHTS.fetch(height.to_s, SHADE_BOTTOM)
+      b = bottom || HEIGHTS.fetch(height.to_s, SHADE_BOTTOM)
       h = SHADE_HEIGHT
       r = SHADE_RADIUS
       case shape
@@ -43,11 +45,16 @@ module KitchenCabinetMaster
     end
 
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
-    # material:, shape:, size:, height:, thickness:, glow: }); the cord stops at the ceiling.
+    # material:, shape:, size:, height:, thickness:, glow:, cord: }); the cord stops at the ceiling.
     def self.parts(pendants)
       x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
       top = pendants[:top].to_f
       outline = profile(pendants[:shape].to_s, pendants[:size], pendants[:height])
+      cord = CORDS[pendants[:cord].to_s]
+      if cord # a cord of this length from the ceiling decides where the shade hangs, down to the lowest allowed
+        tall = outline.last[1] - outline.first[1]
+        outline = profile(pendants[:shape].to_s, pendants[:size], pendants[:height], [top - cord - tall, MIN_BOTTOM].max)
+      end
       shade_top = outline.last[1]
       pendants[:positions].map do |y|
         { centre: [x, y], shade: [outline.first[1], shade_top], cord: [shade_top, [top, shade_top].max], profile: outline, inner: inner_profile(outline, THICKNESSES.fetch(pendants[:thickness].to_s, 0.0)) }

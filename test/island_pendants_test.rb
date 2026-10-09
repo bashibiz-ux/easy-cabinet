@@ -74,4 +74,14 @@ class IslandPendantsTest < Minitest::Test
     names = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/materials.json', __dir__))).values.flatten.grep(Hash).map { |m| m['name'] }
     P::GLOWS.values.compact.each { |name| assert_includes names, name }
   end
+  def test_a_cord_length_decides_where_the_shade_hangs_but_not_below_the_lowest_allowed
+    base = { positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum' }
+    short = P.parts(base.merge(cord: 'short')).first
+    assert_equal [1720.0, 1900.0], short[:shade]
+    assert_equal [1900.0, 2400.0], short[:cord]
+    long = P.parts(base.merge(cord: 'long')).first
+    assert_equal 1400.0, long[:shade][0], 'a long cord stops where the shade is 500 mm over the worktop'
+    assert_equal P.parts(base).first[:shade], P.parts(base.merge(cord: 'auto')).first[:shade]
+    assert_equal P.parts(base).first[:shade], P.parts(base.merge(cord: 'weird')).first[:shade]
+  end
 end

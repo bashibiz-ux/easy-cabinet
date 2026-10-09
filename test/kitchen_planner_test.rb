@@ -345,6 +345,11 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'medium', island.pendants[:size]
     assert_equal 'normal', island.pendants[:height]
     assert_equal 'surface', island.pendants[:thickness]
+    assert_equal 'auto', island.pendants[:cord]
+    longer = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'long')
+    assert_equal 'long', longer.island.pendants[:cord]
+    assert(longer.notes.any? { |note| note.include?('cords are shorter') })
+    refute(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'short').notes.any? { |note| note.include?('cords') })
     assert_equal 'none', island.pendants[:glow]
     glowing = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'warm').island.pendants
     assert_equal 'warm', glowing[:glow]
