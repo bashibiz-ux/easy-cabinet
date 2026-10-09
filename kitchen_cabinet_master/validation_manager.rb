@@ -104,6 +104,7 @@ module KitchenCabinetMaster
       turn = to_float(raw['sink_rotation']) # (an older cabinet's half turn is a mirror now)
       out['sink_mirror'] = truthy?(raw['sink_mirror']) || (turn && turn.to_i % 360 == 180) ? true : false
       out['hob'] = truthy?(raw['hob'])
+      out['dishwasher'] = truthy?(raw['dishwasher'])
       out['hood'] = truthy?(raw['hood'])
       rise = to_float(raw['worktop_rise'])
       out['worktop_rise'] = rise if rise && rise >= 0 && rise <= 200

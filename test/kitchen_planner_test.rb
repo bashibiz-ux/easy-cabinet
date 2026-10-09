@@ -189,7 +189,7 @@ class KitchenPlannerTest < Minitest::Test
     window = { 'wall' => 'a', 'from' => 1800, 'width' => 1200 }
     result = plan('wall_a' => 4200, 'windows' => [window])
     sink = result.base.find { |item| item.kind == :sink }
-    assert_in_delta 2400.0, sink.start + (sink.width / 2.0), 1.0, 'centred on the window'
+    assert_in_delta 2400.0, sink.start + (sink.width / 2.0), 160.0, 'under the window (the units beside it are whole units, so within a little)'
     result.wall.each do |item|
       assert(item.start + item.width <= 1800.0 + 0.5 || item.start >= 3000.0 - 0.5, "#{item.kind} at #{item.start} is over the window")
     end
@@ -256,5 +256,25 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes KitchenPlanner.end_panel_targets(no_fridge), { part: :wall, index: 0, side: 'left' }
     oven = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true)
     refute(KitchenPlanner.end_panel_targets(oven).any? { |t| t[:part] == :wall && t[:side] == 'right' }, 'the oven housing is at that end')
+  end
+
+  def test_a_dishwasher_space_goes_beside_the_sink_and_counts_as_worktop
+    result = plan('wall_a' => 3600)
+    kinds = result.base.map(&:kind)
+    assert_equal kinds.index(:sink) + 1, kinds.index(:dish), 'right beside the sink'
+    dish = result.base.find { |item| item.kind == :dish }
+    assert_equal 'base_dishwasher', dish.type
+    assert_equal 600.0, dish.width
+    assert_in_delta 3600.0, run_sum(result.base, :a), 0.5
+    assert_includes IDS['base'], dish.type
+    assert_includes KitchenPlanner.describe(result), 'dishwasher space'
+    assert_equal 0, plan('dishwasher' => false).base.count { |item| item.kind == :dish }
+    assert_equal 0, plan('sink' => false).base.count { |item| item.kind == :dish }, 'no sink, no dishwasher'
+    short = plan('wall_a' => 2200)
+    assert_equal 1, short.base.count { |item| item.kind == :dish }, 'still there when the hob has to go'
+    tight = plan('wall_a' => 1800)
+    assert_equal 0, tight.base.count { |item| item.kind == :dish }
+    assert(tight.notes.any? { |note| note.include?('dishwasher') })
+    assert_in_delta 1800.0, run_sum(tight.base, :a), 0.5
   end
 end

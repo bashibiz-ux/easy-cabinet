@@ -69,6 +69,7 @@ module KitchenCabinetMaster
       dims = dimensions(params)
       return freestanding_layout(params, dims) if params['freestanding'] == true
       return housing_layout(params, dims) if params['free_housing'] == true
+      return dishwasher_layout(params, dims) if params['dishwasher'] == true
       category = params['cabinet_category'].to_s
       style = corner_style(params)
 
@@ -141,6 +142,27 @@ module KitchenCabinetMaster
                                  drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
+
+    # A space for a built-in dishwasher: no carcass (the neighbours' sides are its sides), two rails across the top that carry the worktop, and
+    # the front of the dishwasher in the door material and design, as tall as the doors of the units beside it. It has no door that opens.
+    def self.dishwasher_layout(params, dims)
+      base_z = round2(params['toe_kick_height'].to_f)
+      reveal = params['door_reveal'].to_f
+      rail = [Defaults::RAIL_DEPTH, dims.depth / 2.0].min
+      z = dims.height - dims.thick
+      panels = [
+        panel('top_rear_rail', 'Top Rear Rail', [rail, dims.width, dims.thick], [0, 0, z]),
+        panel('top_front_rail', 'Top Front Rail', [rail, dims.width, dims.thick], [dims.depth - rail, 0, z])
+      ]
+      front = panel('dishwasher_front', 'Dishwasher Front Panel', [dims.thick, dims.width - (2 * reveal), dims.height - (2 * reveal)],
+                    [params['depth'].to_f + door_distance(params), reveal, reveal]) # (where the doors beside it stand: an open unit's own depth already reaches their fronts)
+      front.front = true # the colour of the doors
+      front.shape = "front_#{FrontDesign.clean(params['front_design'])}"
+      front.round = params['front_radius'].to_f
+      panels << front
+      Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [], toe_kick: [], drawer_boxes: [], appliances: [])
+    end
+    private_class_method :dishwasher_layout
 
     # Two doors one above the other have a shelf between them, flush with the front of the carcass, in the gap between the doors (its middle on the
     # middle of the gap), as the middle of a two-layer lift-up unit is.

@@ -278,4 +278,14 @@ class KitchenManagerTest < Minitest::Test
       { 'ok' => true, 'message' => '' }
     end
   end
+
+  def test_the_dishwasher_space_is_built_next_to_the_sink
+    design('wall_a' => 3600)
+    types = made.select { |built| built.params['cabinet_category'] == 'base' }.map { |built| built.params['cabinet_type'] }
+    assert_equal types.index('base_sink') + 1, types.index('base_dishwasher')
+    dish = made.find { |built| built.params['cabinet_type'] == 'base_dishwasher' }
+    assert_equal 600.0, dish.params['width']
+    design({ 'wall_a' => 3600, 'dishwasher' => false })
+    refute(made.last(8).any? { |built| built.params['cabinet_type'] == 'base_dishwasher' })
+  end
 end

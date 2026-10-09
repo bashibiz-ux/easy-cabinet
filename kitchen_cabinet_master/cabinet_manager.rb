@@ -937,6 +937,7 @@ module KitchenCabinetMaster
                       'split_height' => adjustable(raw, cabinet, 'split_height', 'split_label', 'split'),
                       'sink' => !!(cabinet && cabinet['sink']),
                       'hob' => !!(cabinet && cabinet['hob']),
+                      'dishwasher' => !!(cabinet && cabinet['dishwasher']),
                       'hood' => !!(cabinet && cabinet['hood']),
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'free_housing' => !!(cabinet && cabinet['free_housing']),

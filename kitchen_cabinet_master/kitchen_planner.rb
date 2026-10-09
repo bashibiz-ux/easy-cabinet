@@ -28,12 +28,13 @@ module KitchenCabinetMaster
     OVEN = ['tall_oven', 600.0].freeze
     SINK_WIDTH = 900.0
     HOB_WIDTH = 600.0
+    DISH_WIDTH = 600.0 # the space for a dishwasher, beside the sink
     # How the kitchen looks: doors everywhere; glass doors on the wall units; or wide lift-up wall units over drawers.
     STYLES = %w[classic glass lift].freeze
     RUNS = { 'straight' => [:a], 'l' => %i[a b], 'u' => %i[a b c] }.freeze
 
     DEFAULTS = {
-      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'hob' => true,
+      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'dishwasher' => true, 'hob' => true,
       'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'island' => false, 'island_length' => 1800.0, 'island_aisle' => 1100.0
     }.freeze
 
@@ -48,7 +49,7 @@ module KitchenCabinetMaster
       fridge = FRIDGE.key?(raw['fridge'].to_s) ? raw['fridge'].to_s : (raw.key?('fridge') ? 'none' : DEFAULTS['fridge'])
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
-        'sink' => flag.call('sink'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
+        'sink' => flag.call('sink'), 'dishwasher' => flag.call('dishwasher'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
         'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'island' => flag.call('island'), 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
@@ -98,7 +99,7 @@ module KitchenCabinetMaster
       base = []
       base << Item.new(category: 'tall', type: FRIDGE[o['fridge']][0], width: fridge_w, kind: :fridge, run: :a, start: 0.0) if fridge_w.positive?
       runs.each_with_index do |run, index|
-        base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center, style: o['style']))
+        base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center, style: o['style'], with_dish: o['dishwasher']))
         base << Item.new(category: 'base', type: 'base_corner_l', width: CORNER_BASE, kind: :corner, run: run, start: lengths[run] - CORNER_BASE) if index < runs.length - 1
       end
       if oven_w.positive?
@@ -140,15 +141,18 @@ module KitchenCabinetMaster
     # ---- one run of base units --------------------------------------------------
 
     # run_items, but when the run is too short for its sink and hob the hob is left out (and then the sink made a narrow one), with a note.
-    def self.safe_run(run, free, start, with_sink, with_hob, notes, sink_center = nil, style: 'classic')
-      run_items(run, free, start, with_sink, with_hob, notes, sink_center, style: style)
+    def self.safe_run(run, free, start, with_sink, with_hob, notes, sink_center = nil, style: 'classic', with_dish: false)
+      run_items(run, free, start, with_sink, with_hob, notes, sink_center, style: style, with_dish: with_dish)
     rescue Short
       raise unless with_hob || with_sink
 
       notes.delete(ADJACENT)
       if with_hob
         notes << "There is no room for the hob in run #{run.to_s.upcase}: put it in by hand."
-        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style)
+        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: with_dish)
+      elsif with_dish
+        notes << "There is no room for the dishwasher space in run #{run.to_s.upcase}: put it in by hand."
+        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: false)
       else
         notes << "The sink unit of run #{run.to_s.upcase} had to be a narrow one."
         run_items(run, free, start, true, false, notes, sink_center, 600.0, style: style)
@@ -158,27 +162,29 @@ module KitchenCabinetMaster
 
     # The units of a run `free` mm long that starts `start` mm along its wall: the sink and the hob where they go, the rest filled with
     # equal units. A unit next to the hob is a unit of drawers, the others are doors with a unit of drawers now and then.
-    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_center = nil, sink_width = SINK_WIDTH, style: 'classic')
+    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_center = nil, sink_width = SINK_WIDTH, style: 'classic', with_dish: false)
       sink = with_sink ? sink_width : nil
       hob = with_hob ? HOB_WIDTH : nil
       tokens = []
       tokens << [:seg, 0]
       tokens << [:sink, sink] if sink
-      tokens << [:seg, sink && hob ? 1 : 0] if sink && hob
+      tokens << [:dish, DISH_WIDTH] if sink && with_dish
+      tokens << [:seg, sink && hob && !with_dish ? 1 : 0] if sink && hob # (the dishwasher space is worktop too: it is the landing space)
       tokens << [:hob, hob] if hob
       tokens << [:seg, 0] if hob
       tokens << [:seg, 0] if !hob && sink
       fixed = tokens.select { |kind, _| kind != :seg }
       segs = tokens.each_index.select { |i| tokens[i][0] == :seg }
 
-      notes << ADJACENT if sink && hob && free - fixed.sum { |_, w| w } < MIN_FILL * 0.8
+      notes << ADJACENT if sink && hob && !with_dish && free - fixed.sum { |_, w| w } < MIN_FILL * 0.8
       remaining = free - fixed.sum { |_, w| w }
       raise Short, "Run #{run.to_s.upcase} is too short for its sink and hob units." if remaining < -1.0
 
       counts = counts_for(remaining, segs.length, segs.map { |i| tokens[i][1] })
       if counts.nil? # too little room for filling units: the sink and the hob take what is left
         extra = [remaining, 0.0].max
-        fixed = fixed.map { |kind, w| [kind, w + (extra / fixed.length)] } unless fixed.empty? || extra > 300.0 * fixed.length
+        stretch = fixed.count { |kind, _| %i[sink hob].include?(kind) }
+        fixed = fixed.map { |kind, w| %i[sink hob].include?(kind) ? [kind, w + (extra / stretch)] : [kind, w] } unless stretch.zero? || extra > 300.0 * stretch
         counts = Array.new(segs.length, 0)
         remaining = free - fixed.sum { |_, w| w }
         remaining = 0.0 if remaining.abs < 1.0
@@ -211,7 +217,7 @@ module KitchenCabinetMaster
         else
           width = fixed[fixed_cursor][1]
           fixed_cursor += 1
-          type = kind == :sink ? (width < 800.0 ? 'base_sink_1door' : 'base_sink') : 'base_hob'
+          type = { sink: width < 800.0 ? 'base_sink_1door' : 'base_sink', dish: 'base_dishwasher', hob: 'base_hob' }[kind]
           items << Item.new(category: 'base', type: type, width: width, kind: kind, run: run, start: position)
           position += width
         end
@@ -450,6 +456,7 @@ module KitchenCabinetMaster
       parts << "#{plan.wall.length} wall units" unless plan.wall.empty?
       parts << 'a hob' if count.call(plan.base, :hob).positive?
       parts << 'a sink' if count.call(plan.base, :sink).positive?
+      parts << 'a dishwasher space' if count.call(plan.base, :dish).positive?
       parts << 'a fridge housing' if count.call(plan.base, :fridge).positive?
       parts << 'an oven housing' if count.call(plan.base, :oven).positive?
       parts << { 'glass' => 'glass doors on the wall units', 'lift' => 'lift-up wall units over drawers' }[plan.style] if %w[glass lift].include?(plan.style)

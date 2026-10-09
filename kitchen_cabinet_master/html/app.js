@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.71.0';
+  const APP_VERSION = '0.72.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -592,7 +592,7 @@
   function collectKitchen() {
     return {
       style: $('kitchenStyle').value, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
-      sink: $('kitchenSink').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
+      sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
       wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'),
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
@@ -1131,7 +1131,7 @@
    * ---------------------------------------------------------------------- */
 
   // The cabinets of the Cabinet list are sorted into groups by what they are, in this order (and as listed within a group).
-  const CABINET_GROUPS = ['Door units', 'Glass door units', 'Lift-up units', 'Glass lift-up units', 'Drawer units', 'Door and drawer units', 'Pull-outs', 'Sink units',
+  const CABINET_GROUPS = ['Door units', 'Glass door units', 'Lift-up units', 'Glass lift-up units', 'Drawer units', 'Door and drawer units', 'Pull-outs', 'Sink units', 'Dishwasher space',
     'Hob, oven & hood', 'Fridge units', 'Open units', 'Corner units', 'My models'];
 
   function cabinetGroup(entry) {
@@ -1143,6 +1143,7 @@
     if (entry.lift_door || entry.bifold) return 'Lift-up units';
     if (entry.fridge || entry.free_housing || entry.freestanding) return 'Fridge units';
     if (entry.sink) return 'Sink units';
+    if (entry.dishwasher) return 'Dishwasher space';
     if (entry.hob || entry.hood || entry.appliances || entry.lower) return 'Hob, oven & hood';
     if (entry.pullout) return 'Pull-outs';
     if (drawers > 0 && doors > 0) return 'Door and drawer units';

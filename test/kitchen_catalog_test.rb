@@ -1416,4 +1416,28 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta 107.0 * 0.569, 107.0 * DoorAnimation.bifold_openness(1.35, true), 2.0
     assert_in_delta 107.0 * 0.4, 107.0 * DoorAnimation.bifold_openness(1.08, false), 2.0
   end
+
+  def test_a_dishwasher_space_is_a_front_panel_and_two_rails_with_no_carcass_and_no_door_that_opens
+    result, layout = unit('base', 'base_dishwasher', 600, 'dishwasher' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal %w[dishwasher_front top_front_rail top_rear_rail], layout.panels.map(&:role).sort
+    assert_empty layout.doors
+    assert_empty layout.drawers
+    front = layout.panels.find { |panel| panel.role == 'dishwasher_front' }
+    assert front.front, 'in the colour of the doors'
+    assert_equal 'front_flat', front.shape, 'in the design of the doors'
+    reveal = result.params['door_reveal']
+    assert_in_delta 600.0 - (2 * reveal), front.extent[1], 0.01
+    assert_in_delta 780.0 - (2 * reveal), front.extent[2], 0.01
+    _, neighbour = unit('base', 'base_1door', 600)
+    assert_in_delta neighbour.doors.first.offset[0], front.offset[0], 0.01, 'where the doors beside it stand'
+    rails = layout.panels.select { |panel| panel.role.end_with?('rail') }
+    assert(rails.all? { |panel| panel.extent[1] == 600.0 && panel.offset[2] == 780.0 - result.params['material_thickness'] }, 'across the whole width, at the top')
+    assert_in_delta result.params['toe_kick_height'], layout.base_z, 0.01
+    assert_in_delta layout.base_z + 780.0, layout.top_z, 0.01
+    _, shaker = unit('base', 'base_dishwasher', 600, 'dishwasher' => true, 'front_design' => 'shaker')
+    assert_equal 'front_shaker', shaker.panels.find { |panel| panel.role == 'dishwasher_front' }.shape
+    assert CatalogManager.cabinet(CATALOG, 'base', 'base_dishwasher')['dishwasher']
+    assert CatalogManager.cabinet('kitchen_cabinets_no_handle', 'base', 'base_dishwasher')['dishwasher']
+  end
 end

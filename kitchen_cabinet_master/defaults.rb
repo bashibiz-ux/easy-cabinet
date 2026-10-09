@@ -174,6 +174,7 @@ module KitchenCabinetMaster
       'sink_tray' => false,         # with a drainer
       'sink_mirror' => false,       # the drainer on the other side (the sink is mirrored, not turned)
       'hob' => false,               # a built-in hob on the cabinet (and its opening in the worktop)
+      'dishwasher' => false,        # a space for a built-in dishwasher: no carcass, a front panel (the dishwasher's door) and the rails that carry the worktop
       'hood' => false,              # a hood under a wall cabinet
       'worktop_rise' => 20.0,       # how far the worktop top stands over the carcass (what a sink or hob sits on)
       'custom_overrides' => {},     # changes made in the Customize window: part key => { extent, move } (see Customizer)

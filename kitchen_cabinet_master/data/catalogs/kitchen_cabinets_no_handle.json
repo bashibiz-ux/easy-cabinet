@@ -239,6 +239,22 @@
         }
       },
       {
+        "id": "base_dishwasher",
+        "name": "Base - dishwasher space, door panel",
+        "code": "BDW",
+        "doors": 0,
+        "shelves": 0,
+        "widths": [
+          600
+        ],
+        "dishwasher": true,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_hob",
         "name": "Base - hob unit, 2 drawers",
         "code": "BH",
