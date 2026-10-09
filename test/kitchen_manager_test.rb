@@ -150,12 +150,14 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults catalog_manager kitchen_planner island_hood kitchen_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults catalog_manager kitchen_planner island_hood island_pendants kitchen_manager].each { |f| require File.join(plugin, f) }
 
 class KitchenManagerTest < Minitest::Test
   include KitchenCabinetMaster
 
   HoodSpy = []
+  PendantSpy = []
+  IslandPendants.singleton_class.send(:define_method, :build) { |_model, _entities, frame, pendants| PendantSpy << [frame, pendants] }
   IslandHood.singleton_class.send(:define_method, :build) { |_model, _entities, frame, hood| HoodSpy << [frame, hood] }
 
   def setup
@@ -165,6 +167,7 @@ class KitchenManagerTest < Minitest::Test
     PartManager.reset
     WorktopManager.instance_variable_set(:@applied, nil)
     HoodSpy.clear
+    PendantSpy.clear
   end
 
   def design(kitchen = {}, extra = {})
@@ -330,5 +333,13 @@ class KitchenManagerTest < Minitest::Test
     assert_operator island.length, :>=, 2
     assert(island.all? { |built| built.attributes[['KitchenCabinetMaster', 'island_seating']] == 300.0 })
     refute_equal made.length, island.length, 'the wall units are not marked'
+  end
+
+  def test_pendant_lights_are_hung_over_the_seating_when_asked
+    design({ 'wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true })
+    assert_equal 1, PendantSpy.length
+    assert_operator PendantSpy.first.last[:positions].length, :>=, 2
+    design({ 'wall_a' => 4200, 'island' => true, 'island_seating' => 300 })
+    assert_equal 1, PendantSpy.length, 'not asked, not built'
   end
 end

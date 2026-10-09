@@ -45,7 +45,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       model.selection.clear
       all = []
-      parts = { toe_kicks: 0, end_panels: 0, hoods: 0, notes: [] }
+      parts = { toe_kicks: 0, end_panels: 0, hoods: 0, pendants: 0, notes: [] }
       begin
         run_operation(model, plans.length > 1 ? 'Design Kitchen Options' : 'Design Kitchen') do
           plans.each_with_index do |plan, index|
@@ -182,6 +182,10 @@ module KitchenCabinetMaster
               Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
       built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_seating', island.seating.to_f) } # (the worktop reaches this far beyond the back, and has no back splash)
+      if island.pendants # lights hung from the ceiling over the seating
+        IslandPendants.build(model, model.active_entities, place, island.pendants)
+        parts[:pendants] += island.pendants[:positions].length
+      end
       return unless island.hood
 
       IslandHood.build(model, model.active_entities, place, island.hood) # hung from the ceiling over the island's hob
