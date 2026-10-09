@@ -10,6 +10,7 @@ module KitchenCabinetMaster
     CHIMNEY = 300.0
     ISLAND_DEPTH = 580.0
     MATERIAL = 'Stainless Steel'
+    COLOURS = ['Stainless Steel', 'Matt Black Metal', 'Brass', 'Brushed Brass', 'Copper', 'Chrome', 'Gunmetal', 'PVC White', 'Navy Blue', 'Sage Green'].freeze
 
     # => [[name, [x, y, z], [dx, dy, dz]]]
     def self.boxes(hood)

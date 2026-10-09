@@ -7,6 +7,7 @@ require 'json'
 require 'minitest/autorun'
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+require File.join(plugin, 'island_hood')
 require File.join(plugin, 'island_pendants')
 require File.join(plugin, 'kitchen_planner')
 
@@ -334,50 +335,13 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
 
-  def test_pendant_lights_hang_over_the_seating_only
+  def test_pendant_lights_hang_over_the_seating
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true).island
     assert_equal 300.0, island.pendants[:back]
     assert_equal 2400.0, island.pendants[:top]
     assert_equal KitchenCabinetMaster::IslandPendants.positions(island.length), island.pendants[:positions]
+    assert_equal %i[back positions top], island.pendants.keys.sort, 'no options: the lights are only lights'
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true)), 'pendant light'
-    assert_equal 'Stainless Steel', island.pendants[:material]
-    assert_equal 'drum', island.pendants[:shape]
-    assert_equal 'medium', island.pendants[:size]
-    assert_equal 'normal', island.pendants[:height]
-    assert_equal 'surface', island.pendants[:thickness]
-    assert_equal 'auto', island.pendants[:cord]
-    assert_equal 'same', island.pendants[:cord_colour]
-    assert_equal 'normal', island.pendants[:cord_width]
-    assert_equal 'none', island.pendants[:cap]
-    assert_equal 'square', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cap' => 'square').island.pendants[:cap]
-    assert_equal 'none', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cap' => 'bell').island.pendants[:cap]
-    assert_equal 'thick', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_width' => 'thick').island.pendants[:cord_width]
-    assert_equal 'normal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_width' => 'rope').island.pendants[:cord_width]
-    assert_equal 'Matt Black Metal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Matt Black Metal').island.pendants[:cord_colour]
-    assert_equal 'same', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Plaid').island.pendants[:cord_colour]
-    longer = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'long')
-    assert_equal 'long', longer.island.pendants[:cord]
-    assert(longer.notes.any? { |note| note.include?('cords are shorter') })
-    refute(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'short').notes.any? { |note| note.include?('cords') })
-    assert_equal 'none', island.pendants[:glow]
-    glowing = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'warm').island.pendants
-    assert_equal 'warm', glowing[:glow]
-    assert_equal 'thin', glowing[:thickness], 'a glow needs a wall to have an inside'
-    assert_equal 'thick', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'cool', 'island_pendant_thickness' => 'thick').island.pendants[:thickness]
-    assert_equal 'none', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_glow' => 'rainbow').island.pendants[:glow]
-    assert_equal 'thin', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_thickness' => 'thin').island.pendants[:thickness]
-    assert_equal 'surface', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_thickness' => 'brick').island.pendants[:thickness]
-    assert_equal 'high', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_height' => 'high').island.pendants[:height]
-    assert_equal 'normal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_height' => 'ceiling').island.pendants[:height]
-    close = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_spacing' => 600).island.pendants[:positions]
-    assert_operator close.length, :>, island.pendants[:positions].length
-    assert_equal island.pendants[:positions], plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_spacing' => 750).island.pendants[:positions], 'an odd spacing is the usual one'
-    assert_equal 'large', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_size' => 'large').island.pendants[:size]
-    assert_equal 'medium', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_size' => 'huge').island.pendants[:size]
-    assert_equal 'dome', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_shape' => 'dome').island.pendants[:shape]
-    assert_equal 'drum', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_shape' => 'star').island.pendants[:shape]
-    assert_equal 'Brass', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Brass').island.pendants[:material]
-    assert_equal 'Stainless Steel', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Hot Pink').island.pendants[:material]
     assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_pendants' => true).island.pendants[:back], 'no seating: the lights hang over the middle of the island'
     assert_nil plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island.pendants
   end
