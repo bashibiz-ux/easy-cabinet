@@ -17,4 +17,17 @@ class IslandPendantsTest < Minitest::Test
     assert_equal [1700.0, 1880.0], light[:shade]
     assert_equal [1880.0, 2400.0], light[:cord]
   end
+  def test_shapes_turn_a_profile_round_the_cord_and_the_cord_starts_at_the_top_of_the_shade
+    P::SHAPES.each do |shape|
+      light = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: shape }).first
+      outline = P.profile(shape)
+      assert_equal 1700.0, outline.first[1], shape
+      assert_equal outline.last[1], light[:cord][0], shape
+      assert_equal outline.last[1], light[:shade][1], shape
+    end
+    assert_equal [[150.0, 1700.0], [150.0, 1880.0]], P.profile('drum')
+    assert_equal [150.0, 50.0], P.profile('cone').map(&:first)
+    assert_equal [0.0, 0.0], P.profile('globe').values_at(0, -1).map(&:first)
+    assert_equal P.profile('drum'), P.profile('nonsense'), 'an unknown shape is a drum'
+  end
 end
