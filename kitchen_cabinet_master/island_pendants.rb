@@ -11,6 +11,7 @@ module KitchenCabinetMaster
     SHADE_BOTTOM = 1700.0 # the underside of the shade above the floor (the worktop is at 900)
     CORD = 8.0
     MATERIAL = 'Stainless Steel'
+    COLOURS = ['Stainless Steel', 'Matt Black Metal', 'Brass', 'Brushed Brass', 'Copper', 'Chrome', 'Gunmetal', 'PVC White', 'Navy Blue', 'Sage Green'].freeze
 
     # Where the lights are along an island of `length`: the middles of equal parts.
     def self.positions(length)
@@ -33,7 +34,7 @@ module KitchenCabinetMaster
     def self.build(model, entities, frame, pendants)
       group = entities.add_group
       group.name = 'Island Pendants'
-      material = model.materials[MATERIAL]
+      material = MaterialManager.ensure_material(model, pendants[:material] || MATERIAL)
       parts(pendants).each_with_index do |light, index|
         one = group.entities.add_group
         one.name = "Island Pendant #{index + 1}"

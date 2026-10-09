@@ -27,7 +27,7 @@ module KitchenCabinetMaster
     def self.build(model, entities, frame, hood)
       group = entities.add_group
       group.name = 'Island Hood'
-      material = model.materials[MATERIAL]
+      material = MaterialManager.ensure_material(model, MATERIAL)
       boxes(hood).each do |name, (x, y, z), (dx, dy, dz)|
         part = group.entities.add_group
         part.name = name

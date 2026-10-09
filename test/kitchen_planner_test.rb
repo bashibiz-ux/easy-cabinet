@@ -340,6 +340,9 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 2400.0, island.pendants[:top]
     assert_equal KitchenCabinetMaster::IslandPendants.positions(island.length), island.pendants[:positions]
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true)), 'pendant light'
+    assert_equal 'Stainless Steel', island.pendants[:material]
+    assert_equal 'Brass', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Brass').island.pendants[:material]
+    assert_equal 'Stainless Steel', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_colour' => 'Hot Pink').island.pendants[:material]
     assert_nil plan('wall_a' => 4200, 'island' => true, 'island_pendants' => true).island.pendants, 'no seating, no lights'
     assert_nil plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island.pendants
   end
