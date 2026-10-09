@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.69.0';
+  const APP_VERSION = '0.70.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -523,7 +523,8 @@
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
     remove_handle: () => ({ handle_id: $('handle').value }),
-    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null })
+    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null }),
+    design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen()
   };
 
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
@@ -589,7 +590,7 @@
   // The answers of the Auto Kitchen section.
   function collectKitchen() {
     return {
-      layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
+      style: $('kitchenStyle').value, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
       sink: $('kitchenSink').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
       wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'),
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
@@ -791,8 +792,7 @@
     if (insert) insert.disabled = state.busy || !currentCatalog();
     const remove = removeFromCatalog;
     if (remove) remove.disabled = state.busy || !(currentCatalog() || {}).custom || !cabinet.value; // only your own catalogs
-    const design = $('designKitchen');
-    if (design) design.disabled = state.busy || !currentCatalog(); // the kitchen is built from a model's units
+    ['designKitchen', 'designKitchenOptions'].forEach((id) => { const button = $(id); if (button) button.disabled = state.busy || !currentCatalog(); }); // the kitchen is built from a model's units
     const removeOwn = $('removeHandle');
     if (removeOwn) removeOwn.disabled = state.busy || !(currentBundle() || {}).custom; // only handles you added
   }

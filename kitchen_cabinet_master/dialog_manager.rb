@@ -15,7 +15,7 @@ module KitchenCabinetMaster
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
-    KITCHEN_ACTIONS = %w[design_kitchen].freeze
+    KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options].freeze
 
     class << self
       def show

@@ -218,4 +218,27 @@ class KitchenPlannerTest < Minitest::Test
     assert_in_delta corner.start - last_end, corner.gap_before, 0.5
     result.wall.select { |item| item.run == :b }.each_cons(2) { |a, b| assert_in_delta a.start + a.width + b.gap_before, b.start, 0.5 }
   end
+
+  def test_the_three_styles_change_the_wall_units_and_the_fronts_of_the_base_units
+    classic = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'style' => 'classic')
+    glass = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'style' => 'glass')
+    lift = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'style' => 'lift')
+    assert_equal classic.base.map(&:type), glass.base.map(&:type), 'glass changes the wall units only'
+    assert_equal classic.wall.map(&:width), glass.wall.map(&:width)
+    glass.wall.select { |item| item.kind == :fill }.each { |item| assert_equal 'glass_wide_grid', item.extra['glass_design'] }
+    assert(glass.wall.select { |item| %i[hood corner].include?(item.kind) }.all? { |item| item.extra.nil? })
+    assert(classic.wall.all? { |item| item.extra.nil? })
+    fills = lift.wall.select { |item| item.kind == :fill }
+    assert(fills.all? { |item| item.type == 'wall_liftup_bifold' && item.width >= 600.0 && item.width <= 1200.0 })
+    assert_operator lift.wall.length, :<, classic.wall.length, 'fewer, wider wall units'
+    assert(lift.base.select { |item| item.kind == :fill }.all? { |item| item.type == 'base_3drawer' }, 'drawers below')
+    [classic, glass, lift].each do |result|
+      (result.base + result.wall).each { |item| assert_includes IDS[item.category], item.type }
+      assert_in_delta 4200.0, run_sum(result.base, :a), 0.5
+    end
+    assert_equal 'classic', KitchenPlanner.normalise('style' => 'weird')['style']
+    assert_equal 'lift', KitchenPlanner.normalise('style' => 'lift')['style']
+    assert_includes KitchenPlanner.describe(lift), 'lift-up'
+    assert_includes KitchenPlanner.describe(glass), 'glass doors'
+  end
 end

@@ -149,6 +149,10 @@
           <span class="label">Fridge</span>
           <div class="input"><select id="kitchenFridge"><option value="builtin">Built-in fridge (tall unit)</option><option value="free">Freestanding fridge housing</option><option value="none">No fridge</option></select></div>
         </label>
+        <label class="field">
+          <span class="label">Style</span>
+          <div class="input"><select id="kitchenStyle"><option value="classic">Classic: doors</option><option value="glass">Glass doors on the wall units</option><option value="lift">Lift-up wall units over drawers</option></select></div>
+        </label>
         <label class="check"><input type="checkbox" id="kitchenSink" checked><span>Sink unit</span></label>
         <label class="check"><input type="checkbox" id="kitchenHob" checked><span>Hob unit</span></label>
         <label class="check"><input type="checkbox" id="kitchenHood" checked><span>Hood cabinet over the hob</span></label>
@@ -177,8 +181,9 @@
           <label class="field"><span class="label">Width</span><div class="input"><input id="kitchenWin2Width" type="text" inputmode="decimal" autocomplete="off" value="900"><em>mm</em></div></label>
         </div>
         <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
-        <div class="btn-row one">
+        <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
+          <button class="btn" type="button" id="designKitchenOptions" data-action="design_kitchen_options" title="Build three kitchens side by side, one in each style (classic doors, glass doors, lift-up units), to compare: one Undo step. Delete the ones you do not want.">Make 3 Options</button>
         </div>
       </div>
     </section>    <!-- Handle -->

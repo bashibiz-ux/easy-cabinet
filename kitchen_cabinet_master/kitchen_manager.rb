@@ -16,44 +16,68 @@ module KitchenCabinetMaster
     def self.perform(action, raw)
       case action
       when 'design_kitchen' then design(raw)
+      when 'design_kitchen_options' then design((raw.is_a?(Hash) ? raw : {}).merge('options' => true))
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
 
-    # raw: { 'kitchen' => the answers (see KitchenPlanner), 'cabinet' => the panel's values, 'worktop' => the worktop section's values (optional) }.
+    STYLE_NAMES = { 'classic' => 'doors', 'glass' => 'glass doors on the wall units', 'lift' => 'lift-up wall units over drawers' }.freeze
+    OPTION_GAP = 2500.0 # between the kitchens of "Make 3 Options"
+
+    # raw: { 'kitchen' => the answers (see KitchenPlanner), 'cabinet' => the panel's values, 'worktop' => the worktop section's values (optional),
+    #        'options' => true to build one kitchen in each style side by side instead of one }.
     def self.design(raw)
       raw = {} unless raw.is_a?(Hash)
       panel = raw['cabinet'].is_a?(Hash) ? raw['cabinet'] : {}
       catalog_id = panel['catalog_id'].to_s
       return Response.fail('Choose a model (catalog) first: the kitchen is built from its units.') if catalog_id.empty? || CatalogManager.catalog(catalog_id).nil?
 
-      plan = KitchenPlanner.plan(raw['kitchen'])
-      return Response.fail(plan.error) if plan.error
+      answers = raw['kitchen'].is_a?(Hash) ? raw['kitchen'].transform_keys(&:to_s) : {}
+      styles = raw['options'] == true ? KitchenPlanner::STYLES : [KitchenPlanner.normalise(answers)['style']]
+      plans = styles.map { |style| KitchenPlanner.plan(answers.merge('style' => style)) }
+      return Response.fail(plans.first.error) if plans.first.error
 
-      island_items = plan.island ? plan.island.items : []
-      missing = (plan.base + plan.wall + island_items).map { |item| [item.category, item.type] }.uniq.reject { |category, type| CatalogManager.cabinet(catalog_id, category, type) }
+      missing = plans.flat_map { |plan| plan.base + plan.wall + (plan.island ? plan.island.items : []) }.map { |item| [item.category, item.type] }.uniq
+                     .reject { |category, type| CatalogManager.cabinet(catalog_id, category, type) }
       return Response.fail("This model has no #{missing.map { |category, type| "#{category} unit \"#{type}\"" }.join(', ')}. Choose a kitchen model that has the standard units.") unless missing.empty?
 
+      step = KitchenPlanner.normalise(answers)['wall_a'] + OPTION_GAP
       model = Sketchup.active_model
       model.selection.clear
-      built = { base: [], wall: [], island: [] }
+      all = []
       begin
-        CabinetManager.send(:with_operation, model, 'Design Kitchen') do
-          plan.base.each { |item| built[:base] << build_unit(model, panel, catalog_id, item) }
-          build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
-          build_island(model, panel, catalog_id, plan, built) if plan.island
+        CabinetManager.send(:with_operation, model, plans.length > 1 ? 'Design Kitchen Options' : 'Design Kitchen') do
+          plans.each_with_index do |plan, index|
+            built = { base: [], wall: [], island: [] }
+            plan.base.each_with_index do |item, position|
+              shifted = index.positive? && position.zero? ? all.first[:base].first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, (index * step).mm, 0)) : nil
+              built[:base] << build_unit(model, panel, catalog_id, item, shifted)
+            end
+            build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
+            build_island(model, panel, catalog_id, plan, built) if plan.island
+            all << built
+          end
         end
       rescue StandardError => e
         return Response.fail("The kitchen could not be built: #{e.message}")
       end
 
       SelectionManager.push_selection(model)
-      message = "Kitchen designed: #{KitchenPlanner.describe(plan)}."
-      message += " #{plan.notes.join(' ')}" unless plan.notes.empty?
+      message = if plans.length > 1
+                  lines = plans.each_with_index.map { |plan, index| "Option #{index + 1} (#{STYLE_NAMES[plan.style]}): #{KitchenPlanner.describe(plan)}." }
+                  "Three kitchens designed side by side, #{fmt(step)} mm apart along wall A: #{lines.join(' ')} Delete the ones you do not want."
+                else
+                  "Kitchen designed: #{KitchenPlanner.describe(plans.first)}."
+                end
+      message += " #{plans.first.notes.join(' ')}" unless plans.first.notes.empty?
       message += worktop_message(raw['worktop'])
-      Response.ok(message, { 'cabinets' => built.values.sum(&:length) })
+      Response.ok(message, { 'cabinets' => all.sum { |built| built.values.sum(&:length) } })
     end
 
+    def self.fmt(value)
+      format('%g', value)
+    end
+    private_class_method :fmt
     def self.worktop_message(values)
       return '' unless values.is_a?(Hash)
 
@@ -99,7 +123,7 @@ module KitchenCabinetMaster
 
     def self.unit_raw(panel, entry, item, catalog_id)
       defaults = entry['defaults'] || {}
-      panel.merge(PER_UNIT_BLANKS).merge(
+      panel.merge(PER_UNIT_BLANKS).merge(item.extra || {}).merge(
         'catalog_id' => catalog_id, 'cabinet_category' => item.category, 'cabinet_type' => item.type, 'width' => item.width,
         'depth' => defaults['depth'], 'height' => defaults['height'], 'shelf_count' => entry['shelves'].to_s, 'placement_gap' => 0.0,
         'sink_bowls' => entry['sink_bowls'] || 1, 'sink_tray' => entry['sink_tray'] != false
