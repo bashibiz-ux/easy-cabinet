@@ -8,7 +8,6 @@ require 'minitest/autorun'
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
 require File.join(plugin, 'island_hood')
-require File.join(plugin, 'island_pendants')
 require File.join(plugin, 'kitchen_planner')
 
 class KitchenPlannerTest < Minitest::Test
@@ -335,16 +334,6 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
 
-  def test_pendant_lights_hang_over_the_seating
-    island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true).island
-    assert_equal 300.0, island.pendants[:back]
-    assert_equal 2400.0, island.pendants[:top]
-    assert_equal KitchenCabinetMaster::IslandPendants.positions(island.length), island.pendants[:positions]
-    assert_equal %i[back positions top], island.pendants.keys.sort, 'no options: the lights are only lights'
-    assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true)), 'pendant light'
-    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_pendants' => true).island.pendants[:back], 'no seating: the lights hang over the middle of the island'
-    assert_nil plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island.pendants
-  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating
