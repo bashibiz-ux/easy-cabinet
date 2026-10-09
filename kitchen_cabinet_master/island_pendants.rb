@@ -13,6 +13,7 @@ module KitchenCabinetMaster
     CORD = 8.0
     SHAPES = %w[drum cone dome globe].freeze # a straight drum, a cone, a half sphere, a ball
     SEGMENTS = 24
+    HEIGHTS = { 'low' => 1600.0, 'normal' => 1700.0, 'high' => 1800.0 }.freeze # where the underside of the shade hangs above the floor
     SIZES = { 'small' => 0.75, 'medium' => 1.0, 'large' => 1.4 }.freeze # how much of the usual shade (across and tall); the underside stays put
     MATERIAL = 'Stainless Steel'
     COLOURS = ['Stainless Steel', 'Matt Black Metal', 'Brass', 'Brushed Brass', 'Copper', 'Chrome', 'Gunmetal', 'PVC White', 'Navy Blue', 'Sage Green'].freeze
@@ -25,9 +26,9 @@ module KitchenCabinetMaster
     end
 
     # The outline of a shade, from its underside to its top, as [radius, height above the floor] points that are turned round its axis.
-    def self.profile(shape, size = 'medium')
+    def self.profile(shape, size = 'medium', height = 'normal')
       scale = SIZES.fetch(size.to_s, 1.0)
-      b = SHADE_BOTTOM
+      b = HEIGHTS.fetch(height.to_s, SHADE_BOTTOM)
       h = SHADE_HEIGHT
       r = SHADE_RADIUS
       case shape
@@ -39,14 +40,14 @@ module KitchenCabinetMaster
     end
 
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
-    # material:, shape: }); the cord stops at the ceiling.
+    # material:, shape:, size:, height: }); the cord stops at the ceiling.
     def self.parts(pendants)
       x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
       top = pendants[:top].to_f
-      outline = profile(pendants[:shape].to_s, pendants[:size])
+      outline = profile(pendants[:shape].to_s, pendants[:size], pendants[:height])
       shade_top = outline.last[1]
       pendants[:positions].map do |y|
-        { centre: [x, y], shade: [SHADE_BOTTOM, shade_top], cord: [shade_top, [top, shade_top].max], profile: outline }
+        { centre: [x, y], shade: [outline.first[1], shade_top], cord: [shade_top, [top, shade_top].max], profile: outline }
       end
     end
     # One group "Island Pendants" in the model, placed by `frame` (the transformation of the island's first unit).

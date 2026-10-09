@@ -343,6 +343,9 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'Stainless Steel', island.pendants[:material]
     assert_equal 'drum', island.pendants[:shape]
     assert_equal 'medium', island.pendants[:size]
+    assert_equal 'normal', island.pendants[:height]
+    assert_equal 'high', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_height' => 'high').island.pendants[:height]
+    assert_equal 'normal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_height' => 'ceiling').island.pendants[:height]
     close = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_spacing' => 600).island.pendants[:positions]
     assert_operator close.length, :>, island.pendants[:positions].length
     assert_equal island.pendants[:positions], plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_spacing' => 750).island.pendants[:positions], 'an odd spacing is the usual one'

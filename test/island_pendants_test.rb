@@ -46,4 +46,12 @@ class IslandPendantsTest < Minitest::Test
     assert_equal P.positions(3600.0), P.positions(3600.0, 800.0)
     assert_equal [900.0], P.positions(1800.0, 1200.0)
   end
+  def test_the_height_moves_the_whole_shade_and_its_cord_start
+    low = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', height: 'low' }).first
+    high = P.parts({ positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum', height: 'high' }).first
+    assert_equal [1600.0, 1780.0], low[:shade]
+    assert_equal [1800.0, 1980.0], high[:shade]
+    assert_equal 1980.0, high[:cord][0]
+    assert_equal P.profile('dome'), P.profile('dome', 'medium', 'sky-high'), 'an unknown height is the usual one'
+  end
 end
