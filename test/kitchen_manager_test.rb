@@ -47,9 +47,13 @@ end
 module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 
-  Built = Struct.new(:params, :transformation)
+  Built = Struct.new(:params, :transformation) do
+    def set_attribute(dictionary, key, value) = (attributes[[dictionary, key]] = value)
+    def attributes = (@attributes ||= {})
+  end
 
   module AttributeManager
+    DICTIONARY = 'KitchenCabinetMaster'
     @id = 0
     def self.next_cabinet_id(_model) = "C#{@id += 1}"
     def self.next_sequence(_model) = @id
@@ -318,5 +322,13 @@ class KitchenManagerTest < Minitest::Test
     assert_in_delta 180.0, frame.rotation_degrees, 0.5 if frame.respond_to?(:rotation_degrees)
     design({ 'wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'hood' => false })
     assert_equal 1, HoodSpy.length, 'no hood, none built'
+  end
+
+  def test_every_island_unit_is_marked_with_its_seating_overhang_for_the_worktop
+    design({ 'wall_a' => 4200, 'island' => true, 'island_seating' => 300 })
+    island = made.select { |built| built.attributes.key?(['KitchenCabinetMaster', 'island_seating']) }
+    assert_operator island.length, :>=, 2
+    assert(island.all? { |built| built.attributes[['KitchenCabinetMaster', 'island_seating']] == 300.0 })
+    refute_equal made.length, island.length, 'the wall units are not marked'
   end
 end

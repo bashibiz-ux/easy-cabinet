@@ -92,7 +92,7 @@ module KitchenCabinetMaster
       start = along(items.first)
       stop = items.map { |item| along(item) + item[:width] }.max
       { items: items, along: start, length: stop - start, depth: items.map { |item| item[:depth] }.max,
-        top: items.first[:top], corner: false }
+        top: items.first[:top], corner: false, back: items.first[:island_back] }
     end
     private_class_method :finish
 
@@ -133,7 +133,8 @@ module KitchenCabinetMaster
 
       total = run[:length] + (2 * ends)
       to ||= total
-      { extent: [run[:depth] + front, to - from, thickness], offset: [0.0, -ends + from, 0.0], points: nil }
+      back = run[:back].to_f # an island's seating overhang: the slab reaches this much beyond the back of the units
+      { extent: [run[:depth] + front + back, to - from, thickness], offset: [-back, -ends + from, 0.0], points: nil }
     end
 
     # The corner's outline: back wall and side wall edges square, the front-right corner
@@ -170,6 +171,7 @@ module KitchenCabinetMaster
       height = params['backsplash_height'].to_f
       thick = params['backsplash_thickness'].to_f
       return [] unless height.positive? && thick.positive?
+      return [] if run[:back] # (an island has no wall behind it)
 
       top = slab[:extent][2]
       if run[:corner]
@@ -311,7 +313,7 @@ module KitchenCabinetMaster
         corner = !filler && CabinetLayout.corner?(stored)
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
-          corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
+          island_back: item.get_attribute(dictionary, 'island_seating')&.to_f, corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
           leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item,
           cutouts: filler ? [] : Fixtures.cutouts(stored) }
       end
@@ -327,7 +329,7 @@ module KitchenCabinetMaster
 
       spans.each do |from, to|
         slab = Worktop.slab(run, params, from: from, to: to)
-        placed = first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, slab[:offset][1].mm, 0))
+        placed = first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(slab[:offset][0].mm, slab[:offset][1].mm, 0))
         lift = run[:top].mm - placed.origin.z
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 

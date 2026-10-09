@@ -22,8 +22,8 @@ plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
 class WorktopTest < Minitest::Test
   include KitchenCabinetMaster
 
-  def item(y:, width: 600.0, depth: 580.0, top: 880.0, x: 0.0, hx: 0.0, hy: 1.0, corner: false, return_depth: nil)
-    { x: x, y: y, hx: hx, hy: hy, width: width, depth: depth, top: top, corner: corner, return_depth: return_depth }
+  def item(y:, width: 600.0, depth: 580.0, top: 880.0, x: 0.0, hx: 0.0, hy: 1.0, corner: false, return_depth: nil, island_back: nil)
+    { island_back: island_back, x: x, y: y, hx: hx, hy: hy, width: width, depth: depth, top: top, corner: corner, return_depth: return_depth }
   end
 
   def settings(overrides = {})
@@ -34,6 +34,17 @@ class WorktopTest < Minitest::Test
     Worktop.runs(Array.new(count) { |i| item(y: i * width, width: width, **opts) }).first
   end
 
+  def test_an_islands_slab_reaches_beyond_the_back_for_seating_and_has_no_back_splash
+    params = Worktop::DEFAULTS
+    plain = Worktop.slab(run_of, params)
+    seated = Worktop.slab(run_of(3, island_back: 300.0), params)
+    assert_in_delta plain[:extent][0] + 300.0, seated[:extent][0], 0.01
+    assert_in_delta(-300.0, seated[:offset][0], 0.01)
+    assert_equal 0.0, plain[:offset][0]
+    refute_empty Worktop.splash(run_of, plain, params)
+    assert_empty Worktop.splash(run_of(3, island_back: 300.0), seated, params)
+    assert_empty Worktop.splash(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), params), params), 'an island with no overhang has none either'
+  end
   # ---- runs -------------------------------------------------------------------
 
   def test_units_in_a_line_get_one_worktop

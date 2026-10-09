@@ -333,6 +333,14 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
 
+  def test_an_island_can_have_a_seating_overhang
+    island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
+    assert_equal 300.0, island.seating
+    assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300)), '300 mm seating overhang'
+    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true).island.seating
+    assert_equal 450.0, plan('wall_a' => 4200, 'island' => true, 'island_seating' => 900).island.seating
+    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_seating' => -5).island.seating
+  end
   def test_an_island_hob_gets_a_hood_from_the_ceiling_unless_the_hood_is_off
     island = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob').island
     hob = island.items.find { |item| item.kind == :hob }
