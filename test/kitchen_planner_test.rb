@@ -277,4 +277,59 @@ class KitchenPlannerTest < Minitest::Test
     assert(tight.notes.any? { |note| note.include?('dishwasher') })
     assert_in_delta 1800.0, run_sum(tight.base, :a), 0.5
   end
+
+  def test_a_mirror_image_is_the_same_kitchen_built_from_the_other_end
+    [{ 'wall_a' => 3600 }, { 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true }, { 'layout' => 'u', 'wall_a' => 3000, 'wall_b' => 4200, 'wall_c' => 2700 }].each do |options|
+      regular = plan(options)
+      mirror = plan(options.merge('mirror' => true))
+      assert_nil mirror.error
+      assert_equal regular.base.map(&:type).reverse, mirror.base.map(&:type), 'the units in the opposite order'
+      assert_equal regular.base.map(&:width).reverse, mirror.base.map(&:width)
+      assert_equal regular.wall.map(&:type).reverse, mirror.wall.map(&:type)
+      assert_equal mirror.base.length, mirror.base.map(&:run).length
+      mirror.base.group_by(&:run).each_value do |items|
+        items.each_cons(2) { |a, b| assert_in_delta a.start + a.width, b.start, 0.5, 'each unit starts where the one before it ends' }
+      end
+      assert_equal %i[a b c].first(KitchenPlanner::RUNS[options['layout'] || 'straight'].length), mirror.base.map(&:run).uniq, 'walls named in the order they are met'
+      hob = mirror.base.find { |item| item.kind == :hob }
+      hood = mirror.wall.find { |item| item.kind == :hood }
+      assert_equal hob.run, hood.run
+      assert_in_delta hob.start, hood.start, 0.01, 'the hood is still over the hob'
+      mirror.wall.each_cons(2) { |a, b| assert_in_delta a.start + a.width + (a.run == b.run ? b.gap_before : 0.0), b.start, 0.5 if a.run == b.run }
+    end
+  end
+
+  def test_in_a_mirrored_l_the_fridge_ends_the_row_the_oven_starts_it_and_the_first_wall_is_the_old_second
+    mirror = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true, 'mirror' => true)
+    assert_equal :oven, mirror.base.first.kind
+    assert_equal :fridge, mirror.base.last.kind
+    assert_in_delta 2800.0, mirror.base.select { |item| item.run == :a }.sum(&:width), 0.5, 'the first wall is the old wall B (with the corner)'
+    assert_in_delta 3600.0 - 1000.0, mirror.base.select { |item| item.run == :b }.sum(&:width), 0.5
+    assert_equal :corner, mirror.base.select { |item| item.run == :a }.last.kind
+    assert_in_delta 600.0, mirror.wall_start, 0.01, 'the wall units start after the oven housing'
+    assert_in_delta 2800.0, mirror.first_length, 0.01
+    assert_in_delta 3600.0, plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800).first_length, 0.01
+    straight = plan('wall_a' => 3600, 'mirror' => true)
+    assert_equal :fridge, straight.base.last.kind
+  end
+
+  def test_windows_keep_their_walls_in_a_mirror_image_and_the_gap_is_counted_from_the_other_end
+    options = { 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 3000, 'windows' => [{ 'wall' => 'a', 'from' => 1500, 'width' => 1000 }] }
+    regular = plan(options)
+    mirror = plan(options.merge('mirror' => true))
+    on_a = mirror.wall.select { |item| item.run == :b && item.kind != :corner } # wall A is the second wall now
+    over_window = on_a.select { |item| item.start < 3600.0 - 1500.0 && item.start + item.width > 3600.0 - 2500.0 }
+    assert_empty over_window, 'nothing over the window'
+    assert_in_delta 1000.0, on_a.map(&:gap_before).max, 0.5
+    sink_regular = regular.base.find { |item| item.kind == :sink }
+    sink_mirror = mirror.base.find { |item| item.kind == :sink }
+    assert_in_delta sink_regular.start + (sink_regular.width / 2.0), 3600.0 - (sink_mirror.start + (sink_mirror.width / 2.0)), 0.5, 'the sink is under the same window'
+  end
+
+  def test_an_island_in_a_mirrored_kitchen_is_planned_on_its_new_first_wall
+    regular = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'island' => true)
+    mirror = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'island' => true, 'mirror' => true)
+    assert_operator regular.island.y, :<=, 4200.0 - 580.0 - 1100.0 + 0.01
+    assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
+  end
 end

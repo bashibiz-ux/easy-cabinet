@@ -288,4 +288,12 @@ class KitchenManagerTest < Minitest::Test
     design({ 'wall_a' => 3600, 'dishwasher' => false })
     refute(made.last(8).any? { |built| built.params['cabinet_type'] == 'base_dishwasher' })
   end
+
+  def test_a_mirrored_kitchen_is_built_from_the_other_end_and_the_wall_units_start_after_the_oven_housing
+    design('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true, 'mirror' => true)
+    assert_equal 'tall_oven', made.first.params['cabinet_type']
+    walls = made.select { |built| built.params['cabinet_category'] == 'wall' }
+    assert_in_delta made.first.transformation.ty + 600.0, walls.first.transformation.ty, 0.01
+    assert_equal 'tall_fridge_builtin_2door', made.select { |built| built.params['cabinet_category'] == 'tall' }.last.params['cabinet_type']
+  end
 end

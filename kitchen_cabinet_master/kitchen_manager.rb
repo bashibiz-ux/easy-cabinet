@@ -41,7 +41,7 @@ module KitchenCabinetMaster
                      .reject { |category, type| CatalogManager.cabinet(catalog_id, category, type) }
       return Response.fail("This model has no #{missing.map { |category, type| "#{category} unit \"#{type}\"" }.join(', ')}. Choose a kitchen model that has the standard units.") unless missing.empty?
 
-      step = KitchenPlanner.normalise(answers)['wall_a'] + OPTION_GAP
+      step = plans.first.first_length + OPTION_GAP
       model = Sketchup.active_model
       model.selection.clear
       all = []
