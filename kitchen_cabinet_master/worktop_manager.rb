@@ -20,6 +20,7 @@ module KitchenCabinetMaster
     GAP_MM = 150.0       # units this close are one run
     LINE_MM = 5.0        # how closely the back lines must agree
     LEVEL_MM = 1.0       # and the tops
+    SUPPORT_MM = 18.0    # the board under an island's seating overhang
     SQRT2 = Math.sqrt(2.0)
 
     DEFAULTS = {
@@ -164,6 +165,15 @@ module KitchenCabinetMaster
     end
     private_class_method :l_slab
 
+    # The board that carries a seating overhang, in the slab's own frame: it lies under the part of the slab that reaches beyond the back of the
+    # units, leaving the knee space below it. nil when the slab has no overhang. { extent:, offset: }
+    def self.support(run, slab)
+      back = run[:back].to_f
+      return nil if run[:corner] || back <= 1.0
+
+      { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
+    end
+
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
     # own frame, standing on its top. A straight slab has one along its back edge; a
     # corner has one along each of the two walls.
@@ -271,9 +281,9 @@ module KitchenCabinetMaster
 
       keys = Worktop::DEFAULTS.keys
       records = existing.map { |item| AttributeManager.read(item) }
-      fallback = records.find { |s| s['part_kind'] == 'worktop' } || {}
+      fallback = records.find { |s| s['part_kind'] == 'worktop' && !s['part_label'] } || {}
       # Each run is rebuilt with the settings its own pieces were built with.
-      own = records.select { |s| s['part_kind'] == 'worktop' && !s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
+      own = records.select { |s| s['part_kind'] == 'worktop' && !s['part_label'] && !s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
       runs = Worktop.runs(items_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each { |run| build(model, run, Worktop::DEFAULTS.merge((own[run_key(run)] || fallback).slice(*keys))) }
@@ -333,6 +343,11 @@ module KitchenCabinetMaster
         lift = run[:top].mm - placed.origin.z
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
+        board = Worktop.support(run, slab)
+        if board # (made first, so the slab is the last piece of the run: refresh takes the run's settings from that one)
+          down = placed * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, board[:offset][2].mm))
+          make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
+        end
         make_part(model, 'worktop', slab[:extent], slab[:points], placed, params, slab[:round_edge], holes_for(run, placed, slab))
         Worktop.splash(run, slab, params).each do |piece|
           up = placed * Geom::Transformation.translation(Geom::Vector3d.new(piece[:offset][0].mm, piece[:offset][1].mm, piece[:offset][2].mm))
@@ -383,11 +398,12 @@ module KitchenCabinetMaster
       stored['part_kind'] = kind
       stored['material'] = params['backsplash_material'] if kind == 'backsplash' && !params['backsplash_material'].to_s.empty? # (its own material)
       stored['part_id'] = AttributeManager.next_part_id(model)
-      stored['part_name'] = "#{kind == 'worktop' ? 'Worktop' : 'Back Splash'} #{stored['part_id'].to_s.split('_').last.to_i}"
+      stored['part_name'] = "#{params['part_label'] || (kind == 'worktop' ? 'Worktop' : 'Back Splash')} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]
+      stored['worktop_thickness'] = extent[2] if params['part_label'] # (the cut list takes the board's thickness from here)
       stored['depth'] = extent[0]
       slab = kind == 'worktop'
-      round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0
+      round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee support has round 0)
       # What the piece is made of, kept so that it can be rebuilt (the Customize window changes its board).
       stored['board_extent'] = extent
       stored['board_points'] = points
