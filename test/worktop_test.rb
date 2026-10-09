@@ -54,6 +54,17 @@ class WorktopTest < Minitest::Test
     assert_nil Worktop.support(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
     assert_nil Worktop.support(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), Worktop::DEFAULTS))
   end
+  def test_an_overhang_has_an_upright_board_under_each_end_of_the_slab_standing_on_the_floor
+    run = run_of(3, island_back: 300.0)
+    slab = Worktop.slab(run, Worktop::DEFAULTS)
+    both = Worktop.end_boards(run, slab)
+    assert_equal 2, both.length
+    assert_equal [300.0, 18.0, 862.0], both.first[:extent], 'down to the floor, under the support board'
+    assert_equal [0.0, slab[:extent][1] - 18.0], both.map { |board| board[:offset][1] }
+    assert_in_delta(-862.0, both.first[:offset][2], 0.01)
+    assert_equal [0.0], Worktop.end_boards(run, slab, last: false).map { |board| board[:offset][1] }
+    assert_empty Worktop.end_boards(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
+  end
   # ---- runs -------------------------------------------------------------------
 
   def test_units_in_a_line_get_one_worktop

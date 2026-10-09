@@ -174,6 +174,20 @@ module KitchenCabinetMaster
       { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
     end
 
+    # The upright boards under the two ends of a seating overhang, standing on the floor and carrying the support board: one at the start of the
+    # slab (if irst) and one at its end (if last), in the slab's own frame. [{ extent: [depth, thickness, height], offset: [x, y, z] }]
+    def self.end_boards(run, slab, first: true, last: true)
+      back = run[:back].to_f
+      return [] if run[:corner] || back <= 1.0
+
+      height = run[:top].to_f - SUPPORT_MM
+      length = slab[:extent][1]
+      ys = []
+      ys << 0.0 if first
+      ys << length - SUPPORT_MM if last
+      ys.map { |y| { extent: [back, SUPPORT_MM, height], offset: [0.0, y, -height] } }
+    end
+
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
     # own frame, standing on its top. A straight slab has one along its back edge; a
     # corner has one along each of the two walls.
@@ -344,6 +358,10 @@ module KitchenCabinetMaster
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
         board = Worktop.support(run, slab)
+        Worktop.end_boards(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |leg| # (the knee support's uprights)
+          make_part(model, 'worktop', leg[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(0, leg[:offset][1].mm, leg[:offset][2].mm)),
+                    params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
+        end
         if board # (made first, so the slab is the last piece of the run: refresh takes the run's settings from that one)
           down = placed * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, board[:offset][2].mm))
           make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
@@ -400,7 +418,11 @@ module KitchenCabinetMaster
       stored['part_id'] = AttributeManager.next_part_id(model)
       stored['part_name'] = "#{params['part_label'] || (kind == 'worktop' ? 'Worktop' : 'Back Splash')} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]
-      stored['worktop_thickness'] = extent[2] if params['part_label'] # (the cut list takes the board's thickness from here)
+      if params['part_label'] # (the cut list takes the board's size from here: an upright board is as high as it is tall, thin the other way)
+        upright = params['part_label'] == 'Knee Panel'
+        stored['worktop_thickness'] = upright ? extent[1] : extent[2]
+        stored['width'] = extent[2] if upright
+      end
       stored['depth'] = extent[0]
       slab = kind == 'worktop'
       round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee support has round 0)
