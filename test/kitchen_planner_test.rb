@@ -357,7 +357,9 @@ class KitchenPlannerTest < Minitest::Test
   def test_an_island_hob_gets_a_hood_from_the_ceiling_unless_the_hood_is_off
     island = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob').island
     hob = island.items.find { |item| item.kind == :hob }
-    assert_equal({ start: hob.start, width: hob.width, top: 2400.0 }, island.hood)
+    assert_equal({ start: hob.start, width: hob.width, top: 2400.0, material: 'Stainless Steel' }, island.hood)
+    assert_equal 'Matt Black Metal', plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'island_hood_colour' => 'Matt Black Metal').island.hood[:material]
+    assert_equal 'Stainless Steel', plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'island_hood_colour' => 'Hot Pink').island.hood[:material]
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob')), 'ceiling hood'
     assert_equal 2700.0, plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'ceiling' => 2700).island.hood[:top]
     assert_nil plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'hob', 'hood' => false).island.hood
