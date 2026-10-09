@@ -346,6 +346,9 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'normal', island.pendants[:height]
     assert_equal 'surface', island.pendants[:thickness]
     assert_equal 'auto', island.pendants[:cord]
+    assert_equal 'same', island.pendants[:cord_colour]
+    assert_equal 'Matt Black Metal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Matt Black Metal').island.pendants[:cord_colour]
+    assert_equal 'same', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Plaid').island.pendants[:cord_colour]
     longer = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'long')
     assert_equal 'long', longer.island.pendants[:cord]
     assert(longer.notes.any? { |note| note.include?('cords are shorter') })

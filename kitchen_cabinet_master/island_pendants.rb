@@ -45,7 +45,7 @@ module KitchenCabinetMaster
     end
 
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
-    # material:, shape:, size:, height:, thickness:, glow:, cord: }); the cord stops at the ceiling.
+    # material:, shape:, size:, height:, thickness:, glow:, cord:, cord_colour: }); the cord stops at the ceiling.
     def self.parts(pendants)
       x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
       top = pendants[:top].to_f
@@ -82,6 +82,8 @@ module KitchenCabinetMaster
       group.name = 'Island Pendants'
       material = MaterialManager.ensure_material(model, pendants[:material] || MATERIAL)
       glow_name = GLOWS[pendants[:glow].to_s]
+      cord_name = pendants[:cord_colour].to_s
+      cord_material = COLOURS.include?(cord_name) ? MaterialManager.ensure_material(model, cord_name) : nil # (otherwise the cord is painted like the shade)
       glow = glow_name && MaterialManager.ensure_material(model, glow_name)
       parts(pendants).each_with_index do |light, index|
         one = group.entities.add_group
@@ -91,7 +93,12 @@ module KitchenCabinetMaster
         inside.name = 'Glow' if inside
         lathe(one.entities, x, y, light[:profile], light[:inner], inside ? inside.entities : one.entities)
         inside.material = glow if inside && glow
-        cylinder(one.entities, x, y, light[:cord], CORD / 2.0) if light[:cord][1] - light[:cord][0] > 1.0
+        if light[:cord][1] - light[:cord][0] > 1.0
+          wire = cord_material ? one.entities.add_group : nil
+          wire.name = 'Cord' if wire
+          cylinder(wire ? wire.entities : one.entities, x, y, light[:cord], CORD / 2.0)
+          wire.material = cord_material if wire
+        end
         one.material = material if material
       end
       group.transformation = frame

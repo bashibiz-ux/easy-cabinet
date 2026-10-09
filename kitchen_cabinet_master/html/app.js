@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.88.0';
+  const APP_VERSION = '0.89.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -593,7 +593,7 @@
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
       sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_pendants: $('kitchenIslandPendants').checked, island_pendant_colour: $('kitchenPendantColour').value, island_pendant_shape: $('kitchenPendantShape').value, island_pendant_size: $('kitchenPendantSize').value, island_pendant_spacing: $('kitchenPendantSpacing').value, island_pendant_height: $('kitchenPendantHeight').value, island_pendant_thickness: $('kitchenPendantThickness').value, island_pendant_glow: $('kitchenPendantGlow').value, island_pendant_cord: $('kitchenPendantCord').value, island_hood_colour: $('kitchenHoodColour').value,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_pendants: $('kitchenIslandPendants').checked, island_pendant_colour: $('kitchenPendantColour').value, island_pendant_shape: $('kitchenPendantShape').value, island_pendant_size: $('kitchenPendantSize').value, island_pendant_spacing: $('kitchenPendantSpacing').value, island_pendant_height: $('kitchenPendantHeight').value, island_pendant_thickness: $('kitchenPendantThickness').value, island_pendant_glow: $('kitchenPendantGlow').value, island_pendant_cord: $('kitchenPendantCord').value, island_pendant_cord_colour: $('kitchenPendantCordColour').value, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
