@@ -241,4 +241,20 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes KitchenPlanner.describe(lift), 'lift-up'
     assert_includes KitchenPlanner.describe(glass), 'glass doors'
   end
+
+  def test_the_end_panels_are_for_the_open_ends_only
+    assert_empty KitchenPlanner.end_panel_targets(plan('wall_a' => 3600)), 'a straight kitchen stands between two walls'
+    island_only = KitchenPlanner.end_panel_targets(plan('wall_a' => 4200, 'island' => true))
+    assert_equal [{ part: :island, index: 0, side: 'left' }, { part: :island, index: 2, side: 'right' }], island_only
+    u_shape = plan('layout' => 'u', 'wall_a' => 3000, 'wall_b' => 4200, 'wall_c' => 3000)
+    targets = KitchenPlanner.end_panel_targets(u_shape)
+    assert_includes targets, { part: :base, index: 0, side: 'left' }
+    assert_includes targets, { part: :base, index: u_shape.base.length - 1, side: 'right' }
+    assert_includes targets, { part: :wall, index: u_shape.wall.length - 1, side: 'right' }
+    refute_includes targets, { part: :wall, index: 0, side: 'left' }, 'the wall unit beside the fridge needs none'
+    no_fridge = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'fridge' => 'none')
+    assert_includes KitchenPlanner.end_panel_targets(no_fridge), { part: :wall, index: 0, side: 'left' }
+    oven = plan('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true)
+    refute(KitchenPlanner.end_panel_targets(oven).any? { |t| t[:part] == :wall && t[:side] == 'right' }, 'the oven housing is at that end')
+  end
 end

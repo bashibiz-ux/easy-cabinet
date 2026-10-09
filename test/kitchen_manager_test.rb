@@ -23,9 +23,11 @@ end
 
 module Sketchup
   class FakeSelection
-    attr_reader :cleared
+    attr_reader :cleared, :items
 
-    def clear = @cleared = true
+    def initialize = @items = []
+    def clear = (@cleared = true; @items = [])
+    def add(item) = @items << item
   end
 
   class FakeModel
@@ -33,6 +35,10 @@ module Sketchup
 
     def initialize = @selection = FakeSelection.new
     def active_entities = :entities
+    def start_operation(*) = (@operations = (@operations || 0) + 1)
+    def commit_operation = (@commits = (@commits || 0) + 1)
+    def abort_operation = (@aborts = (@aborts || 0) + 1)
+    attr_reader :operations, :commits, :aborts
   end
 
   def self.active_model = (@model ||= FakeModel.new)
@@ -109,6 +115,22 @@ module KitchenCabinetMaster
     end
   end
 
+  # The toe kick and the end panel buttons: what they were asked, with what selected, and whether they ran inside the kitchen's own operation.
+  module PartManager
+    class << self
+      attr_reader :calls
+
+      def reset = @calls = []
+      def insert_toe_kick(raw) = record(:toe_kick, raw)
+      def insert_end_panel(raw) = record(:end_panel, raw)
+
+      def record(kind, raw)
+        (@calls ||= []) << { kind: kind, raw: raw, selected: Sketchup.active_model.selection.items.dup, building: KitchenManager.building? }
+        { 'ok' => true, 'message' => '' }
+      end
+    end
+  end
+
   module CabinetGenerator
     def self.build(_model, _entities, params, transformation)
       built = Built.new(params, transformation)
@@ -133,6 +155,7 @@ class KitchenManagerTest < Minitest::Test
     CatalogManager.user_root_override = Dir.mktmpdir('kcm') if defined?(Dir.mktmpdir)
     PlacementManager.reset
     CabinetGenerator.reset
+    PartManager.reset
     WorktopManager.instance_variable_set(:@applied, nil)
   end
 
@@ -143,11 +166,12 @@ class KitchenManagerTest < Minitest::Test
   def made = CabinetGenerator.made
 
   def test_it_builds_every_unit_of_the_plan_in_one_operation_with_the_units_own_catalog_values
+    before = Sketchup.active_model.operations.to_i
     result = design('wall_a' => 3600)
     assert result['ok'], result['message']
     plan = KitchenPlanner.plan('wall_a' => 3600)
     assert_equal plan.base.length + plan.wall.length, made.length
-    assert_equal ['Design Kitchen'], CabinetManager.operations.last(1)
+    assert_equal 1, Sketchup.active_model.operations - before, 'one Undo step'
     sink = made.find { |built| built.params['cabinet_type'] == 'base_sink' }
     assert_equal 560, sink.params['depth']
     assert_equal 780, sink.params['height']
@@ -211,5 +235,47 @@ class KitchenManagerTest < Minitest::Test
     failed = KitchenManager.design('kitchen' => { 'wall_a' => 3600 }, 'cabinet' => { 'catalog_id' => 'kitchen_cabinets', 'fail_on' => 'base_hob' })
     refute failed['ok']
     assert_match(/does not fit/, failed['message'])
+  end
+
+  def test_toe_kicks_go_under_the_row_and_the_island_each_against_its_first_unit_inside_the_one_operation
+    design({ 'wall_a' => 4200, 'island' => true }, 'toe_kick' => { 'toe_kick_height' => 100, 'toe_kick_cover_row' => false })
+    calls = PartManager.calls.select { |call| call[:kind] == :toe_kick }
+    assert_equal 2, calls.length
+    assert_equal [made.first], calls[0][:selected], 'the first unit of the kitchen'
+    assert_equal made.last(3).first, calls[1][:selected].first, 'the first unit of the island'
+    assert(calls.all? { |call| call[:raw]['toe_kick_cover_row'] == true }, 'it covers the whole row')
+    assert(calls.all? { |call| call[:building] }, 'inside the kitchen operation')
+    refute KitchenManager.building?
+    assert_match(/Toe kicks: 1\./, KitchenManager.design('kitchen' => { 'wall_a' => 3000 }, 'cabinet' => { 'catalog_id' => 'kitchen_cabinets' }, 'toe_kick' => {})['message'])
+  end
+
+  def test_end_panels_go_on_the_open_ends_only
+    design({ 'wall_a' => 3600 }, 'end_panel' => { 'face' => 'flat' })
+    assert_empty PartManager.calls.select { |call| call[:kind] == :end_panel }, 'a straight kitchen stands between two walls'
+    PartManager.reset
+    CabinetGenerator.reset
+    result = design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'island' => true }, 'end_panel' => { 'face' => 'flat' })
+    panels = PartManager.calls.select { |call| call[:kind] == :end_panel }
+    assert_equal 5, panels.length, 'both ends of the island, the two ends of the base units, and the wall unit at the far end (the fridge is at the other)'
+    assert(panels.all? { |call| call[:raw]['depth_auto'] && call[:raw]['height_auto'] })
+    assert_equal 2, panels.count { |call| call[:raw]['side'] == 'left' }
+    assert_equal 3, panels.count { |call| call[:raw]['side'] == 'right' }
+    assert_match(/End panels: 5/, result['message'])
+    assert_empty Sketchup.active_model.selection.items, 'nothing is left selected'
+  end
+
+  def test_a_part_that_cannot_be_made_is_reported_and_does_not_stop_the_kitchen
+    PartManager.singleton_class.send(:define_method, :record) do |kind, raw|
+      (@calls ||= []) << { kind: kind, raw: raw, selected: [], building: true }
+      { 'ok' => false, 'message' => 'something is in the way' }
+    end
+    result = design({ 'wall_a' => 3600 }, 'toe_kick' => {})
+    assert result['ok']
+    assert_match(/A toe kick was not added: something is in the way/, result['message'])
+  ensure
+    PartManager.singleton_class.send(:define_method, :record) do |kind, raw|
+      (@calls ||= []) << { kind: kind, raw: raw, selected: Sketchup.active_model.selection.items.dup, building: KitchenManager.building? }
+      { 'ok' => true, 'message' => '' }
+    end
   end
 end

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.70.0';
+  const APP_VERSION = '0.71.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -523,7 +523,8 @@
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
     remove_handle: () => ({ handle_id: $('handle').value }),
-    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null }),
+    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null,
+      toe_kick: $('kitchenToeKick').checked ? collectToeKick() : null, end_panel: $('kitchenEndPanels').checked ? collectEndPanel() : null }),
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen()
   };
 

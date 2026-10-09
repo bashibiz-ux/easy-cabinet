@@ -1010,6 +1010,8 @@ module KitchenCabinetMaster
     # One Undo step. Any error rolls the whole operation back, so a failed
     # insert or update never leaves half-built geometry behind.
     def self.with_operation(model, name)
+      return yield if defined?(KitchenManager) && KitchenManager.building? # (inside Design Kitchen: its own one Undo step)
+
       model.start_operation(name, true)
       begin
         result = yield

@@ -401,6 +401,8 @@ module KitchenCabinetMaster
     private_class_method :make_part
 
     def self.with_operation(model, name)
+      return yield if defined?(KitchenManager) && KitchenManager.building? # (inside Design Kitchen: its own one Undo step)
+
       model.start_operation(name, true)
       begin
         result = yield

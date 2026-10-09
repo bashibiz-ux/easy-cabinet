@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   # Every unit is {category, type (a catalog id of the kitchen catalogs), width, kind}; the widths of a wall add up to its length.
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true) # extra: values this unit has of its own (a glass door)
-    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, keyword_init: true)
+    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, keyword_init: true)
     Island = Struct.new(:items, :x, :y, :length, :aisle, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
@@ -107,7 +107,7 @@ module KitchenCabinetMaster
 
       wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_w, oven_w, notes, o['style']) : []
       island = o['island'] ? island_plan(o, runs, lengths, notes) : nil
-      Plan.new(base: base, wall: wall, wall_start: fridge_w, notes: notes, error: nil, island: island, style: o['style'])
+      Plan.new(base: base, wall: wall, wall_start: fridge_w, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'])
     end
 
     # Which run takes the sink and which the hob. The sink goes under a window when there is one on a run it fits, else in the middle wall of a U,
@@ -420,6 +420,26 @@ module KitchenCabinetMaster
     end
     private_class_method :wall_unit
     private_class_method :wall_fill
+
+    # Where the end panels go, for the sides that are open: both ends of an island, and the free ends of the runs of an L or a U (a straight
+    # kitchen stands between two walls). [{ part: :base | :wall | :island, index: (in plan.base, plan.wall or plan.island.items), side: 'left' | 'right' }]
+    # A wall unit that stands next to a tall unit at that end has no panel: the tall unit's side is in the way.
+    def self.end_panel_targets(plan)
+      targets = []
+      if plan.island && !plan.island.items.empty?
+        targets << { part: :island, index: 0, side: 'left' }
+        targets << { part: :island, index: plan.island.items.length - 1, side: 'right' }
+      end
+      if %w[l u].include?(plan.layout) && !plan.base.empty?
+        targets << { part: :base, index: 0, side: 'left' }
+        targets << { part: :base, index: plan.base.length - 1, side: 'right' }
+        unless plan.wall.empty?
+          targets << { part: :wall, index: 0, side: 'left' } unless plan.base.first.category == 'tall'
+          targets << { part: :wall, index: plan.wall.length - 1, side: 'right' } unless plan.base.last.category == 'tall'
+        end
+      end
+      targets
+    end
 
     # A line of text for the reply: what was planned.
     def self.describe(plan)
