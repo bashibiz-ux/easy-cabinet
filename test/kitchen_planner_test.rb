@@ -347,6 +347,9 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 'surface', island.pendants[:thickness]
     assert_equal 'auto', island.pendants[:cord]
     assert_equal 'same', island.pendants[:cord_colour]
+    assert_equal 'normal', island.pendants[:cord_width]
+    assert_equal 'thick', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_width' => 'thick').island.pendants[:cord_width]
+    assert_equal 'normal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_width' => 'rope').island.pendants[:cord_width]
     assert_equal 'Matt Black Metal', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Matt Black Metal').island.pendants[:cord_colour]
     assert_equal 'same', plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord_colour' => 'Plaid').island.pendants[:cord_colour]
     longer = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300, 'island_pendants' => true, 'island_pendant_cord' => 'long')

@@ -13,6 +13,7 @@ module KitchenCabinetMaster
     CORD = 8.0
     SHAPES = %w[drum cone dome globe].freeze # a straight drum, a cone, a half sphere, a ball
     SEGMENTS = 24
+    CORD_WIDTHS = { 'thin' => 4.0, 'normal' => CORD, 'thick' => 16.0 }.freeze # across the cord, mm
     CORDS = { 'auto' => nil, 'short' => 500.0, 'medium' => 800.0, 'long' => 1200.0 }.freeze # how far a light hangs below the ceiling (auto: at the Height)
     MIN_BOTTOM = 1400.0 # the lowest a shade can hang: 500 mm over the worktop
     GLOWS = { 'none' => nil, 'warm' => 'Warm White', 'cool' => 'Chalk White', 'cream' => 'Cream' }.freeze # what the inside of the shade is painted for a glow
@@ -45,7 +46,7 @@ module KitchenCabinetMaster
     end
 
     # [{ centre: [x, y], shade: [bottom, top], cord: [z0, z1], profile: [[radius, z]] }] for the lights of `pendants` ({ positions:, back:, top:,
-    # material:, shape:, size:, height:, thickness:, glow:, cord:, cord_colour: }); the cord stops at the ceiling.
+    # material:, shape:, size:, height:, thickness:, glow:, cord:, cord_colour:, cord_width: }); the cord stops at the ceiling.
     def self.parts(pendants)
       x = -pendants[:back].to_f / 2.0 # over the middle of the overhang, where the stools are
       top = pendants[:top].to_f
@@ -57,7 +58,7 @@ module KitchenCabinetMaster
       end
       shade_top = outline.last[1]
       pendants[:positions].map do |y|
-        { centre: [x, y], shade: [outline.first[1], shade_top], cord: [shade_top, [top, shade_top].max], profile: outline, inner: inner_profile(outline, THICKNESSES.fetch(pendants[:thickness].to_s, 0.0)) }
+        { centre: [x, y], shade: [outline.first[1], shade_top], cord: [shade_top, [top, shade_top].max], cord_width: CORD_WIDTHS.fetch(pendants[:cord_width].to_s, CORD), profile: outline, inner: inner_profile(outline, THICKNESSES.fetch(pendants[:thickness].to_s, 0.0)) }
       end
     end
     # The inside of a shade with a wall of `wall` mm, as an outline like `outline` (nil for a single skin). An open shade (a drum, cone or dome) keeps
@@ -96,7 +97,7 @@ module KitchenCabinetMaster
         if light[:cord][1] - light[:cord][0] > 1.0
           wire = cord_material ? one.entities.add_group : nil
           wire.name = 'Cord' if wire
-          cylinder(wire ? wire.entities : one.entities, x, y, light[:cord], CORD / 2.0)
+          cylinder(wire ? wire.entities : one.entities, x, y, light[:cord], light[:cord_width] / 2.0)
           wire.material = cord_material if wire
         end
         one.material = material if material

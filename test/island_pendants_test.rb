@@ -84,4 +84,11 @@ class IslandPendantsTest < Minitest::Test
     assert_equal P.parts(base).first[:shade], P.parts(base.merge(cord: 'auto')).first[:shade]
     assert_equal P.parts(base).first[:shade], P.parts(base.merge(cord: 'weird')).first[:shade]
   end
+  def test_the_cord_thickness_is_the_width_across_the_cord
+    base = { positions: [900.0], back: 300.0, top: 2400.0, shape: 'drum' }
+    assert_equal 8.0, P.parts(base).first[:cord_width]
+    assert_equal 4.0, P.parts(base.merge(cord_width: 'thin')).first[:cord_width]
+    assert_equal 16.0, P.parts(base.merge(cord_width: 'thick')).first[:cord_width]
+    assert_equal 8.0, P.parts(base.merge(cord_width: 'rope')).first[:cord_width]
+  end
 end
