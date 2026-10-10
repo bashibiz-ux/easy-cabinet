@@ -431,7 +431,9 @@ class KitchenPlannerTest < Minitest::Test
   def test_the_hood_cabinet_has_room_for_a_side_panel_on_each_side
     plain = plan('wall_a' => 4200).wall
     assert(plain.all? { |item| item.gap_before.to_f.zero? }, 'no panels asked: no room made')
-    spaced = plan('wall_a' => 4200, 'panel_thickness' => 18).wall
+    default = plan('wall_a' => 4200, 'panel_thickness' => 18).wall
+    assert(default.all? { |item| item.gap_before.to_f.zero? }, 'the hood cabinet has no panels unless it is asked to')
+    spaced = plan('wall_a' => 4200, 'panel_thickness' => 18, 'hood_panels' => true).wall
     hood = spaced.index { |item| item.kind == :hood }
     refute_nil hood
     assert_equal 18.0, spaced[hood].gap_before, 'before the hood cabinet'

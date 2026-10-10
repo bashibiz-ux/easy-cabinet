@@ -89,7 +89,7 @@ module KitchenCabinetMaster
                 end
       message += " #{plans.first.notes.join(' ')}" unless plans.first.notes.empty?
       message += " Toe kicks: #{parts[:toe_kicks]}." if raw['toe_kick'].is_a?(Hash)
-      message += " Side panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
+      message += " Side panels: #{parts[:end_panels]}#{(parts[:panel_parts] || {}).empty? ? '' : " (#{parts[:panel_parts].select { |_, n| n.positive? }.map { |part, n| "#{part} #{n}" }.join(', ')})"}." if raw['end_panel'].is_a?(Hash)
       message += " Dimensions: #{parts[:dimensions]}." if parts[:dimensions].positive?
       message += " #{parts[:notes].uniq.join(' ')}" unless parts[:notes].empty?
       worktop_before = worktop_ids(model)
@@ -210,7 +210,7 @@ module KitchenCabinetMaster
       end
 
       ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
-      values = panel.transform_keys(&:to_s).merge('shift' => false) # (the kitchen made room for its panels itself: nothing is moved)
+      values = panel.transform_keys(&:to_s).merge('shift' => false, 'hood_panels' => KitchenPlanner.normalise(raw['kitchen'])['hood_panels']) # (the kitchen made room for its panels itself: nothing is moved)
       # The tallest units first: the panel of a tall unit is the one that stands in the room between it and the lower units beside it.
       jobs = built.flat_map { |part, units| units.each_with_index.flat_map { |unit, index| %w[left right].map { |side| [part, units, unit, index, side] } } }
       jobs = jobs.each_with_index.sort_by do |job, position|
@@ -224,6 +224,7 @@ module KitchenCabinetMaster
         extra(parts, 'A side panel') do # a panel on every other side that shows (see PartManager.place_exposed_panels)
           made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values.merge('inner' => !end_of_row)) # (a side between two units is an inner one)
           parts[:end_panels] += made
+        (parts[:panel_parts] ||= Hash.new(0))[part] += made
           trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
         end
       end
