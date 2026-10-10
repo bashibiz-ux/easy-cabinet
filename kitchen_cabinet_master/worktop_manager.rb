@@ -73,7 +73,7 @@ module KitchenCabinetMaster
       panels.each do |panel|
         next unless ((panel[:hx] * first[:hx]) + (panel[:hy] * first[:hy])) > 0.98 # (the same direction)
         next unless (lateral_mm(panel) - lateral_mm(first)).abs < 5.0
-        next if panel[:top].to_f < run[:top].to_f - 1.0
+        next unless (panel[:top].to_f - run[:top].to_f).abs < 5.0 # (only a panel that ends at the worktop: a taller one stands beside it, a lower one is under it)
 
         low = along(panel)
         high = low + panel[:thickness].to_f

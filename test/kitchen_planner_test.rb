@@ -417,6 +417,17 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal 0.0, mirror.items.first.start
     assert_in_delta mirror.items.first.width, mirror.items[1].start, 0.01
   end
+  def test_the_sink_comes_with_or_without_a_drainer_in_one_or_two_bowls
+    widths = lambda do |options|
+      sink = plan({ 'wall_a' => 4800 }.merge(options)).base.find { |item| item.kind == :sink }
+      [sink.width, sink.type, sink.extra]
+    end
+    assert_equal [900.0, 'base_sink', nil], widths.call({})
+    assert_equal [600.0, 'base_sink_1door', nil], widths.call('sink_drain' => false)
+    assert_equal [1200.0, 'base_sink', { 'sink_bowls' => 2 }], widths.call('sink_bowls' => 2)
+    assert_equal [900.0, 'base_sink', { 'sink_bowls' => 2, 'sink_tray' => false }], widths.call('sink_bowls' => 2, 'sink_drain' => false)
+    ['sink_drain' => false, 'sink_bowls' => 2].each { |options| assert_in_delta 4800.0, plan({ 'wall_a' => 4800 }.merge(options)).base.sum(&:width), 0.5 }
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating

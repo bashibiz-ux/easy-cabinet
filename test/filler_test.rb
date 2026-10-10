@@ -367,7 +367,7 @@ class FillerTest < Minitest::Test
 
     filled = PartManager.send(:end_panel_defaults, { 'side' => 'left', 'thickness' => '18', 'depth' => '', 'height' => '' }, target, stored)
     assert_in_delta 580.0, filled['depth'], 1e-9, 'door front = 560 + 2 clearance + 18 door'
-    assert_in_delta 880.0, filled['height'], 1e-9, 'floor to the top of the cabinet'
+    assert_in_delta 780.0, filled['height'], 1e-9, 'the carcass: from above the toe kick to the top of the cabinet'
 
     kept = PartManager.send(:end_panel_defaults, { 'depth' => '400', 'height' => '700' }, target, stored)
     assert_equal '400', kept['depth'], 'a value that was entered is kept'
@@ -411,12 +411,12 @@ class FillerTest < Minitest::Test
     assert_equal 1400.0, PartManager.send(:start_z_of, wall, stored)
   end
 
-  def test_an_end_panel_beside_a_base_or_tall_unit_stands_on_the_floor
+  def test_a_side_panel_beside_a_base_or_tall_unit_starts_where_its_carcass_does_not_at_the_floor
     base = cabinet
-    assert_equal 0.0, PartManager.send(:start_z_of, base, AttributeManager.read(base))
+    assert_equal 100.0, PartManager.send(:start_z_of, base, AttributeManager.read(base)), 'above the toe kick'
     tall = cabinet(cabinet_category: 'tall', envelope_top: 2200.0)
     filled = PartManager.send(:end_panel_defaults, { 'height_auto' => true, 'depth_auto' => true, 'height' => '5', 'depth' => '5' }, tall, AttributeManager.read(tall))
-    assert_equal 2200.0, filled['height']
+    assert_equal 2100.0, filled['height'], 'as high as the tall unit itself: 2200 less its 100 mm toe kick'
     assert_in_delta 580.0, filled['depth'], 1e-9
   end
 

@@ -100,6 +100,12 @@ class WorktopTest < Minitest::Test
     assert_equal 18.0, Worktop.runs(items, [away]).first[:trail], 'a panel at the far end that does reach the worktop'
   end
 
+  def test_a_panel_taller_than_the_units_is_stood_beside_not_covered
+    items = Array.new(2) { |i| item(y: i * 600.0, width: 600.0) }
+    tall = { x: 0.0, y: -18.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 2260.0 }
+    run = Worktop.runs(items, [tall]).first
+    assert_nil run[:lead], 'the worktop stops at a panel that goes up past it'
+  end
   def test_a_bigger_end_overhang_wins_over_the_panel
     items = Array.new(2) { |i| item(y: i * 600.0, width: 600.0) }
     panel = { x: 0.0, y: -18.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }

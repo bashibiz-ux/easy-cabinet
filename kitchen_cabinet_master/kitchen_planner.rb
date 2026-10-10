@@ -27,7 +27,9 @@ module KitchenCabinetMaster
     FRIDGE = { 'builtin' => ['tall_fridge_builtin_2door', 600.0], 'free' => ['tall_fridge_housing_free', 900.0] }.freeze
     OVEN = ['tall_oven', 600.0].freeze
     SINK_WIDTH = 900.0
-    SINK_WIDTH_TWO = 1200.0 # a sink with two bowls
+    SINK_WIDTH_TWO = 1200.0 # a sink with two bowls (and a drainer)
+    SINK_WIDTH_PLAIN = 600.0 # one bowl and no drainer
+    SINK_WIDTH_TWO_PLAIN = 900.0 # two bowls and no drainer
     HOB_WIDTH = 600.0
     DISH_WIDTH = 600.0 # the space for a dishwasher, beside the sink
     # How the kitchen looks: doors everywhere; glass doors on the wall units; or wide lift-up wall units over drawers.
@@ -37,7 +39,7 @@ module KitchenCabinetMaster
     RUNS = { 'straight' => [:a], 'l' => %i[a b], 'u' => %i[a b c] }.freeze
 
     DEFAULTS = {
-      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
+      'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'sink_drain' => true, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
       'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
@@ -52,7 +54,7 @@ module KitchenCabinetMaster
       fridge = FRIDGE.key?(raw['fridge'].to_s) ? raw['fridge'].to_s : (raw.key?('fridge') ? 'none' : DEFAULTS['fridge'])
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
-        'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
+        'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'sink_drain' => flag.call('sink_drain'), 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
         'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_mirror' => flag.call('island_mirror'), 'panel_thickness' => raw['panel_thickness'].to_s.tr(',', '.').to_f.clamp(0.0, 60.0), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
@@ -113,7 +115,7 @@ module KitchenCabinetMaster
       base = []
       base << Item.new(category: 'tall', type: FRIDGE[o['fridge']][0], width: fridge_w, kind: :fridge, run: :a, start: 0.0) if fridge_w.positive?
       runs.each_with_index do |run, index|
-        base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center, style: o['style'], with_dish: o['dishwasher'], bowls: o['sink_bowls']))
+        base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center, style: o['style'], with_dish: o['dishwasher'], bowls: o['sink_bowls'], drain: o['sink_drain']))
         base << Item.new(category: 'base', type: 'base_corner_l', width: CORNER_BASE, kind: :corner, run: run, start: lengths[run] - CORNER_BASE) if index < runs.length - 1
       end
       if oven_w.positive?
@@ -211,24 +213,26 @@ module KitchenCabinetMaster
 
     # How wide the sink unit is: the usual 900 mm, or 1200 mm for two bowls.
     def self.sink_width_for(options)
-      options['sink_bowls'] == 2 ? SINK_WIDTH_TWO : SINK_WIDTH
+      two = options['sink_bowls'] == 2
+      drain = options['sink_drain'] != false
+      if two then drain ? SINK_WIDTH_TWO : SINK_WIDTH_TWO_PLAIN else drain ? SINK_WIDTH : SINK_WIDTH_PLAIN end
     end
     private_class_method :sink_width_for
     # ---- one run of base units --------------------------------------------------
 
     # run_items, but when the run is too short for its sink and hob the hob is left out (and then the sink made a narrow one), with a note.
-    def self.safe_run(run, free, start, with_sink, with_hob, notes, sink_center = nil, style: 'classic', with_dish: false, bowls: 1)
-      run_items(run, free, start, with_sink, with_hob, notes, sink_center, bowls == 2 ? SINK_WIDTH_TWO : SINK_WIDTH, style: style, with_dish: with_dish, bowls: bowls)
+    def self.safe_run(run, free, start, with_sink, with_hob, notes, sink_center = nil, style: 'classic', with_dish: false, bowls: 1, drain: true)
+      run_items(run, free, start, with_sink, with_hob, notes, sink_center, sink_width_for({ 'sink_bowls' => bowls, 'sink_drain' => drain }), style: style, with_dish: with_dish, bowls: bowls, drain: drain)
     rescue Short
       raise unless with_hob || with_sink
 
       notes.delete(ADJACENT)
       if with_hob
         notes << "There is no room for the hob in run #{run.to_s.upcase}: put it in by hand."
-        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: with_dish, bowls: bowls)
+        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: with_dish, bowls: bowls, drain: drain)
       elsif with_dish
         notes << "There is no room for the dishwasher space in run #{run.to_s.upcase}: put it in by hand."
-        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: false, bowls: bowls)
+        safe_run(run, free, start, with_sink, false, notes, sink_center, style: style, with_dish: false, bowls: bowls, drain: drain)
       else
         notes << "The sink unit of run #{run.to_s.upcase} had to be a narrow one."
         run_items(run, free, start, true, false, notes, sink_center, 600.0, style: style)
@@ -238,7 +242,7 @@ module KitchenCabinetMaster
 
     # The units of a run `free` mm long that starts `start` mm along its wall: the sink and the hob where they go, the rest filled with
     # equal units. A unit next to the hob is a unit of drawers, the others are doors with a unit of drawers now and then.
-    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_center = nil, sink_width = SINK_WIDTH, style: 'classic', with_dish: false, bowls: 1)
+    def self.run_items(run, free, start, with_sink, with_hob, notes, sink_center = nil, sink_width = SINK_WIDTH, style: 'classic', with_dish: false, bowls: 1, drain: true)
       sink = with_sink ? sink_width : nil
       hob = with_hob ? HOB_WIDTH : nil
       tokens = []
@@ -294,8 +298,12 @@ module KitchenCabinetMaster
           width = fixed[fixed_cursor][1]
           fixed_cursor += 1
           type = { sink: width < 800.0 ? 'base_sink_1door' : 'base_sink', dish: 'base_dishwasher', hob: 'base_hob' }[kind]
-          two = kind == :sink && bowls == 2 && width >= 1000.0 # (two bowls need the wide sink unit)
-          items << Item.new(category: 'base', type: type, width: width, kind: kind, run: run, start: position, extra: two ? { 'sink_bowls' => 2 } : nil)
+          special = {}
+          if kind == :sink
+            special['sink_bowls'] = 2 if bowls == 2 && width >= 850.0 # (two bowls need a wide sink unit)
+            special['sink_tray'] = false if !drain && width >= 800.0 # (the narrow sink unit has no drainer anyway)
+          end
+          items << Item.new(category: 'base', type: type, width: width, kind: kind, run: run, start: position, extra: special.empty? ? nil : special)
           position += width
         end
       end
@@ -470,7 +478,7 @@ module KitchenCabinetMaster
       items = nil
       if feature != 'none'
         begin
-          items = run_items(:island, length, 0.0, feature == 'sink', feature == 'hob', notes, nil, sink_width_for(o), style: 'lift', with_dish: with_dish, bowls: o['sink_bowls'])
+          items = run_items(:island, length, 0.0, feature == 'sink', feature == 'hob', notes, nil, sink_width_for(o), style: 'lift', with_dish: with_dish, bowls: o['sink_bowls'], drain: o['sink_drain'])
         rescue Short
           notes << "The island has no room for its #{feature}: it is a plain island."
         end

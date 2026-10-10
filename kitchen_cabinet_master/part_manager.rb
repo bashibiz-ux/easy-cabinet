@@ -387,14 +387,11 @@ module KitchenCabinetMaster
       raw
     end
 
-    # Where an side panel starts: on the floor, except beside a wall unit (or a filler
-    # for one), where it hangs at the unit's own base height, so it is the same size
-    # as the unit.
+    # Where a side panel starts: at the bottom of the carcass of the unit it is on (above its toe kick, or where a wall unit hangs), so that it is
+    # exactly as high as that unit and does not run down to the floor.
     def self.start_z_of(target, target_params)
       filler = AttributeManager.part_kind(target) == 'filler'
-      category = filler ? target_params['target_category'] : target_params['cabinet_category']
-      base = filler ? target_params['target_base_z'] : target_params['base_z']
-      category == 'wall' ? base.to_f : 0.0
+      (filler ? target_params['target_base_z'] : target_params['base_z']).to_f
     end
     private_class_method :start_z_of
 

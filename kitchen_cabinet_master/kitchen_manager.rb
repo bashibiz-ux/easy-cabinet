@@ -315,7 +315,7 @@ module KitchenCabinetMaster
       panel.merge(PER_UNIT_BLANKS).merge(item.extra || {}).merge(
         'catalog_id' => catalog_id, 'cabinet_category' => item.category, 'cabinet_type' => item.type, 'width' => item.width,
         'depth' => defaults['depth'], 'height' => defaults['height'], 'shelf_count' => entry['shelves'].to_s, 'placement_gap' => 0.0,
-        'sink_bowls' => (item.extra || {})['sink_bowls'] || entry['sink_bowls'] || 1, 'sink_tray' => entry['sink_tray'] != false
+        'sink_bowls' => (item.extra || {})['sink_bowls'] || entry['sink_bowls'] || 1, 'sink_tray' => (item.extra || {}).fetch('sink_tray', entry['sink_tray'] != false)
       )
     end
     private_class_method :unit_raw

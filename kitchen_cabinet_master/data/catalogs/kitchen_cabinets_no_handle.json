@@ -217,6 +217,45 @@
         }
       },
       {
+        "id": "base_sink_2bowl",
+        "name": "Base - sink, 2 bowls and drainer",
+        "code": "BS",
+        "doors": 2,
+        "shelves": 0,
+        "widths": [
+          1200,
+          1500
+        ],
+        "sink": true,
+        "sink_bowls": 2,
+        "sink_tray": true,
+        "defaults": {
+          "width": 1200,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
+        "id": "base_sink_2bowl_plain",
+        "name": "Base - sink, 2 bowls, no drainer",
+        "code": "BS",
+        "doors": 2,
+        "shelves": 0,
+        "widths": [
+          900,
+          1000,
+          1200
+        ],
+        "sink": true,
+        "sink_bowls": 2,
+        "sink_tray": false,
+        "defaults": {
+          "width": 900,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_sink_1door",
         "name": "Base - sink, 1 door",
         "code": "BS",
