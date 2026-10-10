@@ -51,4 +51,18 @@ class DimensioningTest < Minitest::Test
     assert_equal [600.0, 580.0, 0.0], lines.first[:to]
     assert_equal [0.0, 120.0, 0.0], lines.first[:offset]
   end
+
+def test_an_island_gets_its_length_on_the_back_and_its_depth_with_the_overhang
+  island = [unit(y: 0.0, island: true, overhang: 300.0), unit(y: 600.0, island: true, overhang: 300.0)]
+  lines = D.lines(island)
+  assert_equal 5, lines.length, 'two widths, the run in front, the run on the back, the depth'
+  back = lines.find { |line| line[:offset] == [-320.0, 0.0, 0.0] }
+  assert_equal [-300.0, 0.0, 0.0], back[:from]
+  assert_equal [-300.0, 1200.0, 0.0], back[:to]
+  depth = lines.last
+  assert_equal [-300.0, 0.0, 0.0], depth[:from]
+  assert_equal [580.0, 0.0, 0.0], depth[:to], '300 mm of overhang and 580 mm of units'
+  assert_equal [0.0, -300.0, 0.0], depth[:offset], 'out beyond the end of the island'
+  assert_equal 3, D.lines([unit(y: 0.0), unit(y: 600.0)]).length, 'a plain run is not touched: two widths and the run'
+end
 end

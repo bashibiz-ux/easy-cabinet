@@ -487,7 +487,7 @@ module KitchenCabinetMaster
       return failure if failure
 
       layout = PartLayout.toe_kick(params)
-      entities, transformation = toe_kick_placement(model, anchor)
+      entities, transformation = toe_kick_placement(model, anchor, params['toe_kick_lead'].to_f)
       if toe_kick_overlaps?(entities, transformation, params)
         return Response.fail('There is already a toe kick there. Select a different cabinet, or delete or change the existing toe kick first.')
       end
@@ -525,10 +525,11 @@ module KitchenCabinetMaster
     end
     private_class_method :wall_item?
 
-    def self.toe_kick_placement(model, anchor)
+    def self.toe_kick_placement(model, anchor, lead = 0.0)
       return [model.active_entities, Geom::Transformation.new] unless anchor
 
       transformation = anchor.transformation
+      transformation *= Geom::Transformation.translation(Geom::Vector3d.new(0, -lead.mm, 0)) if lead.positive? && AttributeManager.part_kind(anchor) != 'toe_kick'
       if AttributeManager.part_kind(anchor) == 'toe_kick'
         length = anchor.get_attribute(AttributeManager::DICTIONARY, 'width').to_f
         transformation *= Geom::Transformation.translation(Geom::Vector3d.new(0, length.mm, 0))
@@ -618,7 +619,12 @@ module KitchenCabinetMaster
       row = toe_kick_row(anchor)
       params['toe_kick_turns'] = ToeKick.turns_from(*row, params['toe_kick_recess'].to_f)
       # The toe kick covers the whole row from there: pieces of the chosen length, one after another.
-      params['toe_kick_total'] = ToeKick.run_length(*row) if params['toe_kick_cover_row'] == true
+      if params['toe_kick_cover_row'] == true
+        total = ToeKick.run_length(*row)
+        lead, trail = params['toe_kick_turns'].to_s.length > 2 ? [0.0, 0.0] : toe_kick_reach(anchor, total) # (a straight row: it runs on to the side panels at its ends)
+        params['toe_kick_lead'] = lead
+        params['toe_kick_total'] = ToeKick.run_length(*row) + lead + trail
+      end
     end
     private_class_method :record_toe_kick_path
 
@@ -649,6 +655,22 @@ module KitchenCabinetMaster
       [describe.call(anchor).merge(x: 0.0, y: 0.0, angle: 0.0), following.map { |item| describe.call(item) }]
     end
     private_class_method :toe_kick_row
+
+    # How far a toe kick from `anchor` over a straight row `length` mm long reaches to touch the side panels at the ends of the row (see ToeKick.panel_reach).
+    def self.toe_kick_reach(anchor, length)
+      to_frame = anchor.transformation.inverse
+      panels = anchor.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
+        next unless AttributeManager.part_kind(part) == 'end_panel'
+
+        stored = AttributeManager.read(part) || {}
+        relative = to_frame * part.transformation
+        next unless relative.origin.x.to_mm.abs < 5.0 && relative.yaxis.y > 0.98 # (against the same line of units, the same way round)
+
+        { y: relative.origin.y.to_mm, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f }
+      end
+      ToeKick.panel_reach(panels, length)
+    end
+    private_class_method :toe_kick_reach
 
     def self.find_toe_kick_anchor(model, id)
       return nil if id.to_s.empty?

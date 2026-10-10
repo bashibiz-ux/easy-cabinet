@@ -9,7 +9,7 @@ module KitchenCabinetMaster
     RUN_OFFSET = 320.0  # and the length of a whole run
     SIDE_OFFSET = 150.0
 
-    # items: [{ x:, y:, z:, hx:, hy:, fx:, fy:, width:, depth:, base_z:, top:, tall: }] where x, y, z is the unit's origin (its back left corner on the
+    # items: [{ x:, y:, z:, hx:, hy:, fx:, fy:, width:, depth:, base_z:, top:, tall:, island:, overhang: }] where x, y, z is the unit's origin (its back left corner on the
     #   floor), hx / hy the way its width runs, fx / fy the way its front looks, base_z the height of its underside and top the height of its top.
     # => [{ from: [x, y, z], to: [x, y, z], offset: [x, y, z] }]
     def self.lines(items)
@@ -25,6 +25,12 @@ module KitchenCabinetMaster
         first = run.first
         last = run.last
         out << { from: front_point(first, 0.0, first[:base_z].to_f), to: front_point(last, last[:width].to_f, last[:base_z].to_f), offset: scaled(first, :f, RUN_OFFSET) }
+        next unless first[:island] # an island is seen from every side: its length on the back too, and how deep it is (with the seating overhang)
+
+        back = first[:overhang].to_f
+        z = first[:base_z].to_f
+        out << { from: point(first, -back, 0.0, z), to: point(last, -back, last[:width].to_f, z), offset: scaled(first, :f, -RUN_OFFSET) }
+        out << { from: point(first, -back, 0.0, z), to: front_point(first, 0.0, z), offset: scaled(first, :h, -SIDE_OFFSET * 2) }
       end
       out
     end
@@ -39,6 +45,12 @@ module KitchenCabinetMaster
       { from: point, to: [point[0], point[1], item[:top].to_f], offset: scaled(item, :h, -SIDE_OFFSET, -1.0) }
     end
     private_class_method :height
+
+    # The point `forward` mm from the back of a unit (its front is `depth`), `along` mm from its left side, at height z.
+    def self.point(item, forward, along, z)
+      [item[:x].to_f + (item[:fx].to_f * forward) + (item[:hx].to_f * along), item[:y].to_f + (item[:fy].to_f * forward) + (item[:hy].to_f * along), z]
+    end
+    private_class_method :point
 
     # The point on the front of a unit `along` mm from its left side, at height z.
     def self.front_point(item, along, z)

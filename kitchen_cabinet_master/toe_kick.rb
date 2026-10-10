@@ -60,6 +60,21 @@ module KitchenCabinetMaster
       lengths
     end
 
+    # How far a toe kick that runs `length` mm from the start of its row reaches at each end to touch a side panel standing on the floor there:
+    # [lead, trail] in mm. panels: [{ y:, thickness:, base: }] in the frame of the row's first unit (y along the row, 0 at the start of the first
+    # unit); only a panel that reaches the floor (base about 0) and touches the end of the row counts.
+    def self.panel_reach(panels, length)
+      lead = 0.0
+      trail = 0.0
+      panels.each do |panel|
+        next if panel[:base].to_f > 1.0
+
+        lead = [lead, panel[:thickness].to_f].max if (panel[:y].to_f + panel[:thickness].to_f).abs < 3.0
+        trail = [trail, panel[:thickness].to_f].max if (panel[:y].to_f - length).abs < 3.0
+      end
+      [lead, trail]
+    end
+
     # How long the row of cabinets and fillers from nchor runs (see turns_from), in mm:
     # their widths added up, for as long as they join on.
     def self.run_length(anchor, items)
@@ -74,6 +89,8 @@ module KitchenCabinetMaster
           break unless (change + 90.0).abs < 1.0
 
           angle = item[:angle].to_f
+        else
+          total += distance(previous_end, [item[:x], item[:y]]) # the room left between two units (for a side panel) is plinth too
         end
         total += item[:width].to_f
         forward = unit(item[:angle].to_f, :y)

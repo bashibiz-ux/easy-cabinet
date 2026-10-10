@@ -370,4 +370,21 @@ class ToeKickTest < Minitest::Test
              { x: 0.0, y: 5000.0, width: 600.0, angle: 0.0 }] # the last one is not joined on
     assert_equal 1800.0, ToeKick.run_length(anchor, items)
   end
+  def test_a_room_left_between_two_units_for_a_side_panel_is_plinth_too
+    anchor = { x: 0.0, y: 0.0, width: 600.0 }
+    items = [{ x: 0.0, y: 618.0, width: 800.0, angle: 0.0 }, { x: 0.0, y: 1418.0, width: 400.0, angle: 0.0 }]
+    assert_equal 1818.0, ToeKick.run_length(anchor, items), 'the 18 mm between the first two units counts'
+  end
+
+  def test_a_toe_kick_runs_on_to_a_side_panel_that_stands_on_the_floor_at_either_end
+    panels = [{ y: -18.0, thickness: 18.0, base: 0.0 }, { y: 1800.0, thickness: 18.0, base: 0.0 }]
+    assert_equal [18.0, 18.0], ToeKick.panel_reach(panels, 1800.0)
+    assert_equal [18.0, 0.0], ToeKick.panel_reach(panels.first(1), 1800.0)
+  end
+
+  def test_a_panel_that_does_not_reach_the_floor_or_is_somewhere_else_does_not_make_the_toe_kick_longer
+    floating = { y: -18.0, thickness: 18.0, base: 100.0 }
+    elsewhere = { y: 900.0, thickness: 18.0, base: 0.0 }
+    assert_equal [0.0, 0.0], ToeKick.panel_reach([floating, elsewhere], 1800.0)
+  end
 end

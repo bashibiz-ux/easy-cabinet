@@ -189,8 +189,11 @@ module KitchenCabinetMaster
     # panels on the open ends (see KitchenPlanner.end_panel_targets), made by the same code as the Insert Toe Kick and Insert Side Panel buttons,
     # each against the unit it belongs to. What cannot be made is told in parts[:notes].
     def self.add_parts(model, plan, built, raw, parts)
-      toe = raw['toe_kick']
-      if toe.is_a?(Hash)
+      # The toe kicks come after the side panels, so that they can run on to the panels that stand on the floor at the ends of a row.
+      toe_kicks = lambda do
+        toe = raw['toe_kick']
+        next unless toe.is_a?(Hash)
+
         values = toe.transform_keys(&:to_s).merge('toe_kick_cover_row' => true)
         anchors = [built[:base].first, (built[:island].first if plan.island)].compact
         anchors.each do |anchor|
@@ -201,7 +204,10 @@ module KitchenCabinetMaster
         end
       end
       panel = raw['end_panel']
-      return unless panel.is_a?(Hash)
+      unless panel.is_a?(Hash)
+        toe_kicks.call
+        return
+      end
 
       ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
       values = panel.transform_keys(&:to_s).merge('shift' => false) # (the kitchen made room for its panels itself: nothing is moved)
@@ -218,6 +224,7 @@ module KitchenCabinetMaster
           trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
         end
       end
+      toe_kicks.call
     ensure
       model.selection.clear
     end
