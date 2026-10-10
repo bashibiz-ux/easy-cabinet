@@ -1444,6 +1444,8 @@ class KitchenCatalogTest < Minitest::Test
     result, layout = unit('base', 'base_dishwasher', 600, 'dishwasher' => true)
     assert_empty result.errors.map { |e| e['message'] }
     assert_equal %w[top_front_rail top_rear_rail], layout.panels.map(&:role).sort
+    assert_kind_of Hash, layout.drawer_boxes, 'the generator reads the boxes of the drawers by their role: a front like a drawer has none'
+    assert_empty layout.drawer_boxes
     front = layout.drawers.first
     assert_equal 1, layout.drawers.length
     assert_equal 'Dishwasher Front', front.name

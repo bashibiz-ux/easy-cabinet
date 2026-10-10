@@ -169,7 +169,7 @@ module KitchenCabinetMaster
       # With a handle the front is a front like a drawer's (door material and design, the handle of the Handle section on it, centred).
       front = Door.new(role: 'drawer_1', name: 'Dishwasher Front', extent: [dims.thick, width, height].map { |v| round2(v) },
                        offset: [x, reveal, base_z + reveal].map { |v| round2(v) }, hinge: 'center', pivot: [dims.depth, reveal, base_z].map { |v| round2(v) }, rotation: 0.0)
-      Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [front], toe_kick: [], drawer_boxes: [], appliances: [])
+      Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [front], toe_kick: [], drawer_boxes: {}, appliances: [])
     end
     private_class_method :dishwasher_layout
 
