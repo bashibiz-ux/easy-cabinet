@@ -205,18 +205,17 @@ module KitchenCabinetMaster
 
       ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
       values = panel.transform_keys(&:to_s).merge('shift' => false) # (the kitchen made room for its panels itself: nothing is moved)
-      built.each do |part, units|
-        units.each_with_index do |unit, index|
-          %w[left right].each do |side|
-            end_of_row = side == 'left' ? index.zero? : index == units.length - 1
-            next if end_of_row && !ends.include?([part, index, side]) # (the end of a row that may stand against a wall)
+      # The tallest units first: the panel of a tall unit is the one that stands in the room between it and the lower units beside it.
+      jobs = built.flat_map { |part, units| units.each_with_index.flat_map { |unit, index| %w[left right].map { |side| [part, units, unit, index, side] } } }
+      jobs = jobs.each_with_index.sort_by { |job, position| [-job[2].get_attribute(AttributeManager::DICTIONARY, 'envelope_top').to_f, position] }.map(&:first)
+      jobs.each do |part, units, unit, index, side|
+        end_of_row = side == 'left' ? index.zero? : index == units.length - 1
+        next if end_of_row && !ends.include?([part, index, side]) # (the end of a row that may stand against a wall)
 
-            extra(parts, 'A side panel') do # every other side: a panel on the part of it that shows (beside a lower or a shallower unit, between base and wall units)
-              made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values)
-              parts[:end_panels] += made
-              trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
-            end
-          end
+        extra(parts, 'A side panel') do # a panel on every other side that shows (see PartManager.place_exposed_panels)
+          made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values)
+          parts[:end_panels] += made
+          trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
         end
       end
     ensure

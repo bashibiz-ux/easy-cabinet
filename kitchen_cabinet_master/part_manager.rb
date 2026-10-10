@@ -191,7 +191,7 @@ module KitchenCabinetMaster
       @batch = true
       begin
         remove_corner_panels(model) # (a panel on a corner unit is a stray one: the notch of the L is not a side)
-        targets.each do |target|
+        tallest_first(targets).each do |target|
           %w[left right].each do |side|
             did, skipped, trouble = place_exposed_panels(model, target, side, raw)
             made += did
@@ -229,8 +229,14 @@ module KitchenCabinetMaster
     end
     private_class_method :remove_corner_panels
 
-    # The side panels one side of one cabinet needs: one for each stretch of the side that shows (see side_rectangles). The panel's own values
-    # (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
+    # The side panel one side of one cabinet needs: ONE panel, the whole depth of the carcass (never two pieces), or none when the side is wholly
+    # covered by what stands against it. Its height:
+    #   - the left side: from the floor to the top of the unit (from where it hangs, for a wall unit);
+    #   - the right side: when a unit stands against it, only the side of the unit itself (from the bottom of its carcass to its top); otherwise
+    #     from the floor to the top of the unit.
+    # A unit that stands against a side that is only partly covered (a lower or a shallower one) is moved along, and every unit after it in the row,
+    # by the thickness of the panel, to make room for it (not in the Auto Kitchen, which made the room itself).
+    # The panel's own values (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
     def self.place_exposed_panels(model, target, side, raw)
       target_params = AttributeManager.read(target)
       return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
@@ -238,33 +244,27 @@ module KitchenCabinetMaster
       rectangles, touching = side_rectangles(target, target_params, side)
       return [0, 1, []] if rectangles.empty?
 
-      # A side that shows only in part, because a lower or shallower unit stands against it: the units along that side (and all those after them
-      # in the row) move away by the thickness of the panel, and the panel is a full one, the whole side. (Not in the Auto Kitchen: it made room.)
       thickness = stringify(raw)['thickness'].to_f
-      if touching.any? && thickness.positive? && raw['shift'] != false
-        shift_chain(target, side, touching, thickness)
-        rectangles = [[0.0, start_z_of(target, target_params), door_front_of(target, target_params), top_of(target_params)]]
-      end
+      shift_chain(target, side, touching, thickness) if touching.any? && thickness.positive? && raw['shift'] != false
 
-      made = 0
-      covered = 0
-      problems = []
-      base = start_z_of(target, target_params)
-      rectangles.each do |x0, z0, x1, z1|
-        model.selection.clear
-        model.selection.add(target)
-        values = stringify(raw).merge('side' => side, 'depth' => x1 - x0, 'height' => z1 - z0, 'x_start' => x0, 'raise' => z0 > base + 0.5 ? z0 : 0.0)
-        values.delete('depth_auto')
-        values.delete('height_auto')
-        answer = insert_end_panel(values)
-        if answer['ok']
-          made += 1
-          mark_auto(model) if raw['auto'] == true # (this panel was placed by the tick in the Presets)
-        elsif answer['message'].to_s.include?('already has something against it') then covered += 1
-        else problems << answer['message']
-        end
+      filler = AttributeManager.part_kind(target) == 'filler'
+      hangs = (filler ? target_params['target_category'] : target_params['cabinet_category']).to_s == 'wall'
+      carcass = start_z_of(target, target_params)
+      from, top = SideExposure.panel_span(side: side, touched: touching.any?, hangs: hangs, carcass: carcass, top: top_of(target_params))
+      model.selection.clear
+      model.selection.add(target)
+      values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from > 0.5 ? from : 0.0)
+      values.delete('depth_auto')
+      values.delete('height_auto')
+      answer = insert_end_panel(values)
+      if answer['ok']
+        mark_auto(model) if raw['auto'] == true # (this panel was placed by the tick in the Presets)
+        [1, 0, []]
+      elsif answer['message'].to_s.include?('already has something against it')
+        [0, 1, []]
+      else
+        [0, 0, [answer['message']]]
       end
-      [made, covered, problems]
     end
     private_class_method :place_exposed_panels
 
@@ -336,7 +336,7 @@ module KitchenCabinetMaster
       @batch = true
       begin
         panel_values = stringify(values).merge('auto' => true)
-        targets.each do |target|
+        tallest_first(targets).each do |target|
           %w[left right].each { |side| made += place_exposed_panels(model, target, side, panel_values)[0] }
         end
       ensure
@@ -346,6 +346,12 @@ module KitchenCabinetMaster
       made
     end
     private_class_method :place_auto_panels
+
+    # The highest units first, so that the panel of a tall unit is the one that stands in the room between it and a lower unit.
+    def self.tallest_first(targets)
+      targets.sort_by { |target| -top_of(AttributeManager.read(target)).to_f }
+    end
+    private_class_method :tallest_first
 
     # The rectangles of one side of a cabinet that show (see SideExposure): the cabinets, fillers and side panels that touch the side hide the
     # part they cover. [[x0, z0, x1, z1]] in millimetres, in the cabinet's own frame (x from the back of the carcass).
