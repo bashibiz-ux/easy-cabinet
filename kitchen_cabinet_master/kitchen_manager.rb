@@ -192,6 +192,12 @@ module KitchenCabinetMaster
               Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
       built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_seating', island.seating.to_f) } # (the worktop reaches this far beyond the back, and has no back splash)
+      if island.back_panel # a board closing the room side of the units
+        extra(parts, 'The island back panel') do
+          top = built[:island].first.get_attribute(AttributeManager::DICTIONARY, 'top_z').to_f
+          IslandBackPanel.build(model, model.active_entities, place, island.back_panel.merge(height: top, material: panel['base_material']))
+        end
+      end
       return unless island.hood
 
       extra(parts, 'The island hood') do

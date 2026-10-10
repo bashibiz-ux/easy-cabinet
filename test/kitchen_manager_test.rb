@@ -48,6 +48,7 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 
   Built = Struct.new(:params, :transformation) do
+    def get_attribute(_dictionary, key, default = nil) = key == 'top_z' ? 880.0 : default
     def set_attribute(dictionary, key, value) = (attributes[[dictionary, key]] = value)
     def attributes = (@attributes ||= {})
   end
@@ -150,13 +151,15 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults catalog_manager kitchen_planner island_hood kitchen_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults catalog_manager kitchen_planner island_hood island_back_panel kitchen_manager].each { |f| require File.join(plugin, f) }
 
 class KitchenManagerTest < Minitest::Test
   include KitchenCabinetMaster
 
   HoodSpy = []
   IslandHood.singleton_class.send(:define_method, :build) { |_model, _entities, frame, hood| HoodSpy << [frame, hood] }
+  BackPanelSpy = []
+  IslandBackPanel.singleton_class.send(:define_method, :build) { |_model, _entities, frame, spec| BackPanelSpy << [frame, spec] }
 
   def setup
     CatalogManager.user_root_override = Dir.mktmpdir('kcm') if defined?(Dir.mktmpdir)
@@ -165,6 +168,7 @@ class KitchenManagerTest < Minitest::Test
     PartManager.reset
     WorktopManager.instance_variable_set(:@applied, nil)
     HoodSpy.clear
+    BackPanelSpy.clear
   end
 
   def design(kitchen = {}, extra = {})
@@ -340,5 +344,16 @@ class KitchenManagerTest < Minitest::Test
     assert_operator made.length, :>, 5, 'the kitchen is there'
   ensure
     IslandHood.singleton_class.send(:define_method, :build) { |_model, _entities, frame, hood| HoodSpy << [frame, hood] }
+  end
+
+  def test_an_island_back_panel_is_built_the_height_of_the_units_in_the_door_material
+    design({ 'wall_a' => 4200, 'island' => true, 'island_back_panel' => true })
+    assert_equal 1, BackPanelSpy.length
+    spec = BackPanelSpy.first.last
+    assert_equal 880.0, spec[:height]
+    assert_equal 'White', spec[:material]
+    assert_operator spec[:length], :>, 1000.0
+    design({ 'wall_a' => 4200, 'island' => true })
+    assert_equal 1, BackPanelSpy.length, 'not asked, not built'
   end
 end

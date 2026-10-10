@@ -334,6 +334,13 @@ class KitchenPlannerTest < Minitest::Test
     assert_operator mirror.island.y, :<=, 3000.0 - 580.0 - 1100.0 + 0.01, 'clear of the units of the other wall'
   end
 
+  def test_an_island_can_have_a_back_panel_as_long_as_the_island
+    island = plan('wall_a' => 4200, 'island' => true, 'island_back_panel' => true).island
+    assert_equal({ length: island.length }, island.back_panel)
+    assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_back_panel' => true)), 'a back panel'
+    assert_nil plan('wall_a' => 4200, 'island' => true).island.back_panel
+    assert_nil plan('wall_a' => 4200, 'island_back_panel' => true).island, 'no island, no back panel'
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating
