@@ -2,13 +2,13 @@
    Every colour is set here; nothing below uses a colour of its own. */
 :root {
   color-scheme: light;
-  --paper: #e3e6eb;          /* window background */
-  --sheet: #eceef2;          /* cards and bars */
-  --raised: #dde1e8;         /* buttons, raised surfaces */
-  --field: #d8dce4;          /* inputs */
+  --paper: #dcdfe5;          /* window background */
+  --sheet: #e6e8ed;          /* cards and bars */
+  --raised: #e0e3e9;         /* buttons, raised surfaces */
+  --field: #f1f3f6;          /* inputs */
   --ink: #1c2330;            /* main text */
   --muted: #566274;          /* labels, hints */
-  --line: #cdd2db;           /* hairlines */
+  --line: #c9cfd8;           /* hairlines */
   --line-strong: #a9b2bf;    /* input borders */
   --accent: #3b6fe0;         /* the one accent */
   --accent-hover: #2f5fcc;
@@ -23,7 +23,7 @@
   --ok-soft: #e1f4e9;
   --info-soft: #e0e5ee;
   --grid: #d6dbe4;
-  --preview-bg: #e9ecf1;
+  --preview-bg: #e3e6eb;
   --glow: rgba(59, 111, 224, 0.18);
   --ease: cubic-bezier(0.45, 0, 0.25, 1);
   --soft-ms: 420ms;           /* fades, hovers, small changes */
@@ -275,11 +275,11 @@ h1 {
   transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
 }
 
-.input:hover { border-color: #4a586b; }
+.input:hover { border-color: #7f8a9a; }
 
 .input:focus-within {
   border-color: var(--accent);
-  background: #0d1116;
+  background: #ffffff;
   box-shadow: 0 0 0 3px var(--glow);
 }
 
