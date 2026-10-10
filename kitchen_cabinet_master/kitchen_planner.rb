@@ -414,9 +414,13 @@ module KitchenCabinetMaster
         mine = []
         spans(from, to, blocked).each do |s0, s1|
           if hood_here && hob.start >= s0 && hob.start + hob.width <= s1
-            mine.concat(wall_fill(s0, hob.start, run, notes, style))
+            # The hood cabinet gets a side panel on each side: the units beside it stand one panel thickness away (where there are units beside it).
+            panel = o['panel_thickness'].to_f
+            before = panel.positive? && hob.start - s0 >= MIN_FILL + panel ? panel : 0.0
+            after = panel.positive? && s1 - (hob.start + hob.width) >= MIN_FILL + panel ? panel : 0.0
+            mine.concat(wall_fill(s0, hob.start - before, run, notes, style))
             mine << Item.new(category: 'wall', type: 'wall_hood', width: hob.width, kind: :hood, run: run, start: hob.start)
-            mine.concat(wall_fill(hob.start + hob.width, s1, run, notes, style))
+            mine.concat(wall_fill(hob.start + hob.width + after, s1, run, notes, style))
           else
             mine.concat(wall_fill(s0, s1, run, notes, style))
           end

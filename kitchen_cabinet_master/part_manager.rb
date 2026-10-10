@@ -241,7 +241,7 @@ module KitchenCabinetMaster
 
       thickness = stringify(raw)['thickness'].to_f
       rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
-      return [0, 1, []] if rectangles.empty?
+      return [0, 1, []] if rectangles.empty? && target_params['hood'] != true # (a hood cabinet always has its side panels, even between units)
 
       shift_chain(target, side, touching, thickness) if touching.any? && thickness.positive? && raw['shift'] != false
 
