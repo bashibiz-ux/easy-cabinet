@@ -163,7 +163,7 @@ module KitchenCabinetMaster
         front.shape = "front_#{FrontDesign.clean(params['front_design'])}"
         front.round = params['front_radius'].to_f
         panels << front
-        return Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [], toe_kick: [], drawer_boxes: [], appliances: [])
+        return Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: [])
       end
 
       # With a handle the front is a front like a drawer's (door material and design, the handle of the Handle section on it, centred).
