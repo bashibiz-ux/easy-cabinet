@@ -12,11 +12,13 @@ module KitchenCabinetMaster
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks update_part delete_part].freeze
-    DIMENSION_ACTIONS = %w[add_dimensions remove_dimensions].freeze
+    LIVE_ACTIONS = %w[set_live_dimensions set_live_side_panels].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
     KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options].freeze
+    # After these the dimensions and side panels that are ticked in the Presets are drawn again (not after what only shows or hides things).
+    REFRESHING = (CABINET_ACTIONS + PART_ACTIONS + WORKTOP_ACTIONS + KITCHEN_ACTIONS - %w[toggle visibility get_selection]).freeze
 
     class << self
       def show
@@ -76,7 +78,7 @@ module KitchenCabinetMaster
       def dispatch(action, data)
         data = {} unless data.is_a?(Hash)
 
-        case action
+        result = case action
         when 'init'          then (organise_tags; unhide_base_units; Response.ok('', init_payload))
         when 'undo'          then undo_last
         when 'set_snap'      then (SnapManager.enabled = data['enabled'] == true; Response.ok(SnapManager.enabled? ? 'Moved cabinets stick to their neighbours and the walls.' : 'Moved cabinets stay where you put them.'))
@@ -86,12 +88,14 @@ module KitchenCabinetMaster
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
         when *WORKTOP_ACTIONS then WorktopManager.perform(action, data)
-        when *DIMENSION_ACTIONS then DimensionManager.perform(action, data)
+        when *LIVE_ACTIONS then LiveParts.perform(action, data)
         when *KITCHEN_ACTIONS then KitchenManager.perform(action, data)
         when *CUT_LIST_ACTIONS then CutListManager.perform(action, data)
         when *PRESET_ACTIONS then PresetManager.perform(action, data)
         else Response.fail("Unknown action \"#{action}\".")
         end
+        LiveParts.refresh if result.is_a?(Hash) && result['ok'] && REFRESHING.include?(action)
+        result
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
         Response.fail("Something went wrong: #{e.message}")
@@ -154,6 +158,8 @@ module KitchenCabinetMaster
         {
           'version'         => EXTENSION_VERSION,
           'snap_enabled'    => SnapManager.enabled?,
+          'live_dimensions' => LiveParts.dimensions?,
+          'live_side_panels' => LiveParts.side_panels?,
           'categories'      => Defaults::CATEGORIES,
           'directions'      => Defaults::DIRECTIONS,
           'standard_widths' => Defaults::STANDARD_WIDTHS,

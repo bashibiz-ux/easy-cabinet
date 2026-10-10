@@ -1,50 +1,11 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Draws SketchUp dimensions on cabinets (see Dimensioning for which): on the selected cabinets, or every cabinet when none is selected; one Undo
-  # step. They sit on a tag of their own, "Kitchen Dimensions", and are marked so that Remove Dimensions takes away only these.
+  # Draws SketchUp dimensions on cabinets (see Dimensioning for which). They sit on a tag of their own, "Kitchen Dimensions", and are marked so that
+  # only these are taken away again. The Dimensions tick of the Presets (see LiveParts) draws them for every cabinet and keeps them up to date.
   module DimensionManager
     TAG = 'Kitchen Dimensions'
     MARK = 'kcm_dimension'
-
-    def self.perform(action, _raw)
-      case action
-      when 'add_dimensions' then add_action
-      when 'remove_dimensions' then remove_action
-      else Response.fail("Unknown action \"#{action}\".")
-      end
-    end
-
-    def self.add_action
-      model = Sketchup.active_model
-      chosen = model.selection.select { |entity| AttributeManager.cabinet?(entity) }
-      targets = chosen.empty? ? model.entities.select { |entity| AttributeManager.cabinet?(entity) } : chosen
-      return Response.fail('There are no cabinets to dimension: insert a cabinet first.') if targets.empty?
-
-      count = 0
-      model.start_operation('Add Dimensions', true)
-      begin
-        count = add(model, targets)
-        model.commit_operation
-      rescue StandardError
-        model.abort_operation
-        raise
-      end
-      Response.ok("#{count} dimension#{'s' unless count == 1} added on the tag \"#{TAG}\".", { 'count' => count })
-    end
-    private_class_method :add_action
-
-    def self.remove_action
-      model = Sketchup.active_model
-      found = dimensions_in(model)
-      return Response.ok('There are no dimensions of the extension to remove.') if found.empty?
-
-      model.start_operation('Remove Dimensions', true)
-      found.each { |dimension| dimension.erase! if dimension.valid? }
-      model.commit_operation
-      Response.ok("#{found.length} dimension#{'s' unless found.length == 1} removed.")
-    end
-    private_class_method :remove_action
 
     # The dimensions for these cabinets (inside an operation). => how many were drawn
     def self.add(model, cabinets)
@@ -55,6 +16,11 @@ module KitchenCabinetMaster
         dimension.set_attribute(AttributeManager::DICTIONARY, MARK, true)
         1
       end
+    end
+
+    # Takes away every dimension this extension drew (inside an operation).
+    def self.remove_all(model)
+      dimensions_in(model).each { |dimension| dimension.erase! if dimension.valid? }
     end
 
     def self.dimensions_in(model)

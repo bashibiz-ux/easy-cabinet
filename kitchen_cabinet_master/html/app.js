@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.1.4';
+  const APP_VERSION = '1.2.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -600,8 +600,8 @@
   function collectKitchen() {
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
-      sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, dimensions: $('kitchenDimensions').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
+      sink: $('kitchenSink').checked, sink_bowls: $('kitchenSinkBowls').value, dishwasher: $('kitchenDish').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
@@ -2490,6 +2490,7 @@ function liveEdit(el) {
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
         liveEdit(el); // update the selected item with what was just entered
+        if (el.closest('#sub-end-panel')) scheduleSidePanels(); // the panels placed by the Presets tick take the new Side Panel settings
         if (PRESET_IDS.includes(el.id)) schedulePresetSave();
         if (FOLLOWS_CABINET.includes(el.id)) state.touched.add(el.id); // the user's own value now
       };
@@ -2506,6 +2507,22 @@ function liveEdit(el) {
     window.addEventListener('focus', refreshMaterials);
   }
 
+  // The tick for side panels on every exposed side: the Side Panel settings of Cabinet & Extras go with it, and are sent again when they change.
+  async function sendSidePanels() {
+    try {
+      const res = await call('set_live_side_panels', { enabled: $('liveSidePanels').checked, values: collectEndPanel() });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    }
+  }
+
+  function scheduleSidePanels() {
+    if (!$('liveSidePanels').checked) return;
+    clearTimeout(state.sideTimer);
+    state.sideTimer = setTimeout(sendSidePanels, 700);
+  }
+
   function followSelection() {
     const box = $('followSelection');
     return !box || box.checked;
@@ -2516,6 +2533,15 @@ function liveEdit(el) {
     try {
       if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;
     } catch (_) { /* no stored choice: it follows */ }
+    $('liveDimensions').addEventListener('change', async () => {
+      try {
+        const res = await call('set_live_dimensions', { enabled: $('liveDimensions').checked });
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    });
+    $('liveSidePanels').addEventListener('change', () => sendSidePanels());
     $('snapEnabled').addEventListener('change', async () => {
       try {
         const res = await call('set_snap', { enabled: $('snapEnabled').checked });
@@ -2544,6 +2570,8 @@ function liveEdit(el) {
       if (!res.ok) throw new Error(res.message || 'The panel could not start.');
       state.meta = normaliseMeta(res.data);
       $('snapEnabled').checked = res.data.snap_enabled !== false;
+      $('liveDimensions').checked = res.data.live_dimensions === true;
+      $('liveSidePanels').checked = res.data.live_side_panels === true;
       await buildUi();
     } catch (error) {
       setStatus('error', error.message);

@@ -371,6 +371,18 @@ class KitchenPlannerTest < Minitest::Test
     refute_includes KitchenPlanner.end_panel_targets(only_runs).map { |target| target[:part] }, :island
     assert_includes KitchenPlanner.end_panel_targets(only_runs).map { |target| target[:part] }, :base
   end
+  def test_two_bowls_make_the_sink_unit_wide_and_tell_it_so
+    one = plan('wall_a' => 4800).base.find { |item| item.kind == :sink }
+    assert_equal 900.0, one.width
+    assert_nil one.extra
+    two = plan('wall_a' => 4800, 'sink_bowls' => 2).base.find { |item| item.kind == :sink }
+    assert_equal 1200.0, two.width
+    assert_equal 'base_sink', two.type
+    assert_equal({ 'sink_bowls' => 2 }, two.extra)
+    total = plan('wall_a' => 4800, 'sink_bowls' => 2).base.sum(&:width)
+    assert_in_delta 4800.0, total, 0.5, 'the run is still filled exactly'
+    assert_equal 1, KitchenPlanner.normalise('sink_bowls' => 'x')['sink_bowls']
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating

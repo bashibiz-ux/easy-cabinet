@@ -32,6 +32,8 @@
           <span class="label">Units</span>
           <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
         </label>
+        <label class="check"><input type="checkbox" id="liveDimensions"><span>Dimensions on the cabinets (the width of each unit, the length of each run, the height of tall units); they follow the cabinets</span></label>
+        <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on every exposed side (the Side Panel settings of Cabinet &amp; Extras are used); they follow the cabinets</span></label>
 
         <p class="group-title">Fronts</p>
         <div class="grid-2">
@@ -157,6 +159,10 @@
           <div class="input"><select id="kitchenStyle"><option value="classic">Classic: doors</option><option value="glass">Glass doors on the wall units</option><option value="lift">Lift-up wall units over drawers</option></select></div>
         </label>
         <label class="check"><input type="checkbox" id="kitchenSink" checked><span>Sink unit</span></label>
+        <label class="field">
+          <span class="label">Sink Bowls</span>
+          <div class="input"><select id="kitchenSinkBowls"><option value="1" selected>One bowl</option><option value="2">Two bowls (a 1200 mm sink unit)</option></select></div>
+        </label>
         <label class="check"><input type="checkbox" id="kitchenDish" checked><span>Dishwasher space beside the sink</span></label>
         <label class="check"><input type="checkbox" id="kitchenDishHandle" checked><span>Handle on the dishwasher front</span></label>
         <label class="check"><input type="checkbox" id="kitchenHob" checked><span>Hob unit</span></label>
@@ -206,7 +212,6 @@
         <label class="check"><input type="checkbox" id="kitchenToeKick" checked><span>Toe kicks (under the rows and the island)</span></label>
         <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>Side panels on the free ends of the runs (an L or a U, the ends of a straight kitchen)</span></label>
         <label class="check"><input type="checkbox" id="kitchenIslandSidePanels"><span>Side panels on the island ends too (the knee panels then only fill the overhang)</span></label>
-        <label class="check"><input type="checkbox" id="kitchenDimensions"><span>Dimensions on the units (the width of each, the length of each run, the height of tall units)</span></label>
         <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
@@ -800,13 +805,6 @@
     </div>
     <div class="btn-row one">
       <button class="btn" type="button" data-action="toggle" title="Open or close the selected cabinet's doors; with nothing selected, every door in the model">Toggle Doors</button>
-    </div>
-    <div class="btn-row one">
-      <button class="btn" type="button" data-action="add_dimensions" title="Dimensions on the selected cabinets (or on every cabinet when none is selected): the width of each unit, the length of each run, the height of the tall units. On the tag Kitchen Dimensions. One Undo step.">Add Dimensions</button>
-      <button class="btn" type="button" data-action="remove_dimensions" title="Take away the dimensions this extension drew">Remove Dimensions</button>
-    </div>
-    <div class="btn-row one">
-      <button class="btn" type="button" data-action="insert_exposed_side_panels" title="A side panel on every side of the selected cabinets (or of every cabinet when none is selected) that has nothing against it. Uses the Side Panel thickness, material and face set in Cabinet & Extras. One Undo step.">Side Panels on All Exposed Sides</button>
     </div>
   </footer>
 

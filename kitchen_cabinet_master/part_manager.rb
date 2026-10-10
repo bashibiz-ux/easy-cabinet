@@ -249,7 +249,9 @@ module KitchenCabinetMaster
         values.delete('depth_auto')
         values.delete('height_auto')
         answer = insert_end_panel(values)
-        if answer['ok'] then made += 1
+        if answer['ok']
+          made += 1
+          mark_auto(model) if raw['auto'] == true # (this panel was placed by the tick in the Presets)
         elsif answer['message'].to_s.include?('already has something against it') then covered += 1
         else problems << answer['message']
         end
@@ -257,6 +259,43 @@ module KitchenCabinetMaster
       [made, covered, problems]
     end
     private_class_method :place_exposed_panels
+
+    # What the side panels of the Presets tick are: marked, so that they can be taken away and placed again (a panel you inserted yourself is not).
+    def self.mark_auto(model)
+      panel = model.selection.to_a.first
+      panel.set_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO, true) if panel
+    end
+    private_class_method :mark_auto
+
+    def self.auto_panels(model)
+      model.entities.grep(Sketchup::ComponentInstance).select { |part| AttributeManager.part_kind(part) == 'end_panel' && part.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO) == true }
+    end
+    private_class_method :auto_panels
+
+    def self.remove_auto_panels(model)
+      auto_panels(model).each { |part| PartGenerator.remove(model, part) if part.valid? }
+    end
+    private_class_method :remove_auto_panels
+
+    # A side panel on every side that shows, of every cabinet and filler (inside an operation of its own, see LiveParts).
+    def self.place_auto_panels(model, values)
+      targets = model.entities.select { |entity| AttributeManager.cabinet?(entity) || AttributeManager.part_kind(entity) == 'filler' }
+      return 0 if targets.empty?
+
+      made = 0
+      @batch = true
+      begin
+        panel_values = stringify(values).merge('auto' => true)
+        targets.each do |target|
+          %w[left right].each { |side| made += place_exposed_panels(model, target, side, panel_values)[0] }
+        end
+      ensure
+        @batch = false
+      end
+      model.selection.clear
+      made
+    end
+    private_class_method :place_auto_panels
 
     # The rectangles of one side of a cabinet that show (see SideExposure): the cabinets, fillers and side panels that touch the side hide the
     # part they cover. [[x0, z0, x1, z1]] in millimetres, in the cabinet's own frame (x from the back of the carcass).

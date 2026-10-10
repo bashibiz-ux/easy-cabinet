@@ -417,4 +417,13 @@ class KitchenManagerTest < Minitest::Test
     design({ 'wall_a' => 3600 })
     assert_equal 1, DimensionManager.asked.length, 'not asked, not drawn'
   end
+  def test_two_bowls_reach_the_sink_unit_and_one_bowl_is_the_catalogs_own
+    design({ 'wall_a' => 4800, 'sink_bowls' => 2 })
+    sink = made.find { |built| built.params['cabinet_type'] == 'base_sink' }
+    assert_equal 2, sink.params['sink_bowls']
+    assert_equal 1200.0, sink.params['width']
+    CabinetGenerator.reset
+    design({ 'wall_a' => 4800 })
+    assert_equal 1, made.find { |built| built.params['cabinet_type'] == 'base_sink' }.params['sink_bowls']
+  end
 end
