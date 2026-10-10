@@ -235,8 +235,16 @@ module KitchenCabinetMaster
       target_params = AttributeManager.read(target)
       return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
 
-      rectangles = side_rectangles(target, target_params, side)
+      rectangles, touching = side_rectangles(target, target_params, side)
       return [0, 1, []] if rectangles.empty?
+
+      # A side that shows only in part, because a lower or shallower unit stands against it: the units along that side (and all those after them
+      # in the row) move away by the thickness of the panel, and the panel is a full one, the whole side. (Not in the Auto Kitchen: it made room.)
+      thickness = stringify(raw)['thickness'].to_f
+      if touching.any? && thickness.positive? && raw['shift'] != false
+        shift_chain(target, side, touching, thickness)
+        rectangles = [[0.0, start_z_of(target, target_params), door_front_of(target, target_params), top_of(target_params)]]
+      end
 
       made = 0
       covered = 0
@@ -259,6 +267,48 @@ module KitchenCabinetMaster
       [made, covered, problems]
     end
     private_class_method :place_exposed_panels
+
+    # Moves `first` (the units against one side of `target`) and every unit that follows them along the row, `distance` mm away from the target. The
+    # parts that are against them (fillers, side panels) go along; the worktop is built again where it is.
+    def self.shift_chain(target, side, first, distance)
+      entities = target.parent.entities
+      inverse = target.transformation.inverse
+      sign = side == 'left' ? -1.0 : 1.0
+      boxes = entities.grep(Sketchup::ComponentInstance).select { |other| !other.equal?(target) && AttributeManager.occupant?(other) }.to_h { |other| [other, occupant_box(inverse, other)] }
+      moving = first.dup
+      loop do
+        found = boxes.keys.reject { |other| moving.any? { |member| member.equal?(other) } }.select do |other|
+          box = boxes[other]
+          moving.any? do |member|
+            reference = boxes[member]
+            next false unless reference
+
+            gap = sign.positive? ? box[:y0] - reference[:y1] : reference[:y0] - box[:y1]
+            gap.abs <= 3.0 && box[:x1] > reference[:x0] + 1.0 && box[:x0] < reference[:x1] - 1.0
+          end
+        end
+        break if found.empty?
+
+        moving.concat(found)
+      end
+      step = target.transformation.yaxis
+      step.length = distance.mm
+      step = Geom::Vector3d.new(step.x * sign, step.y * sign, step.z * sign)
+      entities.transform_entities(Geom::Transformation.translation(step), moving)
+      WorktopManager.refresh(Sketchup.active_model) if WorktopManager.respond_to?(:refresh)
+    end
+    private_class_method :shift_chain
+
+    # The box a unit takes, in the frame of `inverse`'s object: { x0:, x1:, y0:, y1:, z0:, z1: } in millimetres (a hanging unit from where it starts).
+    def self.occupant_box(inverse, other)
+      stored = AttributeManager.read(other) || {}
+      size = %w[envelope_depth envelope_width envelope_top].map { |key| other.get_attribute(AttributeManager::DICTIONARY, key).to_f }
+      points = [0, size[0]].product([0, size[1]], [0, size[2]]).map { |x, y, z| inverse * (other.transformation * Geom::Point3d.new(x.mm, y.mm, z.mm)) }
+      floor = stored['cabinet_category'].to_s == 'wall' || stored['target_category'].to_s == 'wall' ? (stored['base_z'] || stored['target_base_z']).to_f : stored['target_base_z'].to_f
+      { x0: points.map { |p| p.x.to_mm }.min, x1: points.map { |p| p.x.to_mm }.max, y0: points.map { |p| p.y.to_mm }.min, y1: points.map { |p| p.y.to_mm }.max,
+        z0: points.map { |p| p.z.to_mm }.min + floor, z1: points.map { |p| p.z.to_mm }.max }
+    end
+    private_class_method :occupant_box
 
     # What the side panels of the Presets tick are: marked, so that they can be taken away and placed again (a panel you inserted yourself is not).
     def self.mark_auto(model)
@@ -324,9 +374,9 @@ module KitchenCabinetMaster
         high = zs.max
         next unless xs.max > 1.0 && xs.min < depth - 1.0 && high > base + 1.0 && low < top - 1.0
 
-        neighbours << { x0: xs.min, x1: xs.max, z0: low, z1: high }
+        neighbours << { x0: xs.min, x1: xs.max, z0: low, z1: high, ref: other }
       end
-      SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours)
+      [SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours), neighbours.map { |n| n[:ref] }]
     end
     private_class_method :side_rectangles
 

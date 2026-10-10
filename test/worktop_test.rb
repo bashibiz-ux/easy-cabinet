@@ -74,6 +74,38 @@ class WorktopTest < Minitest::Test
     slab = Worktop.slab(run, Worktop::DEFAULTS)
     assert_equal 300.0, Worktop.knee_panels(run, slab, thickness: 20.0, ends: 20.0).first[:extent][0]
   end
+  def test_the_slab_reaches_over_a_side_panel_standing_at_either_end_of_a_run
+    items = Array.new(3) { |i| item(y: i * 600.0, width: 600.0) }
+    left = { x: 0.0, y: -18.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }
+    right = { x: 0.0, y: 1800.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }
+    run = Worktop.runs(items, [left, right]).first
+    assert_equal 18.0, run[:lead]
+    assert_equal 18.0, run[:trail]
+    slab = Worktop.slab(run, Worktop::DEFAULTS)
+    assert_in_delta 1800.0 + 36.0, slab[:extent][1], 0.01
+    assert_in_delta(-18.0, slab[:offset][1], 0.01)
+    assert_equal [18.0, 18.0], Worktop.extension(run, Worktop::DEFAULTS)
+  end
+
+  def test_a_panel_that_is_lower_than_the_worktop_or_elsewhere_is_not_covered
+    items = Array.new(2) { |i| item(y: i * 600.0, width: 600.0) }
+    low = { x: 0.0, y: -18.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 600.0 }
+    away = { x: 0.0, y: 1200.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }
+    sideways = { x: 0.0, y: 1200.0, hx: 1.0, hy: 0.0, thickness: 18.0, top: 880.0 }
+    elsewhere = { x: 900.0, y: 1200.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }
+    run = Worktop.runs(items, [low, sideways, elsewhere]).first
+    assert_nil run[:lead]
+    assert_nil run[:trail]
+    assert_equal [0.0, 0.0], Worktop.extension(run, Worktop::DEFAULTS)
+    assert_equal 18.0, Worktop.runs(items, [away]).first[:trail], 'a panel at the far end that does reach the worktop'
+  end
+
+  def test_a_bigger_end_overhang_wins_over_the_panel
+    items = Array.new(2) { |i| item(y: i * 600.0, width: 600.0) }
+    panel = { x: 0.0, y: -18.0, hx: 0.0, hy: 1.0, thickness: 18.0, top: 880.0 }
+    run = Worktop.runs(items, [panel]).first
+    assert_equal [30.0, 30.0], Worktop.extension(run, Worktop::DEFAULTS.merge('worktop_end' => 30.0))
+  end
   # ---- runs -------------------------------------------------------------------
 
   def test_units_in_a_line_get_one_worktop

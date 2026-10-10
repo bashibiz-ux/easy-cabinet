@@ -38,7 +38,7 @@ module KitchenCabinetMaster
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -54,7 +54,7 @@ module KitchenCabinetMaster
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
         'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
-        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
+        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_mirror' => flag.call('island_mirror'), 'panel_thickness' => raw['panel_thickness'].to_s.tr(',', '.').to_f.clamp(0.0, 60.0), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
     # The windows the walls have: [{ run, from, to }], the distance from the start of the wall. Anything unusable is left out.
@@ -86,9 +86,14 @@ module KitchenCabinetMaster
       fridge_w = FRIDGE.key?(o['fridge']) ? FRIDGE[o['fridge']][1] : 0.0
       oven_w = o['oven_tower'] ? OVEN[1] : 0.0
 
+      # A tall unit beside lower units gets a full side panel, and the units after it stand one panel thickness further along.
+      panel = o['panel_thickness'].to_f
+      fridge_end = fridge_w.positive? ? fridge_w + panel : 0.0
+      oven_end = oven_w.positive? ? oven_w + panel : 0.0
+
       reserve = lambda do |run|
         index = runs.index(run)
-        [index.zero? ? fridge_w : CORNER_BASE, index == runs.length - 1 ? oven_w : CORNER_BASE]
+        [index.zero? ? fridge_end : CORNER_BASE, index == runs.length - 1 ? oven_end : CORNER_BASE]
       end
       free = runs.to_h { |run| [run, lengths[run] - reserve.call(run).sum] }
       runs.each do |run|
@@ -115,14 +120,26 @@ module KitchenCabinetMaster
         base << Item.new(category: 'tall', type: OVEN[0], width: oven_w, kind: :oven, run: runs.last, start: lengths[runs.last] - oven_w)
       end
 
-      wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_w, oven_w, notes, o['style']) : []
-      wall_start = fridge_w
+      wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_end, oven_end, notes, o['style']) : []
+      wall_start = fridge_end
       if o['mirror'] # the other hand: the whole row of units the other way round (see mirrored)
-        base, wall, lengths = mirrored(base, wall, runs, lengths, oven_w)
-        wall_start = oven_w
+        base, wall, lengths = mirrored(base, wall, runs, lengths, oven_end)
+        wall_start = oven_end
       end
+      spaced_for_panels(base, panel)
       Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a], open_ends: o['open_ends'], run_ends: o['run_end_panels'])
     end
+
+    # The room for a side panel between a tall unit and the lower unit beside it (in the same row): that unit has `panel` mm before it.
+    def self.spaced_for_panels(base, panel)
+      base.each { |item| item.gap_before = 0.0 }
+      return unless panel.positive?
+
+      base.each_cons(2) do |before, item|
+        item.gap_before = panel if before.run == item.run && (before.category == 'tall') != (item.category == 'tall') && before.kind != :corner && item.kind != :corner
+      end
+    end
+    private_class_method :spaced_for_panels
 
     # ---- the other hand ------------------------------------------------------------
 
@@ -469,6 +486,15 @@ module KitchenCabinetMaster
         end
       end
       notes << "The island is #{fmt(length.round)} mm long (the room allows no more)." if length < wanted - 1.0
+      if o['island_mirror'] # the other hand: the units in the opposite order along the island
+        position = 0.0
+        items = items.reverse.map do |item|
+          copy = item.dup
+          copy.start = position
+          position += copy.width
+          copy
+        end
+      end
       hob = items.find { |item| item.kind == :hob }
       hood = hob && o['hood'] ? { start: hob.start, width: hob.width, top: o['ceiling'], material: o['island_hood_colour'] } : nil # a hood hung from the ceiling over the island's hob
       Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle, hood: hood, seating: o['island_seating'], back_panel: o['island_back_panel'] ? { length: length, material: o['island_back_panel_material'] } : nil, side_panels: o['island_side_panels'])

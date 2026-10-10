@@ -426,4 +426,15 @@ class KitchenManagerTest < Minitest::Test
     design({ 'wall_a' => 4800 })
     assert_equal 1, made.find { |built| built.params['cabinet_type'] == 'base_sink' }.params['sink_bowls']
   end
+  def test_the_unit_beside_a_tall_one_is_moved_along_by_the_panel_thickness
+    design({ 'wall_a' => 4200, 'panel_thickness' => 18 })
+    fridge = made.first
+    after = made[1]
+    gap = after.transformation.ty - (fridge.transformation.ty + fridge.params['width'])
+    assert_in_delta 18.0, gap, 0.01, 'room for the panel between the fridge and the next unit'
+    CabinetGenerator.reset
+    PlacementManager.reset
+    design({ 'wall_a' => 4200 })
+    assert_in_delta 0.0, made[1].transformation.ty - (made.first.transformation.ty + made.first.params['width']), 0.01
+  end
 end

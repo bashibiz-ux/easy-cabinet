@@ -45,13 +45,14 @@ module KitchenCabinetMaster
     #   ref         whatever the caller wants back (the entity)
     # Returns an Array of runs: { items:, along:, length:, depth:, top:, corner: }
     # where `along` is where the first item starts, measured along the run.
-    def self.runs(items)
+    def self.runs(items, panels = [])
       corners, lines = items.partition { |item| item[:corner] }
       found = corners.map { |item| { items: [item], along: 0.0, length: item[:width], depth: item[:width], top: item[:top], corner: true } }
 
       lines.group_by { |item| line_key(item) }.each_value do |group|
         chain(group.sort_by { |item| along(item) }).each { |run| found << run }
       end
+      found.each { |run| attach_panels(run, panels) unless run[:corner] } # the slab reaches over the side panels at its ends
       # A corner's worktop is as deep as the cabinets beside it (the nearest straight unit).
       found.each do |run|
         next unless run[:corner]
@@ -62,6 +63,28 @@ module KitchenCabinetMaster
       end
       found
     end
+
+    # A side panel standing at an end of a run (touching its first or its last unit, as high as the units, along the same line) is something the
+    # worktop must cover: `lead` / `trail` are the thickness of the panel at the start / the end of the run, so the slab reaches its far face.
+    # panels: [{ x:, y:, hx:, hy:, thickness:, top: }] (x, y where the panel's own origin is: its low end along its length of thickness).
+    def self.attach_panels(run, panels)
+      first = run[:items].first
+      stop = run[:along] + run[:length]
+      panels.each do |panel|
+        next unless ((panel[:hx] * first[:hx]) + (panel[:hy] * first[:hy])) > 0.98 # (the same direction)
+        next unless (lateral_mm(panel) - lateral_mm(first)).abs < 5.0
+        next if panel[:top].to_f < run[:top].to_f - 1.0
+
+        low = along(panel)
+        high = low + panel[:thickness].to_f
+        run[:lead] = [run[:lead].to_f, panel[:thickness].to_f].max if (high - run[:along]).abs < 3.0
+        run[:trail] = [run[:trail].to_f, panel[:thickness].to_f].max if (low - stop).abs < 3.0
+      end
+    end
+    private_class_method :attach_panels
+
+    def self.lateral_mm(item) = (item[:x] * -item[:hy]) + (item[:y] * item[:hx])
+    private_class_method :lateral_mm
 
     def self.line_key(item)
       angle = (Math.atan2(item[:hy], item[:hx]) * 180.0 / Math::PI).round
@@ -125,7 +148,7 @@ module KitchenCabinetMaster
     # A straight run reaches the front of the doors plus the front overhang; `from` and
     # `to` (mm along the slab, 0 = its start) pick one piece of it. A corner unit's
     # slab follows its footprint, the front cut across the diagonal.
-# How far the slab reaches past the units at each end: the End overhang setting, and at least the thickness of the knee panels under a
+    # How far the slab reaches past the units at each end: the End overhang setting, and at least the thickness of the knee panels under a
     # seating overhang, so that the slab covers their tops.
     def self.ends(run, params)
       set = params['worktop_end'].to_f
@@ -134,16 +157,22 @@ module KitchenCabinetMaster
       [set, params['worktop_thickness'].to_f].max
     end
 
+# [start, end]: how far the slab reaches past the first and the last unit: `ends`, or as far as the face of a side panel standing there.
+    def self.extension(run, params)
+      base = ends(run, params)
+      [[base, run[:lead].to_f].max, [base, run[:trail].to_f].max]
+    end
+
     def self.slab(run, params, from: 0.0, to: nil)
       front = params['worktop_front'].to_f
-      ends = ends(run, params)
+      lead, trail = extension(run, params)
       thickness = params['worktop_thickness'].to_f
       return corner_slab(run, front, thickness, run[:neighbor_depth]) if run[:corner]
 
-      total = run[:length] + (2 * ends)
+      total = run[:length] + lead + trail
       to ||= total
       back = run[:back].to_f # an island's seating overhang: the slab reaches this much beyond the back of the units
-      { extent: [run[:depth] + front + back, to - from, thickness], offset: [-back, -ends + from, 0.0], points: nil }
+      { extent: [run[:depth] + front + back, to - from, thickness], offset: [-back, -lead + from, 0.0], points: nil }
     end
 
     # The corner's outline: back wall and side wall edges square, the front-right corner
@@ -181,7 +210,7 @@ module KitchenCabinetMaster
     # front to the edge of the overhang; when the island has side panels of its own on the units only the overhang is left for them.
     # `first` / `last` pick the start and / or the end of the slab (a slab cut into pieces).
     # [{ extent: [depth, thickness, height], offset: [x, y, z] }]
-    def self.knee_panels(run, slab, thickness:, ends:, first: true, last: true)
+    def self.knee_panels(run, slab, thickness:, ends:, last_ends: nil, first: true, last: true)
       back = run[:back].to_f
       return [] if run[:corner] || back <= 1.0
 
@@ -189,7 +218,7 @@ module KitchenCabinetMaster
       height = run[:top].to_f
       ys = []
       ys << ends - thickness if first
-      ys << slab[:extent][1] - ends if last
+      ys << slab[:extent][1] - (last_ends || ends) if last
       ys.map { |y| { extent: [depth, thickness, height], offset: [0.0, y, -height] } }
     end
 
@@ -252,7 +281,7 @@ module KitchenCabinetMaster
       end
       return Response.fail(errors.first['message'], errors) unless errors.empty?
 
-      runs = Worktop.runs(items_of(model))
+      runs = Worktop.runs(items_of(model), panels_of(model))
       return Response.fail('There are no base units to put a worktop on. Insert a base unit first.') if runs.empty?
 
       # With a worktop piece selected the settings are for the run it belongs to; with none selected they are for every run.
@@ -308,7 +337,7 @@ module KitchenCabinetMaster
       fallback = records.find { |s| s['part_kind'] == 'worktop' && !s['part_label'] } || {}
       # Each run is rebuilt with the settings its own pieces were built with.
       own = records.select { |s| s['part_kind'] == 'worktop' && !s['part_label'] && !s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
-      runs = Worktop.runs(items_of(model))
+      runs = Worktop.runs(items_of(model), panels_of(model))
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each { |run| build(model, run, Worktop::DEFAULTS.merge((own[run_key(run)] || fallback).slice(*keys))) }
       CabinetGenerator.sync_fixtures(model)
@@ -327,6 +356,20 @@ module KitchenCabinetMaster
     # Every slab and back splash piece in the model.
     def self.pieces_in(model)
       model.entities.grep(Sketchup::ComponentInstance).select { |item| KINDS.include?(AttributeManager.part_kind(item)) }
+    end
+
+    # The side panels in the model, as the worktop needs them to reach over their tops (see Worktop.attach_panels).
+    def self.panels_of(model)
+      dictionary = AttributeManager::DICTIONARY
+      model.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
+        next unless AttributeManager.part_kind(part) == 'end_panel'
+
+        stored = AttributeManager.read(part)
+        origin = part.transformation.origin
+        heading = part.transformation.yaxis
+        { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, thickness: stored['thickness'].to_f,
+          top: origin.z.to_mm + stored['target_base_z'].to_f + stored['height'].to_f }
+      end
     end
 
     # What carries a worktop: base and corner units and the fillers beside them.
@@ -358,7 +401,7 @@ module KitchenCabinetMaster
     def self.build(model, run, params)
       params = params.merge('run_key' => run_key(run))
       first = run[:items].first[:ref]
-      total = run[:corner] ? 0.0 : run[:length] + (2 * Worktop.ends(run, params))
+      total = run[:corner] ? 0.0 : run[:length] + Worktop.extension(run, params).sum
       spans = run[:corner] ? [[0.0, nil]] : Worktop.pieces(total, params)
 
       spans.each do |from, to|
@@ -368,7 +411,7 @@ module KitchenCabinetMaster
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
         begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
-          Worktop.knee_panels(run, slab, thickness: params['worktop_thickness'].to_f, ends: Worktop.ends(run, params), first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
+          Worktop.knee_panels(run, slab, thickness: params['worktop_thickness'].to_f, ends: Worktop.extension(run, params)[0], last_ends: Worktop.extension(run, params)[1], first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
             make_part(model, 'worktop', panel[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(panel[:offset][0].mm, panel[:offset][1].mm, panel[:offset][2].mm)),
                       params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
           end

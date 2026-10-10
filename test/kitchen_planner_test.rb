@@ -383,6 +383,40 @@ class KitchenPlannerTest < Minitest::Test
     assert_in_delta 4800.0, total, 0.5, 'the run is still filled exactly'
     assert_equal 1, KitchenPlanner.normalise('sink_bowls' => 'x')['sink_bowls']
   end
+  def test_a_tall_unit_beside_lower_units_leaves_room_for_a_side_panel_and_the_run_still_fills_the_wall
+    plain = plan('wall_a' => 4200, 'oven_tower' => true)
+    assert(plain.base.all? { |item| item.gap_before.to_f.zero? }, 'no panels asked: no room made')
+    spaced = plan('wall_a' => 4200, 'oven_tower' => true, 'panel_thickness' => 18)
+    gaps = spaced.base.select { |item| item.gap_before.to_f.positive? }
+    assert_equal 2, gaps.length, 'one beside the fridge, one beside the oven'
+    assert(gaps.all? { |item| item.gap_before == 18.0 })
+    fridge = spaced.base.index { |item| item.kind == :fridge }
+    assert_equal 18.0, spaced.base[fridge + 1].gap_before, 'the unit after the fridge'
+    oven = spaced.base.index { |item| item.kind == :oven }
+    assert_equal 18.0, spaced.base[oven].gap_before, 'the oven after the units'
+    assert_in_delta 4200.0, spaced.base.sum(&:width) + 36.0, 0.5, 'the units and the two panels fill the wall'
+    assert_equal 618.0, spaced.wall_start, 'the wall units start after the fridge and its panel'
+  end
+
+  def test_the_room_for_panels_follows_a_mirrored_kitchen
+    mirrored = plan('wall_a' => 4200, 'oven_tower' => true, 'panel_thickness' => 18, 'mirror' => true)
+    first = mirrored.base.first
+    assert_equal :oven, first.kind
+    assert_equal 18.0, mirrored.base[1].gap_before, 'the unit after the oven'
+    fridge = mirrored.base.index { |item| item.kind == :fridge }
+    assert_equal 18.0, mirrored.base[fridge].gap_before, 'the fridge at the other end'
+    assert_in_delta 4200.0, mirrored.base.sum(&:width) + 36.0, 0.5
+    assert_equal 618.0, mirrored.wall_start, 'after the oven (600) and its panel'
+  end
+
+  def test_an_island_can_be_its_own_mirror_image
+    plain = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'sink').island
+    mirror = plan('wall_a' => 4200, 'island' => true, 'island_feature' => 'sink', 'island_mirror' => true).island
+    assert_equal plain.items.map(&:type).reverse, mirror.items.map(&:type)
+    assert_equal plain.items.sum(&:width), mirror.items.sum(&:width)
+    assert_equal 0.0, mirror.items.first.start
+    assert_in_delta mirror.items.first.width, mirror.items[1].start, 0.01
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating

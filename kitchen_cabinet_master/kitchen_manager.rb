@@ -59,7 +59,12 @@ module KitchenCabinetMaster
             plan.base.each_with_index do |item, position|
               shifted = index.positive? && position.zero? ? all.first[:base].first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, (index * step).mm, 0)) : nil
               shifted = origin if shifted.nil? && origin && index.zero? && position.zero?
-              built[:base] << build_unit(model, panel, catalog_id, item, shifted)
+              gap = nil
+              if shifted.nil? && position.positive? && item.gap_before.to_f.positive? # the room for a side panel between a tall unit and the one beside it
+                gap = built[:base].last.transformation.yaxis
+                gap.length = item.gap_before.mm
+              end
+              built[:base] << build_unit(model, panel, catalog_id, item, shifted, gap)
             end
             build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
             build_island(model, panel, catalog_id, plan, built, parts) if plan.island
@@ -199,7 +204,7 @@ module KitchenCabinetMaster
       return unless panel.is_a?(Hash)
 
       ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
-      values = panel.transform_keys(&:to_s)
+      values = panel.transform_keys(&:to_s).merge('shift' => false) # (the kitchen made room for its panels itself: nothing is moved)
       built.each do |part, units|
         units.each_with_index do |unit, index|
           %w[left right].each do |side|
