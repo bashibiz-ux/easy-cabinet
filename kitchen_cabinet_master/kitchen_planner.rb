@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   # Every unit is {category, type (a catalog id of the kitchen catalogs), width, kind}; the widths of a wall add up to its length.
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true) # extra: values this unit has of its own (a glass door)
-    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
+    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, :open_ends, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
     Island = Struct.new(:items, :x, :y, :length, :aisle, :hood, :seating, :back_panel, :side_panels, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
@@ -37,7 +37,7 @@ module KitchenCabinetMaster
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'dishwasher' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 0.0, 'island_back_panel' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 0.0, 'island_back_panel' => false, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -53,7 +53,7 @@ module KitchenCabinetMaster
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'dishwasher' => flag.call('dishwasher'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
         'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
-        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
+        'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
     # The windows the walls have: [{ run, from, to }], the distance from the start of the wall. Anything unusable is left out.
@@ -120,7 +120,7 @@ module KitchenCabinetMaster
         base, wall, lengths = mirrored(base, wall, runs, lengths, oven_w)
         wall_start = oven_w
       end
-      Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a])
+      Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a], open_ends: o['open_ends'])
     end
 
     # ---- the other hand ------------------------------------------------------------
@@ -507,7 +507,7 @@ module KitchenCabinetMaster
         targets << { part: :island, index: 0, side: 'left' }
         targets << { part: :island, index: plan.island.items.length - 1, side: 'right' }
       end
-      if %w[l u].include?(plan.layout) && !plan.base.empty?
+      if (%w[l u].include?(plan.layout) || plan.open_ends) && !plan.base.empty?
         targets << { part: :base, index: 0, side: 'left' }
         targets << { part: :base, index: plan.base.length - 1, side: 'right' }
         unless plan.wall.empty?

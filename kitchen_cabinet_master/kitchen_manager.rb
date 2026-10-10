@@ -262,9 +262,9 @@ module KitchenCabinetMaster
       place = frame * Geom::Transformation.translation(Geom::Vector3d.new(island.x.mm, island.y.mm, 0)) *
               Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
+      built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_side_panels', true) } if island.side_panels # (the knee panels then only fill the overhang)
       built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_seating', island.seating.to_f) } # (the worktop reaches this far beyond the back, and has no back splash)
       if island.back_panel # a board closing the room side of the units
-        built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_back_panel', true) } # (it is the back of the knee space, so the worktop makes no knee panel of its own)
         extra(parts, 'The island back panel') do
           top = built[:island].first.get_attribute(AttributeManager::DICTIONARY, 'top_z').to_f
           IslandBackPanel.build(model, model.active_entities, place, island.back_panel.merge(height: top, material: island.back_panel[:material].to_s.empty? ? panel['base_material'] : island.back_panel[:material]))

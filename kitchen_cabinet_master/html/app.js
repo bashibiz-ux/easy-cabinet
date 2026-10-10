@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.96.0';
+  const APP_VERSION = '0.97.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -530,7 +530,7 @@
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
     remove_handle: () => ({ handle_id: $('handle').value }),
-    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null,
+    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? { ...collectWorktop(), knee_material: $('kitchenKneeMaterial').value } : null,
       toe_kick: $('kitchenToeKick').checked ? collectToeKick() : null, end_panel: $('kitchenEndPanels').checked ? collectEndPanel() : null }),
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen()
   };
@@ -600,7 +600,7 @@
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
       sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, island_hood_colour: $('kitchenHoodColour').value,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenOpenEnds').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
@@ -828,6 +828,7 @@
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('kitchenBackPanelMaterial'), panel, { placeholder: 'Same as the doors' });
+    fillSelect($('kitchenKneeMaterial'), panel, { placeholder: 'Same as the worktop' });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);

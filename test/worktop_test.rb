@@ -54,16 +54,21 @@ class WorktopTest < Minitest::Test
     assert_nil Worktop.support(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
     assert_nil Worktop.support(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), Worktop::DEFAULTS))
   end
-  def test_an_overhang_has_one_knee_panel_across_the_whole_slab_from_the_floor_against_the_back_of_the_units
+  def test_an_overhang_has_a_knee_panel_at_each_end_over_the_whole_depth_of_the_slab_down_to_the_floor
     run = run_of(3, island_back: 300.0)
     slab = Worktop.slab(run, Worktop::DEFAULTS)
-    panel = Worktop.knee_panel(run, slab)
-    assert_equal [18.0, slab[:extent][1], 880.0], panel[:extent], 'as long as the slab, down to the floor'
-    assert_equal [282.0, 0.0, -880.0], panel[:offset], 'at the back of the knee space (the units start 300 mm from the slab edge)'
-    assert_nil Worktop.knee_panel(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
-    backed = run_of(3, island_back: 300.0)
-    backed[:backed] = true
-    assert_nil Worktop.knee_panel(backed, slab), 'the island back panel is that board already'
+    panels = Worktop.knee_panels(run, slab)
+    assert_equal 2, panels.length
+    assert_equal [slab[:extent][0], 18.0, 880.0], panels.first[:extent], 'the whole depth of the slab, down to the floor'
+    assert_equal [0.0, slab[:extent][1] - 18.0], panels.map { |panel| panel[:offset][1] }
+    assert_equal [0.0], Worktop.knee_panels(run, slab, last: false).map { |panel| panel[:offset][1] }
+    assert_empty Worktop.knee_panels(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
+  end
+
+  def test_with_side_panels_on_the_units_the_knee_panels_only_fill_the_overhang
+    run = run_of(3, island_back: 300.0)
+    run[:sided] = true
+    assert_equal 300.0, Worktop.knee_panels(run, Worktop.slab(run, Worktop::DEFAULTS)).first[:extent][0]
   end
   # ---- runs -------------------------------------------------------------------
 

@@ -33,7 +33,8 @@ module KitchenCabinetMaster
       'backsplash_height' => 100.0,  # 0 = no back splash
       'backsplash_thickness' => 20.0,
       'material' => 'White',
-      'backsplash_material' => ''     # '' = the material of the worktop
+      'backsplash_material' => '',    # '' = the material of the worktop
+      'knee_material' => ''           # '' = the material of the worktop (the knee panels under a seating overhang)
     }.freeze
 
     # items: Hashes in world millimetres, one per base unit / filler:
@@ -93,7 +94,7 @@ module KitchenCabinetMaster
       start = along(items.first)
       stop = items.map { |item| along(item) + item[:width] }.max
       { items: items, along: start, length: stop - start, depth: items.map { |item| item[:depth] }.max,
-        top: items.first[:top], corner: false, back: items.first[:island_back], backed: items.first[:island_panel] }
+        top: items.first[:top], corner: false, back: items.first[:island_back], sided: items.first[:island_sided] }
     end
     private_class_method :finish
 
@@ -177,15 +178,20 @@ module KitchenCabinetMaster
       { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
     end
 
-# The knee panel: one upright board across the whole length of the slab, standing on the floor against the back of the units (the back of the
-    # knee space under a seating overhang) and reaching up to the slab, in the slab's own frame. nil when the slab has no overhang, or when the
-    # island already has a back panel there. { extent: [depth, length, height], offset: [x, y, z] }
-    def self.knee_panel(run, slab)
+    # The knee panels: an upright board at each end of a slab with a seating overhang, standing on the floor and reaching up to the slab, in the
+    # slab's own frame. They cover the whole depth of the slab (the front to the edge of the overhang); when the island has side panels of its
+    # own on the units only the overhang is left for them. `first` / `last` pick the start and / or the end of the slab (a slab cut into pieces).
+    # [{ extent: [depth, thickness, height], offset: [x, y, z] }]
+    def self.knee_panels(run, slab, first: true, last: true)
       back = run[:back].to_f
-      return nil if run[:corner] || back <= 1.0 || run[:backed]
+      return [] if run[:corner] || back <= 1.0
 
+      depth = run[:sided] ? back : slab[:extent][0]
       height = run[:top].to_f
-      { extent: [SUPPORT_MM, slab[:extent][1], height], offset: [back - SUPPORT_MM, 0.0, -height] }
+      ys = []
+      ys << 0.0 if first
+      ys << slab[:extent][1] - SUPPORT_MM if last
+      ys.map { |y| { extent: [depth, SUPPORT_MM, height], offset: [0.0, y, -height] } }
     end
 
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
@@ -238,6 +244,7 @@ module KitchenCabinetMaster
       result = ValidationManager.validate_worktop(raw)
       errors = result.errors.dup
       params = Worktop::DEFAULTS.merge(result.params)
+      params['knee_material'] = raw['knee_material'].to_s.strip if raw.key?('knee_material')
       unless errors.any? || MaterialManager.available?(model, params['material'])
         errors << { 'field' => 'material', 'message' => "The material \"#{params['material']}\" was not found in the model." }
       end
@@ -342,7 +349,7 @@ module KitchenCabinetMaster
         corner = !filler && CabinetLayout.corner?(stored)
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
-          island_back: item.get_attribute(dictionary, 'island_seating')&.to_f, island_panel: item.get_attribute(dictionary, 'island_back_panel') == true, corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
+          island_back: item.get_attribute(dictionary, 'island_seating')&.to_f, island_sided: item.get_attribute(dictionary, 'island_side_panels') == true, corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
           leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item,
           cutouts: filler ? [] : Fixtures.cutouts(stored) }
       end
@@ -364,8 +371,7 @@ module KitchenCabinetMaster
 
         begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
           board = Worktop.support(run, slab)
-          panel = Worktop.knee_panel(run, slab)
-          if panel # (the back of the knee space, from the floor to the slab)
+          Worktop.knee_panels(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
             make_part(model, 'worktop', panel[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(panel[:offset][0].mm, panel[:offset][1].mm, panel[:offset][2].mm)),
                       params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
           end
@@ -425,14 +431,15 @@ module KitchenCabinetMaster
       stored = params.dup
       stored['part_kind'] = kind
       stored['material'] = params['backsplash_material'] if kind == 'backsplash' && !params['backsplash_material'].to_s.empty? # (its own material)
+      stored['material'] = params['knee_material'] if params['part_label'] == 'Knee Panel' && !params['knee_material'].to_s.empty? # (its own colour)
       stored['part_id'] = AttributeManager.next_part_id(model)
       stored['part_name'] = "#{params['part_label'] || (kind == 'worktop' ? 'Worktop' : 'Back Splash')} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]
       stored['depth'] = extent[0]
       if params['part_label'] # (the cut list takes the board's size from here: an upright board is as high as it is long, thin the other way)
         upright = params['part_label'] == 'Knee Panel'
-        stored['worktop_thickness'] = upright ? extent[0] : extent[2]
-        stored['depth'] = extent[2] if upright
+        stored['worktop_thickness'] = upright ? extent[1] : extent[2]
+        stored['width'] = extent[2] if upright
       end
       slab = kind == 'worktop'
       round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee support has round 0)

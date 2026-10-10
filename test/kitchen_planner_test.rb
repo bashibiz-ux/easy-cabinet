@@ -354,6 +354,15 @@ class KitchenPlannerTest < Minitest::Test
     l_shape = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000)
     assert_operator KitchenPlanner.end_panel_targets(l_shape).length, :>, 0, 'the free ends of an L still get theirs'
   end
+  def test_open_ends_put_panels_on_both_ends_of_a_straight_kitchen
+    straight = plan('wall_a' => 3600)
+    assert_empty KitchenPlanner.end_panel_targets(straight)
+    open = plan('wall_a' => 3600, 'open_ends' => true)
+    targets = KitchenPlanner.end_panel_targets(open)
+    assert_includes targets, { part: :base, index: 0, side: 'left' }
+    assert_includes targets, { part: :base, index: open.base.length - 1, side: 'right' }
+    assert(targets.any? { |target| target[:part] == :wall }, 'the wall units too')
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating
