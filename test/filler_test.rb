@@ -420,6 +420,15 @@ class FillerTest < Minitest::Test
     assert_in_delta 580.0, filled['depth'], 1e-9
   end
 
+  def test_a_panel_starts_at_the_floor_when_it_is_asked_to_and_at_the_carcass_when_it_is_not
+    base = cabinet # 100 mm toe kick
+    stored = AttributeManager.read(base)
+    assert_equal 100.0, PartManager.send(:panel_base, {}, base, stored), 'nothing asked: the bottom of the carcass'
+    assert_equal 0.0, PartManager.send(:panel_base, { 'raise' => 0.0 }, base, stored), 'the floor asked for is the floor, not the carcass'
+    assert_equal 0.0, PartManager.send(:panel_base, { 'raise' => '0' }, base, stored)
+    assert_equal 880.0, PartManager.send(:panel_base, { 'raise' => 880.0 }, base, stored)
+  end
+
   def test_an_end_panel_on_a_wall_unit_is_laid_out_at_that_height
     layout = PartLayout.end_panel('depth' => 300.0, 'thickness' => 18.0, 'height' => 720.0, 'target_base_z' => 1400.0)
     assert_equal 1400.0, layout.base_z

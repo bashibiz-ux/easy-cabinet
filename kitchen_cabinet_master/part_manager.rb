@@ -154,9 +154,8 @@ module KitchenCabinetMaster
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
                             target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
-      rise = stringify(raw)['raise'].to_f # a panel for only the part of the side that shows: it starts this high ...
-      x_start = stringify(raw)['x_start'].to_f # ... and this far from the back of the carcass
-      params['target_base_z'] = rise.positive? ? rise : start_z_of(target, target_params)
+      x_start = stringify(raw)['x_start'].to_f # a panel that starts this far from the back of the carcass ...
+      params['target_base_z'] = panel_base(raw, target, target_params) # ... and this high (the floor too, when it is asked for)
 
       layout = PartLayout.end_panel(params)
       transformation, collision = placed_transformation(target, params, x_start)
@@ -253,7 +252,7 @@ module KitchenCabinetMaster
       from, top = SideExposure.panel_span(side: side, touched: touching.any?, hangs: hangs, carcass: carcass, top: top_of(target_params))
       model.selection.clear
       model.selection.add(target)
-      values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from > 0.5 ? from : 0.0)
+      values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
       values.delete('depth_auto')
       values.delete('height_auto')
       answer = insert_end_panel(values)
@@ -392,6 +391,13 @@ module KitchenCabinetMaster
       raw['height'] = top_of(target_params) - start_z_of(target, target_params) if truthy?(raw['height_auto']) || raw['height'].to_s.strip.empty?
       raw
     end
+
+    # How high the panel starts: the `raise` it was asked for (0 is the floor), else the bottom of the carcass of the unit it is on.
+    def self.panel_base(raw, target, target_params)
+      asked = stringify(raw)['raise']
+      asked.nil? || asked.to_s.strip.empty? ? start_z_of(target, target_params) : asked.to_f
+    end
+    private_class_method :panel_base
 
     # Where a side panel starts: at the bottom of the carcass of the unit it is on (above its toe kick, or where a wall unit hangs), so that it is
     # exactly as high as that unit and does not run down to the floor.
