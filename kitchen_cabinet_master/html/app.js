@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.1.3';
+  const APP_VERSION = '1.1.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1703,8 +1703,16 @@
     box.hidden = !message;
     if (!message) return;
 
-    box.append(document.createTextNode(message));
-    if (details.length) {
+const close = document.createElement('button'); // a cross to put the message away
+close.type = 'button';
+close.className = 'status-close';
+close.textContent = '\u00d7';
+close.title = 'Close';
+close.setAttribute('aria-label', 'Close the message');
+close.addEventListener('click', () => { box.hidden = true; });
+box.append(close);
+box.append(document.createTextNode(message));
+if (details.length) {
       const list = document.createElement('ul');
       details.forEach((text) => {
         const item = document.createElement('li');

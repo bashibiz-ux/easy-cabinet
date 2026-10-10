@@ -190,6 +190,7 @@ module KitchenCabinetMaster
       model.start_operation('Side Panels on Exposed Sides', true)
       @batch = true
       begin
+        remove_corner_panels(model) # (a panel on a corner unit is a stray one: the notch of the L is not a side)
         targets.each do |target|
           %w[left right].each do |side|
             did, skipped, trouble = place_exposed_panels(model, target, side, raw)
@@ -213,6 +214,20 @@ module KitchenCabinetMaster
       Response.ok("#{message}.".sub('..', '.'), { 'count' => made })
     end
     private_class_method :insert_exposed_side_panels
+
+    # Takes away any side panel that stands on a corner unit (older versions put them in the notch of the L).
+    def self.remove_corner_panels(model)
+      corners = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && CabinetLayout.corner?(AttributeManager.read(item)) }
+      ids = corners.map { |item| AttributeManager.cabinet_id(item) }.compact
+      return if ids.empty?
+
+      model.entities.grep(Sketchup::ComponentInstance).each do |part|
+        next unless AttributeManager.part_kind(part) == 'end_panel'
+
+        PartGenerator.remove(model, part) if ids.include?(AttributeManager.read(part)['target_id'])
+      end
+    end
+    private_class_method :remove_corner_panels
 
     # The side panels one side of one cabinet needs: one for each stretch of the side that shows (see side_rectangles). The panel's own values
     # (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
@@ -326,13 +341,30 @@ module KitchenCabinetMaster
       # The space the panel takes: from where it starts up to its top (a panel beside a wall unit or above a lower cabinet does not start on the floor).
       lifted = transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, params['target_base_z'].to_f.mm))
       size = [params['depth'].to_f, params['thickness'].to_f, params['height'].to_f]
-      if PlacementManager.collides?(target.parent.entities, lifted, size)
+      if occupied?(target.parent.entities, lifted, size)
         return [nil, "The #{params['side']} side of #{target.name} already has something against it."]
       end
 
       [transformation, nil]
     end
     private_class_method :placed_transformation
+
+    # Does the box (positioned by `transformation`, size in millimetres) share space with a cabinet, filler or side panel? Like
+    # PlacementManager.collides?, but a unit that hangs (a wall unit, a panel that starts above the floor) only takes the space from where it starts.
+    def self.occupied?(entities, transformation, size)
+      box = PlacementManager.box_for(transformation, size.map(&:mm))
+      entities.grep(Sketchup::ComponentInstance).any? do |other|
+        next false unless AttributeManager.occupant?(other)
+
+        stored = AttributeManager.read(other) || {}
+        extent = %w[envelope_depth envelope_width envelope_top].map { |key| other.get_attribute(AttributeManager::DICTIONARY, key).to_f.mm }
+        found = PlacementManager.box_for(other.transformation, extent)
+        from = stored['cabinet_category'].to_s == 'wall' ? stored['base_z'].to_f : stored['target_base_z'].to_f
+        found[:min][2] += from.mm if from.positive?
+        PlacementManager.overlap?(box, found)
+      end
+    end
+    private_class_method :occupied?
 
     # ---- toe kick ---------------------------------------------------------------
 
