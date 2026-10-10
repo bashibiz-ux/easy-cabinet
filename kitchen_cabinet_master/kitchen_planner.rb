@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   # Every unit is {category, type (a catalog id of the kitchen catalogs), width, kind}; the widths of a wall add up to its length.
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true) # extra: values this unit has of its own (a glass door)
-    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, :open_ends, :run_ends, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
+    Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, :open_ends, :run_ends, :turn, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
     Island = Struct.new(:items, :x, :y, :length, :aisle, :hood, :seating, :back_panel, :side_panels, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
@@ -124,12 +124,14 @@ module KitchenCabinetMaster
 
       wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_end, oven_end, notes, o['style']) : []
       wall_start = fridge_end
+      turn = nil
       if o['mirror'] # the other hand: the whole row of units the other way round (see mirrored)
+        turn = mirror_turn(runs, lengths)
         base, wall, lengths = mirrored(base, wall, runs, lengths, oven_end)
         wall_start = oven_end
       end
       spaced_for_panels(base, panel)
-      Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a], open_ends: o['open_ends'], run_ends: o['run_end_panels'])
+      Plan.new(base: base, wall: wall, wall_start: wall_start, notes: notes, error: nil, island: island, style: o['style'], layout: o['layout'], first_length: lengths[:a], open_ends: o['open_ends'], run_ends: o['run_end_panels'], turn: turn)
     end
 
     # The room for a side panel between a tall unit and the lower unit beside it (in the same row): that unit has `panel` mm before it.
@@ -183,7 +185,18 @@ module KitchenCabinetMaster
       end
       [new_base, new_wall, new_lengths]
     end
-    private_class_method :mirrored
+private_class_method :mirrored
+
+# The mirrored kitchen is built the usual way round (clockwise from its first wall), so it is turned to lie where the native mirror of the
+# kitchen would: wall A where it was, the corner at its other end. An L turns a quarter and moves along by its first wall (wall B); a U
+# turns half a turn and moves by the middle wall and the old last wall. [degrees, along, across] in the first unit's own frame (x: depth).
+def self.mirror_turn(runs, lengths)
+  case runs.length
+  when 2 then [90.0, lengths[:b], 0.0]
+  when 3 then [180.0, lengths[:b], lengths[:c]]
+  end
+end
+private_class_method :mirror_turn
     # Which run takes the sink and which the hob. The sink goes under a window when there is one on a run it fits, else in the middle wall of a U,
     # else on A. The hob goes on the last wall when there is room, else on A.
     def self.appliance_runs(o, runs, free, notes)

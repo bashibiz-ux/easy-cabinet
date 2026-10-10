@@ -338,7 +338,10 @@ class KitchenManagerTest < Minitest::Test
     design('layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'oven_tower' => true, 'mirror' => true)
     assert_equal 'tall_oven', made.first.params['cabinet_type']
     walls = made.select { |built| built.params['cabinet_category'] == 'wall' }
-    assert_in_delta made.first.transformation.ty + 600.0, walls.first.transformation.ty, 0.01
+    first = made.first.transformation # (the mirrored kitchen is turned a quarter, so the run is measured along the first unit's own y axis)
+    along = ((walls.first.transformation.tx - first.tx) * first.yaxis.x) + ((walls.first.transformation.ty - first.ty) * first.yaxis.y)
+    assert_in_delta 600.0, along, 0.01
+    assert_in_delta(-1.0, first.yaxis.x, 1e-9, 'an L mirrored: the first wall runs the other way, towards where wall A\'s corner is')
     assert_equal 'tall_fridge_builtin_2door', made.select { |built| built.params['cabinet_category'] == 'tall' }.last.params['cabinet_type']
   end
 

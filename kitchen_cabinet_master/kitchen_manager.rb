@@ -64,7 +64,7 @@ module KitchenCabinetMaster
                 gap = built[:base].last.transformation.yaxis
                 gap.length = item.gap_before.mm
               end
-              built[:base] << build_unit(model, panel, catalog_id, item, shifted, gap)
+              built[:base] << build_unit(model, panel, catalog_id, item, shifted, gap, position.zero? && plan.turn ? mirror_frame(plan.turn) : nil)
             end
             build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
             build_island(model, panel, catalog_id, plan, built, parts) if plan.island
@@ -333,8 +333,14 @@ module KitchenCabinetMaster
     end
     private_class_method :unit_raw
 
+    # Where a mirrored kitchen starts, from the plan's turn [degrees, along, across]: turned and moved so that it lies where the kitchen's native mirror would.
+    def self.mirror_frame(turn)
+      Geom::Transformation.translation(Geom::Vector3d.new(turn[1].mm, turn[2].mm, 0)) * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), turn[0].to_f * Math::PI / 180.0)
+    end
+    private_class_method :mirror_frame
+
     # One unit, as Insert builds it. `override` is where it goes when that is not just after the last one.
-    def self.build_unit(model, panel, catalog_id, item, override = nil, gap = nil)
+    def self.build_unit(model, panel, catalog_id, item, override = nil, gap = nil, turn = nil)
       entry = CatalogManager.cabinet(catalog_id, item.category, item.type)
       params, failure = CabinetManager.send(:prepare, unit_raw(panel, entry, item, catalog_id))
       raise "#{entry['name']} #{format('%g', item.width)} mm: #{failure['message']}" if failure
@@ -348,6 +354,7 @@ module KitchenCabinetMaster
       elsif gap
         transformation = Geom::Transformation.translation(gap) * transformation
       end
+      transformation *= turn if turn && !override # a mirrored kitchen starts turned (see KitchenPlanner.mirror_turn)
       params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
       CabinetGenerator.build(model, entities, params, transformation)
     end
