@@ -188,8 +188,11 @@ run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
       width = run[:length]
       returned = run[:items].first[:return_depth] || width
       return l_slab(run[:items].first, front, thickness, neighbor_depth, leg1_depth, leg2_depth) if run[:items].first[:corner_style] == 'l_shape'
-      cut = [returned + (front * SQRT2), width].min
-      points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
+# Each straight edge is as deep as the run it joins (so the worktop goes on without a step), the front cut across between them.
+cut = [returned + (front * SQRT2), width].min
+a = leg1_depth ? [leg1_depth + front, width].min : cut
+b = leg2_depth ? [leg2_depth + front, width].min : cut
+points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
       { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
     end
     private_class_method :corner_slab
