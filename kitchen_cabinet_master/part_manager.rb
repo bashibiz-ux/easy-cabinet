@@ -218,6 +218,8 @@ module KitchenCabinetMaster
     # (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
     def self.place_exposed_panels(model, target, side, raw)
       target_params = AttributeManager.read(target)
+      return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
+
       rectangles = side_rectangles(target, target_params, side)
       return [0, 1, []] if rectangles.empty?
 
