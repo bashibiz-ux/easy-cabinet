@@ -907,7 +907,7 @@ module KitchenCabinetMaster
 
     # A side panel's rounded outer edges follow the cabinet's Front edge radius: when that changes the panel is rebuilt with the new one.
     def self.follow_radius(model, part, stored, radius)
-      return unless AttributeManager.part_kind(part) == 'end_panel' && !radius.nil?
+      return unless stored['part_kind'] == 'end_panel' && !radius.nil? && stored.key?('front_radius')
       return if (stored['front_radius'].to_f - radius.to_f).abs < 0.001
 
       merged = stored.merge('front_radius' => radius.to_f)
