@@ -406,6 +406,17 @@ class KitchenManagerTest < Minitest::Test
     assert_equal original, rebuilt.first.transformation.to_a, 'built again at the same place'
   end
 
+  def test_a_live_update_that_turns_the_mirror_on_and_off_lands_where_a_fresh_design_does
+    design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800 })
+    plain = made.first.transformation.to_a
+    design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'mirror' => true }, 'replace' => true)
+    after_live = made.find(&:valid?).transformation
+    refute_equal plain, after_live.to_a
+    assert_in_delta(-1.0, after_live.yaxis.x, 1e-9, 'the first unit of the mirrored L runs along -x, as in a fresh mirrored design')
+    design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800 }, 'replace' => true)
+    assert_equal plain.map { |v| v.round(6) }, made.find(&:valid?).transformation.to_a.map { |v| v.round(6) }, 'untick: back where it was'
+  end
+
   def test_a_design_without_replace_leaves_the_earlier_kitchen_alone
     design({ 'wall_a' => 3600 })
     first_run = made.dup

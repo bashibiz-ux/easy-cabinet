@@ -58,7 +58,7 @@ module KitchenCabinetMaster
             built = { base: [], wall: [], island: [] }
             plan.base.each_with_index do |item, position|
               shifted = index.positive? && position.zero? ? all.first[:base].first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, (index * step).mm, 0)) : nil
-              shifted = origin if shifted.nil? && origin && index.zero? && position.zero?
+              shifted = (plan.turn ? origin * mirror_frame(plan.turn) : origin) if shifted.nil? && origin && index.zero? && position.zero? # (the remembered origin is where an unturned kitchen starts)
               gap = nil
               if shifted.nil? && position.positive? && item.gap_before.to_f.positive? # the room for a side panel between a tall unit and the one beside it
                 gap = built[:base].last.transformation.yaxis
@@ -74,7 +74,7 @@ module KitchenCabinetMaster
               extra(parts, 'The dimensions') { parts[:dimensions] += DimensionManager.add(model, built.values.flatten) }
             end
           end
-          remember(model, before, plans.length == 1 ? all.first[:base].first : nil)
+          remember(model, before, plans.length == 1 ? all.first[:base].first : nil, plans.first.turn)
         end
       rescue StandardError => e
         return Response.fail("The kitchen could not be built: #{e.message}#{where(e)}")
@@ -116,13 +116,14 @@ module KitchenCabinetMaster
     private_class_method :worktop_ids
 
     # What this design added to the model, and where its first unit stands (inside the design's own operation).
-    def self.remember(model, before, first)
+    def self.remember(model, before, first, turn = nil)
       return unless model.respond_to?(:set_attribute)
 
       added = before ? entity_ids(model) - before : []
       model.set_attribute(DICTIONARY, KEY_ENTITIES, added.join(','))
       model.set_attribute(DICTIONARY, KEY_WORKTOP, '')
-      model.set_attribute(DICTIONARY, KEY_ORIGIN, first ? first.transformation.to_a.join(',') : '')
+      start = first && (turn ? first.transformation * mirror_frame(turn).inverse : first.transformation) # (where the kitchen starts before any mirror turn)
+      model.set_attribute(DICTIONARY, KEY_ORIGIN, start ? start.to_a.join(',') : '')
     end
     private_class_method :remember
 
