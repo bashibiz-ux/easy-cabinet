@@ -34,6 +34,27 @@ class WorktopTest < Minitest::Test
     Worktop.runs(Array.new(count) { |i| item(y: i * width, width: width, **opts) }).first
   end
 
+  # An L corner (1000 x 1000) with two units on each side of it: one run along its first leg, one along its second.
+  def l_kitchen
+    corner = item(y: 0.0, width: 1000.0, corner: true, return_depth: 580.0).merge(corner_style: 'l_shape', leg2_length: 1000.0, leg2_depth: 580.0)
+    along_y = [item(y: 1000.0), item(y: 1600.0)]
+    along_x = [item(x: 1600.0, y: 0.0, hx: -1.0, hy: 0.0), item(x: 2200.0, y: 0.0, hx: -1.0, hy: 0.0)]
+    [corner] + along_y + along_x
+  end
+
+  def test_an_l_corner_and_the_runs_either_side_of_it_are_one_slab_from_wall_to_wall
+    separate = Worktop.runs(l_kitchen)
+    assert_equal 3, separate.length
+    runs = Worktop.runs(l_kitchen, [], merge: true)
+    assert_equal 1, runs.length
+    slab = Worktop.slab(runs.first, Worktop::DEFAULTS)
+    assert_equal [2200.0, 2200.0, 20.0], slab[:extent]
+    assert_equal [[0.0, 0.0], [0.0, 2200.0], [600.0, 2200.0], [600.0, 600.0], [2200.0, 600.0], [2200.0, 0.0]], slab[:points]
+    pieces = Worktop.splash(runs.first, slab, Worktop::DEFAULTS)
+    assert_equal [2200.0, 20.0], [pieces[0][:extent][1], pieces[1][:extent][1]]
+    assert_in_delta 2180.0, pieces[1][:extent][0], 0.01, 'the splash runs the whole of each wall'
+  end
+
   def test_an_islands_slab_reaches_beyond_the_back_for_seating_and_has_no_back_splash
     params = Worktop::DEFAULTS
     plain = Worktop.slab(run_of, params)

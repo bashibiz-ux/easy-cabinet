@@ -45,7 +45,7 @@ module KitchenCabinetMaster
     #   ref         whatever the caller wants back (the entity)
     # Returns an Array of runs: { items:, along:, length:, depth:, top:, corner: }
     # where `along` is where the first item starts, measured along the run.
-    def self.runs(items, panels = [])
+    def self.runs(items, panels = [], merge: false)
       corners, lines = items.partition { |item| item[:corner] }
       found = corners.map { |item| { items: [item], along: 0.0, length: item[:width], depth: item[:width], top: item[:top], corner: true } }
 
@@ -59,17 +59,69 @@ module KitchenCabinetMaster
 
         item = run[:items].first
         nearest = lines.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
-run[:neighbor_depth] = nearest[:depth] if nearest
-# An L corner's two arms each take the depth of the run they join: the one the unit's own way along (leg 1), the one across (leg 2).
-near = lambda do |same|
-  list = lines.select { |other| (((other[:hx] * item[:hx]) + (other[:hy] * item[:hy])).abs > 0.9) == same }
-  list.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
-end
-run[:neighbor_depth_leg1] = (near.call(true) || nearest)&.[](:depth)
-run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
+        run[:neighbor_depth] = nearest[:depth] if nearest
+        # An L corner's two arms each take the depth of the run they join: the one the unit's own way along (leg 1), the one across (leg 2).
+        near = lambda do |same|
+          list = lines.select { |other| (((other[:hx] * item[:hx]) + (other[:hy] * item[:hy])).abs > 0.9) == same }
+          list.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
+        end
+        run[:neighbor_depth_leg1] = (near.call(true) || nearest)&.[](:depth)
+        run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
       end
-      found
+      merge ? join_corners(found) : found
     end
+
+    # A corner worktop and the runs on either side of it become ONE slab, wall to wall (no seams): the corner's arms are carried on along the
+    # runs that touch it. The runs are measured in the corner's own frame (x: depth, y: along its first leg). Only when the worktop is not cut
+    # into pieces. `merged` keeps what the slab needs: the arms (each: how far it reaches, how deep it is).
+    def self.join_corners(runs)
+      joined = runs.dup
+      runs.select { |run| run[:corner] }.each do |corner|
+        item = corner[:items].first
+        la = item[:width].to_f
+        lb = item[:corner_style] == 'l_shape' && item[:leg2_length].to_f.positive? ? item[:leg2_length].to_f : la
+        arms = {}
+        (runs - [corner]).each do |other|
+          next if other[:corner] || other[:back] || (other[:top].to_f - corner[:top].to_f).abs > LEVEL_MM + 0.5
+
+          heading = other[:items].first
+          dot = (heading[:hx] * item[:hx]) + (heading[:hy] * item[:hy])
+          x0, x1, y0, y1 = local_bounds(other, item)
+          if dot.abs > 0.98 && x0.abs < 6.0 && (y0 - la).abs < GAP_MM + 6.0
+            arms[:one] = { run: other, reach: y1, forward: dot.positive?, depth: other[:depth], gap: (y0 - la).abs } if arms[:one].nil? || (y0 - la).abs < arms[:one][:gap]
+          elsif dot.abs < 0.02 && y0.abs < 6.0 && (x0 - lb).abs < GAP_MM + 6.0
+            toward = (heading[:hx] * item[:hy]) + (heading[:hy] * -item[:hx])
+            arms[:two] = { run: other, reach: x1, forward: toward.positive?, depth: other[:depth], gap: (x0 - lb).abs } if arms[:two].nil? || (x0 - lb).abs < arms[:two][:gap]
+          end
+        end
+        next if arms.empty?
+
+        corner[:merged] = arms
+        corner[:items] = corner[:items] + arms.values.flat_map { |arm| arm[:run][:items] }
+        joined -= arms.values.map { |arm| arm[:run] }
+      end
+      joined
+    end
+    private_class_method :join_corners
+
+    # [x0, x1, y0, y1] of a run's units in the corner's frame.
+    def self.local_bounds(run, corner)
+      xs = []
+      ys = []
+      run[:items].each do |unit|
+        [0.0, unit[:depth].to_f].each do |d|
+          [0.0, unit[:width].to_f].each do |w|
+            px = unit[:x] + (unit[:hy] * d) + (unit[:hx] * w) - corner[:x]
+            py = unit[:y] + (-unit[:hx] * d) + (unit[:hy] * w) - corner[:y]
+            xs << ((px * corner[:hy]) + (py * -corner[:hx]))
+            ys << ((px * corner[:hx]) + (py * corner[:hy]))
+          end
+        end
+      end
+      [xs.min, xs.max, ys.min, ys.max]
+    end
+    private_class_method :local_bounds
+
 
     # A side panel standing at an end of a run (touching its first or its last unit, as high as the units, along the same line) is something the
     # worktop must cover: `lead` / `trail` are the thickness of the panel at the start / the end of the run, so the slab reaches its far face.
@@ -126,6 +178,11 @@ run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
     end
     private_class_method :finish
 
+    # Whether the worktop goes on round a corner as one slab: when it is not cut into pieces.
+    def self.continuous?(params)
+      (parse_cuts(params['worktop_cuts']) || []).empty? && !params['worktop_piece'].to_f.positive?
+    end
+
     # The distances typed in the Cut At field ("1500, 3000"), as a sorted Array of mm.
     # Returns nil when something in it is not a positive number.
     def self.parse_cuts(text)
@@ -174,6 +231,7 @@ run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
       front = params['worktop_front'].to_f
       lead, trail = extension(run, params)
       thickness = params['worktop_thickness'].to_f
+      return merged_slab(run, params, front, thickness) if run[:merged]
       return corner_slab(run, front, thickness, run[:neighbor_depth], run[:neighbor_depth_leg1], run[:neighbor_depth_leg2]) if run[:corner]
 
       total = run[:length] + lead + trail
@@ -181,6 +239,46 @@ run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
       back = run[:back].to_f # an island's seating overhang: the slab reaches this much beyond the back of the units
       { extent: [run[:depth] + front + back, to - from, thickness], offset: [-back, -lead + from, 0.0], points: nil }
     end
+
+    # A corner and the runs beside it as one slab (see join_corners): the corner's outline carried on along both walls, as deep as the runs it
+    # joins, reaching as far as their slabs would (over their end panels too). In the corner's frame (X back to front, Y along its first leg).
+    def self.merged_slab(run, params, front, thickness)
+      item = run[:items].first
+      arms = run[:merged]
+      la = item[:width].to_f
+      l_shape = item[:corner_style] == 'l_shape'
+      lb = l_shape && item[:leg2_length].to_f.positive? ? item[:leg2_length].to_f : la
+      reach = lambda do |arm, own|
+        next own unless arm
+
+        ext = extension(arm[:run], params)
+        arm[:reach] + (arm[:forward] ? ext[1] : ext[0])
+      end
+      y_end = reach.call(arms[:one], la)
+      x_end = reach.call(arms[:two], lb)
+      a = (arms[:one] ? arms[:one][:depth] : (run[:neighbor_depth_leg1] || run[:neighbor_depth] || item[:return_depth] || la)) + front
+      b = (arms[:two] ? arms[:two][:depth] : (run[:neighbor_depth_leg2] || run[:neighbor_depth] || item[:leg2_depth].to_f.nonzero? || item[:return_depth] || la)) + front
+      extent = [x_end, y_end, thickness]
+      if l_shape
+        a = [a, x_end].min
+        b = [b, y_end].min
+        return { extent: extent, offset: [0.0, 0.0, 0.0], points: nil } if a >= x_end - 0.5 || b >= y_end - 0.5
+
+        return { extent: extent, offset: [0.0, 0.0, 0.0], points: [[0.0, 0.0], [0.0, y_end], [a, y_end], [a, b], [x_end, b], [x_end, 0.0]], round_edge: [2, 3] }
+      end
+
+      # The diagonal corner: a square la x la, its front cut across between the two arms.
+      a = [a, la].min
+      b = [b, la].min
+      points = [[0.0, 0.0], [0.0, y_end]]
+      points << [a, y_end] if y_end > la + 0.5
+      points += [[a, la], [la, b]]
+      points << [x_end, b] if x_end > la + 0.5
+      points << [x_end, 0.0]
+      first_front = y_end > la + 0.5 ? 2 : 1 # (the front edges: from the end of the first arm to the end of the second)
+      { extent: extent, offset: [0.0, 0.0, 0.0], points: points, round_edge: (first_front...(points.length - 1)).to_a }
+    end
+    private_class_method :merged_slab
 
     # The corner's outline: back wall and side wall edges square, the front-right corner
     # cut along the diagonal that the door runs along, pushed out by the front overhang.
@@ -292,7 +390,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
       end
       return Response.fail(errors.first['message'], errors) unless errors.empty?
 
-      runs = Worktop.runs(items_of(model), panels_of(model))
+      runs = Worktop.runs(items_of(model), panels_of(model), merge: Worktop.continuous?(params))
       return Response.fail('There are no base units to put a worktop on. Insert a base unit first.') if runs.empty?
 
       # With a worktop piece selected the settings are for the run it belongs to; with none selected they are for every run.
@@ -348,7 +446,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
       fallback = records.find { |s| s['part_kind'] == 'worktop' && !s['part_label'] } || {}
       # Each run is rebuilt with the settings its own pieces were built with.
       own = records.select { |s| s['part_kind'] == 'worktop' && !s['part_label'] && !s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
-      runs = Worktop.runs(items_of(model), panels_of(model))
+      runs = Worktop.runs(items_of(model), panels_of(model), merge: Worktop.continuous?(Worktop::DEFAULTS.merge(fallback.slice(*keys))))
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each { |run| build(model, run, Worktop::DEFAULTS.merge((own[run_key(run)] || fallback).slice(*keys))) }
       CabinetGenerator.sync_fixtures(model)
@@ -441,7 +539,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
     # The openings this piece needs over its cabinets' sinks and hobs, as [x0, x1, y0, y1] in the piece's own frame. One
     # that does not lie wholly inside the piece (a cut between pieces runs through it) is left out.
     def self.holes_for(run, placed, slab)
-      return [] if run[:corner] || slab[:points]
+      return [] if !run[:merged] && (run[:corner] || slab[:points])
 
       to_slab = placed.inverse
       holes = []
