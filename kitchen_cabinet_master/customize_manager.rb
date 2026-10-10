@@ -123,7 +123,7 @@ module KitchenCabinetMaster
         Response.ok(done, snapshot)
       end
 
-      # A filler, end panel, toe kick or worktop piece: its board is rebuilt from what it stored, with the changes.
+      # A filler, side panel, toe kick or worktop piece: its board is rebuilt from what it stored, with the changes.
       def apply_to_part(overrides, done)
         model = Sketchup.active_model
         params = AttributeManager.read(@root).merge('custom_overrides' => overrides)

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.97.0';
+  const APP_VERSION = '0.98.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -144,7 +144,7 @@
     // What is selected in the model: 'cabinet', 'filler', 'end_panel', 'toe_kick' or null.
     selectedKind: null,
     wallBottomSelected: false, // a wall bottom panel is selected: its settings are for it alone
-    // Filler / end panel fields the user has set themselves (see followCabinet).
+    // Filler / side panel fields the user has set themselves (see followCabinet).
     touched: new Set(),
     unit: 'mm',
     animate: false // section animations start once the panel is built
@@ -186,7 +186,7 @@
   };
 
   // What the user has selected in the model decides which form Update reads and
-  // what Update / Delete act on: a cabinet, a filler, an end panel or a toe kick.
+  // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is and acts on nothing selected.
     if (!followSelection() && (name === 'cabinet_selected' || name === 'part_selected')) {
@@ -238,9 +238,9 @@
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
-      // A filler is something an end panel can go on: its front and top are what that panel starts from.
+      // A filler is something an side panel can go on: its front and top are what that panel starts from.
       if (kind === 'filler') followCabinet({ front: data.envelope_depth, top: data.target_category === 'wall' ? data.envelope_top - data.target_base_z : data.envelope_top });
-      // Filler, End Panel and Toe Kick are Cabinet Category choices: show the matching fields.
+      // Filler, Side Panel and Toe Kick are Cabinet Category choices: show the matching fields.
       setSelect('category', kind);
       updateCategoryUi();
       focusSection('sec-cabinet', data.part_id || data.part_name);
@@ -307,7 +307,7 @@
   // put, so "enter the data, select the cabinet, Insert" keeps what was entered.
   // (A filler's material is not a field: it always follows the door material.)
   //
-  // An end panel's depth and height start the same way: depth flush with the door
+  // An side panel's depth and height start the same way: depth flush with the door
   // front (`front`) and height up to the top (`top`) of what is selected.
   const FOLLOWS_CABINET = ['fillerHeight', 'epDepth', 'epHeight'];
 
@@ -399,7 +399,7 @@
       material: $('epMaterial').value,
       face: $('epFace').value,
       front_radius: mmv('frontRadius'), // its outer edges are as round as the doors'
-      front_design: $('frontDesign').value // the design an end panel set to follow the front design is cut in
+      front_design: $('frontDesign').value // the design an side panel set to follow the front design is cut in
     };
   }
 
@@ -499,7 +499,7 @@
     toe_kick: () => collectToeKick()
   };
 
-  // Filler, End Panel and Toe Kick are choices in the Cabinet Category list, next
+  // Filler, Side Panel and Toe Kick are choices in the Cabinet Category list, next
   // to the real cabinet categories.
   const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick'];
 
@@ -515,12 +515,13 @@
     if (action === 'apply_wall_bottom') return 'wall_bottom';
     if (action === 'get_cut_list' || action === 'export_cut_list') return 'cutlist';
     if (action === 'insert') return categoryKind();
+    if (action === 'insert_exposed_side_panels') return 'end_panel';
     if (action === 'update') return state.selectedKind || categoryKind();
     if (action === 'rotate') return 'rotate';
     return null;
   }
 
-  // Cabinets have their own Insert / Update / Delete; a filler, end panel or toe
+  // Cabinets have their own Insert / Update / Delete; a filler, side panel or toe
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
   const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' };
 
@@ -530,7 +531,7 @@
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
     remove_handle: () => ({ handle_id: $('handle').value }),
-    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? { ...collectWorktop(), knee_material: $('kitchenKneeMaterial').value } : null,
+    design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null,
       toe_kick: $('kitchenToeKick').checked ? collectToeKick() : null, end_panel: $('kitchenEndPanels').checked ? collectEndPanel() : null }),
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen()
   };
@@ -600,7 +601,7 @@
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
       sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenOpenEnds').checked, island_hood_colour: $('kitchenHoodColour').value,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenEndPanels').checked, open_ends: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
@@ -764,7 +765,7 @@
     // No catalog chosen yet: nothing is active except the catalog selection itself.
     const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
-    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'End Panel' }, { id: 'toe_kick', name: 'Toe Kick' }];
+    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }];
     fillSelect($('category'), categories.filter((c) => on.has(c.id)));
 
     document.querySelectorAll('[data-feature]').forEach((el) => {
@@ -828,7 +829,6 @@
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
     fillSelect($('kitchenBackPanelMaterial'), panel, { placeholder: 'Same as the doors' });
-    fillSelect($('kitchenKneeMaterial'), panel, { placeholder: 'Same as the worktop' });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
@@ -1169,7 +1169,7 @@
   }
 
   async function refreshCabinets({ selectId = null, keepValues = false } = {}) {
-    if (categoryKind() !== 'cabinet') return; // a filler, end panel or toe kick has no catalog cabinets
+    if (categoryKind() !== 'cabinet') return; // a filler, side panel or toe kick has no catalog cabinets
     const catalogId = $('catalog').value;
     const category = $('category').value;
     state.cabinets = [];
@@ -1384,7 +1384,7 @@
 
   // The Cabinet Category decides which fields the Cabinet section shows: the
   // cabinet's own (cabinet type, size, shelves, gap) for every real category, or
-  // the Filler / End Panel fields when one of those is chosen. Every section (and
+  // the Filler / Side Panel fields when one of those is chosen. Every section (and
   // the front-view picture above) always stays where it is: Catalog, Handle,
   // Material, Toe Kick, Door Opening and Visibility never disappear. A wall unit
   // hangs at height 0, so the toe-kick height does not raise it.
@@ -1597,7 +1597,7 @@
     caption.textContent = `W ${fmtU(W)}${depthText}, H ${fmtU(H)} ${unitInfo().label}. Base Z ${fmtU(toe)} ${unitInfo().label}, top Z ${fmtU(toe + H)} ${unitInfo().label}.`;
   }
 
-  // ---- filler / end panel / toe kick ------------------------------------------------
+  // ---- filler / side panel / toe kick ------------------------------------------------
   // Front view, in millimetres: x along the row, z up from the floor. Each is drawn
   // as a solid part next to a dashed outline of the cabinet, so you can see how it
   // sits (the cabinet's own width, height and toe-kick height come from its fields).
@@ -1664,12 +1664,12 @@
       const h = num(mmv('epHeight'));
       if (!(t > 0 && h > 0)) {
         svg.innerHTML = '';
-        $('previewCaption').textContent = 'Enter the end panel thickness and height to see it.';
+        $('previewCaption').textContent = 'Enter the side panel thickness and height to see it.';
         return;
       }
       const left = $('epSide').value !== 'right';
       const panel = { x: left ? -t : cabinet.w, z: 0, w: t, h, cls: 'pv-part', label: fmtU(t), heightLabel: fmtU(h) };
-      drawScene([cabinet, panel], `End panel on the ${left ? 'left' : 'right'}: depth ${Number.isFinite(d) ? fmtU(d) : '?'}, thickness ${fmtU(t)}, height ${fmtU(h)} ${unitInfo().label}.`);
+      drawScene([cabinet, panel], `Side panel on the ${left ? 'left' : 'right'}: depth ${Number.isFinite(d) ? fmtU(d) : '?'}, thickness ${fmtU(t)}, height ${fmtU(h)} ${unitInfo().label}.`);
     } else {
       const len = num(mmv('pieceLength'));
       const count = Math.floor(num($('pieceCount').value));
@@ -2358,7 +2358,7 @@ function liveEdit(el) {
     fillSelect($('glassDoor'), [{ id: '', name: 'None' }, ...list(m.glass_designs)]);
     fillSelect($('handle'), arrangeHandles(m.handle_bundles), { placeholder: 'None' });
     fillSelect($('drawerHandle'), arrangeHandles(m.handle_bundles), { placeholder: 'Same as doors' });
-    // Filler, End Panel and Toe Kick are choices in the same list as the cabinet categories.
+    // Filler, Side Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
     fillSelect($('direction'), m.directions);
     fillWidthPreset();

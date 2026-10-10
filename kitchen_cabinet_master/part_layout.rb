@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Works out the geometry of a filler or an end panel. Pure maths, no SketchUp
+  # Works out the geometry of a filler or an side panel. Pure maths, no SketchUp
   # calls (see PartGenerator for the model side). Uses the same coordinate
   # convention as CabinetLayout: depth = X, width = Y, height = Z, floor = Z 0.
   module PartLayout
@@ -35,7 +35,7 @@ module KitchenCabinetMaster
     end
 
     # What the user changed in the Customize window (params['custom_overrides'], see Customizer): the board of a
-    # filler, end panel or worktop piece (key "board"), or the pieces of a toe kick (their roles).
+    # filler, side panel or worktop piece (key "board"), or the pieces of a toe kick (their roles).
     def self.with_overrides(layout, params)
       overrides = params && params['custom_overrides']
       return layout unless overrides.is_a?(Hash) && !overrides.empty?
@@ -45,7 +45,7 @@ module KitchenCabinetMaster
       layout
     end
 
-    # The layout of a stored part (filler, end panel, toe kick, or a worktop piece), with its changes; nil when it
+    # The layout of a stored part (filler, side panel, toe kick, or a worktop piece), with its changes; nil when it
     # cannot be worked out from what was stored (a worktop made before pieces recorded their shape).
     def self.layout_for(params)
       case params['part_kind']
@@ -92,11 +92,11 @@ module KitchenCabinetMaster
       depth = params['depth'].to_f
       height = params['height'].to_f
       base_z = params['target_base_z'].to_f
-      # The outer face follows the front design when the end panel is set to ("face" = "design"), else it is flat.
+      # The outer face follows the front design when the side panel is set to ("face" = "design"), else it is flat.
       design = params['face'].to_s == 'design' ? FrontDesign.clean(params['front_design']) : FrontDesign::DEFAULT
-      design = FrontDesign::DEFAULT if FrontDesign.glass?(design) # (an end panel has no glass)
+      design = FrontDesign::DEFAULT if FrontDesign.glass?(design) # (an side panel has no glass)
       board = CabinetLayout::Panel.new(
-        role: 'board', name: 'End Panel',
+        role: 'board', name: 'Side Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
         offset: [0.0, 0.0, round2(base_z)],
         shape: (design == FrontDesign::DEFAULT && !params['front_radius'].to_f.positive? ? nil : "front_#{design}@#{params['side']}"),
@@ -115,7 +115,7 @@ module KitchenCabinetMaster
       with_overrides(Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: []), params)
     end
 
-    # [depth, thickness, top] from the end panel's own local floor origin.
+    # [depth, thickness, top] from the side panel's own local floor origin.
     def self.end_panel_envelope(params)
       [params['depth'].to_f, params['thickness'].to_f, params['target_base_z'].to_f + params['height'].to_f]
     end

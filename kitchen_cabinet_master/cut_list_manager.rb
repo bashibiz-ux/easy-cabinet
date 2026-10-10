@@ -70,7 +70,7 @@ module KitchenCabinetMaster
       return cabinet_boards(stored, handle_name) if kind.empty? && stored['cabinet_id']
 
       case kind
-      when 'filler', 'end_panel' then part_board(stored, kind == 'filler' ? 'Filler' : 'End Panel')
+      when 'filler', 'end_panel' then part_board(stored, kind == 'filler' ? 'Filler' : 'Side Panel')
       when 'toe_kick' then toe_kick_boards(stored)
       when 'worktop' then [board('Worktop', [stored['depth'], stored['width'], stored['worktop_thickness']], stored['material'], stored['part_name'])]
       when 'backsplash'

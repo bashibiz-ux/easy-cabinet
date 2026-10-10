@@ -12,7 +12,7 @@ module KitchenCabinetMaster
   #                            panel is not part of a row, so it is never a chain anchor).
   #
   # A new item is NEVER placed on top of (overlapping) an existing cabinet, filler
-  # or end panel. If the spot is taken, it slides along the row, past whatever is in
+  # or side panel. If the spot is taken, it slides along the row, past whatever is in
   # the way plus the configured gap, until it finds free space. Every occupant's
   # space is its stored envelope (envelope_depth / envelope_width / envelope_top,
   # written once when it is built), so this needs no per-kind knowledge and an open
@@ -153,7 +153,7 @@ module KitchenCabinetMaster
     # The cabinet or filler that was inserted most recently (highest 'sequence');
     # on a tie, the one added to the model last. Items from before sequence numbers
     # existed count as 0, so they come before anything inserted since. nil when the
-    # model has none. An end panel or toe kick is not part of the row, so is skipped.
+    # model has none. An side panel or toe kick is not part of the row, so is skipped.
     def self.last_occupant(model)
       rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
         (AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
@@ -240,7 +240,7 @@ module KitchenCabinetMaster
         !collides?(entities, transformation, old_size, exclude: [root, also])
     end
 
-    # The axis-aligned box of every cabinet, filler and end panel in `entities`,
+    # The axis-aligned box of every cabinet, filler and side panel in `entities`,
     # read straight from their stored envelope attributes (no recomputation).
     # `exclude`, when given, is left out (used when checking a part against
     # everything ELSE while updating that same part).
@@ -259,7 +259,7 @@ module KitchenCabinetMaster
 
     # Does a candidate box (already positioned by `transformation`, own local size
     # in millimetres) overlap anything already in `entities`? Used for placements
-    # that are NOT part of the row chain (an end panel goes exactly where it's
+    # that are NOT part of the row chain (an side panel goes exactly where it's
     # told, against its target's face, so it is checked rather than slid).
     def self.collides?(entities, transformation, size, exclude: nil)
       box = box_for(transformation, size.map(&:mm))

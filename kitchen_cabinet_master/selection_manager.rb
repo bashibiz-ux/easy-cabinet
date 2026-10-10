@@ -75,7 +75,7 @@ module KitchenCabinetMaster
     end
 
     # A cabinet or a FILLER (an "occupant" that can anchor the next item in a
-    # row). An end panel is never a chain anchor, since it isn't part of the row.
+    # row). An side panel is never a chain anchor, since it isn't part of the row.
     def self.selected_occupant(model)
       found = model.selection.select { |e| AttributeManager.cabinet?(e) || AttributeManager.part_kind(e) == 'filler' }
       return found.first if found.length == 1
@@ -85,7 +85,7 @@ module KitchenCabinetMaster
       nil
     end
 
-    # The single filler or end panel the user has selected, or nil.
+    # The single filler or side panel the user has selected, or nil.
     def self.selected_part(model)
       found = model.selection.select { |e| AttributeManager.part?(e) }
       found.length == 1 ? found.first : nil
@@ -124,7 +124,7 @@ module KitchenCabinetMaster
     end
 
     # Tells the panel about the current selection (used after Update and Delete):
-    # a cabinet, a part (filler / end panel), or nothing.
+    # a cabinet, a part (filler / side panel), or nothing.
     def self.push_selection(model = Sketchup.active_model)
       cabinet = selected_cabinet(model)
       if cabinet

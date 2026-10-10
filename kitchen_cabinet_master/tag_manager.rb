@@ -22,7 +22,7 @@ module KitchenCabinetMaster
     end
 
     # The tag for any cabinet or part, from its stored parameters; nil for what has none
-    # (fillers and end panels stay untagged, they take their cabinet's look).
+    # (fillers and side panels stay untagged, they take their cabinet's look).
     def self.for_stored(stored)
       return nil unless stored.is_a?(Hash)
       return TOE_KICK if stored['part_kind'] == 'toe_kick'

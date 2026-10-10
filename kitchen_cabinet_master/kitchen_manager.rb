@@ -80,7 +80,7 @@ module KitchenCabinetMaster
                 end
       message += " #{plans.first.notes.join(' ')}" unless plans.first.notes.empty?
       message += " Toe kicks: #{parts[:toe_kicks]}." if raw['toe_kick'].is_a?(Hash)
-      message += " End panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
+      message += " Side panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
       message += " #{parts[:notes].uniq.join(' ')}" unless parts[:notes].empty?
       worktop_before = worktop_ids(model)
       message += worktop_message(raw['worktop'])
@@ -157,7 +157,7 @@ module KitchenCabinetMaster
 
     def self.building? = @building == true
 
-    # One Undo step round everything (the toe kicks and the end panels are made by the same code as their own buttons, which would otherwise start
+    # One Undo step round everything (the toe kicks and the side panels are made by the same code as their own buttons, which would otherwise start
     # operations of their own: "building?" tells them not to).
     def self.run_operation(model, name)
       model.start_operation(name, true)
@@ -176,7 +176,7 @@ module KitchenCabinetMaster
     private_class_method :run_operation
 
     # The toe kick under each row (one that covers the whole row of the kitchen, turning at the corners, and one under the island) and the end
-    # panels on the open ends (see KitchenPlanner.end_panel_targets), made by the same code as the Insert Toe Kick and Insert End Panel buttons,
+    # panels on the open ends (see KitchenPlanner.end_panel_targets), made by the same code as the Insert Toe Kick and Insert Side Panel buttons,
     # each against the unit it belongs to. What cannot be made is told in parts[:notes].
     def self.add_parts(model, plan, built, raw, parts)
       toe = raw['toe_kick']
@@ -198,9 +198,9 @@ module KitchenCabinetMaster
         next unless unit
 
         values = panel.transform_keys(&:to_s).merge('side' => target[:side], 'depth_auto' => true, 'height_auto' => true)
-        extra(parts, 'An end panel') do
+        extra(parts, 'An side panel') do
           answer = against(model, unit) { PartManager.send(:insert_end_panel, values) }
-          answer['ok'] ? parts[:end_panels] += 1 : parts[:notes] << "An end panel was not added: #{answer['message']}"
+          answer['ok'] ? parts[:end_panels] += 1 : parts[:notes] << "An side panel was not added: #{answer['message']}"
         end
       end
     ensure

@@ -24,7 +24,7 @@ module KitchenCabinetMaster
       end
     end
 
-    # The same for a filler, end panel, toe kick or worktop piece (`stored` = its stored parameters): its board, or the
+    # The same for a filler, side panel, toe kick or worktop piece (`stored` = its stored parameters): its board, or the
     # pieces of a toe kick, in the part's own frame. nil when the part cannot be rebuilt (see PartLayout.layout_for).
     def self.part_parts(stored)
       now = part_list(PartLayout.layout_for(stored))

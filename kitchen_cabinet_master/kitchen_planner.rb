@@ -498,7 +498,7 @@ module KitchenCabinetMaster
     private_class_method :wall_unit
     private_class_method :wall_fill
 
-    # Where the end panels go, for the sides that are open: both ends of an island, and the free ends of the runs of an L or a U (a straight
+    # Where the side panels go, for the sides that are open: both ends of an island, and the free ends of the runs of an L or a U (a straight
     # kitchen stands between two walls). [{ part: :base | :wall | :island, index: (in plan.base, plan.wall or plan.island.items), side: 'left' | 'right' }]
     # A wall unit that stands next to a tall unit at that end has no panel: the tall unit's side is in the way.
     def self.end_panel_targets(plan)

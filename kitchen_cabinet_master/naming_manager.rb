@@ -28,7 +28,7 @@ module KitchenCabinetMaster
       "#{Defaults::NAME_PREFIXES.fetch('filler', 'FIL')}#{format('%g', params['width'].to_f)}"
     end
 
-    # "EP18": an end panel is named after its thickness, since its width and
+    # "EP18": an side panel is named after its thickness, since its width and
     # height simply follow whatever it is attached to.
     def self.end_panel_name(params)
       "#{Defaults::NAME_PREFIXES.fetch('end_panel', 'EP')}#{format('%g', params['thickness'].to_f)}"
@@ -52,7 +52,7 @@ module KitchenCabinetMaster
     end
 
     # Same rule as `for_update`, given an already-computed base name (a filler,
-    # end panel or toe kick, whose base name comes from `filler_name` and friends).
+    # side panel or toe kick, whose base name comes from `filler_name` and friends).
     def self.for_update_base(_root, base)
       base
     end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Runs the plugin's REAL filler and end panel logic (PartLayout, PartManager's
+# Runs the plugin's REAL filler and side panel logic (PartLayout, PartManager's
 # placement and material rules, PartGenerator's stored footprint, validation)
 # outside SketchUp. Run:  ruby test/filler_test.rb
 
@@ -209,7 +209,7 @@ class FillerTest < Minitest::Test
     assert_equal 'Walnut', PartManager.send(:door_material_of, corner), 'a corner uses the Base Unit door material'
   end
 
-  # ---- end panel material: "same as door", following unless changed by hand ---------------------
+  # ---- side panel material: "same as door", following unless changed by hand ---------------------
 
   def test_an_end_panel_starts_as_same_as_door_material_and_uses_the_door_colour
     assert_equal '__door__', Defaults.end_panel_params['material']
@@ -292,7 +292,7 @@ class FillerTest < Minitest::Test
     assert_equal ['Walnut'], filler.definition.pieces.map(&:painted).uniq, 'the filler board is recoloured'
     assert_equal 'Walnut', following_panel.attrs['material']
     assert_equal 'Walnut', following_kick.attrs['material']
-    assert_equal 'Grey', own_panel.attrs['material'], 'a hand-picked end panel material stays'
+    assert_equal 'Grey', own_panel.attrs['material'], 'a hand-picked side panel material stays'
     assert_nil own_panel.definition.pieces.first.painted
     assert_equal 'PVC Black', own_kick.attrs['material'], 'a hand-picked toe kick material stays'
     assert_equal 'Oak', stranger.attrs['material'], 'other cabinets\' parts are left alone'
@@ -336,7 +336,7 @@ class FillerTest < Minitest::Test
     assert_equal %w[height thickness width], d.keys.sort, 'no position, gap, height-off-floor or material'
   end
 
-  # ---- end panel: its own depth, thickness and height ------------------------------------------------
+  # ---- side panel: its own depth, thickness and height ------------------------------------------------
 
   def ep(overrides = {})
     { 'side' => 'left', 'depth' => '580', 'thickness' => '18', 'height' => '880', 'material' => '__door__' }.merge(overrides)

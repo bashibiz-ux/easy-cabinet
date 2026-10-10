@@ -69,7 +69,7 @@ module KitchenCabinetMaster
       root = SelectionManager.selected_cabinet(model) || SelectionManager.selected_part(model)
       kinds = CustomizeManager::PART_KINDS
       unless root && (AttributeManager.cabinet?(root) || kinds.include?(AttributeManager.part_kind(root)))
-        return Response.fail('Select a cabinet, filler, end panel, toe kick or worktop in the model to customize it.')
+        return Response.fail('Select a cabinet, filler, side panel, toe kick or worktop in the model to customize it.')
       end
 
       CustomizeManager.open(root)
@@ -158,7 +158,7 @@ module KitchenCabinetMaster
       end
       SelectionManager.push_selection(model)
       done = "Normal door \"#{name}\" on #{plans.length} cabinet#{'s' unless plans.length == 1}"
-      done += " and #{panels.length} end panel#{'s' unless panels.length == 1}" unless panels.empty?
+      done += " and #{panels.length} side panel#{'s' unless panels.length == 1}" unless panels.empty?
       Response.ok("#{done}.#{" #{problems.length} could not take it." unless problems.empty?}")
     end
     private_class_method :apply_front_design
@@ -209,8 +209,8 @@ module KitchenCabinetMaster
     end
     private_class_method :apply_glass_design
 
-    # The end panels that are set to follow the front design (and are not in it yet): [[panel, new params], ...]. With `only` (the ids of
-    # the cabinets that were changed) just the end panels standing against those; otherwise every one.
+    # The side panels that are set to follow the front design (and are not in it yet): [[panel, new params], ...]. With `only` (the ids of
+    # the cabinets that were changed) just the side panels standing against those; otherwise every one.
     def self.following_end_panels(model, design, only)
       model.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
         next unless AttributeManager.part_kind(part) == 'end_panel'
@@ -557,7 +557,7 @@ module KitchenCabinetMaster
           root.transformation = placed unless placed.equal?(root.transformation)
           WorktopManager.refresh(model) if params['sink'] || params['hob'] # its opening in the worktop follows
           RowResizer.apply(model, squeeze) if squeeze
-          # Its filler, end panels and toe kicks follow its door material.
+          # Its filler, side panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
           WallBottomManager.refresh(model) if defined?(WallBottomManager)
         end
@@ -648,7 +648,7 @@ module KitchenCabinetMaster
       return Response.ok('Every cabinet already has these settings.') if plans.empty?
 
       # A higher toe kick lifts every cabinet standing on it: they are rebuilt with the new
-      # height, and what is attached to them (fillers, end panels, the worktop) goes up too.
+      # height, and what is attached to them (fillers, side panels, the worktop) goes up too.
       lifting = overrides.key?('toe_kick_height')
       before = lifted_from(cabinets)
       SelectionManager.suspend do
@@ -714,7 +714,7 @@ module KitchenCabinetMaster
     end
     private_class_method :restyle_params
 
-    # Turns the selected cabinet (or filler, end panel or toe kick) about a vertical
+    # Turns the selected cabinet (or filler, side panel or toe kick) about a vertical
     # axis through the middle of its footprint, by the number of degrees typed in the
     # panel. Positive turns CLOCKWISE seen from above, negative anticlockwise. One
     # Undo step. Its own doors, handles and the rest turn with it; other items are

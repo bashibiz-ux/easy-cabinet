@@ -250,7 +250,7 @@ module KitchenCabinetMaster
     private_class_method :apply_overrides
 
     # Changes one board (a Panel or a Door): `change` = { 'extent' => [x, y, z] (nil = unchanged), 'move' => [dx, dy, dz] }.
-    # Also used for fillers, end panels, toe kicks and worktops (PartLayout). Returns true when something changed.
+    # Also used for fillers, side panels, toe kicks and worktops (PartLayout). Returns true when something changed.
     def self.tweak_item(item, change)
       return false unless change.is_a?(Hash)
 

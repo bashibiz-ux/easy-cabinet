@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Builds a filler, end panel or toe kick and keeps it in step with its
+  # Builds a filler, side panel or toe kick and keeps it in step with its
   # parameters. Much simpler than CabinetGenerator: a board (or, for a toe kick,
   # a row of pieces), no doors, handles or indicator. Follows the same rules: Update never deletes
   # and recreates, only the parts that changed are touched.

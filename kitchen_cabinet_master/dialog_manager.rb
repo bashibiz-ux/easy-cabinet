@@ -11,7 +11,7 @@ module KitchenCabinetMaster
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
-    PART_ACTIONS = %w[insert_filler insert_end_panel insert_toe_kick apply_toe_kicks update_part delete_part].freeze
+    PART_ACTIONS = %w[insert_filler insert_end_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks update_part delete_part].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze

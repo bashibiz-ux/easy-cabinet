@@ -45,7 +45,7 @@ module KitchenCabinetMaster
       entity.get_attribute(DICTIONARY, 'cabinet_id')
     end
 
-    # A standalone part (filler or end panel): not a full cabinet, but it still
+    # A standalone part (filler or side panel): not a full cabinet, but it still
     # takes up its own footprint in the model, so Insert/Duplicate avoid placing
     # a new cabinet or filler on top of it (see PlacementManager).
     PART_COUNTER_KEY = 'part_id_counter'

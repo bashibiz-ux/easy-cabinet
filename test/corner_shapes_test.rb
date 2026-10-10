@@ -133,8 +133,8 @@ class CornerShapesTest < Minitest::Test
     assert_in_delta 800.0 - Defaults.params['door_gap'], two[1], 0.01, 'door B reaches leg 2''s end'
     side_one = layout.panels.find { |x| x.role == 'right_side' }
     side_two = layout.panels.find { |x| x.role == 'front_return' }
-    assert_equal [560.0, 18.0], side_one.extent.first(2), 'leg 1''s end panel is as deep as leg 1'
-    assert_equal [18.0, 400.0], side_two.extent.first(2), 'leg 2''s end panel is as deep as leg 2'
+    assert_equal [560.0, 18.0], side_one.extent.first(2), 'leg 1''s side panel is as deep as leg 1'
+    assert_equal [18.0, 400.0], side_two.extent.first(2), 'leg 2''s side panel is as deep as leg 2'
   end
 
   def test_the_sizes_are_checked

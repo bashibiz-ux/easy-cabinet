@@ -33,8 +33,7 @@ module KitchenCabinetMaster
       'backsplash_height' => 100.0,  # 0 = no back splash
       'backsplash_thickness' => 20.0,
       'material' => 'White',
-      'backsplash_material' => '',    # '' = the material of the worktop
-      'knee_material' => ''           # '' = the material of the worktop (the knee panels under a seating overhang)
+      'backsplash_material' => ''     # ''= the material of the worktop
     }.freeze
 
     # items: Hashes in world millimetres, one per base unit / filler:
@@ -127,9 +126,18 @@ module KitchenCabinetMaster
     # A straight run reaches the front of the doors plus the front overhang; `from` and
     # `to` (mm along the slab, 0 = its start) pick one piece of it. A corner unit's
     # slab follows its footprint, the front cut across the diagonal.
+# How far the slab reaches past the units at each end: the End overhang setting, and at least the thickness of the knee panels under a
+    # seating overhang, so that the slab covers their tops.
+    def self.ends(run, params)
+      set = params['worktop_end'].to_f
+      return set if run[:corner] || run[:back].to_f <= 1.0
+
+      [set, params['worktop_thickness'].to_f].max
+    end
+
     def self.slab(run, params, from: 0.0, to: nil)
       front = params['worktop_front'].to_f
-      ends = params['worktop_end'].to_f
+      ends = ends(run, params)
       thickness = params['worktop_thickness'].to_f
       return corner_slab(run, front, thickness, run[:neighbor_depth]) if run[:corner]
 
@@ -178,20 +186,21 @@ module KitchenCabinetMaster
       { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
     end
 
-    # The knee panels: an upright board at each end of a slab with a seating overhang, standing on the floor and reaching up to the slab, in the
-    # slab's own frame. They cover the whole depth of the slab (the front to the edge of the overhang); when the island has side panels of its
-    # own on the units only the overhang is left for them. `first` / `last` pick the start and / or the end of the slab (a slab cut into pieces).
+    # The knee panels: an upright board of the worktop's thickness at each end of a slab with a seating overhang, in the slab's own frame. Each
+    # stands on the floor against the side of the units (the slab reaches past them, over its top) and covers the whole depth of the slab, the
+    # front to the edge of the overhang; when the island has side panels of its own on the units only the overhang is left for them.
+    # `first` / `last` pick the start and / or the end of the slab (a slab cut into pieces).
     # [{ extent: [depth, thickness, height], offset: [x, y, z] }]
-    def self.knee_panels(run, slab, first: true, last: true)
+    def self.knee_panels(run, slab, thickness:, ends:, first: true, last: true)
       back = run[:back].to_f
       return [] if run[:corner] || back <= 1.0
 
       depth = run[:sided] ? back : slab[:extent][0]
       height = run[:top].to_f
       ys = []
-      ys << 0.0 if first
-      ys << slab[:extent][1] - SUPPORT_MM if last
-      ys.map { |y| { extent: [depth, SUPPORT_MM, height], offset: [0.0, y, -height] } }
+      ys << ends - thickness if first
+      ys << slab[:extent][1] - ends if last
+      ys.map { |y| { extent: [depth, thickness, height], offset: [0.0, y, -height] } }
     end
 
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
@@ -244,7 +253,6 @@ module KitchenCabinetMaster
       result = ValidationManager.validate_worktop(raw)
       errors = result.errors.dup
       params = Worktop::DEFAULTS.merge(result.params)
-      params['knee_material'] = raw['knee_material'].to_s.strip if raw.key?('knee_material')
       unless errors.any? || MaterialManager.available?(model, params['material'])
         errors << { 'field' => 'material', 'message' => "The material \"#{params['material']}\" was not found in the model." }
       end
@@ -360,7 +368,7 @@ module KitchenCabinetMaster
     def self.build(model, run, params)
       params = params.merge('run_key' => run_key(run))
       first = run[:items].first[:ref]
-      total = run[:corner] ? 0.0 : run[:length] + (2 * params['worktop_end'].to_f)
+      total = run[:corner] ? 0.0 : run[:length] + (2 * Worktop.ends(run, params))
       spans = run[:corner] ? [[0.0, nil]] : Worktop.pieces(total, params)
 
       spans.each do |from, to|
@@ -371,7 +379,7 @@ module KitchenCabinetMaster
 
         begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
           board = Worktop.support(run, slab)
-          Worktop.knee_panels(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
+          Worktop.knee_panels(run, slab, thickness: params['worktop_thickness'].to_f, ends: Worktop.ends(run, params), first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
             make_part(model, 'worktop', panel[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(panel[:offset][0].mm, panel[:offset][1].mm, panel[:offset][2].mm)),
                       params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
           end
@@ -431,7 +439,6 @@ module KitchenCabinetMaster
       stored = params.dup
       stored['part_kind'] = kind
       stored['material'] = params['backsplash_material'] if kind == 'backsplash' && !params['backsplash_material'].to_s.empty? # (its own material)
-      stored['material'] = params['knee_material'] if params['part_label'] == 'Knee Panel' && !params['knee_material'].to_s.empty? # (its own colour)
       stored['part_id'] = AttributeManager.next_part_id(model)
       stored['part_name'] = "#{params['part_label'] || (kind == 'worktop' ? 'Worktop' : 'Back Splash')} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]

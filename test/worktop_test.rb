@@ -54,21 +54,34 @@ class WorktopTest < Minitest::Test
     assert_nil Worktop.support(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
     assert_nil Worktop.support(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), Worktop::DEFAULTS))
   end
-  def test_an_overhang_has_a_knee_panel_at_each_end_over_the_whole_depth_of_the_slab_down_to_the_floor
+  def test_a_seating_overhang_makes_the_slab_reach_past_the_units_at_both_ends_to_cover_the_knee_panels
+    plain = Worktop.slab(run_of, Worktop::DEFAULTS)
+    seated_run = run_of(3, island_back: 300.0)
+    seated = Worktop.slab(seated_run, Worktop::DEFAULTS)
+    assert_equal 20.0, Worktop.ends(seated_run, Worktop::DEFAULTS), 'the thickness of the worktop'
+    assert_equal 0.0, Worktop.ends(run_of, Worktop::DEFAULTS)
+    assert_in_delta plain[:extent][1] + 40.0, seated[:extent][1], 0.01
+    assert_in_delta(-20.0, seated[:offset][1], 0.01)
+    assert_equal 50.0, Worktop.ends(seated_run, Worktop::DEFAULTS.merge('worktop_end' => 50.0)), 'a bigger End overhang wins'
+  end
+
+  def test_the_knee_panels_are_as_thick_as_the_worktop_flush_against_the_sides_of_the_units_and_reach_the_floor
     run = run_of(3, island_back: 300.0)
-    slab = Worktop.slab(run, Worktop::DEFAULTS)
-    panels = Worktop.knee_panels(run, slab)
+    params = Worktop::DEFAULTS
+    slab = Worktop.slab(run, params)
+    panels = Worktop.knee_panels(run, slab, thickness: 20.0, ends: Worktop.ends(run, params))
     assert_equal 2, panels.length
-    assert_equal [slab[:extent][0], 18.0, 880.0], panels.first[:extent], 'the whole depth of the slab, down to the floor'
-    assert_equal [0.0, slab[:extent][1] - 18.0], panels.map { |panel| panel[:offset][1] }
-    assert_equal [0.0], Worktop.knee_panels(run, slab, last: false).map { |panel| panel[:offset][1] }
-    assert_empty Worktop.knee_panels(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
+    assert_equal [slab[:extent][0], 20.0, 880.0], panels.first[:extent], 'the whole depth of the slab, down to the floor'
+    assert_equal [0.0, slab[:extent][1] - 20.0], panels.map { |panel| panel[:offset][1] }, 'outside the units, under the part of the slab that reaches past them'
+    assert_equal [0.0], Worktop.knee_panels(run, slab, thickness: 20.0, ends: 20.0, last: false).map { |panel| panel[:offset][1] }
+    assert_empty Worktop.knee_panels(run_of, Worktop.slab(run_of, params), thickness: 20.0, ends: 0.0)
   end
 
   def test_with_side_panels_on_the_units_the_knee_panels_only_fill_the_overhang
     run = run_of(3, island_back: 300.0)
     run[:sided] = true
-    assert_equal 300.0, Worktop.knee_panels(run, Worktop.slab(run, Worktop::DEFAULTS)).first[:extent][0]
+    slab = Worktop.slab(run, Worktop::DEFAULTS)
+    assert_equal 300.0, Worktop.knee_panels(run, slab, thickness: 20.0, ends: 20.0).first[:extent][0]
   end
   # ---- runs -------------------------------------------------------------------
 

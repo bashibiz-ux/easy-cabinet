@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module KitchenCabinetMaster
-  # Entry point for the Filler, End Panel and Toe Kick actions: insert_filler,
+  # Entry point for the Filler, Side Panel and Toe Kick actions: insert_filler,
   # insert_end_panel, insert_toe_kick, update_part, delete_part. Mirrors
   # CabinetManager's shape (validate, wrap in one undoable operation, reply with
   # a Response) but for the much simpler parts: no catalog, no doors, no handles.
@@ -10,6 +10,7 @@ module KitchenCabinetMaster
       case action
       when 'insert_filler' then insert_filler(raw)
       when 'insert_end_panel' then insert_end_panel(raw)
+      when 'insert_exposed_side_panels' then insert_exposed_side_panels(raw)
       when 'insert_toe_kick' then insert_toe_kick(raw)
       when 'apply_toe_kicks' then apply_toe_kicks(raw)
       when 'update_part' then update_part(raw)
@@ -126,16 +127,16 @@ module KitchenCabinetMaster
     end
     private_class_method :door_material_of
 
-    # ---- end panel --------------------------------------------------------------
+    # ---- side panel --------------------------------------------------------------
 
     # The target (whatever cabinet or filler is currently selected) is read once,
-    # here, at Insert time. Its own size is copied into the end panel's stored
+    # here, at Insert time. Its own size is copied into the side panel's stored
     # parameters, so later Updates never need to re-find the target (see
     # PartLayout.end_panel and PartGenerator.attributes_for).
     def self.insert_end_panel(raw)
       model = Sketchup.active_model
       target = SelectionManager.selected_occupant(model)
-      return Response.fail('Select a cabinet or filler first, then choose which side gets the end panel.') unless target
+      return Response.fail('Select a cabinet or filler first, then choose which side gets the side panel.') unless target
 
       target_params = AttributeManager.read(target)
       filler = AttributeManager.part_kind(target) == 'filler'
@@ -147,7 +148,7 @@ module KitchenCabinetMaster
       params, failure = prepare_end_panel(end_panel_defaults(raw, target, target_params), door, carcass)
       return failure if failure
 
-      # Recorded so the end panel can follow the door colour if that changes (follow_door).
+      # Recorded so the side panel can follow the door colour if that changes (follow_door).
       params['target_door_material'] = door
       params['target_carcass_material'] = carcass
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
@@ -160,7 +161,7 @@ module KitchenCabinetMaster
       return Response.fail(collision) if collision
 
       root = SelectionManager.suspend do
-        with_operation(model, 'Insert End Panel') do
+        with_operation(model, 'Insert Side Panel') do
           params['part_id'] = AttributeManager.next_part_id(model)
           params['part_name'] = NamingManager.unique_name(target.parent.entities, NamingManager.end_panel_name(params))
           PartGenerator.build(model, target.parent.entities, params, transformation, layout)
@@ -172,7 +173,48 @@ module KitchenCabinetMaster
     end
     private_class_method :insert_end_panel
 
-    # The panel's values, with a blank depth and height filled in from the target.
+    # A side panel on every exposed side of the selected cabinets (of every cabinet and filler in the model when none is selected): each side
+    # is tried, and one that has something against it (a neighbour, a wall unit's cabinet, a panel already there) is not exposed and is
+    # left alone. One Undo step.
+    def self.insert_exposed_side_panels(raw)
+      model = Sketchup.active_model
+      chosen = model.selection.select { |entity| AttributeManager.cabinet?(entity) || AttributeManager.part_kind(entity) == 'filler' }
+      targets = chosen.empty? ? model.entities.select { |entity| AttributeManager.cabinet?(entity) || AttributeManager.part_kind(entity) == 'filler' } : chosen
+      return Response.fail('There is nothing to put side panels on: insert a cabinet first.') if targets.empty?
+
+      made = 0
+      covered = 0
+      problems = []
+      model.start_operation('Side Panels on Exposed Sides', true)
+      @batch = true
+      begin
+        targets.each do |target|
+          %w[left right].each do |side|
+            model.selection.clear
+            model.selection.add(target)
+            answer = insert_end_panel(stringify(raw).merge('side' => side, 'depth_auto' => true, 'height_auto' => true))
+            if answer['ok'] then made += 1
+            elsif answer['message'].to_s.include?('already has something against it') then covered += 1
+            else problems << answer['message']
+            end
+          end
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      model.selection.clear
+      targets.each { |target| model.selection.add(target) if target.valid? }
+      message = "#{made} side panel#{'s' unless made == 1} placed on #{made == 1 ? 'an exposed side' : 'exposed sides'}"
+      message += " (#{covered} side#{'s' unless covered == 1} already had something against #{covered == 1 ? 'it' : 'them'})" if covered.positive?
+      message += ". #{problems.uniq.first(2).join(' ')}" unless problems.empty?
+      Response.ok("#{message}.".sub('..', '.'), { 'count' => made })
+    end
+    private_class_method :insert_exposed_side_panels
+
     def self.end_panel_defaults(raw, target, target_params)
       raw = stringify(raw)
       raw['depth'] = door_front_of(target, target_params) if truthy?(raw['depth_auto']) || raw['depth'].to_s.strip.empty?
@@ -180,7 +222,7 @@ module KitchenCabinetMaster
       raw
     end
 
-    # Where an end panel starts: on the floor, except beside a wall unit (or a filler
+    # Where an side panel starts: on the floor, except beside a wall unit (or a filler
     # for one), where it hangs at the unit's own base height, so it is the same size
     # as the unit.
     def self.start_z_of(target, target_params)
@@ -197,7 +239,7 @@ module KitchenCabinetMaster
     private_class_method :truthy?
     private_class_method :end_panel_defaults
 
-    # X of the target's door front: what an end panel's depth starts as, so the
+    # X of the target's door front: what an side panel's depth starts as, so the
     # panel stands flush with the doors. A filler's front is where it was flush to.
     def self.door_front_of(target, target_params)
       return target_params['target_flush_x'].to_f if AttributeManager.part_kind(target) == 'filler'
@@ -206,7 +248,7 @@ module KitchenCabinetMaster
     end
     private_class_method :door_front_of
 
-    # Floor to the top of the target: what an end panel's height starts as.
+    # Floor to the top of the target: what an side panel's height starts as.
     def self.top_of(target_params)
       (target_params['envelope_top'] || CabinetLayout.envelope(target_params)[2]).to_f
     end
@@ -215,7 +257,7 @@ module KitchenCabinetMaster
     # Directly against the target's left or right face, in the target's own
     # coordinate frame (so it follows the target's position and rotation).
     # Refuses (rather than sliding, like a row insert would) if that side is
-    # already occupied: an end panel belongs on a genuinely exposed face.
+    # already occupied: an side panel belongs on a genuinely exposed face.
     def self.placed_transformation(target, params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']
       transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, offset.mm, 0))
@@ -592,9 +634,9 @@ module KitchenCabinetMaster
     private_class_method :toe_kick_unchanged?
 
     # The toe kick was raised from `from` to `to` mm. Everything that stands on it
-    # goes up with the cabinets: fillers rise to the new toe-kick height and end panels
+    # goes up with the cabinets: fillers rise to the new toe-kick height and side panels
     # grow to the cabinets' new top. Everything on the WALL goes up by the same
-    # amount, so wall units, the fillers and end panels beside them keep their place
+    # amount, so wall units, the fillers and side panels beside them keep their place
     # above the base units. Inside an operation.
     def self.lift_attached(model, from, to)
       delta = to.to_f - from.to_f
@@ -638,7 +680,7 @@ module KitchenCabinetMaster
     def self.update_part(raw)
       model = Sketchup.active_model
       root = SelectionManager.selected_part(model)
-      return Response.fail('Select a filler, end panel or toe kick to update.') unless root
+      return Response.fail('Select a filler, side panel or toe kick to update.') unless root
 
       case AttributeManager.part_kind(root)
       when 'filler' then update_filler(model, root, raw)
@@ -646,7 +688,7 @@ module KitchenCabinetMaster
       when 'toe_kick' then update_toe_kick(model, root, raw)
       when 'worktop', 'backsplash' then WorktopManager.apply(raw, only_if_exists: false)
       when 'wall_bottom' then Response.ok('Change the wall bottom panel with Apply in the Worktop section.')
-      else Response.fail('That selection is not a filler, an end panel, a toe kick or a worktop.')
+      else Response.fail('That selection is not a filler, an side panel, a toe kick or a worktop.')
       end
     end
     private_class_method :update_part
@@ -722,14 +764,14 @@ module KitchenCabinetMaster
       params['part_name'] = NamingManager.for_update_base(root, NamingManager.end_panel_name(params))
 
       SelectionManager.suspend do
-        with_operation(model, 'Update End Panel') { PartGenerator.update(model, root, params, layout, transformation) }
+        with_operation(model, 'Update Side Panel') { PartGenerator.update(model, root, params, layout, transformation) }
       end
       SelectionManager.push_selection(model)
       Response.ok("#{root.name} updated.")
     end
     private_class_method :update_end_panel
 
-    # The target's own placement, recovered from the end panel's CURRENT
+    # The target's own placement, recovered from the side panel's CURRENT
     # transformation and its CURRENT (pre-update) side/thickness, so a change of
     # side or thickness can be re-applied on top of the same base placement.
     def self.target_placement(root)
@@ -742,7 +784,7 @@ module KitchenCabinetMaster
     def self.delete_part
       model = Sketchup.active_model
       root = SelectionManager.selected_part(model)
-      return Response.fail('Select a filler, end panel or toe kick to delete.') unless root
+      return Response.fail('Select a filler, side panel or toe kick to delete.') unless root
 
       name = root.name
       SelectionManager.suspend { with_operation(model, 'Delete Part') { PartGenerator.remove(model, root) } }
@@ -766,7 +808,7 @@ module KitchenCabinetMaster
     end
     private_class_method :prepare_filler
 
-    # An end panel's material is "same as door material" (following what it is
+    # An side panel's material is "same as door material" (following what it is
     # attached to) unless a material was picked by hand; `door` and `carcass` are
     # what it would follow.
     def self.prepare_end_panel(raw, door, carcass)
@@ -788,7 +830,7 @@ module KitchenCabinetMaster
     # colour of its own follows the cabinet's door material:
     #
     #   filler                    always
-    #   end panel, toe kick       unless a material was picked for it by hand
+    #   side panel, toe kick       unless a material was picked for it by hand
     #                             ("same as door / carcass material" follows)
     #
     # Only the colour changes; nothing is rebuilt. Call inside an operation.
@@ -857,7 +899,7 @@ module KitchenCabinetMaster
     private_class_method :summary
 
     def self.with_operation(model, name)
-      return yield if defined?(KitchenManager) && KitchenManager.building? # (inside Design Kitchen: its own one Undo step)
+      return yield if (defined?(KitchenManager) && KitchenManager.building?) || @batch # (inside Design Kitchen or a batch of panels: its own one Undo step)
 
       model.start_operation(name, true)
       begin

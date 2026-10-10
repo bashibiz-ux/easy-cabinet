@@ -190,11 +190,6 @@
             <span class="label">Back Panel Colour</span>
             <div class="input"><select id="kitchenBackPanelMaterial"></select></div>
           </label>
-          <label class="check"><input type="checkbox" id="kitchenIslandSidePanels"><span>Side panels on the island ends</span></label>
-          <label class="field">
-            <span class="label">Knee Panel Colour</span>
-            <div class="input"><select id="kitchenKneeMaterial"></select></div>
-          </label>
         </div>
         <p class="group-title">Windows (the sink goes under the first one; wall units skip them)</p>
         <div class="grid-3 kitchen-window">
@@ -209,8 +204,7 @@
         </div>
         <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
         <label class="check"><input type="checkbox" id="kitchenToeKick" checked><span>Toe kicks (under the rows and the island)</span></label>
-        <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>End panels on the free ends of an L or a U</span></label>
-        <label class="check"><input type="checkbox" id="kitchenOpenEnds"><span>End panels on both ends of a straight kitchen too (open sides)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>Side panels on every exposed side (the island ends, the free ends of the runs, the ends of a straight kitchen)</span></label>
         <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
@@ -308,7 +302,7 @@
           <span class="label">Carcass Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
         </label>
-        <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; end panels and toe kicks do too unless you pick their own.</p>
+        <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; side panels and toe kicks do too unless you pick their own.</p>
         <!-- Your own materials, in categories of your own: a material of the model (its colour and picture are copied). -->
         <div class="mine">
           <h3 class="vis-title">My materials</h3>
@@ -340,7 +334,7 @@
       </div>
     </section>
 
-    <!-- Cabinet & Extras: the cabinet itself, or, chosen in Cabinet Category, a filler, an end panel or a toe kick. -->
+    <!-- Cabinet & Extras: the cabinet itself, or, chosen in Cabinet Category, a filler, an side panel or a toe kick. -->
     <section class="card" id="sec-cabinet" data-feature="cabinet_extras">
       <button class="card-head" type="button" aria-expanded="true">Cabinet &amp; Extras</button>
       <div class="card-body">
@@ -508,7 +502,7 @@
         <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
 
         <div hidden><input id="gap" type="text" autocomplete="off"></div>
-        <!-- Opens a window for the selected cabinet, filler, end panel or toe kick: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
+        <!-- Opens a window for the selected cabinet, filler, side panel or toe kick: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
         <div class="btn-row one">
           <button class="btn" type="button" data-action="customize" title="A window to change the size of any board of the selected item and to move it">Customize...</button>
         </div>
@@ -532,9 +526,9 @@
           </div>
         </div>
 
-        <!-- End Panel: shown when Cabinet Category = End Panel. Covers the exposed side of the selected cabinet or filler. -->
+        <!-- Side Panel: shown when Cabinet Category = Side Panel. Covers the exposed side of the selected cabinet or filler. -->
         <div class="subblock end-panel-only" id="sub-end-panel" hidden>
-          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the end panel attaches to its exposed side. Depth starts flush with the door front and height at the top of what you selected; both can be changed.</p>
+          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the side panel attaches to its exposed side. Depth starts flush with the door front and height at the top of what you selected; both can be changed.</p>
           <label class="field">
             <span class="label">Side</span>
             <div class="input"><select id="epSide"></select></div>
@@ -804,6 +798,9 @@
     </div>
     <div class="btn-row one">
       <button class="btn" type="button" data-action="toggle" title="Open or close the selected cabinet's doors; with nothing selected, every door in the model">Toggle Doors</button>
+    </div>
+    <div class="btn-row one">
+      <button class="btn" type="button" data-action="insert_exposed_side_panels" title="A side panel on every side of the selected cabinets (or of every cabinet when none is selected) that has nothing against it. Uses the Side Panel thickness, material and face set in Cabinet & Extras. One Undo step.">Side Panels on All Exposed Sides</button>
     </div>
   </footer>
 

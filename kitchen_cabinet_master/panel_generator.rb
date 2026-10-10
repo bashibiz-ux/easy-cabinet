@@ -73,7 +73,7 @@ module KitchenCabinetMaster
     Frame = Struct.new(:map, :flip, :outward)
     FRONT_FRAME = Frame.new(->(x, y, z) { [x, y, z] }, false, [1.0, 0.0, 0.0]).freeze
 
-    # The frame of an end panel `thickness` thick, whose outer face is the low-Y face on the left of a cabinet, the high-Y one on
+    # The frame of an side panel `thickness` thick, whose outer face is the low-Y face on the left of a cabinet, the high-Y one on
     # its right. (Across that face runs the depth, up it the height.)
     def self.end_panel_frame(side, thickness)
       if side.to_s == 'left'
@@ -163,7 +163,7 @@ module KitchenCabinetMaster
       faced_definition(model, name, [dx, dy, dz], [dx, dy, dz], r, design, cuts, FRONT_FRAME)
     end
 
-    # An end panel (size [depth, thickness, height] in mm) with its outer face rounded and the shapes of a design cut into it.
+    # An side panel (size [depth, thickness, height] in mm) with its outer face rounded and the shapes of a design cut into it.
     def self.panel_face_definition(model, size, design, side, radius = 0.0)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
       r = front_radius(dy, dx, dz, radius)

@@ -34,7 +34,7 @@ module KitchenCabinetMaster
       { 'id' => 'right', 'name' => 'Right' }
     ].freeze
 
-    # The plain white a cabinet, filler, end panel or toe kick gets when no
+    # The plain white a cabinet, filler, side panel or toe kick gets when no
     # material has been chosen (a preset in data/materials.json, created on first use).
     DEFAULT_MATERIAL = 'Shutter - Light Beige'          # the doors start light beige (the L-corner builder script's shutter colour)
     DEFAULT_CARCASS_MATERIAL = 'Carcass - Light Gray'   # and the carcass light grey
@@ -45,7 +45,7 @@ module KitchenCabinetMaster
                       'end_panel' => 'EP', 'toe_kick' => 'TK' }.freeze
 
     # Standalone parts: not full cabinets (see PartLayout, PartGenerator, PartManager).
-    # Fillers and end panels take up their own footprint in the model; a toe kick
+    # Fillers and side panels take up their own footprint in the model; a toe kick
     # stands under the cabinets' fronts and never blocks anything.
     PART_KINDS = %w[filler end_panel toe_kick].freeze
     END_PANEL_SIDES = %w[left right].freeze
@@ -257,7 +257,7 @@ module KitchenCabinetMaster
     }.freeze
     DEFAULT_TOE_KICK_DEPTH = 560.0 # carcass depth assumed when no cabinet is selected
 
-    # An end panel: which side of the currently selected cabinet/filler it goes
+    # An side panel: which side of the currently selected cabinet/filler it goes
     # on, and its own depth (front to back), thickness (its width in the front
     # view) and height (floor to top). Depth starts as the target's door front, so
     # the panel is flush with the doors, and height as the target's top; the

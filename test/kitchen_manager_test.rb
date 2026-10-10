@@ -128,7 +128,7 @@ module KitchenCabinetMaster
     end
   end
 
-  # The toe kick and the end panel buttons: what they were asked, with what selected, and whether they ran inside the kitchen's own operation.
+  # The toe kick and the side panel buttons: what they were asked, with what selected, and whether they ran inside the kitchen's own operation.
   module PartManager
     class << self
       attr_reader :calls
@@ -282,7 +282,7 @@ class KitchenManagerTest < Minitest::Test
     assert(panels.all? { |call| call[:raw]['depth_auto'] && call[:raw]['height_auto'] })
     assert_equal 2, panels.count { |call| call[:raw]['side'] == 'left' }
     assert_equal 3, panels.count { |call| call[:raw]['side'] == 'right' }
-    assert_match(/End panels: 5/, result['message'])
+    assert_match(/Side panels: 5/, result['message'])
     assert_empty Sketchup.active_model.selection.items, 'nothing is left selected'
   end
 
