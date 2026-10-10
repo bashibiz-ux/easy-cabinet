@@ -228,7 +228,7 @@ module KitchenCabinetMaster
       'toe_kick_material'      => SAME_AS_DOOR,
       'toe_kick_piece_length'  => 2000.0,
 
-      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => false, 'oven' => true, 'microwave' => true, 'sink' => true, 'hob' => true, 'hood' => true, 'free_fridge' => true }
+      'visibility_settings'    => { 'carcass' => true, 'door' => true, 'toe_kick' => true, 'appliances' => true, 'oven' => true, 'microwave' => true, 'sink' => true, 'hob' => true, 'hood' => true, 'free_fridge' => true }
     }.freeze
 
     # A filler: a flat board beside a cabinet, on its wall side, with its front face

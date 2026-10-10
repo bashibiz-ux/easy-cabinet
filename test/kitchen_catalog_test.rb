@@ -159,7 +159,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_appliances_start_hidden_and_the_oven_and_microwave_have_their_own_ticks
     settings = Defaults.params['visibility_settings']
-    assert_equal false, settings['appliances']
+    assert_equal true, settings['appliances'], 'appliances are always shown'
     assert_equal [true, true], settings.values_at('oven', 'microwave')
   end
 

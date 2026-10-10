@@ -363,11 +363,20 @@ class KitchenPlannerTest < Minitest::Test
     assert_includes targets, { part: :base, index: open.base.length - 1, side: 'right' }
     assert(targets.any? { |target| target[:part] == :wall }, 'the wall units too')
   end
+  def test_the_free_ends_of_the_runs_and_the_island_ends_are_separate_choices
+    only_island = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'island' => true, 'island_side_panels' => true, 'run_end_panels' => false)
+    parts = KitchenPlanner.end_panel_targets(only_island).map { |target| target[:part] }.uniq
+    assert_equal [:island], parts
+    only_runs = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000, 'island' => true, 'run_end_panels' => true)
+    refute_includes KitchenPlanner.end_panel_targets(only_runs).map { |target| target[:part] }, :island
+    assert_includes KitchenPlanner.end_panel_targets(only_runs).map { |target| target[:part] }, :base
+  end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300)), '300 mm seating overhang'
-    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true).island.seating
+    assert_equal 300.0, plan('wall_a' => 4200, 'island' => true).island.seating, 'stools: 300 mm unless asked otherwise'
+    assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_seating' => 0).island.seating
     assert_equal 450.0, plan('wall_a' => 4200, 'island' => true, 'island_seating' => 900).island.seating
     assert_equal 0.0, plan('wall_a' => 4200, 'island' => true, 'island_seating' => -5).island.seating
   end
