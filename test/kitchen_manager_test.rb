@@ -35,6 +35,10 @@ module Sketchup
 
     def initialize = @selection = FakeSelection.new
     def active_entities = :entities
+    def entities = KitchenCabinetMaster::CabinetGenerator.made.to_a
+    def get_attribute(_dictionary, key, default = nil) = (@attributes ||= {}).fetch(key, default)
+    def set_attribute(_dictionary, key, value) = ((@attributes ||= {})[key] = value)
+    def find_entity_by_persistent_id(id) = entities.find { |entity| entity.persistent_id == id }
     def start_operation(*) = (@operations = (@operations || 0) + 1)
     def commit_operation = (@commits = (@commits || 0) + 1)
     def abort_operation = (@aborts = (@aborts || 0) + 1)
@@ -48,6 +52,9 @@ module KitchenCabinetMaster
   DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
 
   Built = Struct.new(:params, :transformation) do
+    def persistent_id = object_id
+    def valid? = !@erased
+    def erase! = (@erased = true)
     def get_attribute(_dictionary, key, default = nil) = key == 'top_z' ? 880.0 : default
     def set_attribute(dictionary, key, value) = (attributes[[dictionary, key]] = value)
     def attributes = (@attributes ||= {})
@@ -59,6 +66,7 @@ module KitchenCabinetMaster
     def self.next_cabinet_id(_model) = "C#{@id += 1}"
     def self.next_sequence(_model) = @id
     def self.read(instance) = instance.params
+    def self.cabinet?(instance) = instance.respond_to?(:params)
   end
 
   module NamingManager
@@ -143,6 +151,8 @@ module KitchenCabinetMaster
       (@made ||= []) << built
       built
     end
+
+    def self.remove(_model, root) = root.erase!
 
     def self.made = @made
 
@@ -266,7 +276,7 @@ class KitchenManagerTest < Minitest::Test
     assert_empty PartManager.calls.select { |call| call[:kind] == :end_panel }, 'a straight kitchen stands between two walls'
     PartManager.reset
     CabinetGenerator.reset
-    result = design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'island' => true }, 'end_panel' => { 'face' => 'flat' })
+    result = design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'island' => true, 'island_side_panels' => true }, 'end_panel' => { 'face' => 'flat' })
     panels = PartManager.calls.select { |call| call[:kind] == :end_panel }
     assert_equal 5, panels.length, 'both ends of the island, the two ends of the base units, and the wall unit at the far end (the fridge is at the other)'
     assert(panels.all? { |call| call[:raw]['depth_auto'] && call[:raw]['height_auto'] })
@@ -355,5 +365,25 @@ class KitchenManagerTest < Minitest::Test
     assert_operator spec[:length], :>, 1000.0
     design({ 'wall_a' => 4200, 'island' => true })
     assert_equal 1, BackPanelSpy.length, 'not asked, not built'
+  end
+
+  def test_a_live_update_takes_the_kitchen_away_and_builds_it_again_where_it_stood
+    design({ 'wall_a' => 3600 })
+    first_run = made.dup
+    original = first_run.first.transformation.to_a
+    assert_operator first_run.length, :>, 3
+    result = design({ 'wall_a' => 3000 }, 'replace' => true)
+    assert result['ok'], result['message']
+    assert(first_run.none?(&:valid?), 'the kitchen designed before is gone')
+    rebuilt = made - first_run
+    assert_operator rebuilt.length, :>, 3
+    assert_equal original, rebuilt.first.transformation.to_a, 'built again at the same place'
+  end
+
+  def test_a_design_without_replace_leaves_the_earlier_kitchen_alone
+    design({ 'wall_a' => 3600 })
+    first_run = made.dup
+    design({ 'wall_a' => 3000 })
+    assert(first_run.all?(&:valid?))
   end
 end

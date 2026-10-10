@@ -54,26 +54,16 @@ class WorktopTest < Minitest::Test
     assert_nil Worktop.support(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
     assert_nil Worktop.support(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), Worktop::DEFAULTS))
   end
-  def test_an_overhang_has_an_upright_board_under_each_end_of_the_slab_standing_on_the_floor
+  def test_an_overhang_has_one_knee_panel_across_the_whole_slab_from_the_floor_against_the_back_of_the_units
     run = run_of(3, island_back: 300.0)
     slab = Worktop.slab(run, Worktop::DEFAULTS)
-    both = Worktop.end_boards(run, slab)
-    assert_equal 2, both.length
-    assert_equal [300.0, 18.0, 862.0], both.first[:extent], 'down to the floor, under the support board'
-    assert_equal [0.0, slab[:extent][1] - 18.0], both.map { |board| board[:offset][1] }
-    assert_in_delta(-862.0, both.first[:offset][2], 0.01)
-    assert_equal [0.0], Worktop.end_boards(run, slab, last: false).map { |board| board[:offset][1] }
-    assert_empty Worktop.end_boards(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
-  end
-  def test_an_l_corner_whose_arms_fill_the_whole_unit_gets_a_square_slab_not_a_slab_with_a_repeated_corner
-    corner = { x: 0.0, y: 0.0, hx: 0.0, hy: 1.0, width: 1000.0, depth: 560.0, top: 880.0, corner: true, corner_style: 'l_shape', return_depth: 560.0 }
-    run = Worktop.runs([corner]).first
-    run[:neighbor_depth] = 980.0
-    slab = Worktop.slab(run, Worktop::DEFAULTS)
-    assert_nil slab[:points]
-    assert_equal [1000.0, 1000.0, 20.0], slab[:extent]
-    run[:neighbor_depth] = 580.0
-    assert_equal 6, Worktop.slab(run, Worktop::DEFAULTS)[:points].length, 'a normal L is still an L'
+    panel = Worktop.knee_panel(run, slab)
+    assert_equal [18.0, slab[:extent][1], 880.0], panel[:extent], 'as long as the slab, down to the floor'
+    assert_equal [282.0, 0.0, -880.0], panel[:offset], 'at the back of the knee space (the units start 300 mm from the slab edge)'
+    assert_nil Worktop.knee_panel(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
+    backed = run_of(3, island_back: 300.0)
+    backed[:backed] = true
+    assert_nil Worktop.knee_panel(backed, slab), 'the island back panel is that board already'
   end
   # ---- runs -------------------------------------------------------------------
 

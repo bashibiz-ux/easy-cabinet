@@ -245,7 +245,7 @@ class KitchenPlannerTest < Minitest::Test
 
   def test_the_end_panels_are_for_the_open_ends_only
     assert_empty KitchenPlanner.end_panel_targets(plan('wall_a' => 3600)), 'a straight kitchen stands between two walls'
-    island_only = KitchenPlanner.end_panel_targets(plan('wall_a' => 4200, 'island' => true))
+    island_only = KitchenPlanner.end_panel_targets(plan('wall_a' => 4200, 'island' => true, 'island_side_panels' => true))
     assert_equal [{ part: :island, index: 0, side: 'left' }, { part: :island, index: 2, side: 'right' }], island_only
     u_shape = plan('layout' => 'u', 'wall_a' => 3000, 'wall_b' => 4200, 'wall_c' => 3000)
     targets = KitchenPlanner.end_panel_targets(u_shape)
@@ -336,10 +336,23 @@ class KitchenPlannerTest < Minitest::Test
 
   def test_an_island_can_have_a_back_panel_as_long_as_the_island
     island = plan('wall_a' => 4200, 'island' => true, 'island_back_panel' => true).island
-    assert_equal({ length: island.length }, island.back_panel)
+    assert_equal({ length: island.length, material: '' }, island.back_panel)
     assert_includes KitchenPlanner.describe(plan('wall_a' => 4200, 'island' => true, 'island_back_panel' => true)), 'a back panel'
     assert_nil plan('wall_a' => 4200, 'island' => true).island.back_panel
     assert_nil plan('wall_a' => 4200, 'island_back_panel' => true).island, 'no island, no back panel'
+  end
+  def test_the_back_panel_has_a_colour_of_its_own_when_asked
+    island = plan('wall_a' => 4200, 'island' => true, 'island_back_panel' => true, 'island_back_panel_material' => 'Walnut').island
+    assert_equal 'Walnut', island.back_panel[:material]
+  end
+
+  def test_the_island_ends_get_side_panels_only_when_asked_and_the_other_ends_follow_the_end_panels_tick
+    plain = plan('wall_a' => 4200, 'island' => true)
+    assert_empty KitchenPlanner.end_panel_targets(plain).select { |target| target[:part] == :island }
+    sided = plan('wall_a' => 4200, 'island' => true, 'island_side_panels' => true)
+    assert_equal 2, KitchenPlanner.end_panel_targets(sided).count { |target| target[:part] == :island }
+    l_shape = plan('layout' => 'l', 'wall_a' => 4200, 'wall_b' => 3000)
+    assert_operator KitchenPlanner.end_panel_targets(l_shape).length, :>, 0, 'the free ends of an L still get theirs'
   end
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island

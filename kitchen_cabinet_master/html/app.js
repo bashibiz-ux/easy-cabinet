@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.95.0';
+  const APP_VERSION = '0.96.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -188,6 +188,13 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an end panel or a toe kick.
   function handleEvent(name, data) {
+    // With the tick off, picking something in the model does not open its settings: the panel stays as it is and acts on nothing selected.
+    if (!followSelection() && (name === 'cabinet_selected' || name === 'part_selected')) {
+      state.selectedKind = null;
+      state.wallBottomSelected = false;
+      setBadge(null);
+      return;
+    }
     // Our own live update re-selects the item it just changed; do not let that
     // overwrite what the user is in the middle of typing.
     if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
@@ -593,7 +600,7 @@
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
       sink: $('kitchenSink').checked, dishwasher: $('kitchenDish').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_hood_colour: $('kitchenHoodColour').value,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
@@ -820,6 +827,7 @@
     ['baseMaterial', 'wallMaterial', 'tallMaterial'].forEach((id) => fillSelect($(id), panel));
     fillSelect($('carcassMaterial'), panel, { placeholder: 'Same as door material' });
     fillSelect($('handleMaterial'), panel, { placeholder: "Use the finish's material" });
+    fillSelect($('kitchenBackPanelMaterial'), panel, { placeholder: 'Same as the doors' });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
@@ -1938,7 +1946,7 @@
 
   // `live` is an Update the panel sends by itself while the user edits a field.
   // It leaves the buttons alone and never steals the cursor.
-  async function runAction(action, { live = false } = {}) {
+  async function runAction(action, { live = false, replace = false } = {}) {
     if (state.busy) return;
     if (action === 'undo') clearTimeout(state.liveTimer); // a pending live edit would redo what is being undone
     clearInvalid();
@@ -1951,6 +1959,7 @@
     try {
       const kind = formKind(action);
       const payload = kind ? COLLECTORS[kind]() : (CATALOG_PAYLOAD[action] ? CATALOG_PAYLOAD[action]() : {});
+      if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
@@ -1959,6 +1968,8 @@
         if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
         if (action === 'add_handle' || action === 'remove_handle') handlesChanged(res.data || {}, action);
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
+        if (action === 'design_kitchen') state.kitchenDesigned = true; // from here on a change of the answers builds it again
+        if (action === 'design_kitchen_options') state.kitchenDesigned = false;
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
         markInvalid(res.errors, kind, { focus: !live });
@@ -2190,8 +2201,23 @@
     }
   }
 
+  // Auto Kitchen live update: after a kitchen has been designed, changing an answer builds it again (one Undo step).
+  function scheduleKitchen(delay) {
+    const box = $('kitchenLive');
+    if (!state.kitchenDesigned || (box && !box.checked)) return;
+    clearTimeout(state.kitchenTimer);
+    state.kitchenTimer = setTimeout(async () => {
+      if (state.busy) { scheduleKitchen(300); return; }
+      await runAction('design_kitchen', { live: true, replace: true });
+    }, delay);
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
-  function liveEdit(el) {
+function liveEdit(el) {
+    if (el.closest('#sec-kitchen')) { // the Auto Kitchen answers: the kitchen designed before is built again with them
+      scheduleKitchen(el.tagName === 'SELECT' || el.type === 'checkbox' ? 300 : 800);
+      return;
+    }
     if (WALL_BOTTOM_IDS.has(el.id)) {
       scheduleWallBottom(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
@@ -2470,8 +2496,20 @@
     window.addEventListener('focus', refreshMaterials);
   }
 
+  function followSelection() {
+    const box = $('followSelection');
+    return !box || box.checked;
+  }
+
   async function init() {
     wrapCardBodies();
+    try {
+      if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;
+    } catch (_) { /* no stored choice: it follows */ }
+    $('followSelection').addEventListener('change', () => {
+      try { localStorage.setItem('kcm.followSelection', followSelection() ? 'on' : 'off'); } catch (_) { /* not remembered */ }
+      if (!followSelection()) { state.selectedKind = null; state.wallBottomSelected = false; clearTimeout(state.liveTimer); setBadge(null); }
+    });
     enableCardOrder();
     enableSmoothScroll($('scroll'));
     wireEvents();

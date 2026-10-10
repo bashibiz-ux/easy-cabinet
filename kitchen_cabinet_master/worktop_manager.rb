@@ -93,7 +93,7 @@ module KitchenCabinetMaster
       start = along(items.first)
       stop = items.map { |item| along(item) + item[:width] }.max
       { items: items, along: start, length: stop - start, depth: items.map { |item| item[:depth] }.max,
-        top: items.first[:top], corner: false, back: items.first[:island_back] }
+        top: items.first[:top], corner: false, back: items.first[:island_back], backed: items.first[:island_panel] }
     end
     private_class_method :finish
 
@@ -177,18 +177,15 @@ module KitchenCabinetMaster
       { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
     end
 
-    # The upright boards under the two ends of a seating overhang, standing on the floor and carrying the support board: one at the start of the
-    # slab (if irst) and one at its end (if last), in the slab's own frame. [{ extent: [depth, thickness, height], offset: [x, y, z] }]
-    def self.end_boards(run, slab, first: true, last: true)
+# The knee panel: one upright board across the whole length of the slab, standing on the floor against the back of the units (the back of the
+    # knee space under a seating overhang) and reaching up to the slab, in the slab's own frame. nil when the slab has no overhang, or when the
+    # island already has a back panel there. { extent: [depth, length, height], offset: [x, y, z] }
+    def self.knee_panel(run, slab)
       back = run[:back].to_f
-      return [] if run[:corner] || back <= 1.0
+      return nil if run[:corner] || back <= 1.0 || run[:backed]
 
-      height = run[:top].to_f - SUPPORT_MM
-      length = slab[:extent][1]
-      ys = []
-      ys << 0.0 if first
-      ys << length - SUPPORT_MM if last
-      ys.map { |y| { extent: [back, SUPPORT_MM, height], offset: [0.0, y, -height] } }
+      height = run[:top].to_f
+      { extent: [SUPPORT_MM, slab[:extent][1], height], offset: [back - SUPPORT_MM, 0.0, -height] }
     end
 
     # The back splash pieces that go with a slab: [{ extent:, offset: }] in the slab's
@@ -345,7 +342,7 @@ module KitchenCabinetMaster
         corner = !filler && CabinetLayout.corner?(stored)
         { x: origin.x.to_mm, y: origin.y.to_mm, hx: heading.x, hy: heading.y, width: stored['width'].to_f,
           depth: stored['envelope_depth'].to_f, top: origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f,
-          island_back: item.get_attribute(dictionary, 'island_seating')&.to_f, corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
+          island_back: item.get_attribute(dictionary, 'island_seating')&.to_f, island_panel: item.get_attribute(dictionary, 'island_back_panel') == true, corner: corner, corner_style: CabinetLayout.corner_style(stored), return_depth: stored['depth'].to_f,
           leg2_length: stored['leg2_length'].to_f, leg2_depth: stored['leg2_depth'].to_f, ref: item,
           cutouts: filler ? [] : Fixtures.cutouts(stored) }
       end
@@ -367,8 +364,9 @@ module KitchenCabinetMaster
 
         begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
           board = Worktop.support(run, slab)
-          Worktop.end_boards(run, slab, first: from.zero?, last: to.nil? || to >= total - 0.5).each do |leg| # (the knee support's uprights)
-            make_part(model, 'worktop', leg[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(0, leg[:offset][1].mm, leg[:offset][2].mm)),
+          panel = Worktop.knee_panel(run, slab)
+          if panel # (the back of the knee space, from the floor to the slab)
+            make_part(model, 'worktop', panel[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(panel[:offset][0].mm, panel[:offset][1].mm, panel[:offset][2].mm)),
                       params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
           end
           if board # (made before the slab, so the slab is the last piece of the run: refresh takes the run's settings from that one)
@@ -430,12 +428,12 @@ module KitchenCabinetMaster
       stored['part_id'] = AttributeManager.next_part_id(model)
       stored['part_name'] = "#{params['part_label'] || (kind == 'worktop' ? 'Worktop' : 'Back Splash')} #{stored['part_id'].to_s.split('_').last.to_i}"
       stored['width'] = extent[1]
-      if params['part_label'] # (the cut list takes the board's size from here: an upright board is as high as it is tall, thin the other way)
-        upright = params['part_label'] == 'Knee Panel'
-        stored['worktop_thickness'] = upright ? extent[1] : extent[2]
-        stored['width'] = extent[2] if upright
-      end
       stored['depth'] = extent[0]
+      if params['part_label'] # (the cut list takes the board's size from here: an upright board is as high as it is long, thin the other way)
+        upright = params['part_label'] == 'Knee Panel'
+        stored['worktop_thickness'] = upright ? extent[0] : extent[2]
+        stored['depth'] = extent[2] if upright
+      end
       slab = kind == 'worktop'
       round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee support has round 0)
       # What the piece is made of, kept so that it can be rebuilt (the Customize window changes its board).

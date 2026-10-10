@@ -31,7 +31,15 @@ module Geom
 
     # `offset` is an [x, y, z] array, as the plugin passes to Transformation.new.
     def initialize(offset = nil, a: 1.0, b: 0.0, c: 0.0, d: 1.0, tx: 0.0, ty: 0.0, tz: 0.0)
-      tx, ty, tz = offset if offset
+      if offset.is_a?(Array) && offset.length == 16 # a whole matrix, as to_a gives it
+        a = offset[0]
+        c = offset[1]
+        b = offset[4]
+        d = offset[5]
+        tx, ty, tz = offset[12], offset[13], offset[14]
+      elsif offset
+        tx, ty, tz = offset
+      end
       @a = a
       @b = b
       @c = c

@@ -14,6 +14,9 @@
       <h1>Kitchen Cabinet Master <span class="version" id="appVersion"></span></h1>
       <span class="badge" id="selectionBadge">Nothing selected</span>
     </div>
+    <div class="topbar-row">
+      <label class="check"><input type="checkbox" id="followSelection" checked><span>Show a selected item's settings in the panel</span></label>
+    </div>
     <figure class="preview">
       <svg id="preview" viewBox="0 0 240 176" role="img" aria-label="Front view of the cabinet being configured"></svg>
       <figcaption id="previewCaption">Front view</figcaption>
@@ -183,6 +186,11 @@
             <div class="input"><select id="kitchenIslandSeating"><option value="0">None</option><option value="250">250 mm</option><option value="300">300 mm (stools)</option><option value="350">350 mm</option><option value="400">400 mm</option></select></div>
           </label>
           <label class="check"><input type="checkbox" id="kitchenIslandBackPanel" checked><span>Back panel on the island</span></label>
+          <label class="field">
+            <span class="label">Back Panel Colour</span>
+            <div class="input"><select id="kitchenBackPanelMaterial"></select></div>
+          </label>
+          <label class="check"><input type="checkbox" id="kitchenIslandSidePanels"><span>Side panels on the island ends</span></label>
         </div>
         <p class="group-title">Windows (the sink goes under the first one; wall units skip them)</p>
         <div class="grid-3 kitchen-window">
@@ -197,7 +205,8 @@
         </div>
         <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
         <label class="check"><input type="checkbox" id="kitchenToeKick" checked><span>Toe kicks (under the rows and the island)</span></label>
-        <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>End panels on the open ends (the island, the free ends of an L or a U)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>End panels on the free ends of an L or a U</span></label>
+        <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
           <button class="btn" type="button" id="designKitchenOptions" data-action="design_kitchen_options" title="Build three kitchens side by side, one in each style (classic doors, glass doors, lift-up units), to compare: one Undo step. Delete the ones you do not want.">Make 3 Options</button>

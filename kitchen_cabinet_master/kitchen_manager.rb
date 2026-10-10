@@ -46,12 +46,18 @@ module KitchenCabinetMaster
       model.selection.clear
       all = []
       parts = { toe_kicks: 0, end_panels: 0, hoods: 0, notes: [] }
+      replace = raw['replace'] == true && plans.length == 1 # a live update: the kitchen designed before is taken away and built again where it stood
+      origin = replace ? remembered_origin(model) : nil
+      before = nil
       begin
         run_operation(model, plans.length > 1 ? 'Design Kitchen Options' : 'Design Kitchen') do
+          erase_previous(model) if replace
+          before = entity_ids(model)
           plans.each_with_index do |plan, index|
             built = { base: [], wall: [], island: [] }
             plan.base.each_with_index do |item, position|
               shifted = index.positive? && position.zero? ? all.first[:base].first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, (index * step).mm, 0)) : nil
+              shifted = origin if shifted.nil? && origin && index.zero? && position.zero?
               built[:base] << build_unit(model, panel, catalog_id, item, shifted)
             end
             build_wall(model, panel, catalog_id, plan, built) unless plan.wall.empty?
@@ -59,6 +65,7 @@ module KitchenCabinetMaster
             all << built
             add_parts(model, plan, built, raw, parts)
           end
+          remember(model, before, plans.length == 1 ? all.first[:base].first : nil)
         end
       rescue StandardError => e
         return Response.fail("The kitchen could not be built: #{e.message}#{where(e)}")
@@ -75,9 +82,73 @@ module KitchenCabinetMaster
       message += " Toe kicks: #{parts[:toe_kicks]}." if raw['toe_kick'].is_a?(Hash)
       message += " End panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
       message += " #{parts[:notes].uniq.join(' ')}" unless parts[:notes].empty?
+      worktop_before = worktop_ids(model)
       message += worktop_message(raw['worktop'])
+      remember_worktop(model, worktop_before) if plans.length == 1
       Response.ok(message, { 'cabinets' => all.sum { |built| built.values.sum(&:length) } })
     end
+
+    # ---- remembering the kitchen, so that a change of the answers can build it again (live update) ----
+
+    DICTIONARY = 'KitchenCabinetMaster'
+    KEY_ENTITIES = 'kitchen_entities'
+    KEY_WORKTOP = 'kitchen_worktop'
+    KEY_ORIGIN = 'kitchen_origin'
+
+    def self.entity_ids(model)
+      model.entities.map(&:persistent_id)
+    end
+    private_class_method :entity_ids
+
+    def self.worktop_ids(model)
+      WorktopManager.respond_to?(:pieces_in) ? WorktopManager.pieces_in(model).map(&:persistent_id) : []
+    end
+    private_class_method :worktop_ids
+
+    # What this design added to the model, and where its first unit stands (inside the design's own operation).
+    def self.remember(model, before, first)
+      return unless model.respond_to?(:set_attribute)
+
+      added = before ? entity_ids(model) - before : []
+      model.set_attribute(DICTIONARY, KEY_ENTITIES, added.join(','))
+      model.set_attribute(DICTIONARY, KEY_WORKTOP, '')
+      model.set_attribute(DICTIONARY, KEY_ORIGIN, first ? first.transformation.to_a.join(',') : '')
+    end
+    private_class_method :remember
+
+    # The worktop is a separate Undo step; its pieces are written down in a step that joins it.
+    def self.remember_worktop(model, before)
+      return unless model.respond_to?(:set_attribute)
+
+      added = worktop_ids(model) - before
+      return if added.empty?
+
+      model.start_operation('Remember Kitchen', true, false, true)
+      model.set_attribute(DICTIONARY, KEY_WORKTOP, added.join(','))
+      model.commit_operation
+    rescue StandardError
+      model.abort_operation
+    end
+    private_class_method :remember_worktop
+
+    def self.remembered_origin(model)
+      numbers = model.get_attribute(DICTIONARY, KEY_ORIGIN).to_s.split(',').map(&:to_f)
+      numbers.length == 16 ? Geom::Transformation.new(numbers) : nil
+    end
+    private_class_method :remembered_origin
+
+    # Takes away the kitchen designed before (its cabinets, parts, lights and worktop pieces).
+    def self.erase_previous(model)
+      [KEY_ENTITIES, KEY_WORKTOP].each do |key|
+        model.get_attribute(DICTIONARY, key).to_s.split(',').map(&:to_i).each do |id|
+          entity = model.find_entity_by_persistent_id(id)
+          next unless entity&.valid?
+
+          if AttributeManager.cabinet?(entity) then CabinetGenerator.remove(model, entity) else entity.erase! end
+        end
+      end
+    end
+    private_class_method :erase_previous
 
     def self.fmt(value)
       format('%g', value)
@@ -193,9 +264,10 @@ module KitchenCabinetMaster
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }
       built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_seating', island.seating.to_f) } # (the worktop reaches this far beyond the back, and has no back splash)
       if island.back_panel # a board closing the room side of the units
+        built[:island].each { |unit| unit.set_attribute(AttributeManager::DICTIONARY, 'island_back_panel', true) } # (it is the back of the knee space, so the worktop makes no knee panel of its own)
         extra(parts, 'The island back panel') do
           top = built[:island].first.get_attribute(AttributeManager::DICTIONARY, 'top_z').to_f
-          IslandBackPanel.build(model, model.active_entities, place, island.back_panel.merge(height: top, material: panel['base_material']))
+          IslandBackPanel.build(model, model.active_entities, place, island.back_panel.merge(height: top, material: island.back_panel[:material].to_s.empty? ? panel['base_material'] : island.back_panel[:material]))
         end
       end
       return unless island.hood
