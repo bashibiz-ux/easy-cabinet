@@ -2,14 +2,14 @@
    Every colour is set here; nothing below uses a colour of its own. */
 :root {
   color-scheme: light;
-  --paper: #f3f5f9;          /* window background */
-  --sheet: #ffffff;          /* cards and bars */
-  --raised: #eaeef5;         /* buttons, raised surfaces */
-  --field: #ffffff;          /* inputs */
+  --paper: #e3e6eb;          /* window background */
+  --sheet: #eceef2;          /* cards and bars */
+  --raised: #dde1e8;         /* buttons, raised surfaces */
+  --field: #d8dce4;          /* inputs */
   --ink: #1c2330;            /* main text */
-  --muted: #5d697a;          /* labels, hints */
-  --line: #e0e5ed;           /* hairlines */
-  --line-strong: #c3ccd9;    /* input borders */
+  --muted: #566274;          /* labels, hints */
+  --line: #cdd2db;           /* hairlines */
+  --line-strong: #a9b2bf;    /* input borders */
   --accent: #3b6fe0;         /* the one accent */
   --accent-hover: #2f5fcc;
   --accent-strong: #2f5fcc;
@@ -21,9 +21,9 @@
   --danger-soft: #fde8e8;
   --ok: #1f8f55;
   --ok-soft: #e1f4e9;
-  --info-soft: #edf1f8;
-  --grid: #e5eaf2;
-  --preview-bg: #f7f9fc;
+  --info-soft: #e0e5ee;
+  --grid: #d6dbe4;
+  --preview-bg: #e9ecf1;
   --glow: rgba(59, 111, 224, 0.18);
   --ease: cubic-bezier(0.45, 0, 0.25, 1);
   --soft-ms: 420ms;           /* fades, hovers, small changes */
