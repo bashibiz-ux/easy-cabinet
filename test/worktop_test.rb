@@ -45,15 +45,6 @@ class WorktopTest < Minitest::Test
     assert_empty Worktop.splash(run_of(3, island_back: 300.0), seated, params)
     assert_empty Worktop.splash(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), params), params), 'an island with no overhang has none either'
   end
-  def test_an_overhang_has_a_support_board_under_it_leaving_the_knee_space
-    run = run_of(3, island_back: 300.0)
-    slab = Worktop.slab(run, Worktop::DEFAULTS)
-    board = Worktop.support(run, slab)
-    assert_equal [300.0, slab[:extent][1], 18.0], board[:extent]
-    assert_equal [0.0, 0.0, -18.0], board[:offset]
-    assert_nil Worktop.support(run_of, Worktop.slab(run_of, Worktop::DEFAULTS))
-    assert_nil Worktop.support(run_of(3, island_back: 0.0), Worktop.slab(run_of(3, island_back: 0.0), Worktop::DEFAULTS))
-  end
   def test_a_seating_overhang_makes_the_slab_reach_past_the_units_at_both_ends_to_cover_the_knee_panels
     plain = Worktop.slab(run_of, Worktop::DEFAULTS)
     seated_run = run_of(3, island_back: 300.0)
@@ -316,7 +307,7 @@ class WorktopTest < Minitest::Test
   # ---- the rounded front edge -----------------------------------------------------------
 
   def test_the_worktop_front_is_rounded_by_default
-    assert_equal 10.0, Worktop::DEFAULTS['worktop_round']
+    assert_equal 5.0, Worktop::DEFAULTS['worktop_round']
   end
 
   def test_the_layout_carries_the_radius_for_a_slab

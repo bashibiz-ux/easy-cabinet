@@ -20,14 +20,13 @@ module KitchenCabinetMaster
     GAP_MM = 150.0       # units this close are one run
     LINE_MM = 5.0        # how closely the back lines must agree
     LEVEL_MM = 1.0       # and the tops
-    SUPPORT_MM = 18.0    # the board under an island's seating overhang
     SQRT2 = Math.sqrt(2.0)
 
     DEFAULTS = {
       'worktop_thickness' => 20.0,
       'worktop_front' => 20.0,
       'worktop_end' => 0.0,
-      'worktop_round' => 10.0,       # radius of the rounded front edge (0 = square)
+      'worktop_round' => 5.0,        # radius of the rounded front edge (0 = square)
       'worktop_piece' => 0.0,        # 0 = no maximum length
       'worktop_cuts' => '',          # distances (mm) from the start of a run to cut at, e.g. "1500,3000"
       'backsplash_height' => 100.0,  # 0 = no back splash
@@ -176,15 +175,6 @@ module KitchenCabinetMaster
       { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: [2, 3] } # the fronts: points 2 to 3 and 3 to 4
     end
     private_class_method :l_slab
-
-    # The board that carries a seating overhang, in the slab's own frame: it lies under the part of the slab that reaches beyond the back of the
-    # units, leaving the knee space below it. nil when the slab has no overhang. { extent:, offset: }
-    def self.support(run, slab)
-      back = run[:back].to_f
-      return nil if run[:corner] || back <= 1.0
-
-      { extent: [back, slab[:extent][1], SUPPORT_MM], offset: [0.0, 0.0, -SUPPORT_MM] }
-    end
 
     # The knee panels: an upright board of the worktop's thickness at each end of a slab with a seating overhang, in the slab's own frame. Each
     # stands on the floor against the side of the units (the slab reaches past them, over its top) and covers the whole depth of the slab, the
@@ -378,14 +368,9 @@ module KitchenCabinetMaster
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
         begin # (the knee boards are extras: if they cannot be drawn the worktop is still made, and the reply says why)
-          board = Worktop.support(run, slab)
           Worktop.knee_panels(run, slab, thickness: params['worktop_thickness'].to_f, ends: Worktop.ends(run, params), first: from.zero?, last: to.nil? || to >= total - 0.5).each do |panel| # (the sides of the knee space, to the floor)
             make_part(model, 'worktop', panel[:extent], nil, placed * Geom::Transformation.translation(Geom::Vector3d.new(panel[:offset][0].mm, panel[:offset][1].mm, panel[:offset][2].mm)),
                       params.merge('part_label' => 'Knee Panel', 'worktop_round' => 0.0))
-          end
-          if board # (made before the slab, so the slab is the last piece of the run: refresh takes the run's settings from that one)
-            down = placed * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, board[:offset][2].mm))
-            make_part(model, 'worktop', board[:extent], nil, down, params.merge('part_label' => 'Knee Support', 'worktop_round' => 0.0))
           end
         rescue StandardError => e
           problems << "The knee boards under the overhang could not be drawn: #{e.message}#{Array(e.backtrace).find { |entry| entry.include?('kitchen_cabinet_master') }&.[](/\w+\.rb:\d+/)&.then { |line| " (at #{line})" }}"
@@ -449,7 +434,7 @@ module KitchenCabinetMaster
         stored['width'] = extent[2] if upright
       end
       slab = kind == 'worktop'
-      round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee support has round 0)
+      round = slab ? [params['worktop_round'].to_f, extent[2]].min : 0.0 # (the knee panels have round 0)
       # What the piece is made of, kept so that it can be rebuilt (the Customize window changes its board).
       stored['board_extent'] = extent
       stored['board_points'] = points

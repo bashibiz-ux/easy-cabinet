@@ -12,6 +12,7 @@ module KitchenCabinetMaster
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks update_part delete_part].freeze
+    DIMENSION_ACTIONS = %w[add_dimensions remove_dimensions].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
@@ -85,6 +86,7 @@ module KitchenCabinetMaster
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)
         when *PART_ACTIONS then PartManager.perform(action, data)
         when *WORKTOP_ACTIONS then WorktopManager.perform(action, data)
+        when *DIMENSION_ACTIONS then DimensionManager.perform(action, data)
         when *KITCHEN_ACTIONS then KitchenManager.perform(action, data)
         when *CUT_LIST_ACTIONS then CutListManager.perform(action, data)
         when *PRESET_ACTIONS then PresetManager.perform(action, data)

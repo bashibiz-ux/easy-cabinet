@@ -137,10 +137,21 @@ module KitchenCabinetMaster
       def insert_toe_kick(raw) = record(:toe_kick, raw)
       def insert_end_panel(raw) = record(:end_panel, raw)
 
+      # (the real one finds what shows of the side; here every side asked for is a panel)
+      def place_exposed_panels(_model, target, side, raw) = (record(:end_panel, raw.merge('side' => side, 'unit' => target)); [1, 0, []])
+
       def record(kind, raw)
         (@calls ||= []) << { kind: kind, raw: raw, selected: Sketchup.active_model.selection.items.dup, building: KitchenManager.building? }
         { 'ok' => true, 'message' => '' }
       end
+    end
+  end
+
+  module DimensionManager
+    class << self
+      attr_reader :asked
+
+      def add(_model, units) = ((@asked ||= []) << units.length; units.length)
     end
   end
 
@@ -271,18 +282,30 @@ class KitchenManagerTest < Minitest::Test
     assert_match(/Toe kicks: 1\./, KitchenManager.design('kitchen' => { 'wall_a' => 3000 }, 'cabinet' => { 'catalog_id' => 'kitchen_cabinets' }, 'toe_kick' => {})['message'])
   end
 
-  def test_end_panels_go_on_the_open_ends_only
+  def test_side_panels_are_asked_for_every_side_except_the_ends_of_a_row_that_may_stand_against_a_wall
     design({ 'wall_a' => 3600 }, 'end_panel' => { 'face' => 'flat' })
-    assert_empty PartManager.calls.select { |call| call[:kind] == :end_panel }, 'a straight kitchen stands between two walls'
+    asked = PartManager.calls.select { |call| call[:kind] == :end_panel }
+    refute_empty asked, 'the sides between units are looked at: a taller unit shows its side beside a lower one'
+    first = made.first
+    refute(asked.any? { |call| call[:raw]['unit'].equal?(first) && call[:raw]['side'] == 'left' }, 'the left end of a straight kitchen is against a wall')
     PartManager.reset
     CabinetGenerator.reset
-    result = design({ 'layout' => 'l', 'wall_a' => 3600, 'wall_b' => 2800, 'island' => true, 'island_side_panels' => true }, 'end_panel' => { 'face' => 'flat' })
-    panels = PartManager.calls.select { |call| call[:kind] == :end_panel }
-    assert_equal 5, panels.length, 'both ends of the island, the two ends of the base units, and the wall unit at the far end (the fridge is at the other)'
-    assert(panels.all? { |call| call[:raw]['depth_auto'] && call[:raw]['height_auto'] })
-    assert_equal 2, panels.count { |call| call[:raw]['side'] == 'left' }
-    assert_equal 3, panels.count { |call| call[:raw]['side'] == 'right' }
-    assert_match(/Side panels: 5/, result['message'])
+    design({ 'wall_a' => 3600, 'open_ends' => true }, 'end_panel' => { 'face' => 'flat' })
+    open = PartManager.calls.select { |call| call[:kind] == :end_panel }
+    assert(open.any? { |call| call[:raw]['unit'].equal?(made.first) && call[:raw]['side'] == 'left' }, 'unless the ends are open')
+  end
+
+  def test_side_panels_on_the_island_ends_only_when_asked
+    design({ 'wall_a' => 4200, 'island' => true }, 'end_panel' => {})
+    island = made.last(3)
+    refute(PartManager.calls.any? { |call| call[:raw]['unit'].equal?(island.first) && call[:raw]['side'] == 'left' })
+    PartManager.reset
+    CabinetGenerator.reset
+    result = design({ 'wall_a' => 4200, 'island' => true, 'island_side_panels' => true }, 'end_panel' => {})
+    island = made.last(3)
+    assert(PartManager.calls.any? { |call| call[:raw]['unit'].equal?(island.first) && call[:raw]['side'] == 'left' })
+    assert(PartManager.calls.any? { |call| call[:raw]['unit'].equal?(island.last) && call[:raw]['side'] == 'right' })
+    assert_match(/Side panels: \d+/, result['message'])
     assert_empty Sketchup.active_model.selection.items, 'nothing is left selected'
   end
 
@@ -385,5 +408,13 @@ class KitchenManagerTest < Minitest::Test
     first_run = made.dup
     design({ 'wall_a' => 3000 })
     assert(first_run.all?(&:valid?))
+  end
+  def test_dimensions_are_drawn_on_the_kitchens_units_when_asked
+    DimensionManager.instance_variable_set(:@asked, [])
+    result = design({ 'wall_a' => 3600, 'dimensions' => true })
+    assert_equal [made.length], DimensionManager.asked
+    assert_match(/Dimensions: #{made.length}\./, result['message'])
+    design({ 'wall_a' => 3600 })
+    assert_equal 1, DimensionManager.asked.length, 'not asked, not drawn'
   end
 end

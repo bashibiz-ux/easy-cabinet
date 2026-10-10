@@ -29,6 +29,7 @@ module KitchenCabinetMaster
     def self.design(raw)
       raw = {} unless raw.is_a?(Hash)
       panel = raw['cabinet'].is_a?(Hash) ? raw['cabinet'] : {}
+      panel = panel.merge('dishwasher_handle' => KitchenPlanner.normalise(raw['kitchen'])['dishwasher_handle']) # (the dishwasher front's handle)
       catalog_id = panel['catalog_id'].to_s
       return Response.fail('Choose a model (catalog) first: the kitchen is built from its units.') if catalog_id.empty? || CatalogManager.catalog(catalog_id).nil?
 
@@ -45,7 +46,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       model.selection.clear
       all = []
-      parts = { toe_kicks: 0, end_panels: 0, hoods: 0, notes: [] }
+      parts = { toe_kicks: 0, end_panels: 0, hoods: 0, dimensions: 0, notes: [] }
       replace = raw['replace'] == true && plans.length == 1 # a live update: the kitchen designed before is taken away and built again where it stood
       origin = replace ? remembered_origin(model) : nil
       before = nil
@@ -64,6 +65,9 @@ module KitchenCabinetMaster
             build_island(model, panel, catalog_id, plan, built, parts) if plan.island
             all << built
             add_parts(model, plan, built, raw, parts)
+            if raw['kitchen'].is_a?(Hash) && raw['kitchen']['dimensions'] == true
+              extra(parts, 'The dimensions') { parts[:dimensions] += DimensionManager.add(model, built.values.flatten) }
+            end
           end
           remember(model, before, plans.length == 1 ? all.first[:base].first : nil)
         end
@@ -81,6 +85,7 @@ module KitchenCabinetMaster
       message += " #{plans.first.notes.join(' ')}" unless plans.first.notes.empty?
       message += " Toe kicks: #{parts[:toe_kicks]}." if raw['toe_kick'].is_a?(Hash)
       message += " Side panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
+      message += " Dimensions: #{parts[:dimensions]}." if parts[:dimensions].positive?
       message += " #{parts[:notes].uniq.join(' ')}" unless parts[:notes].empty?
       worktop_before = worktop_ids(model)
       message += worktop_message(raw['worktop'])
@@ -193,14 +198,20 @@ module KitchenCabinetMaster
       panel = raw['end_panel']
       return unless panel.is_a?(Hash)
 
-      KitchenPlanner.end_panel_targets(plan).each do |target|
-        unit = built[target[:part]][target[:index]]
-        next unless unit
+      ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
+      values = panel.transform_keys(&:to_s)
+      built.each do |part, units|
+        units.each_with_index do |unit, index|
+          %w[left right].each do |side|
+            end_of_row = side == 'left' ? index.zero? : index == units.length - 1
+            next if end_of_row && !ends.include?([part, index, side]) # (the end of a row that may stand against a wall)
 
-        values = panel.transform_keys(&:to_s).merge('side' => target[:side], 'depth_auto' => true, 'height_auto' => true)
-        extra(parts, 'An side panel') do
-          answer = against(model, unit) { PartManager.send(:insert_end_panel, values) }
-          answer['ok'] ? parts[:end_panels] += 1 : parts[:notes] << "An side panel was not added: #{answer['message']}"
+            extra(parts, 'A side panel') do # every other side: a panel on the part of it that shows (beside a lower or a shallower unit, between base and wall units)
+              made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values)
+              parts[:end_panels] += made
+              trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
+            end
+          end
         end
       end
     ensure

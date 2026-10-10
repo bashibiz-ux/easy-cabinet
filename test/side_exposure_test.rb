@@ -24,8 +24,8 @@ class SideExposureTest < Minitest::Test
 
   def test_both_at_once_show_the_part_above_and_the_strip_in_front
     found = E.uncovered(SIDE, [{ x0: 0.0, x1: 320.0, z0: 0.0, z1: 880.0 }])
-    assert_includes found, [0.0, 880.0, 580.0, 2100.0]
-    assert_includes found, [320.0, 0.0, 580.0, 880.0]
+    assert_includes found, [0.0, 880.0, 320.0, 2100.0]
+    assert_includes found, [320.0, 0.0, 580.0, 2100.0]
   end
 
   def test_a_cabinet_that_hangs_shows_its_side_below_the_one_beside_it
@@ -35,5 +35,17 @@ class SideExposureTest < Minitest::Test
 
   def test_slivers_are_not_worth_a_panel
     assert_empty E.uncovered(SIDE, [{ x0: 0.0, x1: 570.0, z0: 0.0, z1: 2095.0 }])
+  end
+
+  # The picture: an oven tower (560 deep, 2260 high) beside base units (560 deep, 880 high) with wall units over them (320 deep, from 1480 to
+  # 2260). The side of the tower shows between the base units and the wall units, and in front of the wall units.
+  def test_a_tower_beside_base_and_wall_units_shows_the_side_between_them_and_in_front_of_the_wall_units
+    tower = { depth: 560.0, base: 0.0, top: 2260.0 }
+    base_units = { x0: 0.0, x1: 560.0, z0: 0.0, z1: 880.0 }
+    wall_units = { x0: 0.0, x1: 320.0, z0: 1480.0, z1: 2260.0 }
+    found = E.uncovered(tower, [base_units, wall_units])
+    assert_includes found, [0.0, 880.0, 320.0, 1480.0], 'between the base units and the wall units'
+    assert_includes found, [320.0, 880.0, 560.0, 2260.0], 'in front of the wall units'
+    assert_equal 2, found.length
   end
 end

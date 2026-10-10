@@ -1417,8 +1417,8 @@ class KitchenCatalogTest < Minitest::Test
     assert_in_delta 107.0 * 0.4, 107.0 * DoorAnimation.bifold_openness(1.08, false), 2.0
   end
 
-  def test_a_dishwasher_space_is_a_front_panel_and_two_rails_with_no_carcass_and_no_door_that_opens
-    result, layout = unit('base', 'base_dishwasher', 600, 'dishwasher' => true)
+  def test_a_dishwasher_space_without_a_handle_is_a_front_panel_and_two_rails_with_no_carcass_and_no_door_that_opens
+    result, layout = unit('base', 'base_dishwasher', 600, 'dishwasher' => true, 'dishwasher_handle' => false)
     assert_empty result.errors.map { |e| e['message'] }
     assert_equal %w[dishwasher_front top_front_rail top_rear_rail], layout.panels.map(&:role).sort
     assert_empty layout.doors
@@ -1435,9 +1435,23 @@ class KitchenCatalogTest < Minitest::Test
     assert(rails.all? { |panel| panel.extent[1] == 600.0 && panel.offset[2] == 780.0 - result.params['material_thickness'] }, 'across the whole width, at the top')
     assert_in_delta result.params['toe_kick_height'], layout.base_z, 0.01
     assert_in_delta layout.base_z + 780.0, layout.top_z, 0.01
-    _, shaker = unit('base', 'base_dishwasher', 600, 'dishwasher' => true, 'front_design' => 'shaker')
+    _, shaker = unit('base', 'base_dishwasher', 600, 'dishwasher' => true, 'dishwasher_handle' => false, 'front_design' => 'shaker')
     assert_equal 'front_shaker', shaker.panels.find { |panel| panel.role == 'dishwasher_front' }.shape
     assert CatalogManager.cabinet(CATALOG, 'base', 'base_dishwasher')['dishwasher']
     assert CatalogManager.cabinet('kitchen_cabinets_no_handle', 'base', 'base_dishwasher')['dishwasher']
+  end
+  def test_a_dishwasher_front_has_a_handle_unless_it_is_turned_off
+    result, layout = unit('base', 'base_dishwasher', 600, 'dishwasher' => true)
+    assert_empty result.errors.map { |e| e['message'] }
+    assert_equal %w[top_front_rail top_rear_rail], layout.panels.map(&:role).sort
+    front = layout.drawers.first
+    assert_equal 1, layout.drawers.length
+    assert_equal 'Dishwasher Front', front.name
+    assert_equal 'center', front.hinge, 'a front like a drawer (the handle sits centred on it)'
+    reveal = result.params['door_reveal']
+    assert_in_delta 600.0 - (2 * reveal), front.extent[1], 0.01
+    assert_in_delta 780.0 - (2 * reveal), front.extent[2], 0.01
+    _, neighbour = unit('base', 'base_1door', 600)
+    assert_in_delta neighbour.doors.first.offset[0], front.offset[0], 0.01, 'where the doors beside it stand'
   end
 end

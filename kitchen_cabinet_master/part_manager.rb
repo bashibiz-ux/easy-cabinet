@@ -191,23 +191,11 @@ module KitchenCabinetMaster
       @batch = true
       begin
         targets.each do |target|
-          target_params = AttributeManager.read(target)
           %w[left right].each do |side|
-            rectangles = side_rectangles(target, target_params, side)
-            covered += 1 if rectangles.empty?
-            rectangles.each do |x0, z0, x1, z1|
-              model.selection.clear
-              model.selection.add(target)
-              base = start_z_of(target, target_params)
-              values = stringify(raw).merge('side' => side, 'depth' => x1 - x0, 'height' => z1 - z0, 'x_start' => x0, 'raise' => z0 > base + 0.5 ? z0 : 0.0)
-              values.delete('depth_auto')
-              values.delete('height_auto')
-              answer = insert_end_panel(values)
-              if answer['ok'] then made += 1
-              elsif answer['message'].to_s.include?('already has something against it') then covered += 1
-              else problems << answer['message']
-              end
-            end
+            did, skipped, trouble = place_exposed_panels(model, target, side, raw)
+            made += did
+            covered += skipped
+            problems.concat(trouble)
           end
         end
         model.commit_operation
@@ -225,6 +213,33 @@ module KitchenCabinetMaster
       Response.ok("#{message}.".sub('..', '.'), { 'count' => made })
     end
     private_class_method :insert_exposed_side_panels
+
+    # The side panels one side of one cabinet needs: one for each stretch of the side that shows (see side_rectangles). The panel's own values
+    # (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
+    def self.place_exposed_panels(model, target, side, raw)
+      target_params = AttributeManager.read(target)
+      rectangles = side_rectangles(target, target_params, side)
+      return [0, 1, []] if rectangles.empty?
+
+      made = 0
+      covered = 0
+      problems = []
+      base = start_z_of(target, target_params)
+      rectangles.each do |x0, z0, x1, z1|
+        model.selection.clear
+        model.selection.add(target)
+        values = stringify(raw).merge('side' => side, 'depth' => x1 - x0, 'height' => z1 - z0, 'x_start' => x0, 'raise' => z0 > base + 0.5 ? z0 : 0.0)
+        values.delete('depth_auto')
+        values.delete('height_auto')
+        answer = insert_end_panel(values)
+        if answer['ok'] then made += 1
+        elsif answer['message'].to_s.include?('already has something against it') then covered += 1
+        else problems << answer['message']
+        end
+      end
+      [made, covered, problems]
+    end
+    private_class_method :place_exposed_panels
 
     # The rectangles of one side of a cabinet that show (see SideExposure): the cabinets, fillers and side panels that touch the side hide the
     # part they cover. [[x0, z0, x1, z1]] in millimetres, in the cabinet's own frame (x from the back of the carcass).
