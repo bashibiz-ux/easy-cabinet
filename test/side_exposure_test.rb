@@ -48,18 +48,17 @@ class SideExposureTest < Minitest::Test
     assert_includes found, [320.0, 880.0, 560.0, 2260.0], 'in front of the wall units'
     assert_equal 2, found.length
   end
-  def test_the_left_side_panel_goes_from_the_floor_to_the_top_of_the_unit
-    assert_equal [0.0, 2260.0], E.panel_span(side: 'left', touched: false, hangs: false, carcass: 100.0, top: 2260.0)
-    assert_equal [0.0, 2260.0], E.panel_span(side: 'left', touched: true, hangs: false, carcass: 100.0, top: 2260.0), 'whether or not a unit is against it'
-  end
+def test_an_inner_side_panel_is_only_on_the_side_of_the_unit_not_down_through_the_toe_kick
+  assert_equal [100.0, 2260.0], E.panel_span(inner: true, hangs: false, carcass: 100.0, top: 2260.0)
+  assert_equal [100.0, 880.0], E.panel_span(inner: true, hangs: false, carcass: 100.0, top: 880.0)
+end
 
-  def test_the_right_side_panel_is_only_on_the_side_of_the_unit_when_a_unit_stands_against_it_else_from_the_floor
-    assert_equal [100.0, 880.0], E.panel_span(side: 'right', touched: true, hangs: false, carcass: 100.0, top: 880.0)
-    assert_equal [0.0, 880.0], E.panel_span(side: 'right', touched: false, hangs: false, carcass: 100.0, top: 880.0)
-  end
+def test_an_outer_side_panel_goes_from_the_floor_to_the_top_of_the_unit
+  assert_equal [0.0, 2260.0], E.panel_span(inner: false, hangs: false, carcass: 100.0, top: 2260.0)
+end
 
-  def test_a_wall_unit_never_has_a_panel_down_to_the_floor
-    assert_equal [1480.0, 2260.0], E.panel_span(side: 'left', touched: false, hangs: true, carcass: 1480.0, top: 2260.0)
-    assert_equal [1480.0, 2260.0], E.panel_span(side: 'right', touched: false, hangs: true, carcass: 1480.0, top: 2260.0)
-  end
+def test_a_wall_unit_never_has_a_panel_down_to_the_floor
+  assert_equal [1480.0, 2260.0], E.panel_span(inner: false, hangs: true, carcass: 1480.0, top: 2260.0)
+  assert_equal [1480.0, 2260.0], E.panel_span(inner: true, hangs: true, carcass: 1480.0, top: 2260.0)
+end
 end

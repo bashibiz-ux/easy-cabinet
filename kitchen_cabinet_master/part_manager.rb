@@ -230,9 +230,8 @@ module KitchenCabinetMaster
 
     # The side panel one side of one cabinet needs: ONE panel, the whole depth of the carcass (never two pieces), or none when the side is wholly
     # covered by what stands against it. Its height:
-    #   - the left side: from the floor to the top of the unit (from where it hangs, for a wall unit);
-    #   - the right side: when a unit stands against it, only the side of the unit itself (from the bottom of its carcass to its top); otherwise
-    #     from the floor to the top of the unit.
+    #   - an inner side (a unit beside it): only the side of the unit itself, from the bottom of its carcass to its top, not down through the toe kick;
+    #   - an outer side (nothing beside it): from the floor to the top of the unit. A wall unit's panel is always only on the unit (see panel_span).
     # A unit that stands against a side that is only partly covered (a lower or a shallower one) is moved along, and every unit after it in the row,
     # by the thickness of the panel, to make room for it (not in the Auto Kitchen, which made the room itself).
     # The panel's own values (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
@@ -240,16 +239,17 @@ module KitchenCabinetMaster
       target_params = AttributeManager.read(target)
       return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
 
-      rectangles, touching = side_rectangles(target, target_params, side)
+      thickness = stringify(raw)['thickness'].to_f
+      rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
       return [0, 1, []] if rectangles.empty?
 
-      thickness = stringify(raw)['thickness'].to_f
       shift_chain(target, side, touching, thickness) if touching.any? && thickness.positive? && raw['shift'] != false
 
       filler = AttributeManager.part_kind(target) == 'filler'
       hangs = (filler ? target_params['target_category'] : target_params['cabinet_category']).to_s == 'wall'
       carcass = start_z_of(target, target_params)
-      from, top = SideExposure.panel_span(side: side, touched: touching.any?, hangs: hangs, carcass: carcass, top: top_of(target_params))
+      inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
+      from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
@@ -354,7 +354,7 @@ module KitchenCabinetMaster
 
     # The rectangles of one side of a cabinet that show (see SideExposure): the cabinets, fillers and side panels that touch the side hide the
     # part they cover. [[x0, z0, x1, z1]] in millimetres, in the cabinet's own frame (x from the back of the carcass).
-    def self.side_rectangles(target, target_params, side)
+    def self.side_rectangles(target, target_params, side, reach = 3.0)
       depth = door_front_of(target, target_params)
       base = start_z_of(target, target_params)
       top = top_of(target_params)
@@ -362,6 +362,7 @@ module KitchenCabinetMaster
       inverse = target.transformation.inverse
       tolerance = 3.0
       neighbours = []
+      near = false # a unit within reach of the side (touching it, or a panel's thickness away), whatever its height
       target.parent.entities.grep(Sketchup::ComponentInstance).each do |other|
         next if other.equal?(target) || !AttributeManager.occupant?(other)
 
@@ -372,6 +373,8 @@ module KitchenCabinetMaster
         ys = points.map { |p| p.y.to_mm }
         zs = points.map { |p| p.z.to_mm }
         touches = side == 'left' ? (ys.max >= -tolerance && ys.max <= 1.0 && ys.min < -1.0) : (ys.min <= width + tolerance && ys.min >= width - 1.0 && ys.max > width + 1.0)
+        close = side == 'left' ? (ys.max >= -reach && ys.max <= 1.0 && ys.min < -1.0) : (ys.min <= width + reach && ys.min >= width - 1.0 && ys.max > width + 1.0)
+        near ||= close && xs.max > 1.0 && xs.min < depth - 1.0
         next unless touches
 
         floor = stored['cabinet_category'].to_s == 'wall' || stored['target_category'].to_s == 'wall' ? (stored['base_z'] || stored['target_base_z']).to_f : stored['target_base_z'].to_f
@@ -381,7 +384,7 @@ module KitchenCabinetMaster
 
         neighbours << { x0: xs.min, x1: xs.max, z0: low, z1: high, ref: other }
       end
-      [SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours), neighbours.map { |n| n[:ref] }]
+      [SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours), neighbours.map { |n| n[:ref] }, near]
     end
     private_class_method :side_rectangles
 

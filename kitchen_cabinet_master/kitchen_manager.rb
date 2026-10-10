@@ -213,7 +213,7 @@ module KitchenCabinetMaster
         next if end_of_row && !ends.include?([part, index, side]) # (the end of a row that may stand against a wall)
 
         extra(parts, 'A side panel') do # a panel on every other side that shows (see PartManager.place_exposed_panels)
-          made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values)
+          made, _covered, trouble = PartManager.send(:place_exposed_panels, model, unit, side, values.merge('inner' => !end_of_row)) # (a side between two units is an inner one)
           parts[:end_panels] += made
           trouble.each { |message| parts[:notes] << "A side panel was not added: #{message}" }
         end

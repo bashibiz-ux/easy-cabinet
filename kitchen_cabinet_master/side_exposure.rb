@@ -33,12 +33,11 @@ module KitchenCabinetMaster
             .select { |x0, z0, x1, z1| x1 - x0 >= MIN_SIZE && z1 - z0 >= MIN_SIZE }
     end
 
-    # How high a side panel goes, as one piece: [from, to] in mm. The left side: from the floor (from where it hangs, for a wall unit) to the top of
-    # the unit. The right side: when a unit stands against it, only the side of the unit itself (from the bottom of its carcass); otherwise, as the
-    # left, from the floor to the top.
-    def self.panel_span(side:, touched:, hangs:, carcass:, top:)
-      from = side == 'right' && touched ? carcass : (hangs ? carcass : 0.0)
-      [from, top]
+    # How high a side panel goes, as one piece: [from, to] in mm. An inner side (one with a unit beside it, the panel standing in the room between
+    # them) is only on the side of the unit: from the bottom of its carcass (above the toe kick, or where a wall unit hangs) to its top. An outer
+    # side (the end of a row, nothing beside it) goes from the floor to the top of the unit (from where a wall unit hangs).
+    def self.panel_span(inner:, hangs:, carcass:, top:)
+      [inner || hangs ? carcass : 0.0, top]
     end
 
     # The stretches of base..top that none of `covering` (each with z0, z1) hides.
