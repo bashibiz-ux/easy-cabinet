@@ -376,10 +376,15 @@ class ToeKickTest < Minitest::Test
     assert_equal 1818.0, ToeKick.run_length(anchor, items), 'the 18 mm between the first two units counts'
   end
 
-  def test_a_toe_kick_runs_on_to_a_side_panel_that_stands_on_the_floor_at_either_end
-    panels = [{ y: -18.0, thickness: 18.0, base: 0.0 }, { y: 1800.0, thickness: 18.0, base: 0.0 }]
-    assert_equal [18.0, 18.0], ToeKick.panel_reach(panels, 1800.0)
-    assert_equal [18.0, 0.0], ToeKick.panel_reach(panels.first(1), 1800.0)
+  def test_a_toe_kick_stops_at_the_inner_face_of_a_side_panel_and_never_runs_into_it
+    touching = [{ y: -18.0, thickness: 18.0, base: 0.0 }, { y: 1800.0, thickness: 18.0, base: 0.0 }]
+    assert_equal [0.0, 0.0], ToeKick.panel_reach(touching, 1800.0), 'the panels touch the ends of the row: nothing to add'
+  end
+
+  def test_a_toe_kick_reaches_a_side_panel_that_stands_a_little_way_off
+    apart = [{ y: -36.0, thickness: 18.0, base: 0.0 }, { y: 1818.0, thickness: 18.0, base: 0.0 }]
+    assert_equal [18.0, 18.0], ToeKick.panel_reach(apart, 1800.0), 'to the inner faces, which are 18 mm away'
+    assert_equal [18.0, 0.0], ToeKick.panel_reach(apart.first(1), 1800.0)
   end
 
   def test_a_panel_that_does_not_reach_the_floor_or_is_somewhere_else_does_not_make_the_toe_kick_longer

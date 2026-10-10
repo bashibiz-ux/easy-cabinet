@@ -60,17 +60,22 @@ module KitchenCabinetMaster
       lengths
     end
 
-    # How far a toe kick that runs `length` mm from the start of its row reaches at each end to touch a side panel standing on the floor there:
-    # [lead, trail] in mm. panels: [{ y:, thickness:, base: }] in the frame of the row's first unit (y along the row, 0 at the start of the first
-    # unit); only a panel that reaches the floor (base about 0) and touches the end of the row counts.
+    # How far a toe kick that runs `length` mm from the start of its row reaches at each end to touch the INNER face of a side panel that stands on the
+    # floor near the end: [lead, trail] in mm. It stops at that face and never goes into the panel (a panel touching the end of the row needs no
+    # extension; one a little way off is reached). panels: [{ y:, thickness:, base: }] in the frame of the row's first unit (y along the row, 0 at the
+    # start of the first unit; y is where the panel's own thickness starts); only a panel that reaches the floor (base about 0) counts.
+    REACH_LIMIT = 60.0 # a panel further than this from the end of the row is not the end panel of this row
+
     def self.panel_reach(panels, length)
       lead = 0.0
       trail = 0.0
       panels.each do |panel|
         next if panel[:base].to_f > 1.0
 
-        lead = [lead, panel[:thickness].to_f].max if (panel[:y].to_f + panel[:thickness].to_f).abs < 3.0
-        trail = [trail, panel[:thickness].to_f].max if (panel[:y].to_f - length).abs < 3.0
+        before = -(panel[:y].to_f + panel[:thickness].to_f) # the room between the inner face of a panel at the start and the start of the row
+        after = panel[:y].to_f - length                       # and between the end of the row and the inner face of a panel at the end
+        lead = [lead, before].max if before > 0.5 && before <= REACH_LIMIT
+        trail = [trail, after].max if after > 0.5 && after <= REACH_LIMIT
       end
       [lead, trail]
     end
