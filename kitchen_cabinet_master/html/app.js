@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '0.98.0';
+  const APP_VERSION = '0.99.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2507,6 +2507,14 @@ function liveEdit(el) {
     try {
       if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;
     } catch (_) { /* no stored choice: it follows */ }
+    $('snapEnabled').addEventListener('change', async () => {
+      try {
+        const res = await call('set_snap', { enabled: $('snapEnabled').checked });
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    });
     $('followSelection').addEventListener('change', () => {
       try { localStorage.setItem('kcm.followSelection', followSelection() ? 'on' : 'off'); } catch (_) { /* not remembered */ }
       if (!followSelection()) { state.selectedKind = null; state.wallBottomSelected = false; clearTimeout(state.liveTimer); setBadge(null); }
@@ -2526,6 +2534,7 @@ function liveEdit(el) {
       const res = await call('init');
       if (!res.ok) throw new Error(res.message || 'The panel could not start.');
       state.meta = normaliseMeta(res.data);
+      $('snapEnabled').checked = res.data.snap_enabled !== false;
       await buildUi();
     } catch (error) {
       setStatus('error', error.message);

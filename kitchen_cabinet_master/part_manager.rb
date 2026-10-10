@@ -154,10 +154,12 @@ module KitchenCabinetMaster
       params['target_id'] = target.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id') ||
                             target.get_attribute(AttributeManager::DICTIONARY, 'part_id')
       params['target_width'] = target_params['width'].to_f
-      params['target_base_z'] = start_z_of(target, target_params)
+      rise = stringify(raw)['raise'].to_f # a panel for only the part of the side that shows: it starts this high ...
+      x_start = stringify(raw)['x_start'].to_f # ... and this far from the back of the carcass
+      params['target_base_z'] = rise.positive? ? rise : start_z_of(target, target_params)
 
       layout = PartLayout.end_panel(params)
-      transformation, collision = placed_transformation(target, params)
+      transformation, collision = placed_transformation(target, params, x_start)
       return Response.fail(collision) if collision
 
       root = SelectionManager.suspend do
@@ -189,13 +191,22 @@ module KitchenCabinetMaster
       @batch = true
       begin
         targets.each do |target|
+          target_params = AttributeManager.read(target)
           %w[left right].each do |side|
-            model.selection.clear
-            model.selection.add(target)
-            answer = insert_end_panel(stringify(raw).merge('side' => side, 'depth_auto' => true, 'height_auto' => true))
-            if answer['ok'] then made += 1
-            elsif answer['message'].to_s.include?('already has something against it') then covered += 1
-            else problems << answer['message']
+            rectangles = side_rectangles(target, target_params, side)
+            covered += 1 if rectangles.empty?
+            rectangles.each do |x0, z0, x1, z1|
+              model.selection.clear
+              model.selection.add(target)
+              base = start_z_of(target, target_params)
+              values = stringify(raw).merge('side' => side, 'depth' => x1 - x0, 'height' => z1 - z0, 'x_start' => x0, 'raise' => z0 > base + 0.5 ? z0 : 0.0)
+              values.delete('depth_auto')
+              values.delete('height_auto')
+              answer = insert_end_panel(values)
+              if answer['ok'] then made += 1
+              elsif answer['message'].to_s.include?('already has something against it') then covered += 1
+              else problems << answer['message']
+              end
             end
           end
         end
@@ -214,6 +225,39 @@ module KitchenCabinetMaster
       Response.ok("#{message}.".sub('..', '.'), { 'count' => made })
     end
     private_class_method :insert_exposed_side_panels
+
+    # The rectangles of one side of a cabinet that show (see SideExposure): the cabinets, fillers and side panels that touch the side hide the
+    # part they cover. [[x0, z0, x1, z1]] in millimetres, in the cabinet's own frame (x from the back of the carcass).
+    def self.side_rectangles(target, target_params, side)
+      depth = door_front_of(target, target_params)
+      base = start_z_of(target, target_params)
+      top = top_of(target_params)
+      width = target_params['width'].to_f
+      inverse = target.transformation.inverse
+      tolerance = 3.0
+      neighbours = []
+      target.parent.entities.grep(Sketchup::ComponentInstance).each do |other|
+        next if other.equal?(target) || !AttributeManager.occupant?(other)
+
+        stored = AttributeManager.read(other) || {}
+        size = %w[envelope_depth envelope_width envelope_top].map { |key| other.get_attribute(AttributeManager::DICTIONARY, key).to_f }
+        points = [0, size[0]].product([0, size[1]], [0, size[2]]).map { |x, y, z| inverse * (other.transformation * Geom::Point3d.new(x.mm, y.mm, z.mm)) }
+        xs = points.map { |p| p.x.to_mm }
+        ys = points.map { |p| p.y.to_mm }
+        zs = points.map { |p| p.z.to_mm }
+        touches = side == 'left' ? (ys.max >= -tolerance && ys.max <= 1.0 && ys.min < -1.0) : (ys.min <= width + tolerance && ys.min >= width - 1.0 && ys.max > width + 1.0)
+        next unless touches
+
+        floor = stored['cabinet_category'].to_s == 'wall' || stored['target_category'].to_s == 'wall' ? (stored['base_z'] || stored['target_base_z']).to_f : stored['target_base_z'].to_f
+        low = zs.min + floor
+        high = zs.max
+        next unless xs.max > 1.0 && xs.min < depth - 1.0 && high > base + 1.0 && low < top - 1.0
+
+        neighbours << { x0: xs.min, x1: xs.max, z0: low, z1: high }
+      end
+      SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours)
+    end
+    private_class_method :side_rectangles
 
     def self.end_panel_defaults(raw, target, target_params)
       raw = stringify(raw)
@@ -258,12 +302,14 @@ module KitchenCabinetMaster
     # coordinate frame (so it follows the target's position and rotation).
     # Refuses (rather than sliding, like a row insert would) if that side is
     # already occupied: an side panel belongs on a genuinely exposed face.
-    def self.placed_transformation(target, params)
+    def self.placed_transformation(target, params, x_start = 0.0)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']
-      transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, offset.mm, 0))
+      transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new(x_start.mm, offset.mm, 0))
 
-      size = PartLayout.end_panel_envelope(params)
-      if PlacementManager.collides?(target.parent.entities, transformation, size)
+      # The space the panel takes: from where it starts up to its top (a panel beside a wall unit or above a lower cabinet does not start on the floor).
+      lifted = transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, params['target_base_z'].to_f.mm))
+      size = [params['depth'].to_f, params['thickness'].to_f, params['height'].to_f]
+      if PlacementManager.collides?(target.parent.entities, lifted, size)
         return [nil, "The #{params['side']} side of #{target.name} already has something against it."]
       end
 
@@ -855,8 +901,19 @@ module KitchenCabinetMaster
 
         name = followed_material(part, stored, door, carcass)
         recolour(model, part, stored, name, door, carcass) if name
+        follow_radius(model, part, stored, params['front_radius']) # a side panel's edges are as round as the doors'
       end
     end
+
+    # A side panel's rounded outer edges follow the cabinet's Front edge radius: when that changes the panel is rebuilt with the new one.
+    def self.follow_radius(model, part, stored, radius)
+      return unless AttributeManager.part_kind(part) == 'end_panel' && !radius.nil?
+      return if (stored['front_radius'].to_f - radius.to_f).abs < 0.001
+
+      merged = stored.merge('front_radius' => radius.to_f)
+      PartGenerator.update(model, part, merged, PartLayout.end_panel(merged))
+    end
+    private_class_method :follow_radius
 
     # The colour a part should now have, or nil if it keeps its own.
     def self.followed_material(part, stored, door, carcass)
