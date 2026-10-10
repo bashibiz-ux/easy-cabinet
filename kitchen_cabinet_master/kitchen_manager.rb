@@ -210,13 +210,10 @@ module KitchenCabinetMaster
       end
 
       ends = KitchenPlanner.end_panel_targets(plan).map { |target| [target[:part], target[:index], target[:side]] } # the open ends the answers ask for
-      values = panel.transform_keys(&:to_s).merge('shift' => false, 'hood_panels' => KitchenPlanner.normalise(raw['kitchen'])['hood_panels']) # (the kitchen made room for its panels itself: nothing is moved)
+      values = panel.transform_keys(&:to_s).merge('shift' => false) # (the kitchen made room for its panels itself: nothing is moved)
       # The tallest units first: the panel of a tall unit is the one that stands in the room between it and the lower units beside it.
       jobs = built.flat_map { |part, units| units.each_with_index.flat_map { |unit, index| %w[left right].map { |side| [part, units, unit, index, side] } } }
-      jobs = jobs.each_with_index.sort_by do |job, position|
-        hood = job[2].get_attribute(AttributeManager::DICTIONARY, 'hood') == true ? 0 : 1 # (a hood cabinet's panels are its own: before the neighbours' at the same height)
-        [-job[2].get_attribute(AttributeManager::DICTIONARY, 'envelope_top').to_f, hood, position]
-      end.map(&:first)
+      jobs = jobs.each_with_index.sort_by { |job, position| [-job[2].get_attribute(AttributeManager::DICTIONARY, 'envelope_top').to_f, position] }.map(&:first)
       jobs.each do |part, units, unit, index, side|
         end_of_row = side == 'left' ? index.zero? : index == units.length - 1
         next if end_of_row && !ends.include?([part, index, side]) # (the end of a row that may stand against a wall)

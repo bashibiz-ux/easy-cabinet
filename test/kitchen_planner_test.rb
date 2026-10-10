@@ -428,20 +428,13 @@ class KitchenPlannerTest < Minitest::Test
     assert_equal [900.0, 'base_sink', { 'sink_bowls' => 2, 'sink_tray' => false }], widths.call('sink_bowls' => 2, 'sink_drain' => false)
     ['sink_drain' => false, 'sink_bowls' => 2].each { |options| assert_in_delta 4800.0, plan({ 'wall_a' => 4800 }.merge(options)).base.sum(&:width), 0.5 }
   end
-  def test_the_hood_cabinet_has_room_for_a_side_panel_on_each_side
-    plain = plan('wall_a' => 4200).wall
-    assert(plain.all? { |item| item.gap_before.to_f.zero? }, 'no panels asked: no room made')
-    default = plan('wall_a' => 4200, 'panel_thickness' => 18).wall
-    assert(default.all? { |item| item.gap_before.to_f.zero? }, 'the hood cabinet has no panels unless it is asked to')
+  def test_the_hood_cabinet_has_no_side_panels_and_no_room_made_for_them
     spaced = plan('wall_a' => 4200, 'panel_thickness' => 18, 'hood_panels' => true).wall
     hood = spaced.index { |item| item.kind == :hood }
     refute_nil hood
-    assert_equal 18.0, spaced[hood].gap_before, 'before the hood cabinet'
-    assert_equal 18.0, spaced[hood + 1].gap_before, 'and before the unit after it'
-    others = spaced.each_index.reject { |i| [hood, hood + 1].include?(i) }.map { |i| spaced[i].gap_before.to_f }
-    assert(others.all?(&:zero?), 'nowhere else')
-    assert_in_delta plan('wall_a' => 4200).wall.sum(&:width), spaced.sum(&:width) + 54.0, 0.6, 'the wall units still fill the wall: the panels take 18 mm beside the fridge and 36 mm beside the hood cabinet'
+    assert(spaced.all? { |item| item.gap_before.to_f.zero? }, 'the wall units stand tight against the hood cabinet whatever is asked')
   end
+
   def test_an_island_can_have_a_seating_overhang
     island = plan('wall_a' => 4200, 'island' => true, 'island_seating' => 300).island
     assert_equal 300.0, island.seating

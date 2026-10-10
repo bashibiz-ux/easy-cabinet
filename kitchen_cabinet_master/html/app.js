@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.8.1';
+  const APP_VERSION = '1.9.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -600,7 +600,7 @@
   function collectKitchen() {
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked || $('kitchenLayout').value.endsWith('_mirror'), layout: $('kitchenLayout').value.replace('_mirror', ''), wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
-      sink: $('kitchenSink').checked, sink_bowls: $('kitchenSinkType').value[0], sink_drain: $('kitchenSinkType').value[1] === 'd', dishwasher: $('kitchenDish').checked, hood_panels: $('kitchenHoodPanels').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
+      sink: $('kitchenSink').checked, sink_bowls: $('kitchenSinkType').value[0], sink_drain: $('kitchenSinkType').value[1] === 'd', dishwasher: $('kitchenDish').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
       wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_mirror: $('kitchenIslandMirror').checked, panel_thickness: $('kitchenEndPanels').checked ? mmv('epThickness') : 0, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
@@ -2515,7 +2515,7 @@ $('kitchenLayout').addEventListener('change', () => {
   // The tick for side panels on every exposed side: the Side Panel settings of Cabinet & Extras go with it, and are sent again when they change.
   async function sendSidePanels() {
     try {
-      const res = await call('set_live_side_panels', { enabled: $('liveSidePanels').checked, values: { ...collectEndPanel(), hood_panels: $('liveHoodPanels').checked } });
+      const res = await call('set_live_side_panels', { enabled: $('liveSidePanels').checked, values: collectEndPanel() });
       setStatus(res.ok ? 'ok' : 'error', res.message);
     } catch (error) {
       setStatus('error', error.message);
@@ -2547,7 +2547,6 @@ $('kitchenLayout').addEventListener('change', () => {
       }
     });
     $('liveSidePanels').addEventListener('change', () => sendSidePanels());
-    $('liveHoodPanels').addEventListener('change', () => { if ($('liveSidePanels').checked) sendSidePanels(); });
     $('snapEnabled').addEventListener('change', async () => {
       try {
         const res = await call('set_snap', { enabled: $('snapEnabled').checked });
