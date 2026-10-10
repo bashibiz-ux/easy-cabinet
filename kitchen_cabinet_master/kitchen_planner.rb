@@ -156,6 +156,7 @@ module KitchenCabinetMaster
         out = []
         list.reverse_each do |item|
           copy = item.dup
+          copy.extra = (item.extra || {}).merge('flip_hand' => true) unless item.kind == :corner # hinges and the drainer flip like a real mirror
           if item.kind == :corner # between the two walls, so after the one just before it
             copy.run = out.last.run
             copy.start = new_lengths[copy.run] - corner_width
@@ -499,6 +500,7 @@ module KitchenCabinetMaster
         items = items.reverse.map do |item|
           copy = item.dup
           copy.start = position
+          copy.extra = (item.extra || {}).merge('flip_hand' => true)
           position += copy.width
           copy
         end

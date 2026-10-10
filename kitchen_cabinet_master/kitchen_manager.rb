@@ -319,7 +319,13 @@ module KitchenCabinetMaster
 
     def self.unit_raw(panel, entry, item, catalog_id)
       defaults = entry['defaults'] || {}
-      panel.merge(PER_UNIT_BLANKS).merge(item.extra || {}).merge(
+      own = (item.extra || {}).reject { |key, _| key == 'flip_hand' }
+      raw = panel.merge(PER_UNIT_BLANKS).merge(own)
+      if (item.extra || {})['flip_hand'] # a mirrored kitchen: the doors hinge on the other side and the drainer is on the other side
+        raw['door_opening_direction'] = raw['door_opening_direction'].to_s == 'right' ? 'left' : 'right'
+        raw['sink_mirror'] = !raw['sink_mirror']
+      end
+      raw.merge(
         'catalog_id' => catalog_id, 'cabinet_category' => item.category, 'cabinet_type' => item.type, 'width' => item.width,
         'depth' => defaults['depth'], 'height' => defaults['height'], 'shelf_count' => entry['shelves'].to_s, 'placement_gap' => 0.0,
         'sink_bowls' => (item.extra || {})['sink_bowls'] || entry['sink_bowls'] || 1, 'sink_tray' => (item.extra || {}).fetch('sink_tray', entry['sink_tray'] != false)
