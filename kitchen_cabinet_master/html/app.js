@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.9.3';
+  const APP_VERSION = '1.10.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -797,6 +797,7 @@
 
   // Insert needs a catalog: it builds a cabinet from the selected catalog's style.
   function lockActions() {
+    gateUntilModel();
     const insert = document.querySelector('[data-action="insert"]');
     if (insert) insert.disabled = state.busy || !currentCatalog();
     const remove = removeFromCatalog;
@@ -806,7 +807,16 @@
     if (removeOwn) removeOwn.disabled = state.busy || !(currentBundle() || {}).custom; // only handles you added
   }
 
-  function currentCabinet() {
+// Until a model is chosen (Models card) everything else is inactive: the other cards and the bar above.
+function gateUntilModel() {
+  const off = !currentCatalog();
+  document.querySelectorAll('.topbar-row:not(:first-child), main.scroll > section:not(#sec-catalog), .actions').forEach((el) => {
+    el.classList.toggle('gated', off);
+    if (off) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+  });
+}
+
+function currentCabinet() {
     return state.cabinets.find((c) => c.id === $('cabinet').value) || null;
   }
 
@@ -1261,7 +1271,7 @@
   // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
   const hasShelvesField = () => {
     const cabinet = currentCabinet() || {};
-    return !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
+    return categoryKind() === 'cabinet' && !(categoryKind() === 'cabinet' && Number(cabinet.drawers) > 0 && !Number(cabinet.doors));
   };
   // Two doors one above the other (a lift-up 2 door unit or its bi-fold) can have the glass on one of them.
   const hasTwoDoors = () => categoryKind() === 'cabinet' && (!!(currentCabinet() || {}).stacked || !!(currentCabinet() || {}).bifold);
@@ -2369,6 +2379,7 @@ function liveEdit(el) {
     fillSelect($('drawerHandle'), arrangeHandles(m.handle_bundles), { placeholder: 'Same as doors' });
     // Filler, Side Panel and Toe Kick are choices in the same list as the cabinet categories.
     applyCatalogFeatures(); // fills the Cabinet Category list with what the catalog offers
+    gateUntilModel();
     fillSelect($('direction'), m.directions);
     fillWidthPreset();
     fillThicknessPresets();

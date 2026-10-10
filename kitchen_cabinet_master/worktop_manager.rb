@@ -59,7 +59,14 @@ module KitchenCabinetMaster
 
         item = run[:items].first
         nearest = lines.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
-        run[:neighbor_depth] = nearest[:depth] if nearest
+run[:neighbor_depth] = nearest[:depth] if nearest
+# An L corner's two arms each take the depth of the run they join: the one the unit's own way along (leg 1), the one across (leg 2).
+near = lambda do |same|
+  list = lines.select { |other| (((other[:hx] * item[:hx]) + (other[:hy] * item[:hy])).abs > 0.9) == same }
+  list.min_by { |other| Math.hypot(other[:x] - item[:x], other[:y] - item[:y]) }
+end
+run[:neighbor_depth_leg1] = (near.call(true) || nearest)&.[](:depth)
+run[:neighbor_depth_leg2] = (near.call(false) || nearest)&.[](:depth)
       end
       found
     end
@@ -167,7 +174,7 @@ module KitchenCabinetMaster
       front = params['worktop_front'].to_f
       lead, trail = extension(run, params)
       thickness = params['worktop_thickness'].to_f
-      return corner_slab(run, front, thickness, run[:neighbor_depth]) if run[:corner]
+      return corner_slab(run, front, thickness, run[:neighbor_depth], run[:neighbor_depth_leg1], run[:neighbor_depth_leg2]) if run[:corner]
 
       total = run[:length] + lead + trail
       to ||= total
@@ -177,10 +184,10 @@ module KitchenCabinetMaster
 
     # The corner's outline: back wall and side wall edges square, the front-right corner
     # cut along the diagonal that the door runs along, pushed out by the front overhang.
-    def self.corner_slab(run, front, thickness, neighbor_depth = nil)
+    def self.corner_slab(run, front, thickness, neighbor_depth = nil, leg1_depth = nil, leg2_depth = nil)
       width = run[:length]
       returned = run[:items].first[:return_depth] || width
-      return l_slab(run[:items].first, front, thickness, neighbor_depth) if run[:items].first[:corner_style] == 'l_shape'
+      return l_slab(run[:items].first, front, thickness, neighbor_depth, leg1_depth, leg2_depth) if run[:items].first[:corner_style] == 'l_shape'
       cut = [returned + (front * SQRT2), width].min
       points = [[0.0, 0.0], [0.0, width], [cut, width], [width, cut], [width, 0.0]]
       { extent: [width, width, thickness], offset: [0.0, 0.0, 0.0], points: points, round_edge: 2 } # the diagonal runs from point 2 to 3
@@ -189,14 +196,14 @@ module KitchenCabinetMaster
 
     # An L-shaped corner unit has an L-shaped worktop: two arms as deep as the unit (plus the
     # front overhang) along the walls.
-    def self.l_slab(item, front, thickness, neighbor_depth = nil)
+    def self.l_slab(item, front, thickness, neighbor_depth = nil, leg1_depth = nil, leg2_depth = nil)
       la = item[:width]                                               # leg 1: along Y (its length) ...
       da = item[:return_depth] || la                                  # ... and how deep it is
       lb = item[:leg2_length].to_f.positive? ? item[:leg2_length] : la # leg 2: along X
       db = item[:leg2_depth].to_f.positive? ? item[:leg2_depth] : da
       # As deep as the cabinets next to it (their doors included), with the same front overhang, and its two fronts rounded.
-      a = [(neighbor_depth || da) + front, lb].min
-      b = [(neighbor_depth || db) + front, la].min
+      a = [(leg1_depth || neighbor_depth || da) + front, lb].min
+      b = [(leg2_depth || neighbor_depth || db) + front, la].min
       # Arms as deep as the unit is long leave no L at all (two corners would be the same point): a plain square slab.
       return { extent: [lb, la, thickness], offset: [0.0, 0.0, 0.0], points: nil } if a >= lb - 0.5 || b >= la - 0.5
 
@@ -234,7 +241,8 @@ module KitchenCabinetMaster
       top = slab[:extent][2]
       if run[:corner]
         width = slab[:extent][0]
-        [{ extent: [thick, width, height], offset: [0.0, 0.0, top] },
+        length = slab[:extent][1] # (an L corner can be longer one way: each splash runs the whole of its wall, to meet the one beside it)
+        [{ extent: [thick, length, height], offset: [0.0, 0.0, top] },
          { extent: [width - thick, thick, height], offset: [thick, 0.0, top] }]
       else
         [{ extent: [thick, slab[:extent][1], height], offset: [0.0, 0.0, top] }]

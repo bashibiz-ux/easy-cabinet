@@ -1,30 +1,30 @@
-/* Kitchen Cabinet Master: a calm dark slate theme with one soft blue accent.
+/* Kitchen Cabinet Master: a light, airy theme with one soft blue accent.
    Every colour is set here; nothing below uses a colour of its own. */
 :root {
-  color-scheme: dark;
-  --paper: #12161c;          /* window background */
-  --sheet: #181d25;          /* cards and bars */
-  --raised: #1f2631;         /* buttons, raised surfaces */
-  --field: #10141a;          /* inputs */
-  --ink: #e8ecf2;            /* main text */
-  --muted: #9aa5b4;          /* labels, hints */
-  --line: #262e3a;           /* hairlines */
-  --line-strong: #364050;    /* input borders */
-  --accent: #6b95f0;         /* the one accent */
-  --accent-hover: #8fb0f7;
-  --accent-strong: #4f7be0;
-  --accent-deep: #3f68c7;
+  color-scheme: light;
+  --paper: #f3f5f9;          /* window background */
+  --sheet: #ffffff;          /* cards and bars */
+  --raised: #eaeef5;         /* buttons, raised surfaces */
+  --field: #ffffff;          /* inputs */
+  --ink: #1c2330;            /* main text */
+  --muted: #5d697a;          /* labels, hints */
+  --line: #e0e5ed;           /* hairlines */
+  --line-strong: #c3ccd9;    /* input borders */
+  --accent: #3b6fe0;         /* the one accent */
+  --accent-hover: #2f5fcc;
+  --accent-strong: #2f5fcc;
+  --accent-deep: #2650b0;
   --accent-ink: #ffffff;
-  --accent-soft: #1d2a45;
-  --swing: #f2a65a;
-  --danger: #f29a9a;
-  --danger-soft: #3a2024;
-  --ok: #86d3a8;
-  --ok-soft: #173126;
-  --info-soft: #1e2530;
-  --grid: #1c222b;
-  --preview-bg: #141920;
-  --glow: rgba(107, 149, 240, 0.16);
+  --accent-soft: #e2ebff;
+  --swing: #d97b1a;
+  --danger: #c0392b;
+  --danger-soft: #fde8e8;
+  --ok: #1f8f55;
+  --ok-soft: #e1f4e9;
+  --info-soft: #edf1f8;
+  --grid: #e5eaf2;
+  --preview-bg: #f7f9fc;
+  --glow: rgba(59, 111, 224, 0.18);
   --ease: cubic-bezier(0.45, 0, 0.25, 1);
   --soft-ms: 420ms;           /* fades, hovers, small changes */
   --collapse-ms: 900ms;       /* a section sliding open or shut */
@@ -51,7 +51,7 @@ html, body {
 .scroll { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .scroll::-webkit-scrollbar { width: 9px; }
 .scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--sheet); }
-.scroll::-webkit-scrollbar-thumb:hover { background: #4a586b; }
+.scroll::-webkit-scrollbar-thumb:hover { background: #a9b5c6; }
 .app {
   display: flex;
   flex-direction: column;
@@ -64,7 +64,7 @@ html, body {
   flex: none;
   background: var(--sheet);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 4px 16px rgba(30, 45, 70, 0.08);
   padding: 12px 14px 12px;
   position: relative;
   z-index: 2;
@@ -107,7 +107,7 @@ h1 {
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 18px rgba(30, 45, 70, 0.08);
   background-color: var(--preview-bg);
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
@@ -297,10 +297,10 @@ h1 {
 }
 
 .input select { margin: 0 -4px; }
-.input select option { color: var(--ink); background: #1b212a; }
+.input select option { color: var(--ink); background: var(--sheet); }
 /* The headings of the material list: each category in a colour of its own, white on it, so they read on any background. */
 .input select optgroup { font-weight: 700; color: #fff; background: #4a5563; }
-.input select optgroup option { font-weight: 400; color: var(--ink); background: #1b212a; }
+.input select optgroup option { font-weight: 400; color: var(--ink); background: var(--sheet); }
 .input select optgroup[label="In this model"] { background: #0f8f7e; }
 .input select optgroup[label="Plain colours - Whites"] { background: #4b78b5; }
 .input select optgroup[label="Plain colours - Greys and blacks"] { background: #5b6b7a; }
@@ -359,7 +359,19 @@ h1 {
   cursor: pointer;
 }
 
-.check input { accent-color: var(--accent); margin: 0; width: 15px; height: 15px; }
+/* Every tick is an on/off switch. */
+input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none; flex: none; position: relative; margin: 0; width: 32px; height: 18px; border-radius: 999px;
+  background: var(--line-strong); border: 0; cursor: pointer; transition: background var(--soft-ms) var(--ease);
+}
+input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 30, 50, 0.3); transition: transform var(--soft-ms) var(--ease);
+}
+input[type="checkbox"]:checked { background: var(--accent); }
+input[type="checkbox"]:checked::after { transform: translateX(14px); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 
 .checks { display: flex; flex-wrap: wrap; gap: 6px 22px; padding-top: 4px; }
 
@@ -370,7 +382,7 @@ h1 {
   padding: 10px 14px 12px;
   background: var(--paper);
   border-top: 1px solid var(--line);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 -4px 16px rgba(30, 45, 70, 0.08);
 }
 
 .btn-row { display: grid; gap: 6px; }
@@ -452,7 +464,7 @@ h1 {
 .rotate-row .btn { margin-bottom: 10px; padding: 0 18px; }
 .cutlist-wrap { margin-top: 10px; overflow-x: auto; }
 .cutlist { width: 100%; border-collapse: collapse; font-size: 12px; }
-.cutlist th, .cutlist td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)); white-space: nowrap; }
+.cutlist th, .cutlist td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); white-space: nowrap; }
 .cutlist th:first-child, .cutlist td:first-child, .cutlist th:nth-child(5), .cutlist td:nth-child(5) { text-align: left; }
 .cutlist th { font-weight: 600; opacity: .8; }
 .btn-row.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
@@ -471,3 +483,6 @@ h1 {
 .status { position: relative; padding-right: 30px; }
 .status-close { position: absolute; top: 4px; right: 6px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 18px; line-height: 20px; cursor: pointer; opacity: 0.6; }
 .status-close:hover { opacity: 1; background: rgba(128, 128, 128, 0.2); }
+
+/* Nothing works until a model is chosen (Models card). */
+.gated { opacity: 0.45; filter: grayscale(0.4); pointer-events: none; user-select: none; }
