@@ -572,10 +572,37 @@ module KitchenCabinetMaster
     end
     private_class_method :fill_blind_gap
 
+    # The Update button: every selected cabinet takes the values of the panel (one Undo step for the lot).
     def self.update(raw)
       model = Sketchup.active_model
-      root = SelectionManager.selected_cabinet(model)
-      return Response.fail('Select a cabinet in the model to update.') unless root
+      roots = selected_cabinets(model)
+      return Response.fail('Select a cabinet in the model to update.') if roots.empty?
+      return update_one(model, roots.first, raw) if roots.length == 1
+
+      done = 0
+      problems = []
+      @batch = true
+      model.start_operation('Update Cabinets', true)
+      begin
+        roots.each do |root|
+          answer = update_one(model, root, raw)
+          answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      SelectionManager.push_selection(model)
+      return Response.fail(problems.first) if done.zero?
+
+      Response.ok("#{done} cabinets updated.#{" #{problems.length} could not take the values (#{problems.first(2).join('; ')})." unless problems.empty?}")
+    end
+    private_class_method :update
+
+    def self.update_one(model, root, raw)
       fields_only = raw.is_a?(Hash) && raw['fields_only'] == true && raw['fields'].is_a?(Hash) # (the panel does not follow the selection: only the field that was edited)
       return update_custom(model, root, fields_only ? raw['fields'].transform_keys(&:to_s) : raw) if AttributeManager.custom_model?(root)
 
@@ -595,7 +622,8 @@ module KitchenCabinetMaster
       dictionary = AttributeManager::DICTIONARY
       growth = params['width'] - root.get_attribute(dictionary, 'width').to_f
       squeeze = nil
-      if growth.abs > 0.01
+      resize = !raw.is_a?(Hash) || raw['resize_neighbours'] != false # (the Presets switch: the next cabinet gives or takes the room)
+      if growth.abs > 0.01 && resize
         squeeze, problem = RowResizer.plan(model, root, growth)
         return Response.fail(problem) if problem
       end
@@ -636,7 +664,7 @@ module KitchenCabinetMaster
       end
       Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.#{note}")
     end
-    private_class_method :update
+    private_class_method :update_one
 
     # ---- settings that belong to every cabinet -------------------------------------
 
@@ -928,30 +956,52 @@ module KitchenCabinetMaster
     # definitions with the original but has its own containers.
     def self.duplicate
       model = Sketchup.active_model
-      source = SelectionManager.selected_cabinet(model)
-      return Response.fail('Select a cabinet in the model to duplicate.') unless source
+      sources = selected_cabinets(model).sort_by { |item| item.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i }
+      return Response.fail('Select a cabinet in the model to duplicate.') if sources.empty?
 
-      return duplicate_custom(model, source) if AttributeManager.custom_model?(source)
-
-      params = Defaults.params.merge(AttributeManager.read(source))
-      source_name = source.name.to_s
-      copy = SelectionManager.suspend do
-        with_operation(model, 'Duplicate Cabinet') do
+      copies = SelectionManager.suspend do
+        with_operation(model, sources.length == 1 ? 'Duplicate Cabinet' : 'Duplicate Cabinets') do
           clear_live_parts(model)
-          params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
-          params['sequence'] = AttributeManager.next_sequence(model)
-          entities, transformation = PlacementManager.target_for_new(model, params)
-          params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
-          built = CabinetGenerator.build(model, entities, params, transformation)
-          fill_blind_gap(model, entities, built, params)
-          built
+          model.selection.clear if sources.length > 1 # (the copies follow the end of the row, one after the other)
+          sources.map { |source| copy_of(model, source) }
         end
       end
 
-      SelectionManager.select(copy)
-      Response.ok("#{copy.name} created as a copy of #{source_name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copy), 'cabinet_name' => copy.name })
+      if copies.length == 1
+        SelectionManager.select(copies.first)
+        return Response.ok("#{copies.first.name} created as a copy of #{sources.first.name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copies.first), 'cabinet_name' => copies.first.name })
+      end
+
+      model.selection.clear
+      copies.each { |copy| model.selection.add(copy) }
+      SelectionManager.push_selection(model)
+      Response.ok("#{copies.length} cabinets created as copies of the selected ones.")
     end
     private_class_method :duplicate
+
+    # One cabinet copied exactly as it is stored (unsaved edits in the panel are not used; that is what Insert is for): a new id, and placed after the
+    # one it follows with the same rule as Insert. Inside an operation. A model of your own is the same component again.
+    def self.copy_of(model, source)
+      stored = AttributeManager.read(source)
+      params = Defaults.params.merge(stored)
+      params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
+      params['sequence'] = AttributeManager.next_sequence(model)
+      entities, transformation = PlacementManager.target_for_new(model, params)
+      if AttributeManager.custom_model?(source)
+        made = entities.add_instance(source.definition, transformation)
+        made.name = source.name
+        AttributeManager.write(made, stored.merge('cabinet_id' => params['cabinet_id'], 'sequence' => params['sequence']))
+        TagManager.assign(model, made, TagManager.for_category(params['cabinet_category']))
+        return made
+      end
+
+      params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
+      built = CabinetGenerator.build(model, entities, params, transformation)
+      fill_blind_gap(model, entities, built, params)
+      built
+    end
+    private_class_method :copy_of
+
 
     # The Update button on a model of your own: its size (the model is scaled to it), its toe kick height, its handle and its material follow
     # the panel, as a cabinet's do. The doors of such a model are its own, so the door settings (gap, reveal, door height ...) have nothing to act on.
@@ -1011,38 +1061,26 @@ module KitchenCabinetMaster
     end
     private_class_method :update_custom
 
-    # A copy of a model of your own: the same component, placed after it like any cabinet, with an order number and an id of its own.
-    def self.duplicate_custom(model, source)
-      stored = AttributeManager.read(source)
-      params = Defaults.params.merge(stored)
-      copy = SelectionManager.suspend do
-        with_operation(model, 'Duplicate Cabinet') do
-          clear_live_parts(model)
-          entities, transformation = PlacementManager.target_for_new(model, params)
-          made = entities.add_instance(source.definition, transformation)
-          made.name = source.name
-          AttributeManager.write(made, stored.merge('cabinet_id' => AttributeManager.next_cabinet_id(model), 'sequence' => AttributeManager.next_sequence(model)))
-          TagManager.assign(model, made, TagManager.for_category(params['cabinet_category']))
-          made
-        end
-      end
-      SelectionManager.select(copy)
-      Response.ok("#{copy.name} created as a copy of #{source.name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copy), 'cabinet_name' => copy.name })
-    end
-    private_class_method :duplicate_custom
 
+    # The Delete button: every cabinet and every part (filler, side panel, toe kick, worktop piece) that is selected.
     def self.delete
       model = Sketchup.active_model
-      root = SelectionManager.selected_cabinet(model)
-      return Response.fail('Select a cabinet in the model to delete.') unless root
+      roots = selected_cabinets(model)
+      parts = model.selection.select { |item| AttributeManager.part?(item) }
+      return Response.fail('Select a cabinet in the model to delete.') if roots.empty? && parts.empty?
 
-      cabinet_id = root.name.to_s.empty? ? AttributeManager.cabinet_id(root) : root.name
+      count = roots.length + parts.length
+      first = roots.first || parts.first
+      label = count == 1 ? (first.name.to_s.empty? ? 'It' : first.name) : "#{count} items"
       SelectionManager.suspend do
-        with_operation(model, 'Delete Cabinet') { CabinetGenerator.remove(model, root) }
+        with_operation(model, count == 1 ? 'Delete Cabinet' : 'Delete Selected') do
+          parts.each { |part| PartGenerator.remove(model, part) if part.valid? }
+          roots.each { |root| CabinetGenerator.remove(model, root) if root.valid? }
+        end
       end
 
       SelectionManager.push_selection(model)
-      Response.ok("#{cabinet_id} deleted. Use Edit > Undo to bring it back.")
+      Response.ok("#{label} deleted. Use Edit > Undo to bring #{count == 1 ? 'it' : 'them'} back.")
     end
     private_class_method :delete
 
@@ -1194,7 +1232,7 @@ module KitchenCabinetMaster
     # One Undo step. Any error rolls the whole operation back, so a failed
     # insert or update never leaves half-built geometry behind.
     def self.with_operation(model, name)
-      return yield if defined?(KitchenManager) && KitchenManager.building? # (inside Design Kitchen: its own one Undo step)
+      return yield if (defined?(KitchenManager) && KitchenManager.building?) || @batch # (inside Design Kitchen or an update of several cabinets: its own one Undo step)
 
       model.start_operation(name, true)
       begin

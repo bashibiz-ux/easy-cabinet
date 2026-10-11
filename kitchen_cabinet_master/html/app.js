@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.17.0';
+  const APP_VERSION = '1.18.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -414,7 +414,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -901,6 +901,7 @@ function currentCabinet() {
     const handleValue = (id) => (withHandle ? $(id).value : '');
     return {
       catalog_id: $('catalog').value,
+      resize_neighbours: $('resizeNeighbours').checked,
       front_design: $('frontDesign').value,
       glass_design: $('glassDoor').value,
       glass_doors: $('glassDoors').value,
@@ -2023,7 +2024,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'resizeNeighbours', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2276,7 +2277,7 @@ if (details.length) {
     state.busy = true;
     state.liveBusy = true;
     try {
-      const res = await call('update', { fields_only: true, fields });
+      const res = await call('update', { fields_only: true, fields, resize_neighbours: $('resizeNeighbours').checked });
       setStatus(res.ok ? 'ok' : 'error', res.message);
     } catch (error) {
       setStatus('error', error.message);
