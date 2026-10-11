@@ -171,9 +171,19 @@ module KitchenCabinetMaster
 
       # A catalog entry for a model you drew: size is its [width (X), depth (Y), height (Z)] in mm, ile the model file
       # (relative to your folder). It is inserted as a component, not rebuilt from parameters.
-      def component_entry(name, size, file)
+      def component_entry(name, size, file, front = nil)
         { 'name' => name.to_s.strip, 'code' => 'CU', 'doors' => 0, 'shelves' => 0, 'widths' => [size[0]], 'component' => file,
-          'defaults' => { 'width' => size[0], 'depth' => size[1], 'height' => size[2] } }
+          'defaults' => { 'width' => size[0], 'depth' => size[1], 'height' => size[2], 'front' => FRONTS.include?(front.to_s.downcase) ? front.to_s.downcase : LEGACY_FRONT } }
+      end
+
+      # Which side of the model, as it was drawn, is its front (its door): '-y' (facing the front view), '+x', '+y' or '-x'. A model saved before
+      # this was asked has its door on +x.
+      FRONTS = %w[-y +x +y -x].freeze
+      LEGACY_FRONT = '+x'
+
+      def front_of(entry)
+        value = entry.dig('defaults', 'front').to_s.downcase
+        FRONTS.include?(value) ? value : LEGACY_FRONT
       end
 
       def component_path(entry)

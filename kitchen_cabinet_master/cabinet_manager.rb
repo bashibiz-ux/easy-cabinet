@@ -231,17 +231,19 @@ module KitchenCabinetMaster
       catalog_name = raw['catalog_name'].to_s.strip
       name = raw['cabinet_name'].to_s.strip
       category = %w[base wall tall].include?(raw['cabinet_category'].to_s) ? raw['cabinet_category'].to_s : nil
+      front = nil
       items = model.selection.to_a
       single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
       guess = guess_name(single)
       if name.empty? && defined?(UI) && UI.respond_to?(:inputbox)
-        answer = UI.inputbox(['Catalog', 'Name', 'Kind'], [catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name, guess, category || 'base'],
-                             ['', '', 'base|wall|tall'], 'Save to my catalog')
+        answer = UI.inputbox(['Catalog', 'Name', 'Kind', 'Door faces (as drawn)'], [catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name, guess, category || 'base', '+X'],
+                             ['', '', 'base|wall|tall', '-Y|+X|+Y|-X'], 'Save to my catalog')
         return Response.fail('Nothing was saved.') unless answer
 
         catalog_name = answer[0].to_s.strip
         name = answer[1].to_s.strip
         category = answer[2].to_s
+        front = answer[3].to_s
       end
       name = guess if name.empty?
       category ||= 'base'
@@ -252,7 +254,7 @@ module KitchenCabinetMaster
       size = write_model_file(model, items, single, path)
       return Response.fail('That could not be saved as a model file.') unless size && File.file?(path)
 
-      entry = CatalogManager.component_entry(name, size, file)
+      entry = CatalogManager.component_entry(name, size, file, front || raw['front'])
       ids = CatalogManager.save_custom(catalog_name, category, entry)
       Response.ok("#{name} saved to the catalog \"#{catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name}\" as a model of #{size.map { |v| v.round }.join(' x ')} mm.",
                   { 'catalog_id' => ids[0], 'cabinet_type' => ids[1], 'cabinet_category' => category, 'catalogs' => CatalogManager.catalogs })
@@ -312,16 +314,20 @@ module KitchenCabinetMaster
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
         name = entry['name'].to_s
-        holder = AttributeManager.mark_managed(model.definitions.add(name))
-        # the model's X runs along the row (its width), its Y front to back: turn it a quarter so the width lies along the row
-        turned = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) *
+        code = NamingManager.base_name(params.merge('width' => size[0])) # (named like a cabinet of the extension: its kind and width, as B600)
+        holder = AttributeManager.mark_managed(model.definitions.add(code))
+        # turned so that its door (the side it was drawn with: front) faces +X and its width runs along +Y, as a cabinet of the extension's
+        front = CatalogManager.front_of(entry)
+        turned = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), CUSTOM_TURNS.fetch(front) * Math::PI / 180.0) *
                  Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
         inner = holder.entities.add_instance(definition, turned)
         corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
         inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
         depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
         instance = entities.add_instance(holder, target)
+        name = NamingManager.base_name(params.merge('width' => width))
         instance.name = name
+        inner.name = entry['name'].to_s
 
         box = [low.x.to_mm, low.y.to_mm, low.z.to_mm, definition.bounds.width.to_mm, definition.bounds.height.to_mm, definition.bounds.depth.to_mm].map { |v| v.round(2) }
         inner.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
@@ -329,6 +335,7 @@ module KitchenCabinetMaster
         # Material section goes on it, like on a cabinet.
         inner.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
         inner.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_front', front)
         inner.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
         paint_custom_model(model, inner, raw)
         settings = raw.slice(*CUSTOM_HANDLE_KEYS)
@@ -415,6 +422,8 @@ module KitchenCabinetMaster
     private_class_method :remove_handle
 
     CUSTOM_HANDLE_KEYS = HandleManager::MODEL_KEYS
+    # How far a model is turned about the vertical so that the side it was drawn with its door on (-y, +x, +y, -x) faces +X.
+    CUSTOM_TURNS = { '-y' => 90.0, '+x' => 0.0, '+y' => -90.0, '-x' => 180.0 }.freeze
     CUSTOM_HANDLE_NAME = 'Handle'
 
     # The handle settings a model of your own keeps.
@@ -445,10 +454,16 @@ module KitchenCabinetMaster
       instance.make_unique if instance.definition.count_instances > 1 # (this model's own handle, not every copy's)
       existing = find.call
       handle_settings = HandleManager.settings(params, bundle)
-      spot = HandleManager.placement(HandleManager.model_door(box[3].to_f, box[5].to_f, params['door_opening_direction']), handle_settings, bundle)
+      side = instance.get_attribute(AttributeManager::DICTIONARY, 'custom_front').to_s
+      side = '-y' unless CUSTOM_TURNS.key?(side) # (a model inserted before the front was asked)
+      across = %w[+x -x].include?(side) ? box[4].to_f : box[3].to_f # the width of its door: along Y when the door is on an X side
+      spot = HandleManager.placement(HandleManager.model_door(across, box[5].to_f, params['door_opening_direction']), handle_settings, bundle)
       definition = HandleManager.definition(model, bundle, handle_settings['length'], spot['flip'] == true)
-      front = Geom::Transformation.translation(Geom::Vector3d.new(box[0].to_f.mm, box[1].to_f.mm, box[2].to_f.mm)) *
-              Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), -Math::PI / 2)
+      # the left end of the front face, seen from the front, with the handle's own X pointing out of the door and its Y along the door
+      corner = { '-y' => [0, 0], '+x' => [1, 0], '+y' => [1, 1], '-x' => [0, 1] }.fetch(side)
+      turn = { '-y' => -90.0, '+x' => 0.0, '+y' => 90.0, '-x' => 180.0 }.fetch(side)
+      front = Geom::Transformation.translation(Geom::Vector3d.new((box[0].to_f + (corner[0] * box[3].to_f)).mm, (box[1].to_f + (corner[1] * box[4].to_f)).mm, box[2].to_f.mm)) *
+              Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), turn * Math::PI / 180.0)
       transformation = front * HandleManager.transformation(spot, 0.0)
       handle = existing || instance.definition.entities.add_instance(definition, transformation)
       handle.definition = definition unless handle.definition == definition
