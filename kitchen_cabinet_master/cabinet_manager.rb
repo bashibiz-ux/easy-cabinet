@@ -576,10 +576,16 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       root = SelectionManager.selected_cabinet(model)
       return Response.fail('Select a cabinet in the model to update.') unless root
-      return update_custom(model, root, raw) if AttributeManager.custom_model?(root)
+      fields_only = raw.is_a?(Hash) && raw['fields_only'] == true && raw['fields'].is_a?(Hash) # (the panel does not follow the selection: only the field that was edited)
+      return update_custom(model, root, fields_only ? raw['fields'].transform_keys(&:to_s) : raw) if AttributeManager.custom_model?(root)
 
-      params, failure = prepare(raw)
-      return failure if failure
+      if fields_only
+        params, errors = restyle_params(model, AttributeManager.read(root), raw['fields'].transform_keys(&:to_s))
+        return Response.fail(errors.first['message'], errors) unless params
+      else
+        params, failure = prepare(raw)
+        return failure if failure
+      end
 
       # What was changed in the Customize window stays through an Update.
       params['custom_overrides'] = ValidationManager.clean_overrides(AttributeManager.read(root)['custom_overrides'])

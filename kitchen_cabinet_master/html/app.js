@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.16.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -191,10 +191,13 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
-    // With the tick off, picking something in the model does not open its settings: the panel stays as it is and acts on nothing selected.
+    if (followSelection() || name === 'cabinet_cleared') state.heldKind = null;
+    // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
+    // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
     if (!followSelection() && (name === 'cabinet_selected' || name === 'part_selected')) {
       state.selectedKind = null;
       state.wallBottomSelected = false;
+      state.heldKind = name === 'cabinet_selected' ? 'cabinet' : null;
       setBadge(null);
       return;
     }
@@ -2240,6 +2243,49 @@ if (details.length) {
     }, delay);
   }
 
+  // With "Show a selected item's settings in the panel" off the panel does not take the values of the selected cabinet, so only the field that was
+  // edited goes to it (the rest of the panel is not what that cabinet has): the other values of the cabinet stay as they are.
+  const HELD_PARAMS = (() => {
+    const map = {};
+    [FIELD_TO_ELEMENT, TEXT_PARAMS, SELECT_PARAMS].forEach((table) => Object.entries(table).forEach(([key, id]) => { map[id] = key; }));
+    return map;
+  })();
+
+  function scheduleHeld(el) {
+    const key = HELD_PARAMS[el.id];
+    if (!key || NO_LIVE_IDS.has(el.id) || !fieldKinds(el).includes('cabinet')) return;
+    if (SIZE_IDS.has(el.id) && !$('liveSizes').checked) return; // sizes wait for the Update button when the switch is off
+    state.heldEdits = state.heldEdits || new Map();
+    state.heldEdits.set(key, el.id);
+    clearTimeout(state.heldTimer);
+    state.heldTimer = setTimeout(runHeld, el.tagName === 'SELECT' || el.type === 'checkbox' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+  }
+
+  async function runHeld() {
+    if (state.busy) {
+      state.heldTimer = setTimeout(runHeld, 300);
+      return;
+    }
+    const fields = {};
+    (state.heldEdits || new Map()).forEach((id, key) => {
+      const el = $(id);
+      fields[key] = el.type === 'checkbox' ? el.checked : (LENGTH_IDS.includes(id) ? mmv(id) : el.value);
+    });
+    if (state.heldEdits) state.heldEdits.clear();
+    if (!Object.keys(fields).length) return;
+    state.busy = true;
+    state.liveBusy = true;
+    try {
+      const res = await call('update', { fields_only: true, fields });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
 function liveEdit(el) {
     if (el.closest('#sec-kitchen')) { // the Auto Kitchen answers: the kitchen designed before is built again with them
@@ -2252,6 +2298,10 @@ function liveEdit(el) {
     }
     if (WORKTOP_IDS.has(el.id)) {
       scheduleWorktop(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      return;
+    }
+    if (!followSelection() && state.heldKind === 'cabinet' && !state.selectedKind) { // (the panel does not follow the selection, but a cabinet is selected)
+      scheduleHeld(el);
       return;
     }
     const toe = TOE_FIELDS[el.id];
@@ -2572,7 +2622,7 @@ $('kitchenLayout').addEventListener('change', () => {
     });
     $('followSelection').addEventListener('change', () => {
       try { localStorage.setItem('kcm.followSelection', followSelection() ? 'on' : 'off'); } catch (_) { /* not remembered */ }
-      if (!followSelection()) { state.selectedKind = null; state.wallBottomSelected = false; clearTimeout(state.liveTimer); setBadge(null); }
+      if (!followSelection()) { state.heldKind = state.selectedKind === 'cabinet' ? 'cabinet' : null; state.selectedKind = null; state.wallBottomSelected = false; clearTimeout(state.liveTimer); setBadge(null); }
     });
     enableCardOrder();
     enableSmoothScroll($('scroll'));
