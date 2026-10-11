@@ -43,6 +43,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
+          clear_live_parts(model)
           params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
@@ -62,6 +63,13 @@ module KitchenCabinetMaster
       )
     end
     private_class_method :insert
+
+    # The side panels and wall fillers that follow the cabinets are taken away before a cabinet is put in the row, so that it stands against the
+    # last one and not against its panel; they are placed again, at the new end of the row, when the action is done (see LiveParts.refresh).
+    def self.clear_live_parts(model)
+      PartManager.send(:remove_auto_panels, model) if LiveParts.side_panels?
+    end
+    private_class_method :clear_live_parts
 
     # Opens the Customize window for the selected cabinet.
     def self.customize
@@ -311,6 +319,7 @@ module KitchenCabinetMaster
                                      'door_count' => 0, 'drawer_count' => 0, 'catalog_id' => raw['catalog_id'].to_s, 'cabinet_type' => raw['cabinet_type'].to_s, 'placement_gap' => number.call('placement_gap', 0.0))
       instance = nil
       with_operation(model, 'Insert Model') do
+        clear_live_parts(model)
         definition = model.definitions.load(path)
         definition.entities.grep(Sketchup::ComponentInstance).select { |item| item.name == CUSTOM_HANDLE_NAME }.each(&:erase!) # (a handle left in the saved model: the cabinet gets its own, on its door)
         entities, target = PlacementManager.target_for_new(model, params)
@@ -922,6 +931,7 @@ module KitchenCabinetMaster
       source_name = source.name.to_s
       copy = SelectionManager.suspend do
         with_operation(model, 'Duplicate Cabinet') do
+          clear_live_parts(model)
           params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
           params['sequence'] = AttributeManager.next_sequence(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
@@ -1001,6 +1011,7 @@ module KitchenCabinetMaster
       params = Defaults.params.merge(stored)
       copy = SelectionManager.suspend do
         with_operation(model, 'Duplicate Cabinet') do
+          clear_live_parts(model)
           entities, transformation = PlacementManager.target_for_new(model, params)
           made = entities.add_instance(source.definition, transformation)
           made.name = source.name

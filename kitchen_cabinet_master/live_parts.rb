@@ -30,7 +30,8 @@ module KitchenCabinetMaster
     end
 
     def self.dimensions? = Sketchup.active_model.get_attribute(DICTIONARY, KEY_DIMENSIONS, false) == true
-    def self.side_panels? = Sketchup.active_model.get_attribute(DICTIONARY, KEY_SIDE_PANELS, false) == true
+    # On to begin with: a cabinet is inserted with its side panels (the end of a row; against a wall, a filler instead). The tick turns it off.
+    def self.side_panels? = Sketchup.active_model.get_attribute(DICTIONARY, KEY_SIDE_PANELS, true) == true
 
     # After an action of the panel: draw again what the ticks keep up. Quietly: nothing changes when no tick is on.
     def self.refresh

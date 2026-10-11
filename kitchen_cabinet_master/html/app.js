@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.15.0';
+  const APP_VERSION = '1.16.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2591,8 +2591,9 @@ $('kitchenLayout').addEventListener('change', () => {
       state.meta = normaliseMeta(res.data);
       $('snapEnabled').checked = res.data.snap_enabled !== false;
       $('liveDimensions').checked = res.data.live_dimensions === true;
-      $('liveSidePanels').checked = res.data.live_side_panels === true;
+      $('liveSidePanels').checked = res.data.live_side_panels !== false;
       await buildUi();
+      if ($('liveSidePanels').checked) await sendSidePanels(); // (on to begin with: the Side Panel settings of the panel go with it)
     } catch (error) {
       setStatus('error', error.message);
     }

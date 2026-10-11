@@ -243,6 +243,13 @@ module KitchenCabinetMaster
       rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
       return [0, 1, []] if rectangles.empty?
 
+      # The end of a row at a wall: touching it, nothing shows; a little way from it, a filler fills the gap instead of a side panel.
+      if raw['auto'] == true && touching.empty? && (gap = wall_gap(model, target, side))
+        return [0, 1, []] if gap < 1.0
+
+        return fill_to_wall(model, target, target_params, side, gap)
+      end
+
       shift_chain(target, side, touching, thickness) if touching.any? && thickness.positive? && raw['shift'] != false
 
       filler = AttributeManager.part_kind(target) == 'filler'
@@ -266,6 +273,60 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :place_exposed_panels
+
+    # The widest gap between a cabinet and a wall that a filler fills (mm); a wall further away leaves the end of the row open, with a side panel.
+    WALL_FILL_MAX = 200.0
+
+    # How far (mm) the wall beyond the `side` of `target` is from that side, or nil when there is no wall within WALL_FILL_MAX: a tall vertical face
+    # across the row, as high as the cabinet and along at least half its depth.
+    def self.wall_gap(model, target, side)
+      walls = SnapManager.send(:collect_walls, model, nil)
+      return nil if walls.empty?
+
+      transform = target.transformation
+      params = AttributeManager.read(target)
+      turn = side == 'left' ? -1.0 : 1.0
+      along = transform.yaxis
+      across = transform.xaxis
+      dx = along.x * turn
+      dy = along.y * turn
+      fx = across.x
+      fy = across.y
+      origin = transform.origin
+      edge = side == 'left' ? origin : origin + Geom::Vector3d.new(along.x * params['width'].to_f.mm, along.y * params['width'].to_f.mm, 0)
+      back = (origin.x * fx) + (origin.y * fy)
+      front = back + door_front_of(target, params).mm
+      low = origin.z.to_f
+      high = low + top_of(params).mm
+      best = nil
+      walls.each do |wall|
+        nx, ny = wall[:normal]
+        next unless ((nx * dx) + (ny * dy)).abs > 0.985
+        next unless [high, wall[:z][1]].min - [low, wall[:z][0]].max > 0
+
+        reach = wall[:points].map { |x, y| (x * fx) + (y * fy) }
+        next unless [front, reach.max].min - [back, reach.min].max >= (front - back) * 0.5
+
+        x, y = wall[:points].first
+        gap = (((x * dx) + (y * dy)) - ((edge.x * dx) + (edge.y * dy))).to_mm
+        next if gap < -1.0 || gap > WALL_FILL_MAX
+
+        best = gap if best.nil? || gap.abs < best.abs
+      end
+      best && [best, 0.0].max
+    end
+    private_class_method :wall_gap
+
+    # A filler `gap` mm wide in the space between the side of `target` and the wall, in the Presets tick's way (marked, so it follows the cabinets).
+    def self.fill_to_wall(model, target, target_params, side, gap)
+      offset = side == 'left' ? -gap : target_params['width'].to_f
+      filler = add_filler_beside(model, target.parent.entities, target, offset, gap)
+      return [0, 0, ["No filler could be made against the wall beside #{target.name}."]] unless filler
+
+      filler.set_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO, true)
+      [1, 0, []]
+    end
+    private_class_method :fill_to_wall
 
     # Moves `first` (the units against one side of `target`) and every unit that follows them along the row, `distance` mm away from the target. The
     # parts that are against them (fillers, side panels) go along; the worktop is built again where it is.
@@ -316,8 +377,8 @@ module KitchenCabinetMaster
     end
     private_class_method :mark_auto
 
-    def self.auto_panels(model)
-      model.entities.grep(Sketchup::ComponentInstance).select { |part| AttributeManager.part_kind(part) == 'end_panel' && part.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO) == true }
+    def self.auto_panels(model) # (the side panels and the fillers at a wall that the tick made)
+      model.entities.grep(Sketchup::ComponentInstance).select { |part| %w[end_panel filler].include?(AttributeManager.part_kind(part)) && part.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO) == true }
     end
     private_class_method :auto_panels
 
