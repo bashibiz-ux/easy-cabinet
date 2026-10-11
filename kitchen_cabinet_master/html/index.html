@@ -25,10 +25,6 @@
     <section class="card" id="sec-presets">
       <button class="card-head" type="button" aria-expanded="true">Presets</button>
       <div class="card-body">
-        <label class="field narrow">
-          <span class="label">Units</span>
-          <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
-        </label>
         <label class="check"><input type="checkbox" id="liveDimensions"><span>Dimensions on the cabinets (the width of each unit, the length of each run, the height of tall units); they follow the cabinets</span></label>
         <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on every exposed side, and a filler where a wall is close (the Side Panel settings of Cabinet &amp; Extras are used); they follow the cabinets</span></label>
         <label class="check"><input type="checkbox" id="resizeNeighbours" checked><span>When I change the width of a cabinet, the cabinet next to it takes or gives the room (off: it stays as it is)</span></label>
@@ -36,6 +32,10 @@
         <label class="check"><input type="checkbox" id="liveWallBottom"><span>Bottom panels under the wall units (the Wall Bottom Panel settings are used; the carcass rises by their thickness); they follow the cabinets</span></label>
         <label class="check"><input type="checkbox" id="liveWorktop"><span>Worktop and back splash on the base units (the Worktop settings are used); they follow the cabinets</span></label>
         <label class="check"><input type="checkbox" id="snapEnabled" checked><span>Stick moved cabinets to their neighbours and the walls</span></label>
+        <label class="field narrow">
+          <span class="label">Units</span>
+          <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
+        </label>
 
         <p class="group-title">Fronts</p>
         <div class="grid-2">
