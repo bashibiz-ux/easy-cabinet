@@ -321,8 +321,9 @@ module KitchenCabinetMaster
         corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
         inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
         depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
-        # The first cabinet of a kitchen faces +Y with its width along X, from the origin; what comes after it follows along its own row.
-        target *= Geom::Transformation.translation(Geom::Vector3d.new(width.mm, 0, 0)) * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) if alone
+        # The first cabinet of a kitchen faces +Y, its width running along +X from the origin: the component flipped (its X and Y swapped, as
+        # Flip Along does), so the row that follows carries on toward +X.
+        target *= Geom::Transformation.new([0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]) if alone
         instance = entities.add_instance(holder, target)
         instance.name = name
 
