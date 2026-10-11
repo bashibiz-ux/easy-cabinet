@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.20.1';
+  const APP_VERSION = '1.20.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -194,13 +194,17 @@
     if (followSelection() || name === 'cabinet_cleared') state.heldKind = null;
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
     // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
-    if (!followSelection() && (name === 'cabinet_selected' || name === 'part_selected')) {
+    // With the tick off nothing is opened or scrolled to, but the Cabinet & Extras card, when it is already open, still shows what is selected.
+    const quiet = !followSelection();
+    const inOpenCard = quiet && !$('sec-cabinet').classList.contains('collapsed') && (name === 'cabinet_selected' || (name === 'part_selected' && !['worktop', 'backsplash'].includes(data.part_kind)));
+    if (quiet && (name === 'cabinet_selected' || name === 'part_selected') && !inOpenCard) {
       state.selectedKind = null;
       state.wallBottomSelected = false;
       state.heldKind = name === 'cabinet_selected' ? 'cabinet' : null;
       setBadge(null);
       return;
     }
+    if (inOpenCard) state.heldKind = null;
     // Our own live update re-selects the item it just changed; do not let that
     // overwrite what the user is in the middle of typing.
     if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
@@ -210,7 +214,7 @@
     if (name === 'cabinet_selected') {
       state.selectedKind = 'cabinet';
       loadCabinet(data);
-      focusSection('sec-cabinet', data.cabinet_id);
+      if (!quiet) focusSection('sec-cabinet', data.cabinet_id);
     } else if (name === 'part_selected') {
       // A worktop has its own section: show its values there and leave the item list alone.
       if (data.part_kind === 'wall_bottom') {
@@ -225,7 +229,7 @@
         updateChips();
         setSelect('category', 'wall_bottom'); // (it is a Category of the Cabinet & Extras section)
         updateCategoryUi();
-        focusSection('sec-cabinet', data.part_id || data.part_name);
+        if (!quiet) focusSection('sec-cabinet', data.part_id || data.part_name);
         return;
       }
       if (data.part_kind === 'worktop' || data.part_kind === 'backsplash') {
@@ -251,7 +255,7 @@
       // Filler, Side Panel and Toe Kick are Cabinet Category choices: show the matching fields.
       setSelect('category', kind);
       updateCategoryUi();
-      focusSection('sec-cabinet', data.part_id || data.part_name);
+      if (!quiet) focusSection('sec-cabinet', data.part_id || data.part_name);
     } else if (name === 'cabinet_cleared') {
       state.selectedKind = null;
       state.focusKey = null;

@@ -11,9 +11,9 @@ module KitchenCabinetMaster
     KEY_SIDE_VALUES = 'live_side_values'
     AUTO = 'auto_exposed' # marks a side panel this made (the ones you inserted yourself are never touched)
     AUTO_TOE = 'auto_toe' # and a toe kick this made
-    KEY_TOE_KICKS = 'live_toe_kicks'
-    KEY_WALL_BOTTOM = 'live_wall_bottom'
-    KEY_WORKTOP = 'live_worktop'
+    KEY_TOE_KICKS = 'live_toe_kicks_on' # (the keys are new: a model that has an old Off written down starts On again)
+    KEY_WALL_BOTTOM = 'live_wall_bottom_on'
+    KEY_WORKTOP = 'live_worktop_on'
     VALUES = { KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
     MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
 
