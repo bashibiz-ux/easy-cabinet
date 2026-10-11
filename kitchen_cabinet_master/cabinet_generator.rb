@@ -143,6 +143,7 @@ module KitchenCabinetMaster
       root.definition.entities.grep(Sketchup::ComponentInstance).each do |item|
         item.visible = item.name == 'Handle' ? (visibility['door'] != false && !hidden) : visibility['carcass'] != false
       end
+      CustomDoor.show(root, visibility['door'] != false) if visibility['carcass'] != false # (its door follows the Door tick)
     end
 
     # The door instances of a cabinet, in order (Door 1, Door 2 ...).

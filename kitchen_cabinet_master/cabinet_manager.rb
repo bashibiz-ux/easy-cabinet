@@ -339,6 +339,15 @@ module KitchenCabinetMaster
         )
         AttributeManager.write(instance, stored)
         TagManager.assign(model, instance, TagManager.for_category(category))
+        # its door (the thin wide piece on its front) takes the Door Reveal, Door Distance and Door Height Adjustment settings
+        door = CustomDoor.detect(instance)
+        if door
+          instance.set_attribute(AttributeManager::DICTIONARY, 'custom_door', door[0].join(';'))
+          instance.set_attribute(AttributeManager::DICTIONARY, 'custom_door_thickness', door[2].round(2))
+          instance.set_attribute(AttributeManager::DICTIONARY, 'custom_carcass_front', (door[1] - number.call('door_distance', Defaults.params['door_distance'])).round(2))
+          CustomDoor.apply(model, instance, number.call('door_reveal', Defaults.params['door_reveal']), number.call('door_distance', Defaults.params['door_distance']),
+                           number.call('door_height_adjust', Defaults.params['door_height_adjust']))
+        end
         # the material of its kind (Base, Wall or Tall material) from the Material section, and the handle from the Handle section
         paint_custom_model(model, instance, raw)
         settings = raw.slice(*CUSTOM_HANDLE_KEYS)
@@ -444,11 +453,15 @@ module KitchenCabinetMaster
       width = instance.get_attribute(dictionary, 'width').to_f
       height = instance.get_attribute(dictionary, 'height').to_f
       lift = instance.get_attribute(dictionary, 'base_z').to_f
+      across = 0.0
+      if (door = CustomDoor.frame(instance)) # (the handle is on the door: its front, its left end and its bottom, its size)
+        depth, across, lift, width, height = door
+      end
       params['handle_length'] = fitting_handle_length(bundle, params['handle_length'], width)
       handle_settings = HandleManager.settings(params, bundle)
       spot = HandleManager.placement(HandleManager.model_door(width, height, params['door_opening_direction']), handle_settings, bundle)
       definition = HandleManager.definition(model, bundle, handle_settings['length'], spot['flip'] == true)
-      transformation = Geom::Transformation.translation(Geom::Vector3d.new(depth.mm, 0, lift.mm)) * HandleManager.transformation(spot, 0.0)
+      transformation = Geom::Transformation.translation(Geom::Vector3d.new(depth.mm, across.mm, lift.mm)) * HandleManager.transformation(spot, 0.0)
       handle = existing || instance.definition.entities.add_instance(definition, transformation)
       handle.definition = definition unless handle.definition == definition
       handle.transformation = transformation
@@ -685,7 +698,18 @@ module KitchenCabinetMaster
         return Response.fail(message, errors)
       end
       lifting = overrides.key?('toe_kick_height')
-      return Response.ok('Every cabinet already has these settings.') if plans.empty? && !(lifting && customs.any?)
+      doors = (overrides.keys & CustomDoor::KEYS).any? ? customs : []
+      unless doors.empty? # (the door of a model of your own takes the door settings, and its handle follows it)
+        with_operation(model, 'Apply Door Settings To My Models') do
+          doors.each do |root|
+            stored = AttributeManager.read(root)
+            pick = ->(key) { ValidationManager.to_float(overrides[key]) || stored[key].to_f }
+            CustomDoor.apply(model, root, pick.call('door_reveal'), pick.call('door_distance'), pick.call('door_height_adjust'))
+            sync_custom_handle(model, root, custom_handle_settings(root))
+          end
+        end
+      end
+      return Response.ok(doors.empty? ? 'Every cabinet already has these settings.' : "#{doors.length} of your own model#{'s' unless doors.length == 1} updated.") if plans.empty? && !(lifting && customs.any?)
 
       # A higher toe kick lifts every cabinet standing on it: they are rebuilt with the new
       # height, and what is attached to them (fillers, side panels, the worktop) goes up too.
@@ -925,9 +949,10 @@ module KitchenCabinetMaster
       value = ->(key) { ValidationManager.to_float(raw[key]) }
       reach = stored['custom_reach'].to_f
       category = stored['cabinet_category'].to_s
-      old = { depth: stored['envelope_depth'].to_f, width: stored['width'].to_f, height: stored['height'].to_f, toe: stored['base_z'].to_f }
+      door = !stored['custom_door'].to_s.empty? # (with a door the Depth field is the depth of the carcass: where the door's distance is measured from)
+      old = { depth: door ? stored['custom_carcass_front'].to_f : stored['envelope_depth'].to_f, width: stored['width'].to_f, height: stored['height'].to_f, toe: stored['base_z'].to_f }
       fresh = {
-        depth: value.call('depth') ? value.call('depth') + reach : old[:depth],
+        depth: value.call('depth') ? value.call('depth') + (door ? 0.0 : reach) : old[:depth],
         width: value.call('width') || old[:width],
         height: value.call('height') || old[:height],
         toe: %w[base tall].include?(category) ? (value.call('toe_kick_height') || old[:toe]) : 0.0
@@ -938,8 +963,9 @@ module KitchenCabinetMaster
       placed = root.transformation
       grew = fresh[:height] - old[:height]
       placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -grew.mm)) * placed if category == 'wall' && grew.abs > 0.01 # (a wall unit hangs by its top)
-      old_size = [old[:depth], old[:width], old[:toe] + old[:height]]
-      new_size = [fresh[:depth], fresh[:width], fresh[:toe] + fresh[:height]]
+      beyond = door ? stored['envelope_depth'].to_f - old[:depth] : 0.0 # (what the door adds in front of the carcass)
+      old_size = [old[:depth] + beyond, old[:width], old[:toe] + old[:height]]
+      new_size = [fresh[:depth] + beyond, fresh[:width], fresh[:toe] + fresh[:height]]
       if old_size != new_size && PlacementManager.crowds?(root.parent.entities, root, placed, new_size, old_size)
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
       end
@@ -950,11 +976,14 @@ module KitchenCabinetMaster
           scale = Geom::Transformation.scaling(corner, fresh[:depth] / old[:depth], fresh[:width] / old[:width], fresh[:height] / old[:height])
           inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, (fresh[:toe] - old[:toe]).mm)) * scale)
           name = NamingManager.base_name(stored.merge('width' => fresh[:width]))
-          AttributeManager.write(root, 'cabinet_name' => name, 'width' => fresh[:width], 'depth' => [fresh[:depth] - reach, 50.0].max, 'height' => fresh[:height],
+          AttributeManager.write(root, 'cabinet_name' => name, 'width' => fresh[:width], 'depth' => door ? fresh[:depth] : [fresh[:depth] - reach, 50.0].max, 'height' => fresh[:height],
                                        'toe_kick_height' => fresh[:toe], 'base_z' => fresh[:toe], 'top_z' => (fresh[:toe] + fresh[:height]).round(2),
-                                       'envelope_width' => fresh[:width], 'envelope_depth' => fresh[:depth], 'envelope_top' => (fresh[:toe] + fresh[:height]).round(2))
+                                       'envelope_width' => fresh[:width], 'envelope_depth' => fresh[:depth] + beyond, 'envelope_top' => (fresh[:toe] + fresh[:height]).round(2))
           root.name = name
+          root.set_attribute(dictionary, 'custom_carcass_front', fresh[:depth]) if door
           root.transformation = placed unless placed.equal?(root.transformation)
+          settings = %w[door_reveal door_distance door_height_adjust].map { |key| [key, value.call(key) || stored[key].to_f] }.to_h
+          CustomDoor.apply(model, root, settings['door_reveal'], settings['door_distance'], settings['door_height_adjust'])
           paint_custom_model(model, root, raw)
           refresh_custom_handle(model, root, raw)
           PartManager.follow_door(model, root)

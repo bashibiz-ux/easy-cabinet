@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.14.2';
+  const APP_VERSION = '1.15.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -411,7 +411,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -2020,11 +2020,13 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
   // it raises cabinets and is the height of a toe kick.
+  const SIZE_IDS = new Set(['width', 'depth', 'height', 'leg2Length', 'leg2Depth', 'blindWidth', 'shelves']);
+
   function fieldKinds(el) {
     if (el.closest('#sub-filler')) return ['filler'];
     if (el.closest('#sub-end-panel')) return ['end_panel'];
@@ -2279,6 +2281,7 @@ function liveEdit(el) {
       return;
     }
     if (NO_LIVE_IDS.has(el.id) || !state.selectedKind || state.liveHold) return;
+    if (SIZE_IDS.has(el.id) && !$('liveSizes').checked) return; // sizes wait for the Update button when the switch is off
     if (!fieldKinds(el).includes(state.selectedKind)) return;
     scheduleLive(el.tagName === 'SELECT' || el.type === 'checkbox' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
   }
