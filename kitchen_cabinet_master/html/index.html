@@ -64,6 +64,19 @@
           <span class="label">Door Height Adjustment</span>
           <div class="input"><input id="doorHeightAdjust" type="text" inputmode="decimal" autocomplete="off" aria-label="Door height adjustment: how much taller (or shorter, with a minus) every door is, for every cabinet or the selected one"><em>mm</em></div>
         </label>
+        <!-- How the doors of a cabinet open and how far: for every cabinet, or the selected one (live). -->
+        <div data-feature="door_opening">
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Door Opening Direction</span>
+              <div class="input"><select id="direction"></select></div>
+            </label>
+            <label class="field">
+              <span class="label">Opening angle</span>
+              <div class="input"><input id="angle" type="text" inputmode="decimal" autocomplete="off"><em>deg</em></div>
+            </label>
+          </div>
+        </div>
         <!-- The model without handles: the finger gap of every front, as a setting for the whole job (each cabinet keeps its own below). -->
         <label class="field" id="fingerGapGlobalField" hidden>
           <span class="label">Door Height Reduction (finger gap)</span>
@@ -682,23 +695,6 @@
           <button class="btn" type="button" data-action="customize" title="Select a worktop piece in the model first: a window to change the size of the piece and to move it. Applying the worktop again rebuilds it and drops these changes.">Customize...</button>
         </div>
 
-      </div>
-    </section>
-
-    <!-- Door Opening Direction -->
-    <section class="card" id="sec-door" data-feature="door_opening">
-      <button class="card-head" type="button" aria-expanded="true">Door Opening Direction</button>
-      <div class="card-body">
-        <div class="grid-2">
-          <label class="field">
-            <span class="label">Door Opening Direction</span>
-            <div class="input"><select id="direction"></select></div>
-          </label>
-          <label class="field">
-            <span class="label">Opening angle</span>
-            <div class="input"><input id="angle" type="text" inputmode="decimal" autocomplete="off"><em>deg</em></div>
-          </label>
-        </div>
       </div>
     </section>
 
