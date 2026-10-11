@@ -12,7 +12,7 @@ module KitchenCabinetMaster
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks update_part delete_part].freeze
-    LIVE_ACTIONS = %w[set_live_dimensions set_live_side_panels].freeze
+    LIVE_ACTIONS = %w[set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
@@ -94,6 +94,7 @@ module KitchenCabinetMaster
         when *PRESET_ACTIONS then PresetManager.perform(action, data)
         else Response.fail("Unknown action \"#{action}\".")
         end
+        LiveParts.absorb(action, data) if result.is_a?(Hash) && result['ok']
         LiveParts.refresh if result.is_a?(Hash) && result['ok'] && REFRESHING.include?(action)
         result
       rescue StandardError => e
@@ -160,6 +161,9 @@ module KitchenCabinetMaster
           'snap_enabled'    => SnapManager.enabled?,
           'live_dimensions' => LiveParts.dimensions?,
           'live_side_panels' => LiveParts.side_panels?,
+          'live_toe_kicks' => LiveParts.toe_kicks?,
+          'live_wall_bottom' => LiveParts.wall_bottom?,
+          'live_worktop' => LiveParts.worktop?,
           'categories'      => Defaults::CATEGORIES,
           'directions'      => Defaults::DIRECTIONS,
           'standard_widths' => Defaults::STANDARD_WIDTHS,

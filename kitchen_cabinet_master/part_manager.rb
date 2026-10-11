@@ -407,6 +407,46 @@ module KitchenCabinetMaster
     end
     private_class_method :place_auto_panels
 
+    # The toe kicks of the Presets tick: marked, so that they can be taken away and placed again (a toe kick you inserted yourself is not).
+    def self.auto_toe_kicks(model)
+      model.entities.grep(Sketchup::ComponentInstance).select { |part| AttributeManager.part_kind(part) == 'toe_kick' && part.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO_TOE) == true }
+    end
+    private_class_method :auto_toe_kicks
+
+    def self.remove_auto_toe_kicks(model)
+      auto_toe_kicks(model).each { |part| PartGenerator.remove(model, part) if part.valid? }
+    end
+    private_class_method :remove_auto_toe_kicks
+
+    # A toe kick under each row: the one that carries on from the first unit (turning at the corners, see ToeKick.turns_from), and one under the first
+    # unit of an island, each made by the Insert Toe Kick code against its unit (inside an operation of its own, see LiveParts).
+    def self.place_auto_toe_kicks(model, values)
+      units = model.entities.grep(Sketchup::ComponentInstance).select { |item| (AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler') && !wall_item?(item) }
+      return 0 if units.empty?
+
+      sequence = ->(item) { item.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i }
+      island = units.select { |item| !item.get_attribute(AttributeManager::DICTIONARY, 'island_seating').nil? }.min_by(&sequence)
+      anchors = [units.min_by(&sequence), island].compact.uniq
+      made = 0
+      @batch = true
+      begin
+        anchors.each do |anchor|
+          model.selection.clear
+          model.selection.add(anchor)
+          answer = insert_toe_kick(stringify(values).merge('toe_kick_cover_row' => true))
+          next unless answer['ok']
+
+          made += 1
+          model.selection.to_a.first&.set_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO_TOE, true)
+        end
+      ensure
+        @batch = false
+      end
+      model.selection.clear
+      made
+    end
+    private_class_method :place_auto_toe_kicks
+
     # The highest units first, so that the panel of a tall unit is the one that stands in the room between it and a lower unit.
     def self.tallest_first(targets)
       targets.sort_by { |target| -top_of(AttributeManager.read(target)).to_f }

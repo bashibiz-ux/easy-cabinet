@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.16.1';
+  const APP_VERSION = '1.17.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2587,6 +2587,24 @@ $('kitchenLayout').addEventListener('change', () => {
     }
   }
 
+  // The ticks that keep toe kicks, the wall unit bottom panels and the worktop up: the settings of their sections go with them (the Toe Kick,
+  // Wall Bottom Panel and Worktop fields), and are sent again, by the buttons and live edits of those sections, when they change.
+  const LIVE_PART_TICKS = {
+    liveToeKicks: ['set_live_toe_kicks', () => collectToeKick()],
+    liveWallBottom: ['set_live_wall_bottom', () => COLLECTORS.wall_bottom()],
+    liveWorktop: ['set_live_worktop', () => collectWorktop()]
+  };
+
+  async function sendLivePart(id) {
+    const [action, collector] = LIVE_PART_TICKS[id];
+    try {
+      const res = await call(action, { enabled: $(id).checked, values: collector() });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    }
+  }
+
   function scheduleSidePanels() {
     if (!$('liveSidePanels').checked) return;
     clearTimeout(state.sideTimer);
@@ -2612,6 +2630,7 @@ $('kitchenLayout').addEventListener('change', () => {
       }
     });
     $('liveSidePanels').addEventListener('change', () => sendSidePanels());
+    Object.keys(LIVE_PART_TICKS).forEach((id) => $(id).addEventListener('change', () => sendLivePart(id)));
     $('snapEnabled').addEventListener('change', async () => {
       try {
         const res = await call('set_snap', { enabled: $('snapEnabled').checked });
@@ -2642,6 +2661,9 @@ $('kitchenLayout').addEventListener('change', () => {
       $('snapEnabled').checked = res.data.snap_enabled !== false;
       $('liveDimensions').checked = res.data.live_dimensions === true;
       $('liveSidePanels').checked = res.data.live_side_panels !== false;
+      $('liveToeKicks').checked = res.data.live_toe_kicks === true;
+      $('liveWallBottom').checked = res.data.live_wall_bottom === true;
+      $('liveWorktop').checked = res.data.live_worktop === true;
       await buildUi();
       if ($('liveSidePanels').checked) await sendSidePanels(); // (on to begin with: the Side Panel settings of the panel go with it)
     } catch (error) {

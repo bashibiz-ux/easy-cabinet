@@ -10,6 +10,12 @@ module KitchenCabinetMaster
     KEY_SIDE_PANELS = 'live_side_panels'
     KEY_SIDE_VALUES = 'live_side_values'
     AUTO = 'auto_exposed' # marks a side panel this made (the ones you inserted yourself are never touched)
+    AUTO_TOE = 'auto_toe' # and a toe kick this made
+    KEY_TOE_KICKS = 'live_toe_kicks'
+    KEY_WALL_BOTTOM = 'live_wall_bottom'
+    KEY_WORKTOP = 'live_worktop'
+    VALUES = { KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
+    MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
 
     def self.perform(action, raw)
       raw = {} unless raw.is_a?(Hash)
@@ -25,7 +31,51 @@ module KitchenCabinetMaster
         model.set_attribute(DICTIONARY, KEY_SIDE_VALUES, JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
         apply(model, "#{on ? 'Place' : 'Remove'} Side Panels") { sync_side_panels(model) }
         Response.ok(on ? 'Side panels on every exposed side are on: they follow the cabinets.' : 'The side panels placed by the tick are taken away.')
+      when 'set_live_toe_kicks'
+        keep(model, KEY_TOE_KICKS, on, raw)
+        apply(model, "#{on ? 'Place' : 'Remove'} Toe Kicks") { sync_toe_kicks(model) }
+        Response.ok(on ? 'Toe kicks are on: they follow the cabinets.' : 'The toe kicks placed by the tick are taken away.')
+      when 'set_live_wall_bottom'
+        keep(model, KEY_WALL_BOTTOM, on, raw)
+        sync_wall_bottom(model)
+        Response.ok(on ? 'Wall unit bottom panels are on: they follow the cabinets.' : 'The bottom panels placed by the tick are taken away.')
+      when 'set_live_worktop'
+        keep(model, KEY_WORKTOP, on, raw)
+        sync_worktop(model)
+        Response.ok(on ? 'The worktop is on: it follows the cabinets.' : 'The worktop placed by the tick is taken away.')
       else Response.fail("Unknown action \"#{action}\".")
+      end
+    end
+
+    # Writes down a tick and the settings that go with it (the panel's own fields, sent when the tick is changed).
+    def self.keep(model, key, on, raw)
+      model.set_attribute(DICTIONARY, key, on)
+      model.set_attribute(DICTIONARY, VALUES[key], JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
+    end
+    private_class_method :keep
+
+    def self.on?(key) = Sketchup.active_model.get_attribute(DICTIONARY, key, false) == true
+    def self.toe_kicks? = on?(KEY_TOE_KICKS)
+    def self.wall_bottom? = on?(KEY_WALL_BOTTOM)
+    def self.worktop? = on?(KEY_WORKTOP)
+
+    def self.values_of(model, key)
+      JSON.parse(model.get_attribute(DICTIONARY, VALUES[key], '{}'))
+    rescue JSON::ParserError
+      {}
+    end
+    private_class_method :values_of
+
+    # An action of the panel that changes the settings of a part the ticks keep up: its values are the ones to draw it with from now on (the toe
+    # kick fields send only what was changed; the worktop and the bottom panel send them all).
+    def self.absorb(action, data)
+      return unless data.is_a?(Hash)
+
+      model = Sketchup.active_model
+      case action
+      when 'apply_toe_kicks' then model.set_attribute(DICTIONARY, VALUES[KEY_TOE_KICKS], JSON.generate(values_of(model, KEY_TOE_KICKS).merge(data.reject { |_, value| value.to_s.strip.empty? })))
+      when 'apply_worktop' then model.set_attribute(DICTIONARY, VALUES[KEY_WORKTOP], JSON.generate(data)) if worktop?
+      when 'apply_wall_bottom' then model.set_attribute(DICTIONARY, VALUES[KEY_WALL_BOTTOM], JSON.generate(data)) if wall_bottom?
       end
     end
 
@@ -36,12 +86,15 @@ module KitchenCabinetMaster
     # After an action of the panel: draw again what the ticks keep up. Quietly: nothing changes when no tick is on.
     def self.refresh
       model = Sketchup.active_model
-      return unless model && (dimensions? || side_panels?)
+      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop?)
 
       apply(model, 'Refresh Dimensions and Side Panels') do
         sync_side_panels(model) # (first: the dimensions are of the units)
+        sync_toe_kicks(model)
         sync_dimensions(model)
       end
+      sync_worktop(model) # (the worktop and the bottom panels are steps of their own)
+      sync_wall_bottom(model)
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not refresh the live parts: #{e.message}"
     end
@@ -67,6 +120,38 @@ module KitchenCabinetMaster
       DimensionManager.add(model, cabinets) unless cabinets.empty?
     end
     private_class_method :sync_dimensions
+
+    def self.sync_toe_kicks(model)
+      PartManager.send(:remove_auto_toe_kicks, model)
+      return unless toe_kicks?
+
+      PartManager.send(:place_auto_toe_kicks, model, values_of(model, KEY_TOE_KICKS))
+    end
+    private_class_method :sync_toe_kicks
+
+    # The worktop and the wall unit bottom panels are drawn by the Apply buttons' own code, again after every change. Turned off, what the tick
+    # made is taken away (a worktop you applied yourself is left alone).
+    def self.sync_worktop(model)
+      if worktop?
+        answer = WorktopManager.apply(values_of(model, KEY_WORKTOP).merge('only_if_exists' => false))
+        model.set_attribute(DICTIONARY, MADE[KEY_WORKTOP], true) if answer['ok']
+      elsif model.get_attribute(DICTIONARY, MADE[KEY_WORKTOP], false) == true
+        WorktopManager.remove
+        model.set_attribute(DICTIONARY, MADE[KEY_WORKTOP], false)
+      end
+    end
+    private_class_method :sync_worktop
+
+    def self.sync_wall_bottom(model)
+      if wall_bottom?
+        answer = WallBottomManager.apply(values_of(model, KEY_WALL_BOTTOM).merge('only_if_exists' => false))
+        model.set_attribute(DICTIONARY, MADE[KEY_WALL_BOTTOM], true) if answer['ok']
+      elsif model.get_attribute(DICTIONARY, MADE[KEY_WALL_BOTTOM], false) == true
+        WallBottomManager.remove
+        model.set_attribute(DICTIONARY, MADE[KEY_WALL_BOTTOM], false)
+      end
+    end
+    private_class_method :sync_wall_bottom
 
     def self.sync_side_panels(model)
       PartManager.send(:remove_auto_panels, model)
