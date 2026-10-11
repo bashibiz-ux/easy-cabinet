@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.18.1';
+  const APP_VERSION = '1.19.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -223,7 +223,9 @@
         if (data.wall_bottom_setback !== undefined) setText('wbSetback', data.wall_bottom_setback);
         if (data.material) setSelect('wbMaterial', data.material);
         updateChips();
-        focusSection('sec-wallbottom', data.part_id || data.part_name);
+        setSelect('category', 'wall_bottom'); // (it is a Category of the Cabinet & Extras section)
+        updateCategoryUi();
+        focusSection('sec-cabinet', data.part_id || data.part_name);
         return;
       }
       if (data.part_kind === 'worktop' || data.part_kind === 'backsplash') {
@@ -505,9 +507,9 @@
     toe_kick: () => collectToeKick()
   };
 
-  // Filler, Side Panel and Toe Kick are choices in the Cabinet Category list, next
+  // Filler, Side Panel, Toe Kick and Wall Bottom Panel are choices in the Category list, next
   // to the real cabinet categories.
-  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick'];
+  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom'];
 
   function categoryKind() {
     const value = $('category').value;
@@ -529,7 +531,7 @@
 
   // Cabinets have their own Insert / Update / Delete; a filler, side panel or toe
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
-  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick' };
+  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom' };
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
@@ -616,6 +618,7 @@
     const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
     if (isPart && action === 'update') return 'update_part';
     if (isPart && action === 'delete') return 'delete_part';
+    if (!state.selectedKind && categoryKind() === 'wall_bottom' && action === 'update') return 'apply_wall_bottom'; // (Category = Wall Bottom Panel: Update draws the panels again)
     if (action === 'insert') return INSERT_ACTION[categoryKind()];
     return action;
   }
@@ -771,8 +774,8 @@
     // No catalog chosen yet: nothing is active except the catalog selection itself.
     const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
-    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }];
-    fillSelect($('category'), categories.filter((c) => on.has(c.id)));
+    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }];
+    fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' ? 'wall' : c.id)));
 
     document.querySelectorAll('[data-feature]').forEach((el) => {
       const off = !on.has(el.dataset.feature);
@@ -1416,6 +1419,7 @@ function currentCabinet() {
     setSoft($('sub-filler'), kind !== 'filler');
     setSoft($('sub-end-panel'), kind !== 'end_panel');
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
+    setSoft($('sub-wall-bottom'), kind !== 'wall_bottom');
     setSoft($('toeNote'), true);
     setSoft($('legFields'), !(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape'));
     setLegLabels(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape');

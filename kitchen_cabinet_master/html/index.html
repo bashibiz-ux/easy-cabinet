@@ -351,7 +351,7 @@
       <button class="card-head" type="button" aria-expanded="true">Cabinet &amp; Extras</button>
       <div class="card-body">
         <label class="field">
-          <span class="label">Cabinet Category</span>
+          <span class="label">Category</span>
           <div class="input"><select id="category"></select></div>
         </label>
         <label class="field cabinet-only">
@@ -571,7 +571,34 @@
           </label>
         </div>
 
-        <!-- Toe Kick: shown when Cabinet Category = Toe Kick. Its own entity, a run of pieces laid end to end. -->
+        <!-- Wall Bottom Panel: shown when Category = Wall Bottom Panel. The panel under a run of wall units whose carcass has been lifted. -->
+        <div class="subblock" id="sub-wall-bottom" data-feature="wall" hidden>
+          <p class="hint">Panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Length</span>
+              <div class="input"><input id="wbLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Thickness</span>
+              <div class="input"><input id="wbThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
+            </label>
+          </div>
+          <label class="field narrow">
+            <span class="label">Front Setback</span>
+            <div class="input"><input id="wbSetback" type="text" inputmode="decimal" autocomplete="off" aria-label="How far the panel stops short of the carcass front"><em>mm</em></div>
+          </label>
+          <label class="field">
+            <span class="label">Bottom Panel Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial" data-material></select></div>
+          </label>
+          <div class="btn-row two">
+            <button class="btn primary" type="button" data-action="apply_wall_bottom">Apply Bottom Panel</button>
+            <button class="btn" type="button" data-action="remove_wall_bottom">Remove</button>
+          </div>
+        </div>
+
+        <!-- Toe Kick: shown when Category = Toe Kick. Its own entity, a run of pieces laid end to end. -->
         <div class="subblock toe-only" id="sub-toe-kick" hidden>
           <p class="hint">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. Its height is the Toe-kick Height above, which also sets how far new cabinets stand off the floor.</p>
           <div class="grid-2">
@@ -654,39 +681,6 @@
           <button class="btn" type="button" data-action="customize" title="Select a worktop piece in the model first: a window to change the size of the piece and to move it. Applying the worktop again rebuilds it and drops these changes.">Customize...</button>
         </div>
 
-      </div>
-    </section>
-
-    <!-- Wall bottom panel: its own tab -->
-    <section class="card" id="sec-wallbottom" data-feature="wall">
-      <button class="card-head" type="button" aria-expanded="true">Wall Bottom Panel</button>
-      <div class="card-body">
-        <!-- The panel under a run of wall units whose carcass has been lifted (Carcass bottom raise). -->
-        <div>
-          <p class="hint">Panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
-          <div class="grid-2">
-            <label class="field">
-              <span class="label">Length</span>
-              <div class="input"><input id="wbLength" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-            </label>
-            <label class="field">
-              <span class="label">Thickness</span>
-              <div class="input"><input id="wbThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
-            </label>
-          </div>
-          <label class="field narrow">
-            <span class="label">Front Setback</span>
-            <div class="input"><input id="wbSetback" type="text" inputmode="decimal" autocomplete="off" aria-label="How far the panel stops short of the carcass front"><em>mm</em></div>
-          </label>
-          <label class="field">
-            <span class="label">Bottom Panel Material</span>
-            <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial" data-material></select></div>
-          </label>
-          <div class="btn-row two">
-            <button class="btn primary" type="button" data-action="apply_wall_bottom">Apply Bottom Panel</button>
-            <button class="btn" type="button" data-action="remove_wall_bottom">Remove</button>
-          </div>
-        </div>
       </div>
     </section>
 
