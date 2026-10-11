@@ -294,9 +294,10 @@ module KitchenCabinetMaster
     private_class_method :bounds_mm
 
     # Inserts a model from your catalog, in the row like a cabinet (beside the selected item). The model stands in a component of its own (the
-    # "cabinet"): turned so that its width runs along its Y and its front faces its +X (as a cabinet of the extension's), with its back and its left end on the origin of that component
-    # (measured, not worked out from the saved size), lifted by the toe kick height when it is a base or a tall unit. That component carries a
-    # cabinet's attributes, so the rules of the extension (placement, snapping, worktop, toe kicks, side panels, dimensions) apply to it.
+    # "cabinet"): turned so that the side it was drawn with its door on faces +X and its width runs along +Y, with its back and its left end on the
+    # origin of that component (measured, not worked out from the saved size), lifted by the toe kick height when it is a base or a tall unit. That
+    # component carries a cabinet's attributes, so the rules of the extension (placement, snapping, worktop, toe kicks, side panels, naming, the
+    # Update button, the Handle section, the materials) apply to it. Its handle is in that component too, on its +X face.
     def self.insert_component(raw, entry)
       path = CatalogManager.component_path(entry)
       return Response.fail('The model file of this catalog entry is missing.') unless path && File.file?(path)
@@ -313,46 +314,35 @@ module KitchenCabinetMaster
         definition = model.definitions.load(path)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
-        name = entry['name'].to_s
-        code = NamingManager.base_name(params.merge('width' => size[0])) # (named like a cabinet of the extension: its kind and width, as B600)
-        holder = AttributeManager.mark_managed(model.definitions.add(code))
+        holder = AttributeManager.mark_managed(model.definitions.add(NamingManager.base_name(params.merge('width' => size[0]))))
         # turned so that its door (the side it was drawn with: front) faces +X and its width runs along +Y, as a cabinet of the extension's
-        front = CatalogManager.front_of(entry)
-        turned = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), CUSTOM_TURNS.fetch(front) * Math::PI / 180.0) *
+        turned = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), CUSTOM_TURNS.fetch(CatalogManager.front_of(entry)) * Math::PI / 180.0) *
                  Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
         inner = holder.entities.add_instance(definition, turned)
         corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
         inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
+        inner.name = entry['name'].to_s
         depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
         instance = entities.add_instance(holder, target)
-        name = NamingManager.base_name(params.merge('width' => width))
-        instance.name = name
-        inner.name = entry['name'].to_s
-
-        box = [low.x.to_mm, low.y.to_mm, low.z.to_mm, definition.bounds.width.to_mm, definition.bounds.height.to_mm, definition.bounds.depth.to_mm].map { |v| v.round(2) }
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
-        # What marks the model inside as one of your own: its kind, and the material of that kind (Base, Wall or Tall material) from the
-        # Material section goes on it, like on a cabinet.
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_front', front)
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
-        paint_custom_model(model, inner, raw)
-        settings = raw.slice(*CUSTOM_HANDLE_KEYS)
-        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
-        sync_custom_handle(model, inner, settings) # a handle on its front, from the Handle section
+        instance.name = NamingManager.base_name(params.merge('width' => width)) # (named like a cabinet of the extension: its kind and width, as B600)
 
         # The component is a cabinet as far as the rest of the extension can tell: its size (the carcass depth is what the front stands
         # in front of: door distance and door thickness are taken off so that a side panel or a filler comes flush with the front), its
         # place in the order of insertion, its kind and its toe kick height.
         reach = number.call('door_distance', Defaults.params['door_distance']) + number.call('material_thickness', Defaults.params['material_thickness'])
         stored = params.merge(
-          'cabinet_id' => AttributeManager.next_cabinet_id(model), 'sequence' => AttributeManager.next_sequence(model), 'cabinet_name' => name,
+          'cabinet_id' => AttributeManager.next_cabinet_id(model), 'sequence' => AttributeManager.next_sequence(model), 'cabinet_name' => instance.name,
           'width' => width, 'depth' => [depth - reach, 50.0].max, 'height' => height, 'toe_kick_height' => toe, 'base_z' => toe, 'top_z' => (toe + height).round(2),
-          'envelope_width' => width, 'envelope_depth' => depth, 'envelope_top' => (toe + height).round(2), 'custom_wrapper' => true
+          'envelope_width' => width, 'envelope_depth' => depth, 'envelope_top' => (toe + height).round(2), 'custom_wrapper' => true,
+          'custom_category' => category, 'custom_catalog' => raw['catalog_id'].to_s, 'custom_reach' => reach
         )
         AttributeManager.write(instance, stored)
         TagManager.assign(model, instance, TagManager.for_category(category))
+        # the material of its kind (Base, Wall or Tall material) from the Material section, and the handle from the Handle section
+        paint_custom_model(model, instance, raw)
+        settings = raw.slice(*CUSTOM_HANDLE_KEYS)
+        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
+        sync_custom_handle(model, instance, settings)
         instance
       end
       SelectionManager.select(instance)
@@ -435,36 +425,29 @@ module KitchenCabinetMaster
     end
     private_class_method :custom_handle_settings
 
-    # Puts the handle on the front of a model of your own (or takes it away when there is no handle package): inside the model, on its front face
-    # (the low-Y side of it as it was drawn), by the rules of its kind (top of a base unit, bottom of a wall unit, hand height of a tall one).
-    # The box was kept when the model was inserted: [low X, low Y, low Z, width, depth, height] in mm.
+    # Puts the handle on the front of a model of your own (or takes it away when there is no handle package): in the component the model stands
+    # in, on its +X face, by the rules of its kind (top of a base unit, bottom of a wall unit, hand height of a tall one). The door is as wide as
+    # the cabinet and as high as the model; a handle longer than the door would be goes down to the longest length of its package that fits.
     def self.sync_custom_handle(model, instance, settings)
-      box = begin
-        JSON.parse(instance.get_attribute(AttributeManager::DICTIONARY, 'custom_box').to_s)
-      rescue JSON::ParserError
-        nil
-      end
-      params, bundle = HandleManager.model_params(settings, instance.get_attribute(AttributeManager::DICTIONARY, 'custom_category'))
+      dictionary = AttributeManager::DICTIONARY
+      params, bundle = HandleManager.model_params(settings, instance.get_attribute(dictionary, 'custom_category'))
       find = -> { instance.definition.entities.grep(Sketchup::ComponentInstance).find { |item| item.name == CUSTOM_HANDLE_NAME } }
-      if bundle.nil? || !box.is_a?(Array) || box.length < 6
+      if bundle.nil?
         find.call&.erase!
         return false
       end
 
-      instance.make_unique if instance.definition.count_instances > 1 # (this model's own handle, not every copy's)
+      instance.make_unique if instance.definition.count_instances > 1 # (this cabinet's own handle, not every copy's)
       existing = find.call
+      depth = instance.get_attribute(dictionary, 'envelope_depth').to_f
+      width = instance.get_attribute(dictionary, 'width').to_f
+      height = instance.get_attribute(dictionary, 'height').to_f
+      lift = instance.get_attribute(dictionary, 'base_z').to_f
+      params['handle_length'] = fitting_handle_length(bundle, params['handle_length'], width)
       handle_settings = HandleManager.settings(params, bundle)
-      side = instance.get_attribute(AttributeManager::DICTIONARY, 'custom_front').to_s
-      side = '-y' unless CUSTOM_TURNS.key?(side) # (a model inserted before the front was asked)
-      across = %w[+x -x].include?(side) ? box[4].to_f : box[3].to_f # the width of its door: along Y when the door is on an X side
-      spot = HandleManager.placement(HandleManager.model_door(across, box[5].to_f, params['door_opening_direction']), handle_settings, bundle)
+      spot = HandleManager.placement(HandleManager.model_door(width, height, params['door_opening_direction']), handle_settings, bundle)
       definition = HandleManager.definition(model, bundle, handle_settings['length'], spot['flip'] == true)
-      # the left end of the front face, seen from the front, with the handle's own X pointing out of the door and its Y along the door
-      corner = { '-y' => [0, 0], '+x' => [1, 0], '+y' => [1, 1], '-x' => [0, 1] }.fetch(side)
-      turn = { '-y' => -90.0, '+x' => 0.0, '+y' => 90.0, '-x' => 180.0 }.fetch(side)
-      front = Geom::Transformation.translation(Geom::Vector3d.new((box[0].to_f + (corner[0] * box[3].to_f)).mm, (box[1].to_f + (corner[1] * box[4].to_f)).mm, box[2].to_f.mm)) *
-              Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), turn * Math::PI / 180.0)
-      transformation = front * HandleManager.transformation(spot, 0.0)
+      transformation = Geom::Transformation.translation(Geom::Vector3d.new(depth.mm, 0, lift.mm)) * HandleManager.transformation(spot, 0.0)
       handle = existing || instance.definition.entities.add_instance(definition, transformation)
       handle.definition = definition unless handle.definition == definition
       handle.transformation = transformation
@@ -473,6 +456,17 @@ module KitchenCabinetMaster
       true
     end
     private_class_method :sync_custom_handle
+
+    # The length of handle to use on a door `door` mm wide: the one asked for if it fits (with 40 mm to spare at each end), else the longest the
+    # package offers that does, else its shortest.
+    def self.fitting_handle_length(bundle, wanted, door)
+      lengths = Array(bundle['lengths']).map(&:to_f).sort
+      room = door - 80.0
+      return wanted if wanted.to_f <= room || lengths.empty?
+
+      lengths.select { |length| length <= room }.max || lengths.first
+    end
+    private_class_method :fitting_handle_length
 
     # The Handle section changed: keeps the new values with the model and puts its handle right.
     def self.refresh_custom_handle(model, instance, overrides)
@@ -486,15 +480,7 @@ module KitchenCabinetMaster
 
     # The models of your own that were inserted from a catalog.
     def self.custom_models(model)
-model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
-        if instance.get_attribute(AttributeManager::DICTIONARY, 'custom_wrapper') == true # (the model inside its own component)
-          instance.definition.entities.grep(Sketchup::ComponentInstance).select { |inner| inner.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true }
-        elsif instance.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true
-          [instance]
-        else
-          []
-        end
-      end
+      model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.custom_model?(instance) }
     end
     private_class_method :custom_models
 
@@ -566,7 +552,7 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       model = Sketchup.active_model
       root = SelectionManager.selected_cabinet(model)
       return Response.fail('Select a cabinet in the model to update.') unless root
-      return Response.ok("#{root.name} is a model of your own: it is not rebuilt from the panel.") if AttributeManager.custom_model?(root)
+      return update_custom(model, root, raw) if AttributeManager.custom_model?(root)
 
       params, failure = prepare(raw)
       return failure if failure
@@ -654,7 +640,7 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       if (overrides.keys & CUSTOM_MATERIAL_KEYS).any? || handle_changed
         chosen = custom_models(model)
         picked = chosen.select { |item| model.selection.include?(item) }
-        only_these = picked.any? && selected_cabinets(model).empty?
+        only_these = picked.any? && selected_cabinets(model).reject { |item| AttributeManager.custom_model?(item) }.empty?
         chosen = picked if only_these
         unless chosen.empty?
           with_operation(model, 'Apply Settings To My Models') do
@@ -670,6 +656,7 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       cabinets = model.entities.grep(Sketchup::ComponentInstance).select { |instance| AttributeManager.cabinet?(instance) }
       chosen_cabinets = selected_cabinets(model) # (several picked together get the settings alone; none picked: every cabinet)
       cabinets = chosen_cabinets unless chosen_cabinets.empty?
+      customs = cabinets.select { |item| AttributeManager.custom_model?(item) } # (models of your own: their handle and material are done above; a toe kick height lifts them below)
       if cabinets.empty?
         return Response.ok(painted.positive? ? "#{painted} of your own model#{'s' unless painted == 1} painted." : 'No cabinets in the model yet. New cabinets will use these settings.')
       end
@@ -677,6 +664,8 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       plans = []
       problems = []
       cabinets.each do |cabinet|
+        next if customs.include?(cabinet)
+
         stored = AttributeManager.read(cabinet)
         next unless differs?(stored, overrides)
 
@@ -693,11 +682,11 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
         message = problems.length == 1 ? errors.first['message'] : "#{problems.first[0].name}: #{errors.first['message']}"
         return Response.fail(message, errors)
       end
-      return Response.ok('Every cabinet already has these settings.') if plans.empty?
+      lifting = overrides.key?('toe_kick_height')
+      return Response.ok('Every cabinet already has these settings.') if plans.empty? && !(lifting && customs.any?)
 
       # A higher toe kick lifts every cabinet standing on it: they are rebuilt with the new
       # height, and what is attached to them (fillers, side panels, the worktop) goes up too.
-      lifting = overrides.key?('toe_kick_height')
       before = lifted_from(cabinets)
       SelectionManager.suspend do
         with_operation(model, 'Apply Settings To All Cabinets') do
@@ -707,6 +696,7 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
             PartManager.follow_door(model, cabinet)
           end
           if lifting
+            lift_custom_models(model, customs, ValidationManager.to_float(overrides['toe_kick_height']))
             PartManager.lift_attached(model, before, ValidationManager.to_float(overrides['toe_kick_height']))
             WorktopManager.refresh(model)
           end
@@ -715,7 +705,7 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       end
       SelectionManager.push_selection(model)
 
-      done = "#{plans.length} cabinet#{'s' unless plans.length == 1} updated."
+      done = "#{plans.length + (lifting ? customs.length : 0)} cabinet#{'s' unless plans.length + (lifting ? customs.length : 0) == 1} updated."
       return Response.ok(done) if problems.empty?
 
       skipped = problems.map { |cabinet, errors| "#{cabinet.name}: #{errors.first['message']}" }
@@ -723,6 +713,29 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
                   "left as #{problems.length == 1 ? 'it was' : 'they were'} (#{skipped.first(2).join('; ')}).")
     end
     private_class_method :apply_all
+
+    # A new toe kick height lifts the models of your own that stand on one (a base or a tall unit): the model moves up inside its component, and its
+    # handle with it. Inside an operation.
+    def self.lift_custom_models(model, roots, toe)
+      return if toe.nil?
+
+      roots.each do |root|
+        stored = AttributeManager.read(root)
+        next unless %w[base tall].include?(stored['cabinet_category'].to_s)
+
+        delta = toe - stored['base_z'].to_f
+        next if delta.abs < 0.01
+
+        inner = root.definition.entities.grep(Sketchup::ComponentInstance).find { |item| item.name != CUSTOM_HANDLE_NAME }
+        next unless inner
+
+        inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, delta.mm)))
+        top = (toe + stored['height'].to_f).round(2)
+        AttributeManager.write(root, 'toe_kick_height' => toe, 'base_z' => toe, 'top_z' => top, 'envelope_top' => top)
+        sync_custom_handle(model, root, custom_handle_settings(root))
+      end
+    end
+    private_class_method :lift_custom_models
 
     # The toe-kick height the standing cabinets have now (before it is changed).
     def self.lifted_from(cabinets)
@@ -897,6 +910,59 @@ model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
       Response.ok("#{copy.name} created as a copy of #{source_name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copy), 'cabinet_name' => copy.name })
     end
     private_class_method :duplicate
+
+    # The Update button on a model of your own: its size (the model is scaled to it), its toe kick height, its handle and its material follow
+    # the panel, as a cabinet's do. The doors of such a model are its own, so the door settings (gap, reveal, door height ...) have nothing to act on.
+    def self.update_custom(model, root, raw)
+      raw = {} unless raw.is_a?(Hash)
+      dictionary = AttributeManager::DICTIONARY
+      inner = root.definition.entities.grep(Sketchup::ComponentInstance).find { |item| item.name != CUSTOM_HANDLE_NAME }
+      return Response.fail("#{root.name} has no model inside to resize.") unless inner
+
+      stored = AttributeManager.read(root)
+      value = ->(key) { ValidationManager.to_float(raw[key]) }
+      reach = stored['custom_reach'].to_f
+      category = stored['cabinet_category'].to_s
+      old = { depth: stored['envelope_depth'].to_f, width: stored['width'].to_f, height: stored['height'].to_f, toe: stored['base_z'].to_f }
+      fresh = {
+        depth: value.call('depth') ? value.call('depth') + reach : old[:depth],
+        width: value.call('width') || old[:width],
+        height: value.call('height') || old[:height],
+        toe: %w[base tall].include?(category) ? (value.call('toe_kick_height') || old[:toe]) : 0.0
+      }
+      return Response.fail('The size of the cabinet must be between 50 and 3000 mm.') unless %i[depth width height].all? { |key| fresh[key].between?(50.0, 3000.0) && old[key] > 0.0 }
+      return Response.fail('The toe kick height must be between 0 and 400 mm.') unless fresh[:toe].between?(0.0, 400.0)
+
+      placed = root.transformation
+      grew = fresh[:height] - old[:height]
+      placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -grew.mm)) * placed if category == 'wall' && grew.abs > 0.01 # (a wall unit hangs by its top)
+      old_size = [old[:depth], old[:width], old[:toe] + old[:height]]
+      new_size = [fresh[:depth], fresh[:width], fresh[:toe] + fresh[:height]]
+      if old_size != new_size && PlacementManager.crowds?(root.parent.entities, root, placed, new_size, old_size)
+        return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
+      end
+
+      SelectionManager.suspend do
+        with_operation(model, 'Update Cabinet') do
+          corner = inner.bounds.min
+          scale = Geom::Transformation.scaling(corner, fresh[:depth] / old[:depth], fresh[:width] / old[:width], fresh[:height] / old[:height])
+          inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, (fresh[:toe] - old[:toe]).mm)) * scale)
+          name = NamingManager.base_name(stored.merge('width' => fresh[:width]))
+          AttributeManager.write(root, 'cabinet_name' => name, 'width' => fresh[:width], 'depth' => [fresh[:depth] - reach, 50.0].max, 'height' => fresh[:height],
+                                       'toe_kick_height' => fresh[:toe], 'base_z' => fresh[:toe], 'top_z' => (fresh[:toe] + fresh[:height]).round(2),
+                                       'envelope_width' => fresh[:width], 'envelope_depth' => fresh[:depth], 'envelope_top' => (fresh[:toe] + fresh[:height]).round(2))
+          root.name = name
+          root.transformation = placed unless placed.equal?(root.transformation)
+          paint_custom_model(model, root, raw)
+          refresh_custom_handle(model, root, raw)
+          PartManager.follow_door(model, root)
+          WallBottomManager.refresh(model) if defined?(WallBottomManager)
+        end
+      end
+      SelectionManager.push_selection(model)
+      Response.ok("#{root.name} updated. Base Z #{fmt(fresh[:toe])} mm, top Z #{fmt(fresh[:toe] + fresh[:height])} mm.")
+    end
+    private_class_method :update_custom
 
     # A copy of a model of your own: the same component, placed after it like any cabinet, with an order number and an id of its own.
     def self.duplicate_custom(model, source)
