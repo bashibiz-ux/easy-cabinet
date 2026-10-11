@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.21.0';
+  const APP_VERSION = '1.21.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -194,9 +194,11 @@
     if (followSelection() || name === 'cabinet_cleared') state.heldKind = null;
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
     // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
-    // With the tick off nothing is opened or scrolled to, but the Cabinet & Extras card, when it is already open, still shows what is selected.
+    // With the tick off nothing is opened or scrolled to, but a card that is already open (Presets, Handle, Material or Cabinet & Extras) still shows what is selected.
     const quiet = !followSelection();
-    const inOpenCard = quiet && !$('sec-cabinet').classList.contains('collapsed') && (name === 'cabinet_selected' || (name === 'part_selected' && !['worktop', 'backsplash'].includes(data.part_kind)));
+    // (a card that shows the settings of what is selected: Presets, Handle, Material, Cabinet & Extras)
+    const hosting = ['sec-presets', 'sec-handle', 'sec-material', 'sec-cabinet'].some((id) => $(id) && !$(id).classList.contains('collapsed'));
+    const inOpenCard = quiet && hosting && (name === 'cabinet_selected' || (name === 'part_selected' && !['worktop', 'backsplash'].includes(data.part_kind)));
     if (quiet && (name === 'cabinet_selected' || name === 'part_selected') && !inOpenCard) {
       state.selectedKind = null;
       state.wallBottomSelected = false;
