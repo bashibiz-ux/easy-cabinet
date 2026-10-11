@@ -309,7 +309,6 @@ module KitchenCabinetMaster
       instance = nil
       with_operation(model, 'Insert Model') do
         definition = model.definitions.load(path)
-        alone = SelectionManager.selected_occupant(model).nil? && PlacementManager.last_occupant(model).nil? # (the first thing in the model starts the row)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
         name = entry['name'].to_s
@@ -321,9 +320,6 @@ module KitchenCabinetMaster
         corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
         inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
         depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
-        # The first cabinet of a kitchen faces +Y, its width running along +X from the origin: the component flipped (its X and Y swapped, as
-        # Flip Along does), so the row that follows carries on toward +X.
-        target *= Geom::Transformation.new([0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]) if alone
         instance = entities.add_instance(holder, target)
         instance.name = name
 
