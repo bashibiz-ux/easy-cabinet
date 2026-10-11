@@ -393,6 +393,9 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
       runs = Worktop.runs(items_of(model), panels_of(model), merge: Worktop.continuous?(params))
       return Response.fail('There are no base units to put a worktop on. Insert a base unit first.') if runs.empty?
 
+      skip = Array(raw['skip_runs']).map(&:to_s) # (the runs whose worktop was deleted, while the Presets switch keeps it up)
+      runs = runs.reject { |run| skip.include?(run_key(run)) }
+
       # With a worktop piece selected the settings are for the run it belongs to; with none selected they are for every run.
       keys = selected_run_keys(model) # (the pieces selected, one or several; none selected: every run)
       unless keys.empty?
@@ -400,6 +403,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
         existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }
         return Response.fail('The selected worktop does not sit on base units any more.') if runs.empty?
       end
+      return Response.ok('The worktop was deleted: nothing to put back.') if runs.empty? && !skip.empty?
 
       count = SelectionManager.suspend do
         with_operation(model, 'Apply Worktop') do

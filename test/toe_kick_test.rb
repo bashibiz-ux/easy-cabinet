@@ -387,9 +387,16 @@ class ToeKickTest < Minitest::Test
     assert_equal [18.0, 0.0], ToeKick.panel_reach(apart.first(1), 1800.0)
   end
 
-  def test_a_panel_that_does_not_reach_the_floor_or_is_somewhere_else_does_not_make_the_toe_kick_longer
-    floating = { y: -18.0, thickness: 18.0, base: 100.0 }
-    elsewhere = { y: 900.0, thickness: 18.0, base: 0.0 }
-    assert_equal [0.0, 0.0], ToeKick.panel_reach([floating, elsewhere], 1800.0)
-  end
+def test_a_panel_of_a_wall_unit_or_somewhere_else_does_not_make_the_toe_kick_longer
+  hanging = { y: -18.0, thickness: 18.0, base: 1480.0, category: 'wall' }
+  elsewhere = { y: 900.0, thickness: 18.0, base: 0.0 }
+  assert_equal [0.0, 0.0], ToeKick.panel_reach([hanging, elsewhere], 1800.0)
+end
+
+def test_a_panel_only_on_the_cabinet_has_the_toe_kick_run_under_it_to_its_outer_face
+  on_the_cabinet = [{ y: -18.0, thickness: 18.0, base: 100.0, category: 'base' }, { y: 1800.0, thickness: 18.0, base: 100.0, category: 'base' }]
+  assert_equal [18.0, 18.0], ToeKick.panel_reach(on_the_cabinet, 1800.0)
+  apart = [{ y: -40.0, thickness: 18.0, base: 100.0, category: 'base' }]
+  assert_equal [40.0, 0.0], ToeKick.panel_reach(apart, 1800.0)
+end
 end

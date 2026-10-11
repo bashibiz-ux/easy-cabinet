@@ -132,6 +132,12 @@ module KitchenCabinetMaster
         return
       end
 
+      many = model.selection.select { |item| AttributeManager.cabinet?(item) }
+      if many.length > 1 # (several cabinets: the card shows the first one's settings, and what is typed goes to all of them)
+        DialogManager.push('cabinet_selected', AttributeManager.read(many.first).merge('selected_count' => many.length))
+        return
+      end
+
       part = selected_part(model)
       if part
         DialogManager.push('part_selected', AttributeManager.read(part))

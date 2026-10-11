@@ -51,8 +51,10 @@ module KitchenCabinetMaster
           # The carcass rises by the thickness of the panel, so the panel takes the room under it and the doors stay where they were.
           raised, problems = raise_wall_units(model, thickness) if keys.empty?
           runs = Worktop.runs(items_of(model))
+          skip = Array(raw['skip_runs']).map(&:to_s) # (the runs whose panel was deleted, while the Presets switch keeps it up)
+          runs = runs.reject { |run| skip.include?(run_key(run)) }
           runs = runs.select { |run| keys.include?(run_key(run)) } unless keys.empty?
-          raise 'The selected panel is not under wall units with a raised carcass any more.' if runs.empty?
+          raise 'The selected panel is not under wall units with a raised carcass any more.' if runs.empty? && skip.empty?
 
           existing.each { |item| PartGenerator.remove(model, item) }
           runs.each { |run| build(model, run, params) }

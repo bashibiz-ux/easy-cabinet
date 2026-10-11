@@ -70,10 +70,12 @@ module KitchenCabinetMaster
       lead = 0.0
       trail = 0.0
       panels.each do |panel|
-        next if panel[:base].to_f > 1.0
+        high = panel[:base].to_f > 1.0
+        next if high && panel[:category].to_s == 'wall' # (the side panel of a wall unit hangs: no toe kick under it)
 
-        before = -(panel[:y].to_f + panel[:thickness].to_f) # the room between the inner face of a panel at the start and the start of the row
-        after = panel[:y].to_f - length                       # and between the end of the row and the inner face of a panel at the end
+        # A panel that is only on the cabinet leaves the floor under it free: the toe kick goes under it, to its outer face.
+        before = -(panel[:y].to_f + (high ? 0.0 : panel[:thickness].to_f)) # the room between the inner face of a panel at the start and the start of the row
+        after = panel[:y].to_f + (high ? panel[:thickness].to_f : 0.0) - length # and between the end of the row and the inner face of a panel at the end
         lead = [lead, before].max if before > 0.5 && before <= REACH_LIMIT
         trail = [trail, after].max if after > 0.5 && after <= REACH_LIMIT
       end

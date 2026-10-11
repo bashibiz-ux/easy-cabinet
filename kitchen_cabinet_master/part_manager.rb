@@ -142,6 +142,7 @@ module KitchenCabinetMaster
       filler = AttributeManager.part_kind(target) == 'filler'
       door = door_material_of(target_params)
       carcass = filler ? door : CabinetGenerator.carcass_material(target_params, door)
+      raw = to_floor(raw, target, target_params)
 
       # Depth and height are the panel's own to set. Left blank they start as the
       # target's: depth flush with its door front, height up to its top.
@@ -256,6 +257,7 @@ module KitchenCabinetMaster
       hangs = (filler ? target_params['target_category'] : target_params['cabinet_category']).to_s == 'wall'
       carcass = start_z_of(target, target_params)
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
+      inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
       model.selection.clear
       model.selection.add(target)
@@ -387,6 +389,19 @@ module KitchenCabinetMaster
     end
     private_class_method :remove_auto_panels
 
+    # The Side Panel card's "to the floor" option: on the end of a row (nothing against that side) the panel starts at the floor; without it, or on a side
+    # that has a unit against it, it stands only on the cabinet (from the bottom of its carcass).
+    def self.to_floor(raw, target, target_params)
+      values = stringify(raw)
+      return values unless truthy?(values['to_floor']) && !wall_item?(target) && values['raise'].to_s.strip.empty?
+
+      _rectangles, touching, _near = side_rectangles(target, target_params, values['side'].to_s, values['thickness'].to_f + 3.0)
+      return values unless touching.empty?
+
+      values.merge('raise' => 0.0, 'height' => top_of(target_params), 'height_auto' => false)
+    end
+    private_class_method :to_floor
+
     # A side panel on every side that shows, of every cabinet and filler (inside an operation of its own, see LiveParts).
     def self.place_auto_panels(model, values)
       targets = model.entities.select { |entity| AttributeManager.cabinet?(entity) || AttributeManager.part_kind(entity) == 'filler' }
@@ -397,7 +412,12 @@ module KitchenCabinetMaster
       begin
         panel_values = stringify(values).merge('auto' => true)
         tallest_first(targets).each do |target|
-          %w[left right].each { |side| made += place_exposed_panels(model, target, side, panel_values)[0] }
+          id = AttributeManager.cabinet_id(target) || AttributeManager.part_id(target)
+          %w[left right].each do |side|
+            next if LiveParts.dismissed?("side:#{id}:#{side}") # (taken away with Delete)
+
+            made += place_exposed_panels(model, target, side, panel_values)[0]
+          end
         end
       ensure
         @batch = false
@@ -431,6 +451,8 @@ module KitchenCabinetMaster
       @batch = true
       begin
         anchors.each do |anchor|
+          next if LiveParts.dismissed?("toe:#{AttributeManager.cabinet_id(anchor) || AttributeManager.part_id(anchor)}") # (taken away with Delete)
+
           model.selection.clear
           model.selection.add(anchor)
           answer = insert_toe_kick(stringify(values).merge('toe_kick_cover_row' => true))
@@ -767,7 +789,7 @@ module KitchenCabinetMaster
         relative = to_frame * part.transformation
         next unless relative.origin.x.to_mm.abs < 5.0 && relative.yaxis.y > 0.98 # (against the same line of units, the same way round)
 
-        { y: relative.origin.y.to_mm, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f }
+        { y: relative.origin.y.to_mm, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f, category: stored['target_category'].to_s }
       end
       ToeKick.panel_reach(panels, length)
     end

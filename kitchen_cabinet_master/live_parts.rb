@@ -47,14 +47,57 @@ module KitchenCabinetMaster
       end
     end
 
+    # What the user took away with Delete stays away while the switch is on (the way it is told apart: a side panel by its cabinet and side, a toe
+    # kick by the unit it starts at, the worktop and the bottom panels by their run of units). Turning the switch off and on again brings it back.
+    KEY_DISMISSED = 'live_dismissed'
+    DISMISS_PREFIX = { KEY_SIDE_PANELS => 'side', KEY_TOE_KICKS => 'toe', KEY_WORKTOP => 'worktop', KEY_WALL_BOTTOM => 'bottom' }.freeze
+
+    def self.dismissed(model = Sketchup.active_model)
+      JSON.parse(model.get_attribute(DICTIONARY, KEY_DISMISSED, '[]'))
+    rescue JSON::ParserError
+      []
+    end
+
+    def self.dismissed?(key) = dismissed.include?(key)
+
+    # The ids dismissed under `prefix` ("worktop:123" => "123").
+    def self.dismissed_ids(model, prefix)
+      dismissed(model).filter_map { |key| key.split(':', 2)[1] if key.start_with?("#{prefix}:") }
+    end
+
+    def self.forget(model, prefix)
+      model.set_attribute(DICTIONARY, KEY_DISMISSED, JSON.generate(dismissed(model).reject { |key| key.start_with?("#{prefix}:") }))
+    end
+
+    # Called before parts are deleted: those a switch made are remembered, so that the refresh does not put them back.
+    def self.dismiss_parts(model, parts)
+      keys = parts.filter_map { |part| key_for(part) }
+      return if keys.empty?
+
+      model.set_attribute(DICTIONARY, KEY_DISMISSED, JSON.generate((dismissed(model) + keys).uniq))
+    end
+
+    def self.key_for(part)
+      dictionary = AttributeManager::DICTIONARY
+      stored = AttributeManager.read(part) || {}
+      case AttributeManager.part_kind(part)
+      when 'end_panel', 'filler' then part.get_attribute(dictionary, AUTO) == true ? "side:#{stored['target_id']}:#{stored['side']}" : nil
+      when 'toe_kick' then part.get_attribute(dictionary, AUTO_TOE) == true ? "toe:#{stored['toe_kick_from']}" : nil
+      when 'worktop', 'backsplash' then worktop? && !stored['run_key'].to_s.empty? ? "worktop:#{stored['run_key']}" : nil
+      when 'wall_bottom' then wall_bottom? && !stored['run_key'].to_s.empty? ? "bottom:#{stored['run_key']}" : nil
+      end
+    end
+
     # Writes down a tick and the settings that go with it (the panel's own fields, sent when the tick is changed).
     def self.keep(model, key, on, raw)
       model.set_attribute(DICTIONARY, key, on)
+      forget(model, DISMISS_PREFIX.fetch(key)) unless on # (switched on again, everything comes back)
       model.set_attribute(DICTIONARY, VALUES[key], JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
     end
     private_class_method :keep
 
-    def self.on?(key) = Sketchup.active_model.get_attribute(DICTIONARY, key, false) == true
+    def self.on?(key, default = true) = Sketchup.active_model.get_attribute(DICTIONARY, key, default) == true
+    # Every switch is on to begin with, the dimensions apart.
     def self.toe_kicks? = on?(KEY_TOE_KICKS)
     def self.wall_bottom? = on?(KEY_WALL_BOTTOM)
     def self.worktop? = on?(KEY_WORKTOP)
@@ -93,24 +136,39 @@ module KitchenCabinetMaster
         sync_toe_kicks(model)
         sync_dimensions(model)
       end
+      kept = model.selection.to_a
       sync_worktop(model) # (the worktop and the bottom panels are steps of their own)
       sync_wall_bottom(model)
+      keep_selection(model, kept)
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not refresh the live parts: #{e.message}"
     end
 
     # One step of Undo that joins the one before it.
     def self.apply(model, name)
-      model.start_operation(name, true, false, true)
-      begin
-        yield
-        model.commit_operation
-      rescue StandardError
-        model.abort_operation
-        raise
+      kept = model.selection.to_a
+      SelectionManager.suspend do
+        model.start_operation(name, true, false, true)
+        begin
+          yield
+          model.commit_operation
+        rescue StandardError
+          model.abort_operation
+          raise
+        end
       end
+      keep_selection(model, kept)
     end
     private_class_method :apply
+
+    # What was selected before stays selected (the parts that were drawn again may have cleared it).
+    def self.keep_selection(model, kept)
+      return if kept.empty?
+
+      model.selection.clear
+      kept.each { |item| model.selection.add(item) if item.valid? }
+    end
+    private_class_method :keep_selection
 
     def self.sync_dimensions(model)
       DimensionManager.remove_all(model)
@@ -133,7 +191,7 @@ module KitchenCabinetMaster
     # made is taken away (a worktop you applied yourself is left alone).
     def self.sync_worktop(model)
       if worktop?
-        answer = WorktopManager.apply(values_of(model, KEY_WORKTOP).merge('only_if_exists' => false))
+        answer = WorktopManager.apply(values_of(model, KEY_WORKTOP).merge('only_if_exists' => false, 'skip_runs' => dismissed_ids(model, 'worktop')))
         model.set_attribute(DICTIONARY, MADE[KEY_WORKTOP], true) if answer['ok']
       elsif model.get_attribute(DICTIONARY, MADE[KEY_WORKTOP], false) == true
         WorktopManager.remove
@@ -144,7 +202,7 @@ module KitchenCabinetMaster
 
     def self.sync_wall_bottom(model)
       if wall_bottom?
-        answer = WallBottomManager.apply(values_of(model, KEY_WALL_BOTTOM).merge('only_if_exists' => false))
+        answer = WallBottomManager.apply(values_of(model, KEY_WALL_BOTTOM).merge('only_if_exists' => false, 'skip_runs' => dismissed_ids(model, 'bottom')))
         model.set_attribute(DICTIONARY, MADE[KEY_WALL_BOTTOM], true) if answer['ok']
       elsif model.get_attribute(DICTIONARY, MADE[KEY_WALL_BOTTOM], false) == true
         WallBottomManager.remove

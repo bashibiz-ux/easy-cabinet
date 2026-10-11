@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.19.1';
+  const APP_VERSION = '1.20.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -406,6 +406,7 @@
       height_auto: !state.touched.has('epHeight'),
       material: $('epMaterial').value,
       face: $('epFace').value,
+      to_floor: $('epToFloor').checked, // (on: the end of a row goes down to the floor; off: only on the cabinet)
       front_radius: mmv('frontRadius'), // its outer edges are as round as the doors'
       front_design: $('frontDesign').value // the design an side panel set to follow the front design is cut in
     };
@@ -2028,7 +2029,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'resizeNeighbours', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2456,6 +2457,7 @@ function liveEdit(el) {
     setSelect('handleHPlace', 'middle');
     syncHandlePosition();
     fillSelect($('epSide'), m.end_panel_sides);
+    setSelect('epSide', (m.end_panel_defaults || {}).side || 'right'); // (the right side to begin with)
     loadMaterials(m.materials);
     applyDefaults(m.defaults);
     $('visWorktop').checked = m.show_worktop !== false; // what the model has hidden
@@ -2520,10 +2522,12 @@ function liveEdit(el) {
       // or press Update, to change it) unless the tick under the list says so.
       const follow = $('liveCabinet').checked && state.selectedKind === 'cabinet' && categoryKind() === 'cabinet';
       if (state.selectedKind && !follow) { state.liveHold = true; clearTimeout(state.liveTimer); }
+      const kept = follow ? ['width', 'depth', 'height'].map((id) => [id, $(id).value]) : []; // (the selected cabinet keeps its own size: only its type changes)
       applyCabinetDefaults();
+      kept.forEach(([id, value]) => { $(id).value = value; });
       drawPreview();
       lockActions();
-      if (follow) liveAfterCabinetChange();
+      if (follow) { state.liveHold = false; liveAfterCabinetChange(); } // (picking from the list is a deliberate change: an earlier hold does not stop it)
     });
     $('widthPreset').addEventListener('change', () => {
       if ($('widthPreset').value !== 'custom') {
@@ -2666,11 +2670,12 @@ $('kitchenLayout').addEventListener('change', () => {
       $('snapEnabled').checked = res.data.snap_enabled !== false;
       $('liveDimensions').checked = res.data.live_dimensions === true;
       $('liveSidePanels').checked = res.data.live_side_panels !== false;
-      $('liveToeKicks').checked = res.data.live_toe_kicks === true;
-      $('liveWallBottom').checked = res.data.live_wall_bottom === true;
-      $('liveWorktop').checked = res.data.live_worktop === true;
+      $('liveToeKicks').checked = res.data.live_toe_kicks !== false;
+      $('liveWallBottom').checked = res.data.live_wall_bottom !== false;
+      $('liveWorktop').checked = res.data.live_worktop !== false;
       await buildUi();
       if ($('liveSidePanels').checked) await sendSidePanels(); // (on to begin with: the Side Panel settings of the panel go with it)
+      for (const id of Object.keys(LIVE_PART_TICKS)) { if ($(id).checked) await sendLivePart(id); } // (and the settings of the toe kick, bottom panel and worktop sections)
     } catch (error) {
       setStatus('error', error.message);
     }
