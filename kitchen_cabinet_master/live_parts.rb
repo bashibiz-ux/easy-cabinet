@@ -28,6 +28,7 @@ module KitchenCabinetMaster
         Response.ok(on ? 'Dimensions are on: they follow the cabinets.' : 'Dimensions are off.')
       when 'set_live_side_panels'
         model.set_attribute(DICTIONARY, KEY_SIDE_PANELS, on)
+        forget(model, DISMISS_PREFIX.fetch(KEY_SIDE_PANELS)) unless on # (switched on again, the side panels that were deleted come back)
         model.set_attribute(DICTIONARY, KEY_SIDE_VALUES, JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
         apply(model, "#{on ? 'Place' : 'Remove'} Side Panels") { sync_side_panels(model) }
         Response.ok(on ? 'Side panels on every exposed side are on: they follow the cabinets.' : 'The side panels placed by the tick are taken away.')
