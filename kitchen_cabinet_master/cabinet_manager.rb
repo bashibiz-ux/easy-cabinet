@@ -312,6 +312,7 @@ module KitchenCabinetMaster
       instance = nil
       with_operation(model, 'Insert Model') do
         definition = model.definitions.load(path)
+        definition.entities.grep(Sketchup::ComponentInstance).select { |item| item.name == CUSTOM_HANDLE_NAME }.each(&:erase!) # (a handle left in the saved model: the cabinet gets its own, on its door)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
         holder = AttributeManager.mark_managed(model.definitions.add(NamingManager.base_name(params.merge('width' => size[0]))))
@@ -453,6 +454,7 @@ module KitchenCabinetMaster
       handle.transformation = transformation
       handle.name = CUSTOM_HANDLE_NAME
       CabinetGenerator.paint_handle(model, handle, bundle, handle_settings)
+      CabinetGenerator.apply_custom_visibility(instance, AttributeManager.read(instance).to_h)
       true
     end
     private_class_method :sync_custom_handle

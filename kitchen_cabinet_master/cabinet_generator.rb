@@ -102,6 +102,9 @@ module KitchenCabinetMaster
     # nothing is rebuilt.
     def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol = false, hide_wall_handles = false,
                              hide_base_handles = false, hide_tall_handles = false)
+      return apply_custom_visibility(root, 'visibility_settings' => visibility, 'hide_wall_handles' => hide_wall_handles, 'hide_base_handles' => hide_base_handles,
+                                           'hide_tall_handles' => hide_tall_handles) if AttributeManager.custom_model?(root)
+
       doors_visible = visibility['door'] != false
       wall = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
       base_like = %w[base corner].include?(root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category'))
@@ -124,6 +127,21 @@ module KitchenCabinetMaster
             handle.visible = !hidden
           end
         end
+      end
+    end
+
+    # A model of your own follows the same ticks: the Carcass tick shows or hides the model, the Door tick its handle (which the Show handles
+    # ticks of its kind can hide as well). `stored` has 'visibility_settings' and the 'hide_*_handles' flags.
+    def self.apply_custom_visibility(root, stored)
+      visibility = stored['visibility_settings'].is_a?(Hash) ? stored['visibility_settings'] : {}
+      category = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category').to_s
+      hidden = case category
+               when 'wall' then stored['hide_wall_handles'] == true
+               when 'tall' then stored['hide_tall_handles'] == true
+               else stored['hide_base_handles'] == true
+               end
+      root.definition.entities.grep(Sketchup::ComponentInstance).each do |item|
+        item.visible = item.name == 'Handle' ? (visibility['door'] != false && !hidden) : visibility['carcass'] != false
       end
     end
 
