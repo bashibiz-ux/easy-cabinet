@@ -35,29 +35,36 @@ module KitchenCabinetMaster
       thickness = params['thickness']
 
       model = Sketchup.active_model
-      items = items_of(model)
-      return Response.fail('There are no wall units with a raised carcass. Set "Carcass bottom raise" on the wall units first.') if items.empty?
+      return Response.fail('There are no wall units to put a bottom panel under.') if wall_units(model).empty?
 
-      runs = Worktop.runs(items)
       existing = pieces_in(model)
       # With a wall bottom panel selected the settings are for the run it belongs to; with none selected, for every run.
       keys = selected_run_keys(model) # (the pieces selected, one or several; none selected: every run)
       unless keys.empty?
-        runs = runs.select { |run| keys.include?(run_key(run)) }
         existing = existing.select { |item| keys.include?(AttributeManager.read(item)['run_key'].to_s) }
-        return Response.fail('The selected panel is not under wall units with a raised carcass any more.') if runs.empty?
       end
+      runs = nil
+      raised = 0
+      problems = []
       SelectionManager.suspend do
         with_operation(model, 'Apply Wall Bottom Panel') do
+          # The carcass rises by the thickness of the panel, so the panel takes the room under it and the doors stay where they were.
+          raised, problems = raise_wall_units(model, thickness) if keys.empty?
+          runs = Worktop.runs(items_of(model))
+          runs = runs.select { |run| keys.include?(run_key(run)) } unless keys.empty?
+          raise 'The selected panel is not under wall units with a raised carcass any more.' if runs.empty?
+
           existing.each { |item| PartGenerator.remove(model, item) }
           runs.each { |run| build(model, run, params) }
         end
       end
       SelectionManager.push_selection(model)
 
-      note = items.any? { |item| item[:raise] < thickness } ? ' Where the raise is less than the panel thickness, the panel hangs below the doors.' : ''
       count = runs.sum { |run| spans_of(run, params).length }
-      Response.ok("#{count} bottom panel#{'s' unless count == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', thickness)} mm thick.#{note}")
+      lifted = raised.positive? ? " The carcass of #{raised} wall unit#{'s' unless raised == 1} was raised by #{format('%g', thickness)} mm." : ''
+      Response.ok("#{count} bottom panel#{'s' unless count == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', thickness)} mm thick.#{lifted}#{" #{problems.uniq.join(' ')}" unless problems.empty?}")
+    rescue RuntimeError => e
+      Response.fail(e.message)
     end
 
     def self.remove
@@ -65,8 +72,12 @@ module KitchenCabinetMaster
       existing = pieces_in(model)
       return Response.ok('There is no wall bottom panel to remove.') if existing.empty?
 
+      thicknesses = existing.map { |item| AttributeManager.read(item)['wall_bottom_thickness'].to_f }.uniq
       SelectionManager.suspend do
-        with_operation(model, 'Remove Wall Bottom Panel') { existing.each { |item| PartGenerator.remove(model, item) } }
+        with_operation(model, 'Remove Wall Bottom Panel') do
+          existing.each { |item| PartGenerator.remove(model, item) }
+          lower_wall_units(model, thicknesses) # the carcass comes down again by what the panel had lifted it
+        end
       end
       SelectionManager.push_selection(model)
       Response.ok('The wall bottom panels were removed.')
@@ -88,6 +99,52 @@ module KitchenCabinetMaster
         build(model, run, mine ? params_of(mine) : params) # each run keeps the settings its own panel was built with
       end
     end
+
+    # Every wall unit of the extension (not a model of your own).
+    def self.wall_units(model)
+      model.entities.grep(Sketchup::ComponentInstance).select do |item|
+        AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && AttributeManager.read(item)['cabinet_category'] == 'wall'
+      end
+    end
+
+    # Raises the carcass bottom of every wall unit that is raised by less than `thickness`, to `thickness`. Inside an operation.
+    # Returns [how many, the problems].
+    def self.raise_wall_units(model, thickness)
+      raised = 0
+      problems = []
+      wall_units(model).each do |item|
+        stored = AttributeManager.read(item)
+        next unless stored['carcass_raise'].to_f < thickness - 0.01
+
+        params, errors = CabinetManager.send(:restyle_params, model, stored, 'carcass_raise' => thickness)
+        if params.nil?
+          problems << "#{item.name}: #{errors.first['message']}"
+          next
+        end
+        params['custom_overrides'] = ValidationManager.clean_overrides(stored['custom_overrides'])
+        params['cabinet_name'] = NamingManager.for_update(item, params)
+        CabinetGenerator.update(model, item, params)
+        raised += 1
+      end
+      [raised, problems]
+    end
+    private_class_method :raise_wall_units
+
+    # Puts the carcass of the wall units that were raised by exactly the thickness of a removed panel back down. Inside an operation.
+    def self.lower_wall_units(model, thicknesses)
+      wall_units(model).each do |item|
+        stored = AttributeManager.read(item)
+        next unless thicknesses.any? { |thickness| (stored['carcass_raise'].to_f - thickness).abs < 0.01 }
+
+        params, errors = CabinetManager.send(:restyle_params, model, stored, 'carcass_raise' => 0.0)
+        next if params.nil? || !errors.empty?
+
+        params['custom_overrides'] = ValidationManager.clean_overrides(stored['custom_overrides'])
+        params['cabinet_name'] = NamingManager.for_update(item, params)
+        CabinetGenerator.update(model, item, params)
+      end
+    end
+    private_class_method :lower_wall_units
 
     def self.run_key(run)
       run[:items].first[:ref].persistent_id.to_s

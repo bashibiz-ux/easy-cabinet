@@ -68,6 +68,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       root = SelectionManager.selected_cabinet(model) || SelectionManager.selected_part(model)
       kinds = CustomizeManager::PART_KINDS
+      return Response.fail('A model of your own has no parts to customize: it was drawn by you.') if root && AttributeManager.custom_model?(root)
       unless root && (AttributeManager.cabinet?(root) || kinds.include?(AttributeManager.part_kind(root)))
         return Response.fail('Select a cabinet, filler, side panel, toe kick or worktop in the model to customize it.')
       end
@@ -290,7 +291,10 @@ module KitchenCabinetMaster
     end
     private_class_method :bounds_mm
 
-    # Inserts a model from your catalog as a component, in the row like a cabinet (beside the selected item).
+    # Inserts a model from your catalog, in the row like a cabinet (beside the selected item). The model stands in a component of its own (the
+    # "cabinet"): turned so that its width runs along Y and its front faces +X, with its back and its left end on the origin of that component
+    # (measured, not worked out from the saved size), lifted by the toe kick height when it is a base or a tall unit. That component carries a
+    # cabinet's attributes, so the rules of the extension (placement, snapping, worktop, toe kicks, side panels, dimensions) apply to it.
     def self.insert_component(raw, entry)
       path = CatalogManager.component_path(entry)
       return Response.fail('The model file of this catalog entry is missing.') unless path && File.file?(path)
@@ -298,37 +302,50 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       size = [entry.dig('defaults', 'width'), entry.dig('defaults', 'depth'), entry.dig('defaults', 'height')].map(&:to_f)
       category = raw['cabinet_category'].to_s
-      params = Defaults.params.merge('width' => size[0], 'depth' => size[1], 'height' => size[2], 'cabinet_category' => category,
-                                     'door_count' => 0, 'drawer_count' => 0, 'catalog_id' => raw['catalog_id'].to_s)
+      number = ->(key, fallback) { Float(raw[key].to_s.tr(',', '.'), exception: false) || fallback.to_f }
+      toe = %w[base tall].include?(category) ? number.call('toe_kick_height', Defaults.params['toe_kick_height']) : 0.0
+      params = Defaults.params.merge('width' => size[0], 'depth' => size[1], 'height' => size[2] + toe, 'cabinet_category' => category,
+                                     'door_count' => 0, 'drawer_count' => 0, 'catalog_id' => raw['catalog_id'].to_s, 'cabinet_type' => raw['cabinet_type'].to_s, 'placement_gap' => number.call('placement_gap', 0.0))
       instance = nil
       with_operation(model, 'Insert Model') do
         definition = model.definitions.load(path)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
+        name = entry['name'].to_s
+        holder = AttributeManager.mark_managed(model.definitions.add(name))
         # the model's X runs along the row (its width), its Y front to back: turn it a quarter so the width lies along the row
-        local = Geom::Transformation.translation(Geom::Vector3d.new(size[1].mm, 0, 0)) *
-                Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) *
-                Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
-        instance = entities.add_instance(definition, target * local)
-        instance.name = entry['name'].to_s
+        turned = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) *
+                 Geom::Transformation.translation(Geom::Vector3d.new(-low.x, -low.y, -low.z))
+        inner = holder.entities.add_instance(definition, turned)
+        corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
+        inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
+        depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
+        instance = entities.add_instance(holder, target)
+        instance.name = name
+
         box = [low.x.to_mm, low.y.to_mm, low.z.to_mm, definition.bounds.width.to_mm, definition.bounds.height.to_mm, definition.bounds.depth.to_mm].map { |v| v.round(2) }
-# Placed like a cabinet of the extension: the same size attributes (its envelope from its back, on the floor), its place in the order of
-        # insertion and its kind, so the next cabinet follows it, nothing overlaps it, a wall unit hangs over it and the worktop covers it.
-        {
-          'cabinet_category' => category, 'cabinet_name' => entry['name'].to_s, 'catalog_id' => raw['catalog_id'].to_s, 'sequence' => AttributeManager.next_sequence(model),
-          'width' => size[0], 'depth' => size[1], 'height' => size[2], 'envelope_width' => size[0], 'envelope_depth' => size[1], 'envelope_top' => size[2],
-          'base_z' => 0.0, 'top_z' => size[2]
-        }.each { |key, value| instance.set_attribute(AttributeManager::DICTIONARY, key, value) }
-        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
-        # What marks it as a model of your own (it is not a cabinet of the extension, so it has no settings of its own): its kind, and
-        # the material of that kind (Base, Wall or Tall material) from the Material section goes on it, like on a cabinet.
-        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
-        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
-        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
-        paint_custom_model(model, instance, raw)
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
+        # What marks the model inside as one of your own: its kind, and the material of that kind (Base, Wall or Tall material) from the
+        # Material section goes on it, like on a cabinet.
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_model', true)
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_category', category)
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_catalog', raw['catalog_id'].to_s)
+        paint_custom_model(model, inner, raw)
         settings = raw.slice(*CUSTOM_HANDLE_KEYS)
-        instance.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
-        sync_custom_handle(model, instance, settings) # a handle on its front, from the Handle section
+        inner.set_attribute(AttributeManager::DICTIONARY, 'custom_handle', JSON.generate(settings))
+        sync_custom_handle(model, inner, settings) # a handle on its front, from the Handle section
+
+        # The component is a cabinet as far as the rest of the extension can tell: its size (the carcass depth is what the front stands
+        # in front of: door distance and door thickness are taken off so that a side panel or a filler comes flush with the front), its
+        # place in the order of insertion, its kind and its toe kick height.
+        reach = number.call('door_distance', Defaults.params['door_distance']) + number.call('material_thickness', Defaults.params['material_thickness'])
+        stored = params.merge(
+          'cabinet_id' => AttributeManager.next_cabinet_id(model), 'sequence' => AttributeManager.next_sequence(model), 'cabinet_name' => name,
+          'width' => width, 'depth' => [depth - reach, 50.0].max, 'height' => height, 'toe_kick_height' => toe, 'base_z' => toe, 'top_z' => (toe + height).round(2),
+          'envelope_width' => width, 'envelope_depth' => depth, 'envelope_top' => (toe + height).round(2), 'custom_wrapper' => true
+        )
+        AttributeManager.write(instance, stored)
+        TagManager.assign(model, instance, TagManager.for_category(category))
         instance
       end
       SelectionManager.select(instance)
@@ -454,7 +471,15 @@ module KitchenCabinetMaster
 
     # The models of your own that were inserted from a catalog.
     def self.custom_models(model)
-      model.entities.grep(Sketchup::ComponentInstance).select { |instance| instance.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true }
+model.entities.grep(Sketchup::ComponentInstance).flat_map do |instance|
+        if instance.get_attribute(AttributeManager::DICTIONARY, 'custom_wrapper') == true # (the model inside its own component)
+          instance.definition.entities.grep(Sketchup::ComponentInstance).select { |inner| inner.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true }
+        elsif instance.get_attribute(AttributeManager::DICTIONARY, 'custom_model') == true
+          [instance]
+        else
+          []
+        end
+      end
     end
     private_class_method :custom_models
 
@@ -526,6 +551,7 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       root = SelectionManager.selected_cabinet(model)
       return Response.fail('Select a cabinet in the model to update.') unless root
+      return Response.ok("#{root.name} is a model of your own: it is not rebuilt from the panel.") if AttributeManager.custom_model?(root)
 
       params, failure = prepare(raw)
       return failure if failure
@@ -836,6 +862,8 @@ module KitchenCabinetMaster
       source = SelectionManager.selected_cabinet(model)
       return Response.fail('Select a cabinet in the model to duplicate.') unless source
 
+      return duplicate_custom(model, source) if AttributeManager.custom_model?(source)
+
       params = Defaults.params.merge(AttributeManager.read(source))
       source_name = source.name.to_s
       copy = SelectionManager.suspend do
@@ -854,6 +882,25 @@ module KitchenCabinetMaster
       Response.ok("#{copy.name} created as a copy of #{source_name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copy), 'cabinet_name' => copy.name })
     end
     private_class_method :duplicate
+
+    # A copy of a model of your own: the same component, placed after it like any cabinet, with an order number and an id of its own.
+    def self.duplicate_custom(model, source)
+      stored = AttributeManager.read(source)
+      params = Defaults.params.merge(stored)
+      copy = SelectionManager.suspend do
+        with_operation(model, 'Duplicate Cabinet') do
+          entities, transformation = PlacementManager.target_for_new(model, params)
+          made = entities.add_instance(source.definition, transformation)
+          made.name = source.name
+          AttributeManager.write(made, stored.merge('cabinet_id' => AttributeManager.next_cabinet_id(model), 'sequence' => AttributeManager.next_sequence(model)))
+          TagManager.assign(model, made, TagManager.for_category(params['cabinet_category']))
+          made
+        end
+      end
+      SelectionManager.select(copy)
+      Response.ok("#{copy.name} created as a copy of #{source.name}.", { 'cabinet_id' => AttributeManager.cabinet_id(copy), 'cabinet_name' => copy.name })
+    end
+    private_class_method :duplicate_custom
 
     def self.delete
       model = Sketchup.active_model

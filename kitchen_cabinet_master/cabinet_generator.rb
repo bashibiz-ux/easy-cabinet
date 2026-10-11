@@ -55,6 +55,8 @@ module KitchenCabinetMaster
     # Brings an existing cabinet in line with `params`, keeping its identity.
     # Call inside an operation.
     def self.update(model, root, params)
+      return root if AttributeManager.custom_model?(root) # (a model of your own is not rebuilt)
+
       params['cabinet_id'] = AttributeManager.cabinet_id(root)
       root.name = params['cabinet_name'] unless params['cabinet_name'].to_s.empty?
 
@@ -629,6 +631,7 @@ module KitchenCabinetMaster
     def self.sync_name_label_for(model, root)
       params = AttributeManager.read(root)
       return unless params
+      return if AttributeManager.custom_model?(root)
 
       sync_name_label(model, root, index_by_role(root.definition.entities), params, CabinetLayout.compute(params))
     end

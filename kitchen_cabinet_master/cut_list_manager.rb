@@ -192,7 +192,7 @@ module KitchenCabinetMaster
       items = items.select { |item| model.selection.include?(item) } if selected_only?
       records = items.filter_map do |item|
         stored = AttributeManager.read(item)
-        stored if stored && (AttributeManager.cabinet?(item) || AttributeManager.part?(item))
+        stored if stored && !AttributeManager.custom_model?(item) && (AttributeManager.cabinet?(item) || AttributeManager.part?(item))
       end
       CutList.rows(records, handle_name: ->(id) { CatalogManager.handle_bundle(id)&.fetch('name', nil) }, group_all: group_all)
     end

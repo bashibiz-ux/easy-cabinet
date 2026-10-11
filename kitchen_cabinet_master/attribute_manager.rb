@@ -39,11 +39,11 @@ module KitchenCabinetMaster
       !dict.nil? && !dict['cabinet_id'].to_s.empty?
     end
 
-    # A model of your own from My Catalog (see CabinetManager.insert_component): not a cabinet of the extension (no settings to rebuild it
-    # from), but it takes its place in a row like one: it carries the same size and height attributes, so the placement rules, the
-    # collision check, the snapping and the worktop treat it as a cabinet.
+    # A model of your own from My Catalog (see CabinetManager.insert_component): it stands in a component of its own that carries a cabinet's
+    # attributes (size, order, toe kick height ...), so the placement rules, the collision check, the snapping, the worktop, the toe kicks and
+    # the side panels treat it as a cabinet. It has nothing to rebuild it from, so what rebuilds a cabinet leaves it alone.
     def self.custom_model?(entity)
-      entity.respond_to?(:get_attribute) && entity.get_attribute(DICTIONARY, 'custom_model') == true
+      entity.respond_to?(:get_attribute) && (entity.get_attribute(DICTIONARY, 'custom_wrapper') == true || entity.get_attribute(DICTIONARY, 'custom_model') == true)
     end
 
     # A cabinet of the extension or a model of your own: something that stands in a row.

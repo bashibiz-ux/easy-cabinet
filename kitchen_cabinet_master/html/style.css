@@ -390,6 +390,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn-row.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .btn-row.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .btn-row.five .btn { padding: 0 4px; }
+.btn-row.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.btn-row.six .btn { padding: 0 2px; font-size: 12px; }
 .btn-row.one { grid-template-columns: minmax(0, 1fr); }
 
 /* Soft changes: things fade rather than snap. */
