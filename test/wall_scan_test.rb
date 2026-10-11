@@ -42,6 +42,7 @@ end
 module KitchenCabinetMaster
   module AttributeManager
     def self.cabinet?(entity) = entity.respond_to?(:cabinet_marker)
+    def self.row_item?(entity) = cabinet?(entity)
     def self.part?(_entity) = false
   end
 end

@@ -556,7 +556,7 @@ module KitchenCabinetMaster
             walls << wall if wall
           elsif entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
             next if entity.equal?(skip) || entity.hidden? || !entity.layer.visible?
-            next if AttributeManager.cabinet?(entity) || AttributeManager.part?(entity) || depth >= MAX_WALL_DEPTH
+            next if AttributeManager.row_item?(entity) || AttributeManager.part?(entity) || depth >= MAX_WALL_DEPTH
 
             inside = entity.is_a?(Sketchup::Group) ? entity.entities : entity.definition.entities
             visit.call(inside, transformation * entity.transformation, depth + 1)

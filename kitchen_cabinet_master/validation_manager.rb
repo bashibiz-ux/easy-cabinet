@@ -18,6 +18,7 @@ module KitchenCabinetMaster
       'material_thickness'    => { label: 'Panel thickness', min: 6.0, max: 50.0 },
       'back_thickness'        => { label: 'Back panel thickness', min: 3.0, max: 25.0 },
       'carcass_raise'         => { label: 'Carcass bottom raise', min: 0.0, max: 1000.0 },
+      'door_height_adjust'    => { label: 'Door height adjustment', min: -300.0, max: 300.0 },
       'oven_height'           => { label: 'Oven height', min: 300.0, max: 900.0 },
       'oven2_height'          => { label: 'Second oven height', min: 300.0, max: 900.0 },
       'micro_height'          => { label: 'Microwave height', min: 200.0, max: 600.0 },

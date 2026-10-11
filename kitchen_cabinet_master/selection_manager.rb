@@ -77,11 +77,11 @@ module KitchenCabinetMaster
     # A cabinet or a FILLER (an "occupant" that can anchor the next item in a
     # row). An side panel is never a chain anchor, since it isn't part of the row.
     def self.selected_occupant(model)
-      found = model.selection.select { |e| AttributeManager.cabinet?(e) || AttributeManager.part_kind(e) == 'filler' }
+      found = model.selection.select { |e| AttributeManager.row_item?(e) || AttributeManager.part_kind(e) == 'filler' }
       return found.first if found.length == 1
 
       path = model.active_path
-      path&.reverse_each { |e| return e if AttributeManager.cabinet?(e) || AttributeManager.part_kind(e) == 'filler' }
+      path&.reverse_each { |e| return e if AttributeManager.row_item?(e) || AttributeManager.part_kind(e) == 'filler' }
       nil
     end
 

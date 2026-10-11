@@ -312,6 +312,13 @@ module KitchenCabinetMaster
         instance = entities.add_instance(definition, target * local)
         instance.name = entry['name'].to_s
         box = [low.x.to_mm, low.y.to_mm, low.z.to_mm, definition.bounds.width.to_mm, definition.bounds.height.to_mm, definition.bounds.depth.to_mm].map { |v| v.round(2) }
+# Placed like a cabinet of the extension: the same size attributes (its envelope from its back, on the floor), its place in the order of
+        # insertion and its kind, so the next cabinet follows it, nothing overlaps it, a wall unit hangs over it and the worktop covers it.
+        {
+          'cabinet_category' => category, 'cabinet_name' => entry['name'].to_s, 'catalog_id' => raw['catalog_id'].to_s, 'sequence' => AttributeManager.next_sequence(model),
+          'width' => size[0], 'depth' => size[1], 'height' => size[2], 'envelope_width' => size[0], 'envelope_depth' => size[1], 'envelope_top' => size[2],
+          'base_z' => 0.0, 'top_z' => size[2]
+        }.each { |key, value| instance.set_attribute(AttributeManager::DICTIONARY, key, value) }
         instance.set_attribute(AttributeManager::DICTIONARY, 'custom_box', JSON.generate(box)) # (where its front is, before it has a handle)
         # What marks it as a model of your own (it is not a cabinet of the extension, so it has no settings of its own): its kind, and
         # the material of that kind (Base, Wall or Tall material) from the Material section goes on it, like on a cabinet.
@@ -576,7 +583,7 @@ module KitchenCabinetMaster
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise finger_gap finger_gap_drawer door_opening_angle
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise door_height_adjust finger_gap finger_gap_drawer door_opening_angle
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_FLAGS = %w[finger_all].freeze # ticks (true / false)
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style

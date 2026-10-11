@@ -133,6 +133,7 @@ module KitchenCabinetMaster
       panels.concat(fridge_panels(dims, fridge)) if fridge
       panels << top_front_panel(params, dims) if params['top_front'].to_f.positive?
       doors = door_panels(params, dims, base_z)
+      adjust_door_heights(doors, params, category)
       drawers = drawer_panels(params, dims, base_z)
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
@@ -184,6 +185,30 @@ module KitchenCabinetMaster
       panel('divider', 'Middle Shelf', [dims.interior_d, dims.inner_w, dims.thick], [dims.interior_start, dims.thick, z])
     end
     private_class_method :stacked_divider
+
+    # Every door can be made taller or shorter (the Door Height Adjustment field). A wall unit's doors hang from the top, so the bottom edge moves;
+    # the doors of the other units keep their bottom edge and the top edge moves (a lift-up door's hinge goes with it). A door never gets lower
+    # than 60 mm; the folding doors of a bi-fold lift-up follow their parent and are left alone.
+    def self.adjust_door_heights(doors, params, category)
+      adjust = params['door_height_adjust'].to_f
+      return if adjust.zero?
+
+      doors.each do |door|
+        next if door.parent || door.bifold || door.hinge == 'fold'
+
+        height = door.extent[2].to_f
+        delta = [adjust, 60.0 - height].max
+        next if delta.zero?
+
+        door.extent = [door.extent[0], door.extent[1], round2(height + delta)]
+        if category == 'wall'
+          door.offset = [door.offset[0], door.offset[1], round2(door.offset[2] - delta)]
+        elsif door.hinge == 'top' && door.pivot
+          door.pivot = [door.pivot[0], door.pivot[1], round2(door.pivot[2] + delta)]
+        end
+      end
+    end
+    private_class_method :adjust_door_heights
 
     # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with; a drawer front by
     # `finger_gap_drawer`), and the gap that leaves over them is how the fingers take hold. It is closed by a panel in the door

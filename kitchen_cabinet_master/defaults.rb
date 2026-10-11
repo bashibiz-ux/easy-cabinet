@@ -182,6 +182,7 @@ module KitchenCabinetMaster
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
       'glass_design' => '',         # the doors are frames with panes of glass in this design (see FrontDesign::GLASS_DESIGNS); blank = no glass
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
+      'door_height_adjust' => 0.0,  # every door is this much taller (shorter when negative): wall units hang from the top, the others grow upward
       'finger_pull' => false,       # the model without handles: a finger gap over the doors of a base unit, closed by a panel
       'finger_gap' => 35.0,         # how much shorter the doors are (the gap over them)
       'finger_gap_drawer' => 35.0,  # and how much shorter the top drawer front is
@@ -222,7 +223,7 @@ module KitchenCabinetMaster
 
       'placement_gap'          => 0.0,
       'shelf_count'            => 1,
-      'carcass_raise'          => 0.0, # wall units: how far the carcass bottom is lifted (the doors stay full height)
+      'carcass_raise'          => 18.0, # wall units: how far the carcass bottom is lifted (the doors stay full height)
 
       'toe_kick_height'        => 100.0,
       'toe_kick_thickness'     => 18.0,

@@ -191,4 +191,20 @@ class CornerDoorTest < Minitest::Test
     assert_equal(-1.0 * Math::PI / 2, DoorAnimation.swing_radians('left', d.rotation, 90.0, 1.0))
     assert_equal(Math::PI / 2, DoorAnimation.swing_radians('right', d.rotation, 90.0, 1.0))
   end
+def plain(category, adjust)
+  Defaults.params.merge('cabinet_category' => category, 'width' => 800.0, 'depth' => 580.0, 'height' => 720.0, 'door_count' => 2, 'shelf_count' => 0,
+                        'door_height_adjust' => adjust, 'toe_kick_height' => category == 'wall' ? 0.0 : 100.0)
+end
+
+def test_the_door_height_adjustment_moves_the_top_edge_of_a_base_door_and_the_bottom_edge_of_a_wall_door
+  base = CabinetLayout.compute(plain('base', 0.0)).doors.first
+  taller = CabinetLayout.compute(plain('base', 25.0)).doors.first
+  assert_in_delta base.extent[2] + 25.0, taller.extent[2], 0.01
+  assert_in_delta base.offset[2], taller.offset[2], 0.01, 'a base door keeps its bottom edge'
+  wall = CabinetLayout.compute(plain('wall', 0.0)).doors.first
+  shorter = CabinetLayout.compute(plain('wall', -30.0)).doors.first
+  assert_in_delta wall.extent[2] - 30.0, shorter.extent[2], 0.01
+  assert_in_delta wall.offset[2] + wall.extent[2], shorter.offset[2] + shorter.extent[2], 0.01, 'a wall door keeps its top edge'
+  assert_in_delta wall.offset[2] + 30.0, shorter.offset[2], 0.01
+end
 end

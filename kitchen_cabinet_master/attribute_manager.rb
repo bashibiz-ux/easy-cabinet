@@ -39,6 +39,18 @@ module KitchenCabinetMaster
       !dict.nil? && !dict['cabinet_id'].to_s.empty?
     end
 
+    # A model of your own from My Catalog (see CabinetManager.insert_component): not a cabinet of the extension (no settings to rebuild it
+    # from), but it takes its place in a row like one: it carries the same size and height attributes, so the placement rules, the
+    # collision check, the snapping and the worktop treat it as a cabinet.
+    def self.custom_model?(entity)
+      entity.respond_to?(:get_attribute) && entity.get_attribute(DICTIONARY, 'custom_model') == true
+    end
+
+    # A cabinet of the extension or a model of your own: something that stands in a row.
+    def self.row_item?(entity)
+      cabinet?(entity) || custom_model?(entity)
+    end
+
     def self.cabinet_id(entity)
       return nil unless cabinet?(entity)
 
@@ -92,7 +104,7 @@ module KitchenCabinetMaster
     # A toe kick is a part too, but it stands under the cabinets' fronts rather
     # than in the row, so it never blocks a cabinet and is not an occupant.
     def self.occupant?(entity)
-      cabinet?(entity) || (part?(entity) && !%w[toe_kick worktop backsplash wall_bottom].include?(part_kind(entity)))
+      row_item?(entity) || (part?(entity) && !%w[toe_kick worktop backsplash wall_bottom].include?(part_kind(entity)))
     end
 
     # Every child component of a cabinet (carcass, panels, later doors ...) is

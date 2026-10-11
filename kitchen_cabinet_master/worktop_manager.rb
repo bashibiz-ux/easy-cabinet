@@ -489,7 +489,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
         next unless stored
 
         filler = stored['part_kind'] == 'filler'
-        next unless AttributeManager.cabinet?(item) || filler
+        next unless AttributeManager.row_item?(item) || filler
 
         category = filler ? stored['target_category'] : stored['cabinet_category']
         next if %w[wall tall].include?(category.to_s)

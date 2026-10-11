@@ -74,7 +74,7 @@ module KitchenCabinetMaster
     def self.latest_cabinet(model)
       dictionary = AttributeManager::DICTIONARY
       found = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
-        AttributeManager.cabinet?(instance) && yield(AttributeManager.read(instance) || {})
+        AttributeManager.row_item?(instance) && yield(AttributeManager.read(instance) || {})
       end
       found.each_with_index.max_by { |instance, index| [instance.get_attribute(dictionary, 'sequence').to_i, index] }&.first
     end
@@ -156,7 +156,7 @@ module KitchenCabinetMaster
     # model has none. An side panel or toe kick is not part of the row, so is skipped.
     def self.last_occupant(model)
       rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
-        (AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
+        (AttributeManager.row_item?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
       end
       rows.each_with_index.max_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
@@ -165,7 +165,7 @@ module KitchenCabinetMaster
     # start of the row. What a toe kick starts at when nothing is selected.
     def self.first_occupant(model)
       rows = model.active_entities.grep(Sketchup::ComponentInstance).select do |instance|
-        (AttributeManager.cabinet?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
+        (AttributeManager.row_item?(instance) || AttributeManager.part_kind(instance) == 'filler') && (!block_given? || yield(instance))
       end
       rows.each_with_index.min_by { |instance, index| [instance.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
@@ -173,7 +173,7 @@ module KitchenCabinetMaster
     # The cabinet (not a filler) that was inserted most recently, or nil. What a
     # filler goes against when no cabinet is selected.
     def self.last_cabinet(model)
-      cabinets = model.active_entities.grep(Sketchup::ComponentInstance).select { |i| AttributeManager.cabinet?(i) }
+      cabinets = model.active_entities.grep(Sketchup::ComponentInstance).select { |i| AttributeManager.row_item?(i) }
       cabinets.each_with_index.max_by { |i, index| [i.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }&.first
     end
 

@@ -54,6 +54,10 @@
             <div class="input"><input id="frontRadius" type="text" inputmode="decimal" autocomplete="off" aria-label="Front edge radius: how round the front edges of the doors and drawer fronts are (0 = square)"><em>mm</em></div>
           </label>
         </div>
+        <label class="field">
+          <span class="label">Door Height Adjustment</span>
+          <div class="input"><input id="doorHeightAdjust" type="text" inputmode="decimal" autocomplete="off" aria-label="Door height adjustment: how much taller (or shorter, with a minus) every door is, for every cabinet or the selected one"><em>mm</em></div>
+        </label>
         <!-- The model without handles: the finger gap of every front, as a setting for the whole job (each cabinet keeps its own below). -->
         <label class="field" id="fingerGapGlobalField" hidden>
           <span class="label">Door Height Reduction (finger gap)</span>
@@ -84,7 +88,7 @@
         <!-- Wall units only: how far the bottom of the carcass is lifted (the doors stay). For every wall unit, or the selected one. -->
         <label class="field" id="carcassRaiseField">
           <span class="label">Wall Unit Carcass Bottom Raise Upward</span>
-          <div class="input"><input id="carcassRaise" type="text" inputmode="decimal" autocomplete="off" aria-label="Wall unit carcass bottom raise upward, for every wall unit or the selected one"><em>mm</em></div>
+          <div class="input"><input id="carcassRaise" type="text" value="18" inputmode="decimal" autocomplete="off" aria-label="Wall unit carcass bottom raise upward, for every wall unit or the selected one"><em>mm</em></div>
         </label>
         <p class="hint">The panel remembers the settings you use (units, door gap, thickness, materials, handle, toe kick, worktop and bottom panel) and starts with them next time.</p>
         <div class="btn-row one">
@@ -209,11 +213,11 @@
         <label class="check"><input type="checkbox" id="kitchenToeKick" checked><span>Toe kicks (under the rows and the island)</span></label>
         <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>Side panels on the free ends of the runs (an L or a U, the ends of a straight kitchen)</span></label>
         <label class="check"><input type="checkbox" id="kitchenIslandSidePanels"><span>Side panels on the island ends too (the knee panels then only fill the overhang)</span></label>
-        <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
           <button class="btn" type="button" id="designKitchenOptions" data-action="design_kitchen_options" title="Build three kitchens side by side, one in each style (classic doors, glass doors, lift-up units), to compare: one Undo step. Delete the ones you do not want.">Make 3 Options</button>
         </div>
+        <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
       </div>
     </section>    <!-- Handle -->
     <section class="card" id="sec-handle" data-feature="handle">

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.11.0';
+  const APP_VERSION = '1.12.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -45,6 +45,7 @@
     depth: 'depth',
     height: 'height',
     carcass_raise: 'carcassRaise',
+    door_height_adjust: 'doorHeightAdjust',
     leg2_length: 'leg2Length',
     leg2_depth: 'leg2Depth',
     appliance_set: 'applianceSet',
@@ -97,6 +98,8 @@
     door_reveal: 'doorReveal',
     door_distance: 'doorDistance',
     front_radius: 'frontRadius',
+    carcass_raise: 'carcassRaise',
+    door_height_adjust: 'doorHeightAdjust',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -408,7 +411,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'thickness', 'backThickness', 'topPanel',
+    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'carcassRaise', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -642,7 +645,7 @@
 
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
-    'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'thickness', 'backThickness',
+    'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
@@ -926,6 +929,7 @@ function currentCabinet() {
       depth: mmv('depth'),
       height: mmv('height'),
       carcass_raise: mmv('carcassRaise'),
+      door_height_adjust: mmv('doorHeightAdjust'),
       leg2_length: mmv('leg2Length'),
       leg2_depth: mmv('leg2Depth'),
       appliance_set: isApplianceCabinet() ? $('applianceSet').value : '',
@@ -1004,6 +1008,7 @@ function currentCabinet() {
       if (key in p) setText(id, p[key]);
     });
     setText('carcassRaise', Number(p.carcass_raise) || 0); // a cabinet saved before this option has none
+    setText('doorHeightAdjust', Number(p.door_height_adjust) || 0);
     // An L-shaped corner has a second leg; 0 / missing means it is the same as the first.
     setText('leg2Length', Number(p.leg2_length) > 0 ? Number(p.leg2_length) : Number(p.width));
     setText('leg2Depth', Number(p.leg2_depth) > 0 ? Number(p.leg2_depth) : Number(p.depth));
@@ -2058,6 +2063,7 @@ if (details.length) {
     fingerGapGlobal: ['finger_gap', 'fingerGapGlobal'],
     fingerAllGlobal: ['finger_all', 'fingerAllGlobal'],
     carcassRaise: ['carcass_raise', 'carcassRaise'],
+    doorHeightAdjust: ['door_height_adjust', 'doorHeightAdjust'],
     handle: ['handle_id', 'handle'],
     drawerHandle: ['drawer_handle_id', 'drawerHandle'],
     handleLength: ['handle_length', 'handleLength'],
