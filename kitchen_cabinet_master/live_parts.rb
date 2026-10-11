@@ -31,6 +31,7 @@ module KitchenCabinetMaster
         forget(model, DISMISS_PREFIX.fetch(KEY_SIDE_PANELS)) unless on # (switched on again, the side panels that were deleted come back)
         model.set_attribute(DICTIONARY, KEY_SIDE_VALUES, JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
         apply(model, "#{on ? 'Place' : 'Remove'} Side Panels") { sync_side_panels(model) }
+        cover_with_worktop(model) # (the worktop reaches over the side panels at its ends)
         Response.ok(on ? 'Side panels on every exposed side are on: they follow the cabinets.' : 'The side panels placed by the tick are taken away.')
       when 'set_live_toe_kicks'
         keep(model, KEY_TOE_KICKS, on, raw)
@@ -179,6 +180,19 @@ module KitchenCabinetMaster
       DimensionManager.add(model, cabinets) unless cabinets.empty?
     end
     private_class_method :sync_dimensions
+
+    # The worktop is drawn again after the side panels were placed or taken away, so that it covers them (or stops at the cabinets): with its switch on, as
+    # the switch draws it; otherwise a worktop that is there (applied with the button) is rebuilt with its own settings.
+    def self.cover_with_worktop(model)
+      if worktop?
+        sync_worktop(model)
+      else
+        kept = model.selection.to_a
+        apply(model, 'Refresh Worktop') { WorktopManager.refresh(model) }
+        keep_selection(model, kept)
+      end
+    end
+    private_class_method :cover_with_worktop
 
     def self.sync_toe_kicks(model)
       PartManager.send(:remove_auto_toe_kicks, model)
