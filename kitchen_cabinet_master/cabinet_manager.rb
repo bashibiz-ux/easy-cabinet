@@ -292,7 +292,7 @@ module KitchenCabinetMaster
     private_class_method :bounds_mm
 
     # Inserts a model from your catalog, in the row like a cabinet (beside the selected item). The model stands in a component of its own (the
-    # "cabinet"): turned so that its width runs along Y and its front faces +X, with its back and its left end on the origin of that component
+    # "cabinet"): turned so that its width runs along its Y and its front faces its +X (as a cabinet of the extension's), with its back and its left end on the origin of that component
     # (measured, not worked out from the saved size), lifted by the toe kick height when it is a base or a tall unit. That component carries a
     # cabinet's attributes, so the rules of the extension (placement, snapping, worktop, toe kicks, side panels, dimensions) apply to it.
     def self.insert_component(raw, entry)
@@ -309,6 +309,7 @@ module KitchenCabinetMaster
       instance = nil
       with_operation(model, 'Insert Model') do
         definition = model.definitions.load(path)
+        alone = SelectionManager.selected_occupant(model).nil? && PlacementManager.last_occupant(model).nil? # (the first thing in the model starts the row)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
         name = entry['name'].to_s
@@ -320,6 +321,8 @@ module KitchenCabinetMaster
         corner = inner.bounds.min # (measured: its back and its left end go on the origin, whatever it was drawn like)
         inner.transform!(Geom::Transformation.translation(Geom::Vector3d.new(-corner.x, -corner.y, -corner.z + toe.mm)))
         depth, width, height = [inner.bounds.width, inner.bounds.height, inner.bounds.depth].map { |v| v.to_mm.round(2) }
+        # The first cabinet of a kitchen faces +Y with its width along X, from the origin; what comes after it follows along its own row.
+        target *= Geom::Transformation.translation(Geom::Vector3d.new(width.mm, 0, 0)) * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2) if alone
         instance = entities.add_instance(holder, target)
         instance.name = name
 
