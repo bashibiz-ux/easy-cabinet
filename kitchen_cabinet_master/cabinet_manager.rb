@@ -15,7 +15,7 @@ module KitchenCabinetMaster
       when 'insert' then insert(raw)
       when 'update' then update(raw)
       when 'duplicate' then duplicate
-      when 'delete' then delete
+      when 'delete' then delete(raw)
       when 'visibility' then set_visibility(raw)
       when 'toggle' then toggle_all
       when 'rotate' then rotate(raw)
@@ -1062,20 +1062,29 @@ module KitchenCabinetMaster
     private_class_method :update_custom
 
 
-    # The Delete button: every cabinet and every part (filler, side panel, toe kick, worktop piece) that is selected.
-    def self.delete
+    # The Delete button: whatever is selected in the model: the cabinets, the parts (filler, side panel, toe kick, worktop or bottom panel piece)
+    # and anything else (a group, a component, loose geometry). With nothing selected and the Category on Wall Bottom Panel it takes the bottom
+    # panels away.
+    def self.delete(raw = nil)
       model = Sketchup.active_model
       roots = selected_cabinets(model)
       parts = model.selection.select { |item| AttributeManager.part?(item) }
-      return Response.fail('Select a cabinet in the model to delete.') if roots.empty? && parts.empty?
+      others = model.selection.to_a.reject { |item| parts.any? { |part| part.equal?(item) } || roots.any? { |root| root.equal?(item) } }
+      if roots.empty? && parts.empty? && others.empty?
+        return WallBottomManager.perform('remove_wall_bottom', {}) if raw.is_a?(Hash) && raw['when_empty'] == 'remove_wall_bottom'
 
-      count = roots.length + parts.length
-      first = roots.first || parts.first
-      label = count == 1 ? (first.name.to_s.empty? ? 'It' : first.name) : "#{count} items"
+        return Response.fail('Select something in the model to delete.')
+      end
+
+      count = roots.length + parts.length + others.length
+      first = roots.first || parts.first || others.first
+      name = first.respond_to?(:name) ? first.name.to_s : ''
+      label = count == 1 ? (name.empty? ? 'It' : name) : "#{count} items"
       SelectionManager.suspend do
         with_operation(model, count == 1 ? 'Delete Cabinet' : 'Delete Selected') do
           parts.each { |part| PartGenerator.remove(model, part) if part.valid? }
           roots.each { |root| CabinetGenerator.remove(model, root) if root.valid? }
+          others.each { |item| item.erase! if item.valid? }
         end
       end
 

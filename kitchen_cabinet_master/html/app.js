@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.19.0';
+  const APP_VERSION = '1.19.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -535,6 +535,7 @@
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
+    delete: () => (categoryKind() === 'wall_bottom' ? { when_empty: 'remove_wall_bottom' } : {}), // (Delete takes what is selected; with nothing selected, the bottom panels)
     add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value }),
     remove_material: () => ({ name: $('myRemove').value }),
     remove_from_catalog: () => ({ catalog_id: catalog.value, cabinet_category: category.value, cabinet_type: cabinet.value }),
@@ -617,7 +618,6 @@
   function serverAction(action) {
     const isPart = state.selectedKind && state.selectedKind !== 'cabinet';
     if (isPart && action === 'update') return 'update_part';
-    if (isPart && action === 'delete') return 'delete_part';
     if (!state.selectedKind && categoryKind() === 'wall_bottom' && action === 'update') return 'apply_wall_bottom'; // (Category = Wall Bottom Panel: Update draws the panels again)
     if (action === 'insert') return INSERT_ACTION[categoryKind()];
     return action;
