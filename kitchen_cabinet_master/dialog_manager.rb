@@ -18,6 +18,9 @@ module KitchenCabinetMaster
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
     KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options].freeze
     # After these the dimensions and side panels that are ticked in the Presets are drawn again (not after what only shows or hides things).
+    # After these what was selected stays selected (with its new size or settings) until the user picks something else.
+    KEEP_SELECTION = %w[update apply_all apply_toe_kicks update_placed update_part apply_front_design apply_glass_design rotate customize
+                        set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop apply_worktop apply_wall_bottom].freeze
     REFRESHING = (CABINET_ACTIONS + PART_ACTIONS + WORKTOP_ACTIONS + KITCHEN_ACTIONS - %w[toggle visibility get_selection]).freeze
 
     class << self
@@ -77,6 +80,7 @@ module KitchenCabinetMaster
 
       def dispatch(action, data)
         data = {} unless data.is_a?(Hash)
+        chosen = KEEP_SELECTION.include?(action) ? selection_keys(Sketchup.active_model) : nil
 
         result = case action
         when 'init'          then (organise_tags; unhide_base_units; Response.ok('', init_payload))
@@ -96,10 +100,37 @@ module KitchenCabinetMaster
         end
         LiveParts.absorb(action, data) if result.is_a?(Hash) && result['ok']
         LiveParts.refresh if result.is_a?(Hash) && result['ok'] && REFRESHING.include?(action)
+        restore_selection(Sketchup.active_model, chosen) if chosen
         result
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
         Response.fail("Something went wrong: #{e.message}")
+      end
+
+      # What is selected, as the entity and the id it carries (an item drawn again is a new entity with the same id).
+      def selection_keys(model)
+        return [] unless model
+
+        model.selection.to_a.map { |item| [item, AttributeManager.cabinet_id(item) || AttributeManager.part_id(item)] }
+      end
+
+      def restore_selection(model, chosen)
+        return if chosen.empty? || model.nil?
+
+        found = chosen.map do |item, id|
+          next item if item.valid?
+          next nil unless id
+
+          model.entities.grep(Sketchup::ComponentInstance).find { |other| (AttributeManager.cabinet_id(other) || AttributeManager.part_id(other)) == id }
+        end.compact.uniq
+        return if found.empty? || model.selection.to_a.sort_by(&:object_id) == found.sort_by(&:object_id)
+
+        SelectionManager.suspend do
+          model.selection.clear
+          found.each { |item| model.selection.add(item) }
+        end
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not keep the selection: #{e.message}"
       end
 
       # Same as Edit > Undo: steps the model back one operation (an Insert, Update,
