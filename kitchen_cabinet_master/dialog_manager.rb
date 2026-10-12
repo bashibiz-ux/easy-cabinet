@@ -140,12 +140,15 @@ module KitchenCabinetMaster
 
           find.call(id) || find.call(owner_id) # (a piece inside a cabinet that was built again: the cabinet stays selected)
         end.compact.uniq
-        return if found.empty? || model.selection.to_a.sort_by(&:object_id) == found.sort_by(&:object_id)
+        return if found.empty?
 
-        SelectionManager.suspend do
-          model.selection.clear
-          found.each { |item| model.selection.add(item) }
+        unless model.selection.to_a.sort_by(&:object_id) == found.sort_by(&:object_id)
+          SelectionManager.suspend do
+            model.selection.clear
+            found.each { |item| model.selection.add(item) }
+          end
         end
+        SelectionManager.push_selection(model) # (the panel may have been told, while it was drawn again, that nothing is selected)
       rescue StandardError => e
         warn "[Kitchen Cabinet Master] Could not keep the selection: #{e.message}"
       end

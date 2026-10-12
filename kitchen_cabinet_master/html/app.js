@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.22.3';
+  const APP_VERSION = '1.22.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -210,7 +210,8 @@
     if (inOpenCard) state.heldKind = null;
     // Our own live update re-selects the item it just changed; do not let that
     // overwrite what the user is in the middle of typing.
-    if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected')) return;
+    // (and the selection that is cleared for a moment while it is drawn again must not make the panel forget it: Ruby selects it again)
+    if (state.liveBusy && (name === 'cabinet_selected' || name === 'part_selected' || name === 'cabinet_cleared')) return;
 
     if (name === 'cabinet_selected' || name === 'part_selected' || name === 'cabinet_cleared') { state.liveHold = false; state.wallBottomSelected = false; }
 
