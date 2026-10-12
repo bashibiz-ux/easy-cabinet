@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.21.1';
+  const APP_VERSION = '1.21.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -191,7 +191,7 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
-    if (followSelection() || name === 'cabinet_cleared') state.heldKind = null;
+    if (followSelection() || name === 'cabinet_cleared') { state.heldKind = null; state.heldData = null; }
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
     // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
     // With the tick off nothing is opened or scrolled to, but a card that is already open (Presets, Handle, Material or Cabinet & Extras) still shows what is selected.
@@ -203,6 +203,7 @@
       state.selectedKind = null;
       state.wallBottomSelected = false;
       state.heldKind = name === 'cabinet_selected' ? 'cabinet' : null;
+      state.heldData = name === 'cabinet_selected' ? data : null; // (shown as soon as a card that can show it is opened, see showHeld)
       setBadge(null);
       return;
     }
@@ -2487,9 +2488,17 @@ function liveEdit(el) {
     }
   }
 
+  // With "Show a selected item's settings" off, a cabinet selected while no card could show it is kept; opening such a card (Presets, Handle,
+  // Material, Cabinet & Extras) fills it with that cabinet, and from then on what is typed updates it live like any selected cabinet.
+  function showHeld() {
+    if (followSelection() || !state.heldData || state.heldKind !== 'cabinet') return;
+
+    handleEvent('cabinet_selected', state.heldData);
+  }
+
   function wireEvents() {
     document.querySelectorAll('.card-head').forEach((button) => {
-      button.addEventListener('click', () => toggleCard(button.closest('.card')));
+      button.addEventListener('click', () => { toggleCard(button.closest('.card')); setTimeout(showHeld, 0); });
     });
 
     // Catalog / category / cabinet reload the cabinet list (and the sizes that
