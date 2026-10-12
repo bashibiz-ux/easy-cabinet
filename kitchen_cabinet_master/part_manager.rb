@@ -13,6 +13,7 @@ module KitchenCabinetMaster
       when 'insert_exposed_side_panels' then insert_exposed_side_panels(raw)
       when 'insert_toe_kick' then insert_toe_kick(raw)
       when 'apply_toe_kicks' then apply_toe_kicks(raw)
+      when 'update_placed' then update_placed(raw)
       when 'update_part' then update_part(raw)
       when 'delete_part' then delete_part
       else Response.fail("Unknown action \"#{action}\".")
@@ -1022,6 +1023,48 @@ module KitchenCabinetMaster
         end
       end
     end
+
+    # The Filler and Side Panel fields with no filler / side panel selected: every one placed by hand takes the field that was edited (the others
+    # keep their own values). Those placed by the Presets switches are drawn again by LiveParts and fitted to the wall, so they are left alone.
+    def self.update_placed(raw)
+      raw = stringify(raw)
+      kind = raw['kind'].to_s
+      return Response.fail('Unknown kind of part.') unless %w[filler end_panel].include?(kind)
+
+      fields = stringify(raw['fields']).reject { |_, value| value.to_s.strip.empty? }
+      model = Sketchup.active_model
+      parts = model.entities.grep(Sketchup::ComponentInstance).select do |item|
+        AttributeManager.part_kind(item) == kind && item.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO) != true
+      end
+      label = kind == 'filler' ? 'filler' : 'side panel'
+      return Response.ok("No #{label} placed by hand yet. A new one will use these values.") if parts.empty?
+
+      keys = kind == 'filler' ? %w[width thickness height] : %w[side depth thickness height face front_design front_radius]
+      done = 0
+      problems = []
+      @batch = true
+      begin
+        model.start_operation("Update #{label.capitalize}s", true)
+        parts.each do |item|
+          stored = AttributeManager.read(item)
+          one = stored.slice(*keys)
+          one['material'] = stored['material_choice'] if kind == 'end_panel'
+          one.merge!(fields)
+          answer = kind == 'filler' ? update_filler(model, item, one) : update_end_panel(model, item, one)
+          answer['ok'] ? done += 1 : problems << answer['message']
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      message = "#{done} #{label}#{'s' unless done == 1} updated."
+      message += " #{problems.uniq.first(2).join(' ')}" unless problems.empty?
+      done.zero? && !problems.empty? ? Response.fail(message) : Response.ok(message)
+    end
+    private_class_method :update_placed
 
     # ---- update / delete (all kinds) -------------------------------------------
 

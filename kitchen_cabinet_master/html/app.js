@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.21.4';
+  const APP_VERSION = '1.22.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2156,6 +2156,42 @@ if (details.length) {
   };
   const toeDirty = new Map();
 
+  // The Filler and Side Panel fields change the ones already placed by hand when none of that kind is selected (see PartManager.update_placed).
+  const PLACED_FIELDS = {
+    fillerWidth: ['filler', 'width'], fillerThickness: ['filler', 'thickness'], fillerHeight: ['filler', 'height'],
+    epSide: ['end_panel', 'side'], epDepth: ['end_panel', 'depth'], epThickness: ['end_panel', 'thickness'], epHeight: ['end_panel', 'height'],
+    epMaterial: ['end_panel', 'material'], epFace: ['end_panel', 'face']
+  };
+  const placedDirty = new Map(); // kind -> Map(key -> element id)
+
+  function schedulePlaced(delay = LIVE_TYPING_DELAY_MS) {
+    clearTimeout(state.placedTimer);
+    state.placedTimer = setTimeout(runPlaced, delay);
+  }
+
+  async function runPlaced() {
+    if (state.busy) {
+      schedulePlaced();
+      return;
+    }
+    state.busy = true;
+    state.liveBusy = true;
+    try {
+      for (const [kind, edits] of [...placedDirty]) {
+        const fields = {};
+        edits.forEach((id, key) => { fields[key] = LENGTH_IDS.includes(id) ? mmv(id) : $(id).value; });
+        placedDirty.delete(kind);
+        const res = await call('update_placed', { kind, fields });
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      }
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+  }
+
   function scheduleToe(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.toeTimer);
     state.toeTimer = setTimeout(runToe, delay);
@@ -2311,6 +2347,13 @@ function liveEdit(el) {
     }
     if (WORKTOP_IDS.has(el.id)) {
       scheduleWorktop(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      return;
+    }
+    const placed = PLACED_FIELDS[el.id];
+    if (placed && state.selectedKind !== placed[0]) {
+      if (!placedDirty.has(placed[0])) placedDirty.set(placed[0], new Map());
+      placedDirty.get(placed[0]).set(placed[1], el.id);
+      schedulePlaced(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
     }
     if (!followSelection() && state.heldKind === 'cabinet' && !state.selectedKind) { // (the panel does not follow the selection, but a cabinet is selected)
