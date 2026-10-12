@@ -19,7 +19,7 @@ module KitchenCabinetMaster
     KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options].freeze
     # After these the dimensions and side panels that are ticked in the Presets are drawn again (not after what only shows or hides things).
     # After these what was selected stays selected (with its new size or settings) until the user picks something else.
-    KEEP_SELECTION = %w[update apply_all apply_toe_kicks update_placed update_part apply_front_design apply_glass_design rotate customize
+    KEEP_SELECTION = %w[toggle visibility update apply_all apply_toe_kicks update_placed update_part apply_front_design apply_glass_design rotate customize
                         set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop apply_worktop apply_wall_bottom].freeze
     REFRESHING = (CABINET_ACTIONS + PART_ACTIONS + WORKTOP_ACTIONS + KITCHEN_ACTIONS - %w[toggle visibility get_selection]).freeze
 
@@ -111,17 +111,34 @@ module KitchenCabinetMaster
       def selection_keys(model)
         return [] unless model
 
-        model.selection.to_a.map { |item| [item, AttributeManager.cabinet_id(item) || AttributeManager.part_id(item)] }
+        model.selection.to_a.map { |item| [item, identity_of(item) || identity_of(owner_of(model, item)), identity_of(owner_of(model, item))] }
+      end
+
+      def identity_of(item)
+        return nil unless item.respond_to?(:get_attribute)
+
+        AttributeManager.cabinet_id(item) || AttributeManager.part_id(item)
+      end
+
+      # The cabinet or part a selected piece (a door, a drawer, a panel inside it) belongs to.
+      def owner_of(model, item)
+        return nil unless item.respond_to?(:parent)
+
+        definition = item.parent
+        return nil unless definition.is_a?(Sketchup::ComponentDefinition)
+
+        model.entities.grep(Sketchup::ComponentInstance).find { |other| other.definition == definition && identity_of(other) }
       end
 
       def restore_selection(model, chosen)
         return if chosen.empty? || model.nil?
 
-        found = chosen.map do |item, id|
+        all = model.entities.grep(Sketchup::ComponentInstance)
+        find = ->(id) { id && all.find { |other| identity_of(other) == id } }
+        found = chosen.map do |item, id, owner_id|
           next item if item.valid?
-          next nil unless id
 
-          model.entities.grep(Sketchup::ComponentInstance).find { |other| (AttributeManager.cabinet_id(other) || AttributeManager.part_id(other)) == id }
+          find.call(id) || find.call(owner_id) # (a piece inside a cabinet that was built again: the cabinet stays selected)
         end.compact.uniq
         return if found.empty? || model.selection.to_a.sort_by(&:object_id) == found.sort_by(&:object_id)
 
