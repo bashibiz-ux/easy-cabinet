@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.22.0';
+  const APP_VERSION = '1.22.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2374,7 +2374,8 @@ function liveEdit(el) {
     // The settings of the whole job (materials, door gap, reveal, thickness, handle, carcass raise ...) are for every cabinet when
     // nothing is selected. With a cabinet selected the change is only that cabinet's (it goes through the live update below); with
     // anything else selected nothing else changes.
-    if (GLOBAL_FIELDS[el.id] && !state.selectedKind) {
+    // (with a filler, side panel, toe kick or worktop selected they are still the whole job's: a cabinet is the only item that takes them alone)
+    if (GLOBAL_FIELDS[el.id] && (!state.selectedKind || state.selectedKind !== 'cabinet')) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
       if (el.id === 'fingerGapGlobal') globalDirty.set('finger_gap_drawer', elementId); // doors and drawers alike
