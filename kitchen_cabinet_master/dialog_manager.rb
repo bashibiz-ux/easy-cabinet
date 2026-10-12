@@ -16,7 +16,7 @@ module KitchenCabinetMaster
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
-    KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options].freeze
+    KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options design_path_kitchen].freeze
     # After these the dimensions and side panels that are ticked in the Presets are drawn again (not after what only shows or hides things).
     # After these what was selected stays selected (with its new size or settings) until the user picks something else.
     KEEP_SELECTION = %w[toggle visibility update apply_all apply_toe_kicks update_placed update_part apply_front_design apply_glass_design rotate customize

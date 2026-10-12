@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.22.5';
+  const APP_VERSION = '1.23.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -556,7 +556,8 @@
     remove_handle: () => ({ handle_id: $('handle').value }),
     design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null,
       toe_kick: $('kitchenToeKick').checked ? collectToeKick() : null, end_panel: $('kitchenEndPanels').checked || $('kitchenIslandSidePanels').checked ? collectEndPanel() : null }),
-    design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen()
+    design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
+    design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
   };
 
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
@@ -2015,7 +2016,8 @@ if (details.length) {
         if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
         if (action === 'add_handle' || action === 'remove_handle') handlesChanged(res.data || {}, action);
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
-        if (action === 'design_kitchen') state.kitchenDesigned = true; // from here on a change of the answers builds it again
+        if (action === 'design_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = false; } // from here on a change of the answers builds it again
+        if (action === 'design_path_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = true; } // (along the path that was selected)
         if (action === 'design_kitchen_options') state.kitchenDesigned = false;
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {
@@ -2294,7 +2296,7 @@ if (details.length) {
     clearTimeout(state.kitchenTimer);
     state.kitchenTimer = setTimeout(async () => {
       if (state.busy) { scheduleKitchen(300); return; }
-      await runAction('design_kitchen', { live: true, replace: true });
+      await runAction(state.kitchenOnPath ? 'design_path_kitchen' : 'design_kitchen', { live: true, replace: true });
     }, delay);
   }
 
