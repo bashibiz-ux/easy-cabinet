@@ -917,7 +917,11 @@ module KitchenCabinetMaster
       # With the Toe kick switch on, the toe kicks it placed are drawn again with the new values after this (see LiveParts), so only the others are
       # changed here: a toe kick that could not take the change must not stop the cabinets from being lifted.
       kicks = kicks.reject { |item| item.get_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO_TOE) == true } if defined?(LiveParts) && LiveParts.toe_kicks?
-      return Response.ok('No toe kicks in the model yet. A new toe kick will use these values.') if kicks.empty?
+      if kicks.empty?
+        return Response.ok('Toe kick height applied to the cabinets and their toe kicks.') if overrides.key?('toe_kick_height') && (defined?(LiveParts) && LiveParts.toe_kicks?)
+
+        return Response.ok('No toe kicks in the model yet. A new toe kick will use these values.')
+      end
 
       picked = kicks.select { |item| model.selection.include?(item) } # (toe kicks selected, one or several: the values are for them alone)
       kicks = picked unless picked.empty?
