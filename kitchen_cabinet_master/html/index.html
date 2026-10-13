@@ -186,10 +186,10 @@
         <label class="check"><input type="checkbox" id="kitchenDishHandle" checked><span>Handle on the dishwasher front</span></label>
         <label class="check"><input type="checkbox" id="kitchenHob" checked><span>Hob unit</span></label>
         <label class="check"><input type="checkbox" id="kitchenHood" checked><span>Hood cabinet over the hob</span></label>
-        <label class="check"><input type="checkbox" id="kitchenOven"><span>Oven housing (tall unit)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenOven" checked><span>Oven housing (tall unit)</span></label>
         <label class="check"><input type="checkbox" id="kitchenWall" checked><span>Wall units</span></label>
-        <label class="check"><input type="checkbox" id="kitchenIsland"><span>Island (parallel to wall A)</span></label>
-        <div class="grid-2" id="kitchenIslandFields" hidden>
+        <label class="check"><input type="checkbox" id="kitchenIsland" checked><span>Island (parallel to wall A)</span></label>
+        <div class="grid-2" id="kitchenIslandFields">
           <label class="field">
             <span class="label">Island Length</span>
             <div class="input"><input id="kitchenIslandLength" type="text" inputmode="decimal" autocomplete="off" value="1800"><em>mm</em></div>
@@ -231,7 +231,7 @@
         <label class="check"><input type="checkbox" id="kitchenWorktop" checked><span>Worktop and back splash</span></label>
         <label class="check"><input type="checkbox" id="kitchenToeKick" checked><span>Toe kicks (under the rows and the island)</span></label>
         <label class="check"><input type="checkbox" id="kitchenEndPanels" checked><span>Side panels on the free ends of the runs (an L or a U, the ends of a straight kitchen)</span></label>
-        <label class="check"><input type="checkbox" id="kitchenIslandSidePanels"><span>Side panels on the island ends too (the knee panels then only fill the overhang)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenIslandSidePanels" checked><span>Side panels on the island ends too (the knee panels then only fill the overhang)</span></label>
         <label class="check"><input type="checkbox" id="kitchenLive" checked><span>Update the kitchen when I change these options</span></label>
         <label class="field">
           <span class="label">Variation</span>
@@ -240,7 +240,6 @@
         <label class="check"><input type="checkbox" id="kitchenPathFlip"><span>Units on the other side of the path</span></label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
-          <button class="btn" type="button" id="designKitchenOptions" data-action="design_kitchen_options" title="Build three kitchens side by side, one in each style (classic doors, glass doors, lift-up units), to compare: one Undo step. Delete the ones you do not want.">Make 3 Options</button>
           <button class="btn" type="button" id="designPathKitchen" data-action="design_path_kitchen" title="Select the edges that are the walls (the backs of the units stand against them) and press this: the kitchen is built along them with the answers above. Edges that join up are one run, with L corners; separate edges are separate runs. The units stand on the side you are looking from (inside a closed shape). One Undo step.">Design on Selected Path</button>
         </div>
       </div>

@@ -48,33 +48,35 @@ module KitchenCabinetMaster
 
     # Ways to arrange the tall units of a kitchen: `start` stand at the start of wall A, `end` at the end of the last wall. `fill` is how the floor
     # units between them are made (classic: doors with a drawer unit now and then; drawers; doors; alternate: drawer, door, drawer ...; drawer_door:
-    # a drawer over doors), `wall` how the wall units are (classic, or open: every third one an open shelf).
+    # a drawer over doors), `wall` how the wall units are: classic doors; open (every third one an open shelf); lift (normal lift-up doors); lift_fold
+# (lift-up by fold, bi-fold); lift_glass (glass bi-fold lift-ups); lift_mix (bi-fold, glass bi-fold and normal lift-ups in turn); door_lift and
+# glass_door_lift (a door, a lift-up by fold, a door ...; the second with glass doors).
     VARIATIONS = [
       { id: 'v01', name: '1 - Storage tall, freestanding fridge, oven tall', start: %i[storage fridge_free oven], end: [], fill: 'classic', wall: 'classic' },
       { id: 'v02', name: '2 - Built-in fridge, built-in freezer, oven tall', start: %i[fridge freezer oven], end: [], fill: 'classic', wall: 'classic' },
-      { id: 'v03', name: '3 - Built-in fridge and freezer, oven tall at the far end', start: %i[fridge freezer], end: %i[oven], fill: 'classic', wall: 'classic' },
-      { id: 'v04', name: '4 - Storage tall, built-in fridge | oven tall (drawers)', start: %i[storage fridge], end: %i[oven], fill: 'drawers', wall: 'classic' },
+      { id: 'v03', name: '3 - Built-in fridge and freezer, oven tall at the far end', start: %i[fridge freezer], end: %i[oven], fill: 'classic', wall: 'door_lift' },
+      { id: 'v04', name: '4 - Storage tall, built-in fridge | oven tall (drawers)', start: %i[storage fridge], end: %i[oven], fill: 'drawers', wall: 'lift' },
       { id: 'v05', name: '5 - Freestanding fridge | storage tall, oven tall', start: %i[fridge_free], end: %i[storage oven], fill: 'classic', wall: 'classic' },
-      { id: 'v06', name: '6 - Oven tall, storage tall | built-in fridge (doors)', start: %i[oven storage], end: %i[fridge], fill: 'doors', wall: 'classic' },
-      { id: 'v07', name: '7 - Storage tall | freestanding fridge (drawers and doors)', start: %i[storage], end: %i[fridge_free], fill: 'alternate', wall: 'classic' },
+      { id: 'v06', name: '6 - Oven tall, storage tall | built-in fridge (doors)', start: %i[oven storage], end: %i[fridge], fill: 'doors', wall: 'lift_glass' },
+      { id: 'v07', name: '7 - Storage tall | freestanding fridge (drawers and doors)', start: %i[storage], end: %i[fridge_free], fill: 'alternate', wall: 'lift_mix' },
       { id: 'v08', name: '8 - Freezer, fridge | storage tall (open wall shelves)', start: %i[freezer fridge], end: %i[storage], fill: 'classic', wall: 'open' },
-      { id: 'v09', name: '9 - Oven tall | built-in fridge and freezer (drawer over doors)', start: %i[oven], end: %i[fridge freezer], fill: 'drawer_door', wall: 'classic' },
+      { id: 'v09', name: '9 - Oven tall | built-in fridge and freezer (drawer over doors)', start: %i[oven], end: %i[fridge freezer], fill: 'drawer_door', wall: 'lift_fold' },
       { id: 'v10', name: '10 - Pantry pull-out, built-in fridge | oven tall', start: %i[pantry fridge], end: %i[oven], fill: 'classic', wall: 'classic' },
-      { id: 'v11', name: '11 - Tall drawers, freestanding fridge | oven tall (drawers)', start: %i[drawers fridge_free], end: %i[oven], fill: 'drawers', wall: 'classic' },
+      { id: 'v11', name: '11 - Tall drawers, freestanding fridge | oven tall (drawers)', start: %i[drawers fridge_free], end: %i[oven], fill: 'drawers', wall: 'glass_door_lift' },
       { id: 'v12', name: '12 - Two storage talls | freestanding fridge', start: %i[storage storage_narrow], end: %i[fridge_free], fill: 'classic', wall: 'classic' },
-      { id: 'v13', name: '13 - Built-in fridge | glass display tall, oven tall', start: %i[fridge], end: %i[glass oven], fill: 'alternate', wall: 'classic' },
-      { id: 'v14', name: '14 - Freestanding fridge, oven tall | storage tall (doors)', start: %i[fridge_free oven], end: %i[storage], fill: 'doors', wall: 'classic' },
+      { id: 'v13', name: '13 - Built-in fridge | glass display tall, oven tall', start: %i[fridge], end: %i[glass oven], fill: 'alternate', wall: 'glass_door_lift' },
+      { id: 'v14', name: '14 - Freestanding fridge, oven tall | storage tall (doors)', start: %i[fridge_free oven], end: %i[storage], fill: 'doors', wall: 'lift' },
       { id: 'v15', name: '15 - Narrow storage, built-in fridge | oven tall (open wall shelves)', start: %i[storage_narrow fridge], end: %i[oven], fill: 'alternate', wall: 'open' },
-      { id: 'v16', name: '16 - Built-in fridge | oven tall (drawer over doors)', start: %i[fridge], end: %i[oven], fill: 'drawer_door', wall: 'classic' },
+      { id: 'v16', name: '16 - Built-in fridge | oven tall (drawer over doors)', start: %i[fridge], end: %i[oven], fill: 'drawer_door', wall: 'lift_fold' },
       { id: 'v17', name: '17 - Freezer, built-in fridge (drawers, open wall shelves)', start: %i[freezer fridge], end: [], fill: 'drawers', wall: 'open' },
-      { id: 'v18', name: '18 - Storage tall, oven tall', start: %i[storage oven], end: [], fill: 'classic', wall: 'classic' },
-      { id: 'v19', name: '19 - Oven tall, built-in fridge (drawers and doors)', start: %i[oven fridge], end: [], fill: 'alternate', wall: 'classic' },
+      { id: 'v18', name: '18 - Storage tall, oven tall', start: %i[storage oven], end: [], fill: 'classic', wall: 'door_lift' },
+      { id: 'v19', name: '19 - Oven tall, built-in fridge (drawers and doors)', start: %i[oven fridge], end: [], fill: 'alternate', wall: 'lift_mix' },
       { id: 'v20', name: '20 - Freestanding fridge | oven tall (drawers, open wall shelves)', start: %i[fridge_free], end: %i[oven], fill: 'drawers', wall: 'open' },
-      { id: 'v21', name: '21 - Glass display, storage tall | built-in fridge, oven tall', start: %i[glass storage], end: %i[fridge oven], fill: 'classic', wall: 'classic' },
-      { id: 'v22', name: '22 - Built-in fridge, freezer, storage tall (drawers and doors)', start: %i[fridge freezer storage], end: [], fill: 'alternate', wall: 'classic' },
-      { id: 'v23', name: '23 - Oven tall | storage tall, freestanding fridge (doors)', start: %i[oven], end: %i[storage fridge_free], fill: 'doors', wall: 'classic' },
+      { id: 'v21', name: '21 - Glass display, storage tall | built-in fridge, oven tall', start: %i[glass storage], end: %i[fridge oven], fill: 'classic', wall: 'lift_glass' },
+      { id: 'v22', name: '22 - Built-in fridge, freezer, storage tall (drawers and doors)', start: %i[fridge freezer storage], end: [], fill: 'alternate', wall: 'door_lift' },
+      { id: 'v23', name: '23 - Oven tall | storage tall, freestanding fridge (doors)', start: %i[oven], end: %i[storage fridge_free], fill: 'doors', wall: 'lift' },
       { id: 'v24', name: '24 - Pantry, storage, oven tall | built-in fridge (drawer over doors, open wall shelves)', start: %i[pantry storage oven], end: %i[fridge], fill: 'drawer_door', wall: 'open' },
-      { id: 'v25', name: '25 - Tall drawers, built-in fridge, freezer | oven tall (drawers and doors)', start: %i[drawers fridge freezer], end: %i[oven], fill: 'alternate', wall: 'classic' }
+      { id: 'v25', name: '25 - Tall drawers, built-in fridge, freezer | oven tall (drawers and doors)', start: %i[drawers fridge freezer], end: %i[oven], fill: 'alternate', wall: 'lift_mix' }
     ].freeze
 
     def self.variations = VARIATIONS.map { |variation| { 'id' => variation[:id], 'name' => variation[:name] } }
@@ -589,7 +591,7 @@ private_class_method :mirror_turn
       length = to - from
       return [] if length < MIN_UNIT
 
-      lift = style == 'lift' # wide lift-up units: about 900 mm each
+      lift = style == 'lift' || LIFT_WALLS.include?(@wall_mode) # wide lift-up units: about 900 mm each
       ideal = lift ? 900.0 : IDEAL
       max = lift ? 1200.0 : MAX_FILL
       min = lift ? 600.0 : MIN_FILL
@@ -603,13 +605,31 @@ private_class_method :mirror_turn
       widths = fill_widths(length, [n, 1].max)
       position = from
       widths.each_with_index.map do |w, index|
-        type = lift ? 'wall_liftup_bifold' : (w <= 700.0 ? 'wall_1door' : 'wall_2door')
-        type = 'wall_open' if @wall_mode == 'open' && !lift && index % 3 == 2 # (an open shelf now and then)
+        type = wall_type(w, index, lift)
         item = wall_unit(type, w, run, position, style)
         position += w
         item
       end
     end
+
+    LIFT_WALLS = %w[lift lift_fold lift_glass lift_mix door_lift glass_door_lift].freeze
+
+    # The unit of a wall run at `index`, as the variation's wall pattern (see VARIATIONS) says.
+    def self.wall_type(width, index, lift)
+      door = width <= 700.0 ? 'wall_1door' : 'wall_2door'
+      glass_door = width <= 600.0 ? 'wall_glass_1door' : 'wall_glass_2door'
+      case @wall_mode
+      when 'lift_fold' then 'wall_liftup_bifold'
+      when 'lift' then 'wall_liftup'
+      when 'lift_glass' then 'wall_glass_liftup_bifold'
+      when 'lift_mix' then %w[wall_liftup_bifold wall_glass_liftup_bifold wall_liftup][index % 3]
+      when 'door_lift' then index.even? ? door : 'wall_liftup_bifold'
+      when 'glass_door_lift' then index.even? ? glass_door : 'wall_glass_liftup_bifold'
+      when 'open' then index % 3 == 2 && !lift ? 'wall_open' : (lift ? 'wall_liftup_bifold' : door)
+      else lift ? 'wall_liftup_bifold' : door
+      end
+    end
+    private_class_method :wall_type
 
     def self.wall_unit(type, width, run, start, style)
       extra = style == 'glass' ? { 'glass_design' => 'glass_wide_grid' } : nil
