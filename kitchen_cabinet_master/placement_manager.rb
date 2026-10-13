@@ -128,19 +128,26 @@ module KitchenCabinetMaster
       tops.empty? ? nil : tops.max
     end
 
+    # The depth every loft has: the deepest carcass of the wall and tall units (the tall units', usually), so that the fronts of all the lofts are flush
+    # whatever is under them (the doors of a loft over a shallower wall unit stand out to line up with those over the tall units). nil when there is no unit.
+    def self.loft_depth(model)
+      depths = loft_units(model).map { |unit| unit.get_attribute(AttributeManager::DICTIONARY, 'depth').to_f }.select(&:positive?)
+      depths.empty? ? nil : depths.max
+    end
+
     # Where a new loft starts (mm): the level of the lofts; with no unit, where a standard wall unit ends.
     def self.loft_bottom(model)
       loft_level(model) || DEFAULT_WALL_BOTTOM_MM + 780.0
     end
 
-    # The width and the depth of the carcass of the unit a loft goes over: the loft is as wide as it and as deep, so that the doors line up
-    # (the door distance is the same for both). nil when the loft goes beside another loft or there is no unit.
+    # The width of the unit a loft goes over (the loft is as wide as it) and the depth every loft has (see loft_depth), so that the doors line up
+    # (the door distance is the same for all). nil when the loft goes beside another loft or there is no unit.
     def self.loft_fit(model)
       unit, mode = loft_anchor(model)
       return nil unless unit && mode == :over
 
       dictionary = AttributeManager::DICTIONARY
-      { 'unit' => unit_id(unit), 'width' => unit.get_attribute(dictionary, 'width').to_f, 'depth' => unit.get_attribute(dictionary, 'depth').to_f }
+    { 'unit' => unit_id(unit), 'width' => unit.get_attribute(dictionary, 'width').to_f, 'depth' => loft_depth(model) || unit.get_attribute(dictionary, 'depth').to_f }
     end
 
 

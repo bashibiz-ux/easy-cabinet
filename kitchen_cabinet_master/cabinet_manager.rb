@@ -777,6 +777,14 @@ module KitchenCabinetMaster
     end
     private_class_method :set_unit_sizes
 
+    # One cabinet changed with the fields given, inside an operation that is already open (the refresh of the live parts).
+    def self.update_quiet(model, root, fields)
+      @batch = true
+      update_one(model, root, { 'fields_only' => true, 'fields' => fields, 'resize_neighbours' => false })
+    ensure
+      @batch = false
+    end
+
     # ---- settings that belong to every cabinet -------------------------------------
 
     GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise door_height_adjust finger_gap finger_gap_drawer door_opening_angle

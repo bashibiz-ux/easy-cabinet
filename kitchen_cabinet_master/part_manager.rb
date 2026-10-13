@@ -1157,6 +1157,12 @@ module KitchenCabinetMaster
         off = level - loft.transformation.origin.z.to_mm
         loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
       end
+      depth = PlacementManager.loft_depth(model) # (and one depth, so that the fronts of all the lofts are flush)
+      lofts.each do |loft|
+        next unless depth && (AttributeManager.read(loft)['depth'].to_f - depth).abs > 0.5
+
+        CabinetManager.update_quiet(model, loft, 'depth' => depth)
+      end
       ids = lofts.map { |loft| AttributeManager.cabinet_id(loft) }
       kept = {}
       fillers.each do |filler|

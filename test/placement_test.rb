@@ -386,7 +386,7 @@ class PlacementTest < Minitest::Test
     [one, two, three].zip(lofts).each_with_index do |(unit, loft), i|
       assert_in_delta unit.transformation.origin.y, loft.transformation.origin.y, 0.01, "loft #{i + 1} is over unit #{i + 1}"
       assert_in_delta unit.get_attribute('kcm', 'width'), loft.get_attribute('kcm', 'width'), 0.01, 'as wide as its unit'
-      assert_in_delta unit.get_attribute('kcm', 'depth'), loft.get_attribute('kcm', 'depth'), 0.01, 'and as deep, so the doors line up'
+      assert_in_delta 600.0, loft.get_attribute('kcm', 'depth'), 0.01, 'every loft is as deep as the deepest unit, so all the fronts are flush'
       assert_in_delta unit.transformation.origin.z.to_mm + unit.get_attribute('kcm', 'top_z'), loft.transformation.origin.z.to_mm, 0.01, 'on top of it'
     end
     assert_equal 1, lofts.map { |loft| loft.transformation.origin.z.to_mm.round }.uniq.length, 'no stacking'
@@ -438,5 +438,17 @@ class PlacementTest < Minitest::Test
     SelectionManager.selected = wall
     insert_loft
     assert_in_delta tops.max, PlacementManager.loft_level(@model), 0.01, 'a loft is not a unit it goes over'
+  end
+  def test_a_loft_over_a_shallow_wall_unit_is_as_deep_as_the_ones_over_the_tall_units
+    tall = insert('tall', 600.0, depth: 560.0)
+    wall = insert('wall', 600.0, depth: 320.0)
+    deselect
+    over_tall = insert_loft
+    over_wall = insert_loft
+    assert_in_delta 560.0, over_tall.get_attribute('kcm', 'depth'), 0.01
+    assert_in_delta 560.0, over_wall.get_attribute('kcm', 'depth'), 0.01, 'flush with the others at the front'
+    assert_in_delta 320.0, wall.get_attribute('kcm', 'depth'), 0.01, 'the wall unit itself is unchanged'
+    assert_in_delta 560.0, PlacementManager.loft_depth(@model), 0.01
+    refute_nil tall
   end
 end
