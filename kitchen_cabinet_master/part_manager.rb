@@ -1152,6 +1152,11 @@ module KitchenCabinetMaster
       dictionary = AttributeManager::DICTIONARY
       lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
       fillers = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'filler' && !item.get_attribute(dictionary, 'ceiling_filler').nil? }
+      level = PlacementManager.loft_level(model) # (the lofts stand at one level: any that is not there (put by an older version, or a unit grew) is moved to it)
+      lofts.each do |loft|
+        off = level - loft.transformation.origin.z.to_mm
+        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
+      end
       ids = lofts.map { |loft| AttributeManager.cabinet_id(loft) }
       kept = {}
       fillers.each do |filler|
