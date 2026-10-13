@@ -638,6 +638,7 @@ module KitchenCabinetMaster
       end
 
       old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(dictionary, key).to_f }
+      old_top = params['cabinet_category'] == 'tall' && root.get_attribute(dictionary, 'cabinet_category') == 'tall' ? PlacementManager.send(:top_of_item, root) : nil # (the wall units level with it go with it)
       if PlacementManager.crowds?(root.parent.entities, root, placed, CabinetLayout.envelope(params), old_size,
                                   also: squeeze && squeeze[:neighbour])
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
@@ -650,6 +651,7 @@ module KitchenCabinetMaster
           root.transformation = placed unless placed.equal?(root.transformation)
           WorktopManager.refresh(model) if params['sink'] || params['hob'] # its opening in the worktop follows
           RowResizer.apply(model, squeeze) if squeeze
+          follow_tall(model, root, old_top) if old_top
           # Its filler, side panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
           WallBottomManager.refresh(model) if defined?(WallBottomManager)
@@ -665,6 +667,21 @@ module KitchenCabinetMaster
       end
       Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.#{note}")
     end
+
+    # A tall unit that got taller (or shorter): the wall units whose tops were level with its top rise (or fall) with it. Inside an operation.
+    def self.follow_tall(model, tall, old_top)
+      delta = PlacementManager.send(:top_of_item, tall) - old_top
+      return if delta.abs < 0.01
+
+      up = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, delta.mm))
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        next unless AttributeManager.cabinet?(item) && AttributeManager.read(item)['cabinet_category'] == 'wall'
+        next unless (PlacementManager.send(:top_of_item, item) - old_top).abs < 1.0
+
+        item.transformation = up * item.transformation
+      end
+    end
+    private_class_method :follow_tall
     private_class_method :update_one
 
     UNIT_SIZE_KEYS = %w[width depth height].freeze

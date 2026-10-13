@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.25.0';
+  const APP_VERSION = '1.26.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -670,7 +670,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -754,13 +754,22 @@
     if ([...el.options].some((o) => o.value === text)) el.value = text;
   }
 
+  // The Toe Kick fields of the Presets (under the Tall Unit sizes) and those of Cabinet and Extras are the same values.
+  const TOE_PRESET = { toeHeight: 'pToeHeight', toeThickness: 'pToeThickness', toeRecess: 'pToeRecess' };
+  const TOE_FROM_PRESET = { pToeHeight: 'toeHeight', pToeThickness: 'toeThickness', pToeRecess: 'toeRecess' };
+  function mirrorToe(id) {
+    if (TOE_PRESET[id] && $(TOE_PRESET[id])) $(TOE_PRESET[id]).value = $(id).value;
+  }
+
   function setText(id, value) {
     if (value === undefined || value === null) return;
     if (LENGTH_IDS.includes(id) && typeof value === 'number') {
       showLength(id, value);
+      mirrorToe(id);
       return;
     }
     $(id).value = typeof value === 'number' ? fmt(value) : String(value);
+    mirrorToe(id);
   }
 
   /* ---------------------------------------------------------------------- *
@@ -2391,6 +2400,13 @@ if (details.length) {
 
   // A field was edited: update the selected item if this field belongs to it.
 function liveEdit(el) {
+    if (TOE_FROM_PRESET[el.id]) { // a Toe Kick field of the Presets: it is the field of Cabinet and Extras that is edited
+      const target = $(TOE_FROM_PRESET[el.id]);
+      target.value = el.value;
+      target.dispatchEvent(new Event('input', { bubbles: true })); // (as if it was typed there: it updates live and is remembered)
+      return;
+    }
+    mirrorToe(el.id);
     if (UNIT_SIZE_FIELDS[el.id]) {
       const [category, key] = UNIT_SIZE_FIELDS[el.id];
       if (!unitSizeDirty.has(category)) unitSizeDirty.set(category, new Map());
@@ -2585,6 +2601,7 @@ function liveEdit(el) {
     await restorePresets();
     updateCategoryUi();
     await refreshCabinets();
+    Object.keys(TOE_PRESET).forEach(mirrorToe);
     try { await call('get_selection'); } catch (_) { /* nothing selected, or an older Ruby side */ } // what is selected in the model opens in the panel
 
     if (m.version !== APP_VERSION) {
