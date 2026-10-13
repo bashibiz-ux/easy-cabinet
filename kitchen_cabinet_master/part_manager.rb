@@ -89,8 +89,22 @@ module KitchenCabinetMaster
     # What a filler needs from the cabinet it goes against. `target_flush_x` is the
     # door front: the carcass depth plus the door clearance and door thickness (a
     # corner unit is a square with nothing standing proud of it).
+    # A tall L corner unit: its two arms end in the room (the sides of a row that ends at the corner), each as deep as a tall unit; a base L corner
+    # has no side panels of its own (its arms meet the units of both rows).
+    def self.arm_corner?(params)
+      CabinetLayout.corner?(params) && params['cabinet_category'].to_s == 'tall' && CabinetLayout.corner_style(params) == 'l_shape'
+    end
+    private_class_method :arm_corner?
+
+    # The sides of a unit that can have a panel: its two ends, and the end of the second arm of a tall L corner ('front': the end that faces the
+    # way the row came from).
+    def self.panel_sides(params)
+      arm_corner?(params) ? %w[left right front] : %w[left right]
+    end
+    private_class_method :panel_sides
+
     def self.filler_target(target, target_params)
-      corner = CabinetLayout.corner?(target_params)
+      corner = CabinetLayout.corner?(target_params) && !arm_corner?(target_params)
       depth = (corner ? CabinetLayout.corner_extent(target_params) : target_params['depth']).to_f
       flush = corner ? depth : depth + CabinetLayout.door_distance(target_params) + target_params['material_thickness'].to_f
       {
@@ -194,7 +208,7 @@ module KitchenCabinetMaster
       begin
         remove_corner_panels(model) # (a panel on a corner unit is a stray one: the notch of the L is not a side)
         tallest_first(targets).each do |target|
-          %w[left right].each do |side|
+          panel_sides(AttributeManager.read(target)).each do |side|
             did, skipped, trouble = place_exposed_panels(model, target, side, raw)
             made += did
             covered += skipped
@@ -219,7 +233,7 @@ module KitchenCabinetMaster
 
     # Takes away any side panel that stands on a corner unit (older versions put them in the notch of the L).
     def self.remove_corner_panels(model)
-      corners = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && CabinetLayout.corner?(AttributeManager.read(item)) }
+      corners = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && CabinetLayout.corner?(AttributeManager.read(item)) && !arm_corner?(AttributeManager.read(item)) }
       ids = corners.map { |item| AttributeManager.cabinet_id(item) }.compact
       return if ids.empty?
 
@@ -240,7 +254,11 @@ module KitchenCabinetMaster
     # The panel's own values (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
     def self.place_exposed_panels(model, target, side, raw)
       target_params = AttributeManager.read(target)
-      return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
+      return [0, 1, []] if side == 'front' && !arm_corner?(target_params)
+      return [0, 1, []] if CabinetLayout.corner?(target_params) && !arm_corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
+      return [0, 1, []] if side == 'left' && arm_corner?(target_params) # (the wall side of a tall L corner: its carcass stands against the wall)
+      return place_corner_front_panel(model, target, target_params, raw) if side == 'front'
+
       return [0, 1, []] if target_params['free_housing'] == true # (a housing for a freestanding fridge has its own two side panels, full height: another one on each would double them)
 
       thickness = stringify(raw)['thickness'].to_f
@@ -277,6 +295,54 @@ module KitchenCabinetMaster
         [0, 0, [answer['message']]]
       end
     end
+
+    # The end of the second arm of a tall L corner (the face of the square that looks the way the row came from): a panel across it, turned a
+    # quarter, when nothing stands against that end. Marked 'corner_arm' so that Update leaves it where it is.
+    def self.place_corner_front_panel(model, target, target_params, raw)
+      values = stringify(raw)
+      thickness = values['thickness'].to_f
+      return [0, 1, []] unless thickness.positive?
+
+      width = target_params['width'].to_f
+      arm = door_front_of(target, target_params)
+      inverse = target.transformation.inverse
+      base = start_z_of(target, target_params)
+      covered = target.parent.entities.grep(Sketchup::ComponentInstance).any? do |other|
+        next false if other.equal?(target) || !AttributeManager.occupant?(other)
+
+        box = occupant_box(inverse, other)
+        box[:x0] <= width + 3.0 && box[:x0] >= width - 1.0 && box[:x1] > width + 1.0 && box[:y0] < arm - 1.0 && box[:y1] > 1.0 && box[:z1] > base + 1.0
+      end
+      return [0, 1, []] if covered
+
+      from, top = SideExposure.panel_span(inner: false, hangs: false, carcass: base, top: top_of(target_params))
+      door = door_material_of(target_params)
+      carcass = CabinetGenerator.carcass_material(target_params, door)
+      params, failure = prepare_end_panel(values.merge('side' => 'right', 'depth' => arm, 'height' => top - from), door, carcass)
+      return [0, 0, [failure['message']]] if failure
+
+      params['side'] = 'front'
+      params['corner_arm'] = 'front'
+      params['target_door_material'] = door
+      params['target_carcass_material'] = carcass
+      params['target_id'] = AttributeManager.cabinet_id(target)
+      params['target_width'] = width
+      params['target_base_z'] = from
+      layout = PartLayout.end_panel(params)
+      turn = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI / 2)
+      transformation = target.transformation * Geom::Transformation.translation(Geom::Vector3d.new((width + thickness).mm, 0, 0)) * turn
+      root = SelectionManager.suspend do
+        with_operation(model, 'Insert Side Panel') do
+          params['part_id'] = AttributeManager.next_part_id(model)
+          params['part_name'] = NamingManager.unique_name(target.parent.entities, NamingManager.end_panel_name(params))
+          PartGenerator.build(model, target.parent.entities, params, transformation, layout)
+        end
+      end
+      root.set_attribute(AttributeManager::DICTIONARY, LiveParts::AUTO, true) if values['auto'] == true
+      [1, 0, []]
+    end
+    private_class_method :place_corner_front_panel
+
     private_class_method :place_exposed_panels
 
     # The widest gap between a cabinet and a wall that a filler fills (mm); a wall further away leaves the end of the row open, with a side panel.
@@ -416,7 +482,7 @@ module KitchenCabinetMaster
         panel_values = stringify(values).merge('auto' => true)
         tallest_first(targets).each do |target|
           id = AttributeManager.cabinet_id(target) || AttributeManager.part_id(target)
-          %w[left right].each do |side|
+          panel_sides(AttributeManager.read(target)).each do |side|
             next if LiveParts.dismissed?("side:#{id}:#{side}") # (taken away with Delete)
 
             made += place_exposed_panels(model, target, side, panel_values)[0]
@@ -1199,6 +1265,9 @@ module KitchenCabinetMaster
       return failure if failure
 
       %w[target_id target_width target_base_z target_door_material target_carcass_material custom_overrides].each { |key| params[key] = stored[key] }
+      arm_end = stored['corner_arm'].to_s == 'front' # (across the end of the second arm of a tall L corner)
+      params['side'] = stored['side'] if arm_end
+      params['corner_arm'] = stored['corner_arm'] if arm_end
 
       layout = PartLayout.end_panel(params)
       offset = params['side'] == 'left' ? -params['thickness'] : params['target_width']
@@ -1206,10 +1275,10 @@ module KitchenCabinetMaster
       # The panel keeps the position it was placed at; only its own offset along
       # the target's face (which side, how thick) can move it.
       base = target_placement(root)
-      transformation = base * local_move
+      transformation = arm_end ? root.transformation : base * local_move
       size = PartLayout.end_panel_envelope(params)
 
-      if PlacementManager.collides?(root.parent.entities, transformation, size, exclude: root)
+      if !arm_end && PlacementManager.collides?(root.parent.entities, transformation, size, exclude: root)
         return Response.fail("The #{params['side']} side already has something against it.")
       end
 
