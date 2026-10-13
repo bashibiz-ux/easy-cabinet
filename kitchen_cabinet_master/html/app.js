@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.31.0';
+  const APP_VERSION = '1.32.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -588,6 +588,8 @@
     design_kitchen: () => ({ kitchen: collectKitchen(), cabinet: collect(), worktop: $('kitchenWorktop').checked ? collectWorktop() : null,
       toe_kick: $('kitchenToeKick').checked ? collectToeKick() : null, end_panel: $('kitchenEndPanels').checked || $('kitchenIslandSidePanels').checked ? collectEndPanel() : null }),
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
+    add_appliance: () => ({ kind: $('applianceKind').value, front: $('applianceFront').value }),
+    remove_appliance: () => ({ kind: $('applianceKind').value }),
     design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
   };
 
@@ -615,6 +617,24 @@
     if (!data.materials) return;
     loadMaterials(data.materials);
     if (action === 'add_material') { $('myName').value = ''; $('myFrom').value = ''; }
+  }
+
+  // My Appliances: which kinds are your own model, and which are the drawn ones.
+  function appliancesChanged(data) {
+    if (Array.isArray(data.my_appliances)) state.meta.my_appliances = data.my_appliances;
+    renderAppliances();
+  }
+
+  function renderAppliances() {
+    const kinds = list(state.meta.my_appliances);
+    const select = $('applianceKind');
+    if (!select) return;
+    if (!select.options.length) kinds.forEach((kind) => select.append(new Option(kind.name, kind.id)));
+    const chosen = kinds.find((kind) => kind.id === select.value);
+    const mine = kinds.filter((kind) => kind.custom).map((kind) => kind.name);
+    const own = chosen && chosen.custom;
+    $('applianceState').textContent = `${chosen ? `${chosen.name}: ${own ? `your model "${chosen.file}" is used` : 'the drawn one is used'}.` : ''} ${mine.length ? `Your own: ${mine.join(', ')}.` : 'None uploaded yet.'}`;
+    if (own && chosen.front) $('applianceFront').value = chosen.front;
   }
 
   // Adding or removing a handle of your own changes the Handle lists (the new one is chosen).
@@ -2083,6 +2103,7 @@ if (details.length) {
         if (action === 'save_to_catalog' || action === 'remove_from_catalog') await catalogsChanged(res.data || {}, action);
         if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
         if (action === 'add_handle' || action === 'remove_handle') handlesChanged(res.data || {}, action);
+        if (action === 'add_appliance' || action === 'remove_appliance') appliancesChanged(res.data || {});
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'design_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = false; } // from here on a change of the answers builds it again
         if (action === 'design_path_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = true; } // (along the path that was selected)
@@ -2618,7 +2639,7 @@ function liveEdit(el) {
     Object.keys(FALLBACK_LISTS).forEach((key) => {
       if (!list(m[key]).length) m[key] = FALLBACK_LISTS[key];
     });
-    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs', 'glass_designs', 'kitchen_variations'].forEach((key) => { m[key] = list(m[key]); });
+    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs', 'glass_designs', 'kitchen_variations', 'my_appliances'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), glass: list(m.materials && m.materials.glass), mine: list(m.materials && m.materials.mine) };
@@ -2677,6 +2698,7 @@ function liveEdit(el) {
     updateCategoryUi();
     await refreshCabinets();
     Object.keys(TOE_PRESET).forEach(mirrorToe);
+    renderAppliances();
     syncWallChoices();
     try { await call('get_selection'); } catch (_) { /* nothing selected, or an older Ruby side */ } // what is selected in the model opens in the panel
 
@@ -2774,6 +2796,7 @@ $('kitchenLayout').addEventListener('change', () => {
 });
     $('kitchenVariation').addEventListener('change', syncVariation);
     $('panelOrientation').addEventListener('change', syncPanelUi);
+    $('applianceKind').addEventListener('change', renderAppliances);
     $('resetUnitSizes').addEventListener('click', resetUnitSizes);
     $('kitchenIsland').addEventListener('change', () => setSoft($('kitchenIslandFields'), !$('kitchenIsland').checked));
     $('handlePosition').addEventListener('change', syncHandlePosition);

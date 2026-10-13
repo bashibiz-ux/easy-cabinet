@@ -20,6 +20,8 @@ module KitchenCabinetMaster
       when 'toggle' then toggle_all
       when 'rotate' then rotate(raw)
       when 'apply_all' then apply_all(raw)
+      when 'add_appliance' then MyAppliances.add(raw)
+      when 'remove_appliance' then MyAppliances.remove(raw)
       when 'set_unit_sizes' then set_unit_sizes(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize

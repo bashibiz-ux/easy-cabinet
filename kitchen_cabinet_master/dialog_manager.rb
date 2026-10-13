@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   #                  KCM.receive({ event, data })                        (push, no id)
   module DialogManager
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
-    CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all set_unit_sizes get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
+    CABINET_ACTIONS = %w[insert update duplicate delete toggle visibility rotate apply_all set_unit_sizes add_appliance remove_appliance get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks update_placed update_part delete_part].freeze
     LIVE_ACTIONS = %w[set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
@@ -221,6 +221,7 @@ module KitchenCabinetMaster
           'catalogs'        => CatalogManager.catalogs,
           'front_designs'   => FrontDesign::DESIGNS,
           'kitchen_variations' => KitchenPlanner.variations,
+          'my_appliances' => MyAppliances.list,
         'glass_designs'   => FrontDesign::GLASS_DESIGNS,
           'handle_bundles'  => CatalogManager.handle_bundles,
           'handle_positions' => Defaults::HANDLE_POSITIONS,

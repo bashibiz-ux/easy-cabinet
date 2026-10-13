@@ -357,6 +357,27 @@
       </div>
     </section>
 
+    <!-- My Appliances -->
+    <section class="card" id="sec-appliances">
+      <button class="card-head" type="button" aria-expanded="true">My Appliances</button>
+      <div class="card-body">
+        <p class="hint">Upload the model (.skp) of your own oven, microwave, fridge, sink, hob or hood. Every cabinet that has one then shows your model in that place, scaled to the space of the drawn one, with its own materials.</p>
+        <label class="field">
+          <span class="label">Appliance</span>
+          <div class="input"><select id="applianceKind"></select></div>
+        </label>
+        <label class="field">
+          <span class="label">The front of the model faces</span>
+          <div class="input"><select id="applianceFront"><option value="-y">The front view (-Y: SketchUp's default)</option><option value="+x">+X (the red axis)</option><option value="+y">+Y (the green axis)</option><option value="-x">-X</option></select></div>
+        </label>
+        <p class="hint" id="applianceState"></p>
+        <div class="btn-row two">
+          <button class="btn primary" type="button" data-action="add_appliance" title="Choose the model file of the appliance. It is kept in your folder and used in every cabinet that has this kind of appliance.">Upload My Appliance</button>
+          <button class="btn" type="button" data-action="remove_appliance" title="Go back to the drawn appliance of this kind.">Remove</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Material -->
     <section class="card" id="sec-material" data-feature="materials">
       <button class="card-head" type="button" aria-expanded="true">Material</button>

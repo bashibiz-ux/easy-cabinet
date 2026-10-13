@@ -522,9 +522,55 @@ module KitchenCabinetMaster
         MaterialManager.apply(instance, material_name, model, color, look)
       end
       have.each_value { |surplus| discard_instance(model, surplus) }
+      apply_custom_appliances(model, entities, items) if defined?(MyAppliances)
       apply_appliance_visibility(container, params['visibility_settings'] || {})
     end
     private_class_method :sync_appliances
+
+    # Your own appliances (see MyAppliances): where you uploaded the model of a kind of appliance, the drawn parts of every appliance of that kind
+    # are taken away and your model stands in their place, turned to face out of the cabinet and scaled to the box the drawn parts filled. It keeps its
+    # own materials. Its role keeps the marker of the drawn one (_hob_, _sink_ ...), so the Visibility ticks still show and hide it.
+    def self.apply_custom_appliances(model, entities, items)
+      kept = MyAppliances.meta
+      return if kept.empty?
+
+      items.group_by { |item| MyAppliances.group_of(item.role) }.each do |group, parts|
+        next unless group
+
+        kind = MyAppliances.kind_of(group)
+        entry = kept[kind]
+        definition = entry && MyAppliances.definition(model, kind, entry)
+        next unless definition
+
+        low, size = MyAppliances.box_of(parts)
+        fit = MyAppliances.fit(MyAppliances.size_of(definition), entry['front'], low, size)
+        index = index_by_role(entities)
+        parts.each { |part| discard_instance(model, index[part.role]) if index[part.role] }
+        marker = parts.first.role[/\A#{Regexp.escape(group)}_(free_|housed_)?/, 1].to_s
+        role = "#{group}_#{marker}custom"
+        origin = definition.bounds.min
+        turn = Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), fit[:turn] * Math::PI / 180.0)
+        transformation = Geom::Transformation.translation(Geom::Vector3d.new(*fit[:origin].map(&:mm))) *
+                         Geom::Transformation.scaling(*fit[:scale]) *
+                         Geom::Transformation.translation(Geom::Vector3d.new(fit[:shift][0].mm, fit[:shift][1].mm, 0)) *
+                         turn * Geom::Transformation.translation(Geom::Vector3d.new(-origin.x, -origin.y, -origin.z))
+        instance = place_instance(model, entities, index[role], role, definition, transformation)
+        instance.name = MyAppliances::KINDS[kind]
+      end
+    end
+    private_class_method :apply_custom_appliances
+
+    # Every cabinet with appliances is drawn again (after an appliance of your own was added or taken away). Inside an operation.
+    def self.sync_all_appliances(model)
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        next unless AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item)
+
+        params = AttributeManager.read(item)
+        next unless params
+
+        sync_appliances(model, item, index_by_role(item.definition.entities), params, CabinetLayout.compute(with_rise(model, params)))
+      end
+    end
 
     # A box, a round bar (shape cyl_x / cyl_y / cyl_z) or a flat board with an outline (points).
     def self.appliance_definition(model, item)
