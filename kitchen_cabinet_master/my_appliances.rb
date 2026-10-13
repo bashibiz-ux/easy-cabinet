@@ -111,25 +111,33 @@ module KitchenCabinetMaster
       return Response.fail('Choose which appliance it is.') unless KINDS.key?(kind)
       return Response.fail('There is no folder of your own to keep the model in.') if root.empty?
 
+      # What is selected in the model (a group, a component or loose geometry that is not a cabinet) is the appliance; with nothing selected a
+      # model file is asked for.
+      model = Sketchup.active_model
+      items = model.selection.to_a.reject { |item| AttributeManager.cabinet?(item) || AttributeManager.part?(item) || AttributeManager.row_item?(item) }
       from = raw['file'].to_s.strip
-      if from.empty?
-        return Response.fail('Choose the model file of your appliance.') unless defined?(UI) && UI.respond_to?(:openpanel)
+      if items.empty? && from.empty?
+        return Response.fail("Select the #{KINDS[kind].downcase} you drew in the model (a group or component), or select nothing and choose a model file.") unless defined?(UI) && UI.respond_to?(:openpanel)
 
         from = UI.openpanel("Choose the model file of your #{KINDS[kind].downcase}", '', 'SketchUp Model|*.skp||').to_s
         return Response.fail('No appliance was added.') if from.empty?
       end
-      return Response.fail('That model file could not be found.') unless File.file?(from)
+      return Response.fail('That model file could not be found.') if items.empty? && !File.file?(from)
 
+      single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
       front = FRONT_TURNS.key?(raw['front'].to_s) ? raw['front'].to_s : '-y'
       file = File.join('models', "appliance_#{kind}.skp")
       path = File.join(root, file)
       FileUtils.mkdir_p(File.dirname(path))
-      FileUtils.cp(from, path) unless File.expand_path(from) == File.expand_path(path)
-      model = Sketchup.active_model
-      size = measure(model, path)
+      if items.empty?
+        FileUtils.cp(from, path) unless File.expand_path(from) == File.expand_path(path)
+        size = measure(model, path)
+      else
+        size = CabinetManager.send(:write_model_file, model, items, single, path)
+      end
       return Response.fail('That file is not a model that can be used as an appliance.') unless size && size.all? { |v| v > 1.0 }
 
-      save_meta(meta.merge(kind => { 'file' => file, 'front' => front, 'name' => File.basename(from, '.*').tr('_', ' ') }))
+      save_meta(meta.merge(kind => { 'file' => file, 'front' => front, 'name' => items.empty? ? File.basename(from, '.*').tr('_', ' ') : CabinetManager.send(:guess_name, single) }))
       refresh(model)
       Response.ok("Your #{KINDS[kind].downcase} is used now (#{size.map { |v| v.round(1) }.join(' x ')} mm as drawn, scaled to the space of the drawn one).", { 'my_appliances' => list })
     end

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.32.1';
+  const APP_VERSION = '1.33.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -647,6 +647,7 @@
     const has = (id) => state.meta.handle_bundles.some((b) => b.id === id);
     if (action === 'add_handle' && data.handle_id) {
       setSelect('handle', data.handle_id);
+      setTimeout(() => $('handle').dispatchEvent(new Event('change', { bubbles: true })), 0); // (as if it was picked in the list: it is put on the cabinets)
     } else {
       setSelect('handle', has(doors) ? doors : '');
       setSelect('drawerHandle', has(drawers) ? drawers : '');
