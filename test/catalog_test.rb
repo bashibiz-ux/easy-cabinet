@@ -79,7 +79,7 @@ class CatalogTest < Minitest::Test
         entry = CatalogManager.cabinet(catalog, 'wall', id)
         refute_nil entry, "#{catalog} #{id}"
         assert_equal true, entry['loft']
-        assert_equal 340, entry.dig('defaults', 'height')
+        assert_equal 290, entry.dig('defaults', 'height')
       end
     end
   end
