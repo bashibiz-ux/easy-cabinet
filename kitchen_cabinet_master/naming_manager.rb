@@ -23,6 +23,13 @@ module KitchenCabinetMaster
       "#{code}#{format('%g', params['width'].to_f)}"
     end
 
+    # The name of a cabinet's component DEFINITION: its name and its own number, "BU600 - 113" (SketchUp wants every definition to have a name of its
+    # own, and would number the clashing ones itself, BU600#1, BU600#2 ...). The instance keeps the plain name, "BU600".
+    def self.definition_name(label, cabinet_id)
+      number = cabinet_id.to_s[/\d+/]
+      number ? "#{label} - #{number.to_i}" : label.to_s
+    end
+
     # "FIL100": a filler is named after its width, the same way a cabinet is.
     def self.filler_name(params)
       "#{Defaults::NAME_PREFIXES.fetch('filler', 'FIL')}#{format('%g', params['width'].to_f)}"

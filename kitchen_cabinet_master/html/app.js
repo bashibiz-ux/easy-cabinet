@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.26.0';
+  const APP_VERSION = '1.27.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2368,6 +2368,20 @@ if (details.length) {
   };
   const unitSizeDirty = new Map(); // kind -> Map(key -> element id)
 
+    // "Reset Unit Sizes": only the Unit Sizes of the Presets go back to how they began (the sizes empty, the toe kick at its standard values). No unit
+  // in the model is changed by it, and the rest of the Presets is left alone.
+  function resetUnitSizes() {
+    clearTimeout(state.unitSizeTimer);
+    unitSizeDirty.clear();
+    Object.keys(UNIT_SIZE_FIELDS).forEach((id) => { $(id).value = ''; });
+    const standard = state.meta.toe_kick_defaults || {};
+    setText('toeHeight', standard.toe_kick_height ?? 100);
+    setText('toeThickness', standard.toe_kick_thickness ?? 18);
+    setText('toeRecess', standard.toe_kick_recess ?? 50);
+    drawPreview();
+    setStatus('ok', 'The Unit Sizes are back to how they began. The units in the model were not changed.');
+  }
+
   function scheduleUnitSize() {
     clearTimeout(state.unitSizeTimer);
     state.unitSizeTimer = setTimeout(runUnitSize, LIVE_TYPING_DELAY_MS);
@@ -2696,6 +2710,7 @@ $('kitchenLayout').addEventListener('change', () => {
   setSoft($('kitchenWallCField'), $('kitchenLayout').value !== 'u');
 });
     $('kitchenVariation').addEventListener('change', syncVariation);
+    $('resetUnitSizes').addEventListener('click', resetUnitSizes);
     $('kitchenIsland').addEventListener('change', () => setSoft($('kitchenIslandFields'), !$('kitchenIsland').checked));
     $('handlePosition').addEventListener('change', syncHandlePosition);
     $('handleOrientation').addEventListener('change', syncHandlePosition);

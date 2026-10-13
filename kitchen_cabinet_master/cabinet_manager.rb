@@ -348,6 +348,7 @@ module KitchenCabinetMaster
           'custom_category' => category, 'custom_catalog' => raw['catalog_id'].to_s, 'custom_reach' => reach
         )
         AttributeManager.write(instance, stored)
+        holder.name = NamingManager.definition_name(instance.name, stored['cabinet_id']) # (BU600 - 113)
         TagManager.assign(model, instance, TagManager.for_category(category))
         # its door (the thin wide piece on its front) takes the Door Reveal, Door Distance and Door Height Adjustment settings
         door = CustomDoor.detect(instance)

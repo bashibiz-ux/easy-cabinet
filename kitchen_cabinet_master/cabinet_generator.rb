@@ -42,9 +42,10 @@ module KitchenCabinetMaster
     # Call inside an operation.
     def self.build(model, entities, params, transformation)
       label = params['cabinet_name'].to_s.empty? ? params['cabinet_id'] : params['cabinet_name']
-      definition = AttributeManager.mark_managed(model.definitions.add(label))
+      definition = AttributeManager.mark_managed(model.definitions.add(NamingManager.definition_name(label, params['cabinet_id'])))
       root = entities.add_instance(definition, transformation)
       root.name = label
+      root.set_attribute(AttributeManager::DICTIONARY, 'cabinet_id', params['cabinet_id']) # (the definitions are named with it, see name_parts)
 
       layout = sync(model, root, params)
       AttributeManager.write(root, attributes_for(params, layout))
@@ -179,10 +180,11 @@ module KitchenCabinetMaster
       label = root.name.to_s
       return if label.empty?
 
-      rename_definition(model, root.definition, label)
+      named = NamingManager.definition_name(label, root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id')) # (BU600 - 113: its own number, not SketchUp's #1)
+      rename_definition(model, root.definition, named)
       root.definition.entities.grep(Sketchup::ComponentInstance).each do |part|
         title = part.name.to_s
-        rename_definition(model, part.definition, "#{label} #{title}") unless title.empty?
+        rename_definition(model, part.definition, "#{named} #{title}") unless title.empty?
       end
     end
     private_class_method :name_parts
@@ -221,6 +223,7 @@ module KitchenCabinetMaster
       sync_indicator(model, root, top, params, layout, doors_visible)
       sync_appliances(model, root, top, params, layout)
       sync_name_label(model, root, top, params, layout)
+      name_parts(model, root) # (the parts made just now too)
       layout
     end
     private_class_method :sync
