@@ -517,7 +517,7 @@
         "defaults": {
           "width": 600,
           "depth": 320,
-          "height": 400
+          "height": 340
         },
         "loft": true
       },
@@ -537,7 +537,7 @@
         "defaults": {
           "width": 800,
           "depth": 320,
-          "height": 400
+          "height": 340
         },
         "loft": true
       },
@@ -558,7 +558,7 @@
         "defaults": {
           "width": 800,
           "depth": 320,
-          "height": 400
+          "height": 340
         },
         "loft": true
       },

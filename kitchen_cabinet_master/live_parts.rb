@@ -137,6 +137,7 @@ module KitchenCabinetMaster
         sync_side_panels(model) # (first: the dimensions are of the units)
         sync_toe_kicks(model)
         sync_dimensions(model)
+        PartManager.send(:sync_ceiling_fillers, model) # (a loft has its 50 mm ceiling filler)
       end
       kept = model.selection.to_a
       sync_worktop(model) # (the worktop and the bottom panels are steps of their own)

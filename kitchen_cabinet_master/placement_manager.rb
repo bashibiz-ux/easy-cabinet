@@ -72,27 +72,42 @@ module KitchenCabinetMaster
       DEFAULT_WALL_BOTTOM_MM
     end
 
-    # A LOFT (Wall - loft ...): a box over the wall or tall units, up to the ceiling. It goes directly over the wall or tall unit that is selected (else the
-    # last one inserted), starting at its top; its height is cut to what is left under the ceiling when it was not typed.
+    # A LOFT (Wall - loft ...): a box over the wall or tall units, up to the ceiling (with a 50 mm ceiling filler on top, see PartManager.sync_ceiling_fillers).
+    # The first loft goes directly over the selected wall or tall unit (with none selected, over the first one of the row) and starts at its top; the next
+    # ones go on along the row, one after the other, at the same height. Its height, when it was not typed, is cut to what is left under the ceiling less the filler.
     LOFT_CEILING_MM = 2400.0
+    LOFT_FILLER_MM = 50.0
 
     def self.loft?(params)
       params['cabinet_type'].to_s.start_with?('wall_loft')
     end
 
-    # The wall or tall unit a loft goes over, or nil when there is none.
-    def self.loft_base(model)
+    def self.loft_item?(item)
+      item.get_attribute(AttributeManager::DICTIONARY, 'cabinet_type').to_s.start_with?('wall_loft')
+    end
+
+    # What a new loft goes with: [unit, :over] (directly over a wall or tall unit) or [unit, :after] (next to the loft before it); nil when there is no unit.
+    def self.loft_anchor(model)
       chosen = SelectionManager.selected_occupant(model)
-      return chosen if chosen && %w[wall tall].include?(category_of(chosen).to_s)
+      if chosen
+        return [chosen, :after] if loft_item?(chosen)
+        return [chosen, :over] if %w[wall tall].include?(category_of(chosen).to_s)
+      end
+      last_loft = last_occupant(model) { |item| loft_item?(item) }
+      return [last_loft, :after] if last_loft
 
-      last_occupant(model) { |item| %w[wall tall].include?(category_of(item).to_s) }
+      first = first_occupant(model) { |item| %w[wall tall].include?(category_of(item).to_s) }
+      first ? [first, :over] : nil
     end
 
-    # Where a loft starts (mm): the top of the unit under it; with none, where a standard wall unit ends.
+    # Where a loft starts (mm): the top of the unit under it, or the bottom of the loft before it; with no unit, where a standard wall unit ends.
     def self.loft_bottom(model)
-      base = loft_base(model)
-      base ? top_of_item(base) : DEFAULT_WALL_BOTTOM_MM + 780.0
+      unit, mode = loft_anchor(model)
+      return DEFAULT_WALL_BOTTOM_MM + 780.0 unless unit
+
+      mode == :after ? unit.transformation.origin.z.to_mm : top_of_item(unit)
     end
+
 
     # The most recently inserted cabinet whose stored parameters satisfy the block.
     def self.latest_cabinet(model)
@@ -146,7 +161,14 @@ module KitchenCabinetMaster
           row_start = first_occupant(model)
         end
       end
-      row_start = loft_base(model) if loft && loft_base(model) # (a loft goes directly over its unit)
+      if loft && (anchor = loft_anchor(model)) # (the first loft goes directly over its unit, the next ones go on after the one before)
+        if anchor[1] == :over
+          row_start = anchor[0]
+        else
+          row_start = nil
+          selected = anchor[0]
+        end
+      end
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
 

@@ -46,7 +46,7 @@ module KitchenCabinetMaster
 
       model = Sketchup.active_model
       if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling)
-        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager.loft_bottom(model)
+        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager::LOFT_FILLER_MM - PlacementManager.loft_bottom(model)
         params['height'] = [room, 100.0].max if room < params['height'].to_f
       end
       root = SelectionManager.suspend do
@@ -703,7 +703,7 @@ module KitchenCabinetMaster
       model.start_operation('Ceiling Height', true)
       begin
         lofts.each do |root|
-          height = [ceiling - root.transformation.origin.z.to_mm, 100.0].max.round(2)
+          height = [ceiling - PlacementManager::LOFT_FILLER_MM - root.transformation.origin.z.to_mm, 100.0].max.round(2)
           answer = update_one(model, root, { 'fields_only' => true, 'fields' => { 'height' => height }, 'resize_neighbours' => false })
           answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
         end

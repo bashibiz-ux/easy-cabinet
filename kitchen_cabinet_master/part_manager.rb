@@ -477,7 +477,7 @@ module KitchenCabinetMaster
 
     # A side panel on every side that shows, of every cabinet and filler (inside an operation of its own, see LiveParts).
     def self.place_auto_panels(model, values)
-      targets = model.entities.select { |entity| AttributeManager.cabinet?(entity) || AttributeManager.part_kind(entity) == 'filler' }
+      targets = model.entities.select { |entity| AttributeManager.cabinet?(entity) || (AttributeManager.part_kind(entity) == 'filler' && entity.get_attribute(AttributeManager::DICTIONARY, 'ceiling_filler').nil?) }
       return 0 if targets.empty?
 
       made = 0
@@ -1145,6 +1145,38 @@ module KitchenCabinetMaster
       done.zero? && !problems.empty? ? Response.fail(message) : Response.ok(message)
     end
     private_class_method :update_placed
+
+    # The CEILING FILLER of a loft: a 50 mm strip across the front of the loft, over its top, up to the ceiling. One for every loft, as wide as the loft,
+    # in its door material, flush with its doors; made again where the loft is by every refresh (a loft that is gone takes its filler away).
+    def self.sync_ceiling_fillers(model)
+      dictionary = AttributeManager::DICTIONARY
+      lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
+      fillers = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'filler' && !item.get_attribute(dictionary, 'ceiling_filler').nil? }
+      ids = lofts.map { |loft| AttributeManager.cabinet_id(loft) }
+      kept = {}
+      fillers.each do |filler|
+        owner = filler.get_attribute(dictionary, 'ceiling_filler')
+        if ids.include?(owner) && !kept.key?(owner) then kept[owner] = filler else PartGenerator.remove(model, filler) end
+      end
+      lofts.each do |loft|
+        stored = AttributeManager.read(loft)
+        id = AttributeManager.cabinet_id(loft)
+        params = { 'part_kind' => 'filler', 'width' => stored['width'].to_f, 'thickness' => stored['material_thickness'].to_f, 'height' => PlacementManager::LOFT_FILLER_MM,
+                   'material' => door_material_of(stored), 'target_id' => id, 'target_width' => stored['width'].to_f, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0,
+                   'target_category' => 'wall', 'target_flush_x' => door_front_of(loft, stored), 'side' => 'right', 'ceiling_filler' => id }
+        params['thickness'] = 18.0 unless params['thickness'].positive?
+        transformation = loft.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, stored['top_z'].to_f.mm))
+        layout = PartLayout.filler(params)
+        params['part_name'] = NamingManager.filler_name(params)
+        if kept[id]
+          params['part_id'] = AttributeManager.part_id(kept[id])
+          PartGenerator.update(model, kept[id], params, layout, transformation)
+        else
+          params['part_id'] = AttributeManager.next_part_id(model)
+          PartGenerator.build(model, loft.parent.entities, params, transformation, layout)
+        end
+      end
+    end
 
     # ---- panel ---------------------------------------------------------------------
 

@@ -36,7 +36,7 @@ class FakeCabinet < Sketchup::ComponentInstance
     @parent = parent
     env = KitchenCabinetMaster::CabinetLayout.envelope(params)
     @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
-               'cabinet_category' => params['cabinet_category'], 'top_z' => env[2],
+               'cabinet_category' => params['cabinet_category'], 'cabinet_type' => params['cabinet_type'].to_s, 'top_z' => env[2],
                'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2],
                'corner_style' => params['corner_style'].to_s, 'door_opening_direction' => params['door_opening_direction'].to_s }
   end
@@ -364,18 +364,35 @@ class PlacementTest < Minitest::Test
     assert_in_delta top, loft.transformation.origin.z.to_mm, 0.01, 'starting at the top of the wall unit'
   end
 
-  def test_a_loft_goes_over_the_last_tall_or_wall_unit_when_nothing_is_selected
+  def test_with_nothing_selected_the_first_loft_goes_over_the_first_wall_or_tall_unit_of_the_row
     insert('base', 600.0)
-    tall = insert('tall', 600.0)
+    first = insert('tall', 600.0)
+    insert('tall', 600.0)
     deselect
     loft = insert_loft(600.0)
-    assert_in_delta tall.transformation.origin.y, loft.transformation.origin.y, 0.01
-    assert_operator loft.transformation.origin.z.to_mm, :>, 0.0
+    assert_in_delta first.transformation.origin.y, loft.transformation.origin.y, 0.01, 'over the first one, not the last'
+    assert_in_delta first.transformation.origin.z.to_mm + first.get_attribute('kcm', 'top_z'), loft.transformation.origin.z.to_mm, 0.01
+  end
+
+  def test_the_next_lofts_go_on_along_the_row_and_do_not_stack
+    wall = insert('wall', 600.0)
+    SelectionManager.selected = wall
+    one = insert_loft(600.0)
+    two = insert_loft(800.0) # (the loft just inserted is selected)
+    three = insert_loft(600.0)
+    assert_in_delta one.transformation.origin.z, two.transformation.origin.z, 0.01, 'the same height, not on top of the first'
+    assert_in_delta one.transformation.origin.z, three.transformation.origin.z, 0.01
+    assert_in_delta one.transformation.origin.y + 600.0, two.transformation.origin.y, 0.01, 'after the first'
+    assert_in_delta two.transformation.origin.y + 800.0, three.transformation.origin.y, 0.01, 'and after that'
+    deselect
+    four = insert_loft(600.0)
+    assert_in_delta three.transformation.origin.y + 600.0, four.transformation.origin.y, 0.01, 'with nothing selected it carries on after the last loft'
   end
 
   def test_the_ceiling_and_what_a_loft_is
     assert PlacementManager.loft?('cabinet_type' => 'wall_loft_liftup')
     refute PlacementManager.loft?('cabinet_type' => 'wall_2door')
     assert_equal 2400.0, PlacementManager::LOFT_CEILING_MM
+    assert_equal 50.0, PlacementManager::LOFT_FILLER_MM
   end
 end
