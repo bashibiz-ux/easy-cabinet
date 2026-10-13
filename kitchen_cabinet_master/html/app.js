@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.24.5';
+  const APP_VERSION = '1.25.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -669,7 +669,8 @@
     'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
-    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash'
+    'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
+    'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -2350,8 +2351,53 @@ if (details.length) {
     }
   }
 
+  // The Unit Sizes of the Presets (a width, depth or height for the base, wall or tall units): the selected units of that kind, or every one of them.
+  const UNIT_SIZE_FIELDS = {
+    sizeBaseW: ['base', 'width'], sizeBaseD: ['base', 'depth'], sizeBaseH: ['base', 'height'],
+    sizeWallW: ['wall', 'width'], sizeWallD: ['wall', 'depth'], sizeWallH: ['wall', 'height'],
+    sizeTallW: ['tall', 'width'], sizeTallD: ['tall', 'depth'], sizeTallH: ['tall', 'height']
+  };
+  const unitSizeDirty = new Map(); // kind -> Map(key -> element id)
+
+  function scheduleUnitSize() {
+    clearTimeout(state.unitSizeTimer);
+    state.unitSizeTimer = setTimeout(runUnitSize, LIVE_TYPING_DELAY_MS);
+  }
+
+  async function runUnitSize() {
+    if (state.busy) {
+      scheduleUnitSize();
+      return;
+    }
+    state.busy = true;
+    state.liveBusy = true;
+    try {
+      for (const [category, edits] of [...unitSizeDirty]) {
+        const fields = {};
+        edits.forEach((id, key) => { if ($(id).value.trim() !== '') fields[key] = mmv(id); });
+        unitSizeDirty.delete(category);
+        if (!Object.keys(fields).length) continue;
+        const res = await call('set_unit_sizes', { category, fields, resize_neighbours: $('resizeNeighbours').checked });
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      }
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      state.busy = false;
+      state.liveBusy = false;
+    }
+    try { await call('get_selection'); } catch (_) { /* the card shows the selected unit's new size */ }
+  }
+
   // A field was edited: update the selected item if this field belongs to it.
 function liveEdit(el) {
+    if (UNIT_SIZE_FIELDS[el.id]) {
+      const [category, key] = UNIT_SIZE_FIELDS[el.id];
+      if (!unitSizeDirty.has(category)) unitSizeDirty.set(category, new Map());
+      unitSizeDirty.get(category).set(key, el.id);
+      scheduleUnitSize();
+      return;
+    }
     if (el.closest('#sec-kitchen')) { // the Auto Kitchen answers: the kitchen designed before is built again with them
       scheduleKitchen(el.tagName === 'SELECT' || el.type === 'checkbox' ? 300 : 800);
       return;

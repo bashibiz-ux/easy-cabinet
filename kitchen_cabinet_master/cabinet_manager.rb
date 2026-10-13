@@ -20,6 +20,7 @@ module KitchenCabinetMaster
       when 'toggle' then toggle_all
       when 'rotate' then rotate(raw)
       when 'apply_all' then apply_all(raw)
+      when 'set_unit_sizes' then set_unit_sizes(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
       when 'apply_front_design' then apply_front_design(raw)
@@ -665,6 +666,60 @@ module KitchenCabinetMaster
       Response.ok("#{stored['cabinet_name']} updated. Base Z #{fmt(stored['base_z'])} mm, top Z #{fmt(stored['top_z'])} mm.#{note}")
     end
     private_class_method :update_one
+
+    UNIT_SIZE_KEYS = %w[width depth height].freeze
+
+    # The Unit Sizes of the Presets: a width, depth or height for the base, wall or tall units. It goes to the selected units of that kind, or, with
+    # none selected, to every unit of that kind in the model (corner units keep their own sizes). One Undo step. Only what was typed is sent.
+    def self.set_unit_sizes(raw)
+      raw = {} unless raw.is_a?(Hash)
+      category = raw['category'].to_s
+      return Response.fail('Unknown kind of unit.') unless %w[base wall tall].include?(category)
+
+      given = raw['fields'].is_a?(Hash) ? raw['fields'].transform_keys(&:to_s) : {}
+      fields = UNIT_SIZE_KEYS.to_h { |key| [key, given[key].to_s.strip] }.reject { |_, value| value.empty? }
+      return Response.fail('Type a width, a depth or a height.') if fields.empty?
+
+      model = Sketchup.active_model
+      kind = lambda do |item|
+        stored = AttributeManager.read(item)
+        (stored['cabinet_category'] || stored['custom_category']).to_s
+      end
+      picked = selected_cabinets(model)
+      if picked.empty?
+        targets = model.active_entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && kind.call(item) == category }
+      else
+        targets = picked.select { |item| kind.call(item) == category }
+        return Response.fail("Select a #{category} unit to change its size here: what is selected is not one.") if targets.empty?
+      end
+      targets = targets.reject { |item| Defaults.corner?(AttributeManager.read(item)) }.sort_by { |item| AttributeManager.read(item)['sequence'].to_i }
+      return Response.ok("No #{category} units (other than corner units) to change.") if targets.empty?
+
+      resize = raw['resize_neighbours'] != false
+      done = 0
+      problems = []
+      @batch = true
+      model.start_operation('Unit Sizes', true)
+      begin
+        targets.each do |root|
+          answer = update_one(model, root, { 'fields_only' => true, 'fields' => fields, 'resize_neighbours' => resize })
+          answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      SelectionManager.push_selection(model)
+      return Response.fail(problems.first) if done.zero?
+
+      message = "#{done} #{category} unit#{'s' unless done == 1} changed (#{fields.map { |key, value| "#{key} #{value}" }.join(', ')} mm)."
+      message += " #{problems.length} could not take it (#{problems.first(2).join('; ')})." unless problems.empty?
+      Response.ok(message)
+    end
+    private_class_method :set_unit_sizes
 
     # ---- settings that belong to every cabinet -------------------------------------
 
