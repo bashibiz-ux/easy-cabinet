@@ -382,14 +382,8 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       items = model.selection.to_a
       items = [] if items.any? { |item| AttributeManager.cabinet?(item) || AttributeManager.part?(item) } # (a cabinet is not a handle)
-      from = raw['file'].to_s.strip
-      if items.empty? && from.empty?
-        return Response.fail('Select the handle you drew in the model, or choose a model file.') unless defined?(UI) && UI.respond_to?(:openpanel)
-
-        from = UI.openpanel('Choose the model file of your handle', '', 'SketchUp Model|*.skp||').to_s
-        return Response.fail('No handle was added.') if from.empty?
-      end
-      return Response.fail('That model file could not be found.') if items.empty? && !File.file?(from)
+      from = ''
+      return Response.fail('Select the handle you drew in the model first (a group or component), then press Save.') if items.empty?
 
       single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
       name = raw['handle_name'].to_s.strip
