@@ -266,7 +266,7 @@ module KitchenCabinetMaster
       return [0, 1, []] if rectangles.empty?
 
       # The end of a row at a wall: touching it, nothing shows; a little way from it, a filler fills the gap instead of a side panel.
-      if raw['auto'] == true && touching.empty? && (gap = wall_gap(model, target, side))
+      if raw['auto'] == true && touching.empty? && !arm_corner?(target_params) && (gap = wall_gap(model, target, side))
         return [0, 1, []] if gap < 1.0
 
         return fill_to_wall(model, target, target_params, side, gap)
@@ -477,6 +477,7 @@ module KitchenCabinetMaster
       return 0 if targets.empty?
 
       made = 0
+      problems = []
       @batch = true
       begin
         panel_values = stringify(values).merge('auto' => true)
@@ -485,13 +486,20 @@ module KitchenCabinetMaster
           panel_sides(AttributeManager.read(target)).each do |side|
             next if LiveParts.dismissed?("side:#{id}:#{side}") # (taken away with Delete)
 
-            made += place_exposed_panels(model, target, side, panel_values)[0]
+            begin
+              answer = place_exposed_panels(model, target, side, panel_values)
+              made += answer[0]
+              problems.concat(answer[2])
+            rescue StandardError => e
+              problems << "#{target.name} (#{side}): #{e.message} at #{Array(e.backtrace).first.to_s[/\w+\.rb:\d+/]}"
+            end
           end
         end
       ensure
         @batch = false
       end
       model.selection.clear
+      DialogManager.push('notice', { 'message' => "A side panel could not be placed: #{problems.uniq.first(2).join('; ')}" }) if !problems.empty? && defined?(DialogManager)
       made
     end
     private_class_method :place_auto_panels

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.34.0';
+  const APP_VERSION = '1.34.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -270,6 +270,8 @@
       state.selectedKind = null;
       state.focusKey = null;
       setBadge(null);
+    } else if (name === 'notice') {
+      setStatus('error', data.message || '');
     } else if (name === 'snap') {
       // A moved cabinet was snapped to a neighbour and / or the wall (or could not be).
       setStatus('ok', data.message);
