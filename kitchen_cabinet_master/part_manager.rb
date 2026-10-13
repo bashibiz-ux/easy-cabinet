@@ -241,6 +241,7 @@ module KitchenCabinetMaster
     def self.place_exposed_panels(model, target, side, raw)
       target_params = AttributeManager.read(target)
       return [0, 1, []] if CabinetLayout.corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
+      return [0, 1, []] if target_params['free_housing'] == true # (a housing for a freestanding fridge has its own two side panels, full height: another one on each would double them)
 
       thickness = stringify(raw)['thickness'].to_f
       rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
