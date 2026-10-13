@@ -636,6 +636,33 @@
           </label>
         </div>
 
+        <!-- Panel: shown when Category = Panel. A plain board of its own, standing or lying. -->
+        <div class="subblock" id="sub-panel" data-feature="panel" hidden>
+          <p class="hint">A plain panel. Vertical it stands upright (width x height); horizontal it lies flat (width x depth). Insert puts it after the last unit (or the one selected); move it where it goes. Select it to change its size.</p>
+          <label class="field">
+            <span class="label">Orientation</span>
+            <div class="input"><select id="panelOrientation"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></div>
+          </label>
+          <div class="grid-3">
+            <label class="field">
+              <span class="label">Width</span>
+              <div class="input"><input id="panelWidth" type="text" inputmode="decimal" autocomplete="off" value="1000"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label" id="panelLengthLabel">Height</span>
+              <div class="input"><input id="panelLength" type="text" inputmode="decimal" autocomplete="off" value="1000"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Thickness</span>
+              <div class="input"><input id="panelThickness" type="text" inputmode="decimal" autocomplete="off" value="18"><em>mm</em></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="panelMaterial"></i><select id="panelMaterial" data-material></select></div>
+          </label>
+        </div>
+
         <!-- Wall Bottom Panel: shown when Category = Wall Bottom Panel. The panel under a run of wall units whose carcass has been lifted. -->
         <div class="subblock" id="sub-wall-bottom" data-feature="wall" hidden>
           <p class="hint">Panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>

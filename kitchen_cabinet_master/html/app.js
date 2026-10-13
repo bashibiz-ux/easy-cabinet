@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.29.3';
+  const APP_VERSION = '1.30.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -248,7 +248,7 @@
         focusSection('sec-worktop', data.part_id || data.part_name);
         return;
       }
-      const kind = ['end_panel', 'toe_kick'].includes(data.part_kind) ? data.part_kind : 'filler';
+      const kind = ['end_panel', 'toe_kick', 'panel'].includes(data.part_kind) ? data.part_kind : 'filler';
       state.selectedKind = kind;
       // A part is edited with the Cabinet & Extras fields, which need a catalog: use the first if none is chosen.
       if (!$('catalog').value && list(state.meta.catalogs)[0]) {
@@ -257,6 +257,7 @@
       }
       setBadge(data.part_name);
       if (kind === 'end_panel') applyEndPanelDefaults(data);
+      else if (kind === 'panel') applyPanelDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
       // A filler is something an side panel can go on: its front and top are what that panel starts from.
@@ -313,6 +314,35 @@
       // A new toe kick follows the Toe Kick tick in the Visibility section.
       visible: $('visToe').checked
     };
+  }
+
+  // The Panel category: a plain vertical or horizontal board.
+  function collectPanel() {
+    return {
+      orientation: $('panelOrientation').value,
+      width: mmv('panelWidth'),
+      length: mmv('panelLength'),
+      thickness: mmv('panelThickness'),
+      material: $('panelMaterial').value,
+      door_material: $('baseMaterial').value // ("same as door material" is the Base Unit's)
+    };
+  }
+
+  function applyPanelDefaults(d) {
+    setSelect('panelOrientation', d.orientation || 'vertical');
+    setText('panelWidth', d.width);
+    setText('panelLength', d.length);
+    setText('panelThickness', d.thickness);
+    setSelect('panelMaterial', d.material_choice || d.material || '__door__');
+    syncPanelUi();
+    updateChips();
+    drawPreview();
+  }
+
+  // The second size of a panel is its height when it stands and its depth when it lies.
+  function syncPanelUi() {
+    const label = $('panelLengthLabel');
+    if (label) label.textContent = $('panelOrientation').value === 'horizontal' ? 'Depth' : 'Height';
   }
 
   function applyFillerDefaults(d) {
@@ -518,12 +548,13 @@
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
-    toe_kick: () => collectToeKick()
+    toe_kick: () => collectToeKick(),
+    panel: () => collectPanel()
   };
 
   // Filler, Side Panel, Toe Kick and Wall Bottom Panel are choices in the Category list, next
   // to the real cabinet categories.
-  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom'];
+  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom', 'panel'];
 
   function categoryKind() {
     const value = $('category').value;
@@ -545,7 +576,7 @@
 
   // Cabinets have their own Insert / Update / Delete; a filler, side panel or toe
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
-  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom' };
+  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom', panel: 'insert_panel' };
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
@@ -670,7 +701,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -799,7 +830,7 @@
     // No catalog chosen yet: nothing is active except the catalog selection itself.
     const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
-    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }];
+    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }, { id: 'panel', name: 'Panel' }];
     fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' ? 'wall' : c.id)));
 
     document.querySelectorAll('[data-feature]').forEach((el) => {
@@ -875,6 +906,7 @@ function currentCabinet() {
     fillSelect($('kitchenBackPanelMaterial'), panel, { placeholder: 'Same as the doors' });
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
+    fillSelect($('panelMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
     fillSelect($('glassMaterial'), glass.length ? glass : [{ id: 'Glass - Clear', name: 'Glass - Clear' }]);
     fillSelect($('wtSplashMaterial'), [{ id: '__same__', name: 'Same as worktop' }, ...panel]);
@@ -1445,6 +1477,8 @@ function currentCabinet() {
     setSoft($('sub-end-panel'), kind !== 'end_panel');
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
     setSoft($('sub-wall-bottom'), kind !== 'wall_bottom');
+    setSoft($('sub-panel'), kind !== 'panel');
+    syncPanelUi();
     setSoft($('toeNote'), true);
     setSoft($('legFields'), !(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape'));
     setLegLabels(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape');
@@ -1692,6 +1726,11 @@ function currentCabinet() {
 
   function drawExtraPreview(kind) {
     const svg = $('preview');
+    if (kind === 'panel') {
+      svg.innerHTML = '';
+      $('previewCaption').textContent = `Panel ${fmtU(num(mmv('panelWidth')))} × ${fmtU(num(mmv('panelLength')))} ${unitInfo().label}, ${$('panelOrientation').value}.`;
+      return;
+    }
     const lift = Math.max(0, numOr(mmv('toeHeight'), 100));
     const cabinet = ghostCabinet(lift);
 
@@ -2083,6 +2122,7 @@ if (details.length) {
   function fieldKinds(el) {
     if (el.closest('#sub-filler')) return ['filler'];
     if (el.closest('#sub-end-panel')) return ['end_panel'];
+    if (el.closest('#sub-panel')) return ['panel'];
     if (el.id === 'toeHeight') return ['cabinet', 'toe_kick'];
     if (el.closest('#sub-toe-kick')) return ['toe_kick'];
     return ['cabinet'];
@@ -2733,6 +2773,7 @@ $('kitchenLayout').addEventListener('change', () => {
   setSoft($('kitchenWallCField'), $('kitchenLayout').value !== 'u');
 });
     $('kitchenVariation').addEventListener('change', syncVariation);
+    $('panelOrientation').addEventListener('change', syncPanelUi);
     $('resetUnitSizes').addEventListener('click', resetUnitSizes);
     $('kitchenIsland').addEventListener('change', () => setSoft($('kitchenIslandFields'), !$('kitchenIsland').checked));
     $('handlePosition').addEventListener('change', syncHandlePosition);

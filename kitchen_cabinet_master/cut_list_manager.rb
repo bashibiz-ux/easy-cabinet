@@ -71,6 +71,7 @@ module KitchenCabinetMaster
 
       case kind
       when 'filler', 'end_panel' then part_board(stored, kind == 'filler' ? 'Filler' : 'Side Panel')
+      when 'panel' then [board(stored['orientation'].to_s == 'horizontal' ? 'Horizontal Panel' : 'Vertical Panel', PartLayout.panel(stored).board.extent, stored['material'], stored['part_name'])]
       when 'toe_kick' then toe_kick_boards(stored)
       when 'worktop' then [board('Worktop', [stored['depth'], stored['width'], stored['worktop_thickness']], stored['material'], stored['part_name'])]
       when 'backsplash'

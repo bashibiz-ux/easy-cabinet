@@ -794,6 +794,34 @@ module KitchenCabinetMaster
       Result.new(out, errors)
     end
 
+    # A PANEL: a plain board of its own, upright (vertical: width x height) or lying flat (horizontal: width x depth), `thickness` thick.
+    PANEL_FIELDS = {
+      'width'     => { label: 'Panel width', min: 20.0, max: 4000.0, required: true },
+      'length'    => { label: 'Panel height or depth', min: 20.0, max: 4000.0, required: true },
+      'thickness' => { label: 'Panel thickness', min: 3.0, max: 100.0, required: true }
+    }.freeze
+
+    def self.validate_panel(raw)
+      raw = stringify_keys(raw)
+      errors = []
+      out = { 'part_kind' => 'panel' }
+
+      orientation = raw['orientation'].to_s
+      if %w[vertical horizontal].include?(orientation)
+        out['orientation'] = orientation
+      else
+        errors << error('orientation', 'Select vertical or horizontal.')
+      end
+      PANEL_FIELDS.each do |key, spec|
+        value, problem = numeric_field(raw, key, spec)
+        out[key] = value unless value.nil?
+        errors << problem if problem
+      end
+      choice = raw['material'].to_s.strip
+      out['material_choice'] = choice.empty? ? Defaults::SAME_AS_DOOR : choice
+      Result.new(out, errors)
+    end
+
     # A single field's value, or the error that rejects it (nil, nil is not
     # possible: an optional field left blank returns [nil, nil]).
     def self.numeric_field(raw, key, spec)

@@ -10,6 +10,7 @@ module KitchenCabinetMaster
       case action
       when 'insert_filler' then insert_filler(raw)
       when 'insert_end_panel' then insert_end_panel(raw)
+      when 'insert_panel' then insert_panel(raw)
       when 'insert_exposed_side_panels' then insert_exposed_side_panels(raw)
       when 'insert_toe_kick' then insert_toe_kick(raw)
       when 'apply_toe_kicks' then apply_toe_kicks(raw)
@@ -1066,6 +1067,62 @@ module KitchenCabinetMaster
     end
     private_class_method :update_placed
 
+    # ---- panel ---------------------------------------------------------------------
+
+    # A plain panel (Category = Panel): vertical or horizontal, its own size. It goes after the last unit of the row (or the one selected); it is no
+    # part of the row, so nothing is built against it, and it can be moved or sized afterwards.
+    def self.insert_panel(raw)
+      model = Sketchup.active_model
+      params, failure = prepare_panel(raw)
+      return failure if failure
+
+      layout = PartLayout.panel(params)
+      entities, transformation = PlacementManager.send(:target_row, model, { 'placement_gap' => 0.0 }, PartLayout.panel_envelope(params))
+      root = SelectionManager.suspend do
+        with_operation(model, 'Insert Panel') do
+          params['part_id'] = AttributeManager.next_part_id(model)
+          params['part_name'] = NamingManager.unique_name(entities, NamingManager.panel_name(params))
+          PartGenerator.build(model, entities, params, transformation, layout)
+        end
+      end
+      SelectionManager.select(root)
+      Response.ok("#{root.name} inserted.", { 'part_id' => AttributeManager.part_id(root) })
+    end
+    private_class_method :insert_panel
+
+    def self.update_panel(model, root, raw)
+      stored = AttributeManager.read(root)
+      params, failure = prepare_panel(raw)
+      return failure if failure
+
+      params['custom_overrides'] = stored['custom_overrides']
+      params['part_id'] = AttributeManager.part_id(root)
+      params['part_name'] = NamingManager.for_update_base(root, NamingManager.panel_name(params))
+      layout = PartLayout.panel(params)
+      SelectionManager.suspend do
+        with_operation(model, 'Update Panel') { PartGenerator.update(model, root, params, layout) }
+      end
+      SelectionManager.push_selection(model)
+      Response.ok("#{root.name} updated.")
+    end
+    private_class_method :update_panel
+
+    # "Same as door material" is the door material the panel sent along (the Base Unit's), else the default.
+    def self.prepare_panel(raw)
+      raw = stringify(raw)
+      result = ValidationManager.validate_panel(raw)
+      return [nil, Response.fail(summary(result.errors), result.errors)] unless result.errors.empty?
+
+      params = result.params
+      door = raw['door_material'].to_s.strip
+      params['material'] = params['material_choice'] == Defaults::SAME_AS_DOOR ? (door.empty? ? Defaults::DEFAULT_MATERIAL : door) : params['material_choice']
+      errors = material_errors(Sketchup.active_model, params, %w[material])
+      return [nil, Response.fail(summary(errors), errors)] unless errors.empty?
+
+      [params, nil]
+    end
+    private_class_method :prepare_panel
+
     # ---- update / delete (all kinds) -------------------------------------------
 
     def self.update_part(raw)
@@ -1076,6 +1133,7 @@ module KitchenCabinetMaster
       case AttributeManager.part_kind(root)
       when 'filler' then update_filler(model, root, raw)
       when 'end_panel' then update_end_panel(model, root, raw)
+      when 'panel' then update_panel(model, root, raw)
       when 'toe_kick' then update_toe_kick(model, root, raw)
       when 'worktop', 'backsplash' then WorktopManager.apply(raw, only_if_exists: false)
       when 'wall_bottom' then Response.ok('Change the wall bottom panel with Apply in the Worktop section.')

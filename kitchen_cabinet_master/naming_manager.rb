@@ -41,6 +41,11 @@ module KitchenCabinetMaster
       "#{Defaults::NAME_PREFIXES.fetch('end_panel', 'EP')}#{format('%g', params['thickness'].to_f)}"
     end
 
+    # "VP1000x1000" / "HP1000x1000": a vertical or horizontal panel, named after its two sizes.
+    def self.panel_name(params)
+      "#{params['orientation'].to_s == 'horizontal' ? 'HP' : 'VP'}#{format('%g', params['width'].to_f)}x#{format('%g', params['length'].to_f)}"
+    end
+
     # "TK600x3": a toe kick is named after its piece length and how many pieces.
     def self.toe_kick_name(params)
       prefix = Defaults::NAME_PREFIXES.fetch('toe_kick', 'TK')

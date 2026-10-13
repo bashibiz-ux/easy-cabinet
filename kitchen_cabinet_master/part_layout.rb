@@ -51,6 +51,7 @@ module KitchenCabinetMaster
       case params['part_kind']
       when 'filler' then filler(params)
       when 'end_panel' then end_panel(params)
+      when 'panel' then panel(params)
       when 'toe_kick' then toe_kick(params)
       when 'worktop', 'backsplash' then worktop_for(params)
       end
@@ -113,6 +114,27 @@ module KitchenCabinetMaster
                                        points: points&.map { |x, y| [round2(x), round2(y)] }, round: round.to_f, round_edge: round_edge,
                                        holes: holes&.map { |hole| hole.map { |v| round2(v) } })
       with_overrides(Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: []), params)
+    end
+
+    # A PANEL: one board at the part's own origin. Vertical it stands (thickness deep, `width` along the row, `length` high); horizontal it lies
+    # flat on the floor (`length` deep, `width` along the row, `thickness` high).
+    def self.panel_extent(params)
+      width = params['width'].to_f
+      length = params['length'].to_f
+      thickness = params['thickness'].to_f
+      params['orientation'].to_s == 'horizontal' ? [length, width, thickness] : [thickness, width, length]
+    end
+
+    def self.panel(params)
+      extent = panel_extent(params)
+      board = CabinetLayout::Panel.new(role: 'board', name: params['orientation'].to_s == 'horizontal' ? 'Horizontal Panel' : 'Vertical Panel',
+                                       extent: extent.map { |v| round2(v) }, offset: [0.0, 0.0, 0.0])
+      with_overrides(Layout.new(base_z: 0.0, top_z: round2(extent[2]), board: board, toe_kick: []), params)
+    end
+
+    def self.panel_envelope(params)
+      extent = panel_extent(params)
+      [extent[0], extent[1], extent[2]]
     end
 
     # [depth, thickness, top] from the side panel's own local floor origin.
