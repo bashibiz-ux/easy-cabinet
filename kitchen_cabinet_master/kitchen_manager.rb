@@ -284,6 +284,8 @@ module KitchenCabinetMaster
     def self.build_island(model, panel, catalog_id, plan, built, parts)
       island = plan.island
       frame = built[:base].first.transformation
+      along, across, degrees = island.frame || [0.0, 0.0, 0.0] # (its wall: wall A, or wall B or C of the layout)
+      frame *= Geom::Transformation.translation(Geom::Vector3d.new(along.mm, across.mm, 0)) * Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), degrees * Math::PI / 180.0)
       place = frame * Geom::Transformation.translation(Geom::Vector3d.new(island.x.mm, island.y.mm, 0)) *
               Geom::Transformation.rotation(Geom::Point3d.new(0, 0, 0), Geom::Vector3d.new(0, 0, 1), Math::PI)
       island.items.each_with_index { |item, index| built[:island] << build_unit(model, panel, catalog_id, item, index.zero? ? place : nil) }

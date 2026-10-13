@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.28.0';
+  const APP_VERSION = '1.29.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -625,7 +625,7 @@
     return {
       style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value, variation: $('kitchenVariation').value, sink_wall: $('kitchenSinkWall').value, hob_wall: $('kitchenHobWall').value,
       sink: $('kitchenSink').checked, sink_bowls: $('kitchenSinkType').value[0], sink_drain: $('kitchenSinkType').value[1] === 'd', dishwasher: $('kitchenDish').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
-      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_mirror: $('kitchenIslandMirror').checked, panel_thickness: $('kitchenEndPanels').checked ? mmv('epThickness') : 0, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
+      wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_wall: $('kitchenIslandWall').value, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_mirror: $('kitchenIslandMirror').checked, panel_thickness: $('kitchenEndPanels').checked ? mmv('epThickness') : 0, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
     };
   }
@@ -1811,12 +1811,12 @@ if (details.length) {
   // The sink and the hob can be put on a wall of the layout only: the walls it does not have cannot be chosen.
   function syncWallChoices() {
     const layout = $('kitchenLayout').value;
-    ['kitchenSinkWall', 'kitchenHobWall'].forEach((id) => {
+    ['kitchenSinkWall', 'kitchenHobWall', 'kitchenIslandWall'].forEach((id) => {
       const select = $(id);
       Array.from(select.options).forEach((option) => {
         option.disabled = (option.value === 'b' && layout === 'straight') || (option.value === 'c' && layout !== 'u');
       });
-      if (select.selectedOptions[0] && select.selectedOptions[0].disabled) select.value = '';
+      if (select.selectedOptions[0] && select.selectedOptions[0].disabled) select.value = id === 'kitchenIslandWall' ? 'a' : '';
     });
   }
 

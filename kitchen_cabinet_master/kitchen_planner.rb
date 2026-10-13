@@ -13,7 +13,7 @@ module KitchenCabinetMaster
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true) # extra: values this unit has of its own (a glass door)
     Plan = Struct.new(:base, :wall, :wall_start, :notes, :error, :island, :style, :layout, :first_length, :open_ends, :run_ends, :turn, keyword_init: true) # first_length: how long the first wall is (what the next kitchen is put beyond)
-    Island = Struct.new(:items, :x, :y, :length, :aisle, :hood, :seating, :back_panel, :side_panels, keyword_init: true) # x: from wall A to the island's back, y: along wall A to its high end
+    Island = Struct.new(:items, :x, :y, :length, :aisle, :hood, :seating, :back_panel, :side_panels, :wall, :frame, keyword_init: true) # x: from its wall to the island's back, y: along that wall to its high end; frame: [along, across, degrees] of that wall's own frame from wall A's
     class Short < StandardError; end
     ADJACENT = 'The sink and the hob are next to each other: there is no worktop between them.'
 
@@ -85,7 +85,7 @@ module KitchenCabinetMaster
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'sink_drain' => true, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'variation' => '', 'sink_wall' => '', 'hob_wall' => '', 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island_wall' => 'a', 'variation' => '', 'sink_wall' => '', 'hob_wall' => '', 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -100,7 +100,7 @@ module KitchenCabinetMaster
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'sink_drain' => flag.call('sink_drain'), 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
-        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'variation' => (variation(raw['variation']) ? raw['variation'].to_s : ''), 'sink_wall' => (%w[a b c].include?(raw['sink_wall'].to_s.downcase) ? raw['sink_wall'].to_s.downcase : ''), 'hob_wall' => (%w[a b c].include?(raw['hob_wall'].to_s.downcase) ? raw['hob_wall'].to_s.downcase : ''), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
+        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island_wall' => (%w[a b c].include?(raw['island_wall'].to_s.downcase) ? raw['island_wall'].to_s.downcase : 'a'), 'variation' => (variation(raw['variation']) ? raw['variation'].to_s : ''), 'sink_wall' => (%w[a b c].include?(raw['sink_wall'].to_s.downcase) ? raw['sink_wall'].to_s.downcase : ''), 'hob_wall' => (%w[a b c].include?(raw['hob_wall'].to_s.downcase) ? raw['hob_wall'].to_s.downcase : ''), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_mirror' => flag.call('island_mirror'), 'panel_thickness' => raw['panel_thickness'].to_s.tr(',', '.').to_f.clamp(0.0, 60.0), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
@@ -548,8 +548,14 @@ private_class_method :mirror_turn
     # A row of units standing free in the room, parallel to wall A, its fronts towards wall A (the working side), `aisle` mm from the units there.
     # nil, with a note, when the room is too narrow or too short for it.
     def self.island_plan(o, runs, lengths, notes)
+      wall = o['island_wall'].to_s.empty? ? :a : o['island_wall'].to_sym
+      unless runs.include?(wall)
+        notes << "There is no wall #{wall.upcase} in this layout, so the island is parallel to wall A."
+        wall = :a
+      end
+      index = runs.index(wall)
       aisle = o['island_aisle']
-      if runs.length == 3
+      if runs.length == 3 && wall != :b # wall A and wall C face each other, wall B between them
         space = lengths[:b] - (2 * FRONT_DEPTH) # between the units of A and of C
         aisle = [aisle, (space - FRONT_DEPTH) / 2.0].min
         if aisle < 900.0
@@ -557,9 +563,11 @@ private_class_method :mirror_turn
           return nil
         end
       end
-      y_max = runs.length > 1 ? lengths[:a] - FRONT_DEPTH - aisle : lengths[:a]
+      reach = FRONT_DEPTH + aisle # what a wall that meets this one at an end takes
+      first = index.positive? ? reach : 0.0
+      y_max = lengths[wall] - first - (index < runs.length - 1 ? reach : 0.0)
       if y_max < 600.0
-        notes << 'Wall A is too short for an island: it was left out.'
+        notes << "Wall #{wall.upcase} is too short for an island: it was left out."
         return nil
       end
       feature = o['island_feature']
@@ -602,7 +610,8 @@ private_class_method :mirror_turn
       end
       hob = items.find { |item| item.kind == :hob }
       hood = hob && o['hood'] ? { start: hob.start, width: hob.width, top: o['ceiling'], material: o['island_hood_colour'] } : nil # a hood hung from the ceiling over the island's hob
-      Island.new(items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: ((y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle, hood: hood, seating: o['island_seating'], back_panel: o['island_back_panel'] ? { length: length, material: o['island_back_panel_material'] } : nil, side_panels: o['island_side_panels'])
+      frame = { a: [0.0, 0.0, 0.0], b: [0.0, lengths[:a], -90.0], c: [lengths[:b], lengths[:a], 180.0] }[wall] # (where wall B and wall C start, turned to run along them)
+      Island.new(wall: wall, frame: frame, items: items, x: FRONT_DEPTH + aisle + FRONT_DEPTH, y: (first + (y_max / 2.0) + (length / 2.0)).round(2), length: length, aisle: aisle, hood: hood, seating: o['island_seating'], back_panel: o['island_back_panel'] ? { length: length, material: o['island_back_panel_material'] } : nil, side_panels: o['island_side_panels'])
     end
     private_class_method :island_plan
 

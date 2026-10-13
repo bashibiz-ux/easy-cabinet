@@ -227,8 +227,12 @@
         <label class="check"><input type="checkbox" id="kitchenHood" checked><span>Hood cabinet over the hob</span></label>
         <label class="check"><input type="checkbox" id="kitchenOven" checked><span>Oven housing (tall unit)</span></label>
         <label class="check"><input type="checkbox" id="kitchenWall" checked><span>Wall units</span></label>
-        <label class="check"><input type="checkbox" id="kitchenIsland" checked><span>Island (parallel to wall A)</span></label>
+        <label class="check"><input type="checkbox" id="kitchenIsland" checked><span>Island</span></label>
         <div class="grid-2" id="kitchenIslandFields">
+          <label class="field">
+            <span class="label">Island Parallel To</span>
+            <div class="input"><select id="kitchenIslandWall"><option value="a">Wall A</option><option value="b">Wall B</option><option value="c">Wall C</option></select></div>
+          </label>
           <label class="field">
             <span class="label">Island Length</span>
             <div class="input"><input id="kitchenIslandLength" type="text" inputmode="decimal" autocomplete="off" value="1800"><em>mm</em></div>
