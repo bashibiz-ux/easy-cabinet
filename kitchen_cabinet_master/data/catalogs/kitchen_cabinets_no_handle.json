@@ -197,7 +197,7 @@
       },
       {
         "id": "base_sink_1door",
-        "name": "Base - sink 1 bowl",
+        "name": "Base - sink 1 bowl 1 door",
         "code": "BS",
         "doors": 1,
         "shelves": 0,
@@ -219,7 +219,7 @@
       },
       {
         "id": "base_sink",
-        "name": "Base - sink 1 bowl with drain",
+        "name": "Base - sink 1 bowl 2 door with drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
@@ -240,7 +240,7 @@
       },
       {
         "id": "base_sink_2bowl",
-        "name": "Base - sink 2 bowl with drain",
+        "name": "Base - sink 2 bowl 2 door with drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
@@ -259,7 +259,7 @@
       },
       {
         "id": "base_sink_2bowl_plain",
-        "name": "Base - sink 2 bowl without drain",
+        "name": "Base - sink 2 bowl 2 door without drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
