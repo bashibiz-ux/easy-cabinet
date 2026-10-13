@@ -220,6 +220,7 @@ module KitchenCabinetMaster
           'standard_widths' => Defaults::STANDARD_WIDTHS,
           'catalogs'        => CatalogManager.catalogs,
           'front_designs'   => FrontDesign::DESIGNS,
+          'kitchen_variations' => KitchenPlanner.variations,
         'glass_designs'   => FrontDesign::GLASS_DESIGNS,
           'handle_bundles'  => CatalogManager.handle_bundles,
           'handle_positions' => Defaults::HANDLE_POSITIONS,

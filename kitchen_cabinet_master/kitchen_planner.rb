@@ -38,9 +38,52 @@ module KitchenCabinetMaster
     ISLAND_FEATURES = %w[none hob sink].freeze # what an island has built in
     RUNS = { 'straight' => [:a], 'l' => %i[a b], 'u' => %i[a b c] }.freeze
 
+    # The tall units a variation is made of: [catalog id, width, kind].
+    TALL = {
+      storage: ['tall_2door', 900.0, :storage], storage_narrow: ['tall_1door', 600.0, :storage], drawers: ['tall_4drawer', 600.0, :storage],
+      pantry: ['tall_pullout', 300.0, :storage], glass: ['tall_glass_2door', 900.0, :storage],
+      fridge_free: ['tall_fridge_housing_free', 900.0, :fridge], fridge: ['tall_fridge_builtin_2door', 600.0, :fridge],
+      freezer: ['tall_fridge_builtin_1door', 600.0, :freezer], oven: ['tall_oven', 600.0, :oven]
+    }.freeze
+
+    # Ways to arrange the tall units of a kitchen: `start` stand at the start of wall A, `end` at the end of the last wall. `fill` is how the floor
+    # units between them are made (classic: doors with a drawer unit now and then; drawers; doors; alternate: drawer, door, drawer ...; drawer_door:
+    # a drawer over doors), `wall` how the wall units are (classic, or open: every third one an open shelf).
+    VARIATIONS = [
+      { id: 'v01', name: '1 - Storage tall, freestanding fridge, oven tall', start: %i[storage fridge_free oven], end: [], fill: 'classic', wall: 'classic' },
+      { id: 'v02', name: '2 - Built-in fridge, built-in freezer, oven tall', start: %i[fridge freezer oven], end: [], fill: 'classic', wall: 'classic' },
+      { id: 'v03', name: '3 - Built-in fridge and freezer, oven tall at the far end', start: %i[fridge freezer], end: %i[oven], fill: 'classic', wall: 'classic' },
+      { id: 'v04', name: '4 - Storage tall, built-in fridge | oven tall (drawers)', start: %i[storage fridge], end: %i[oven], fill: 'drawers', wall: 'classic' },
+      { id: 'v05', name: '5 - Freestanding fridge | storage tall, oven tall', start: %i[fridge_free], end: %i[storage oven], fill: 'classic', wall: 'classic' },
+      { id: 'v06', name: '6 - Oven tall, storage tall | built-in fridge (doors)', start: %i[oven storage], end: %i[fridge], fill: 'doors', wall: 'classic' },
+      { id: 'v07', name: '7 - Storage tall | freestanding fridge (drawers and doors)', start: %i[storage], end: %i[fridge_free], fill: 'alternate', wall: 'classic' },
+      { id: 'v08', name: '8 - Freezer, fridge | storage tall (open wall shelves)', start: %i[freezer fridge], end: %i[storage], fill: 'classic', wall: 'open' },
+      { id: 'v09', name: '9 - Oven tall | built-in fridge and freezer (drawer over doors)', start: %i[oven], end: %i[fridge freezer], fill: 'drawer_door', wall: 'classic' },
+      { id: 'v10', name: '10 - Pantry pull-out, built-in fridge | oven tall', start: %i[pantry fridge], end: %i[oven], fill: 'classic', wall: 'classic' },
+      { id: 'v11', name: '11 - Tall drawers, freestanding fridge | oven tall (drawers)', start: %i[drawers fridge_free], end: %i[oven], fill: 'drawers', wall: 'classic' },
+      { id: 'v12', name: '12 - Two storage talls | freestanding fridge', start: %i[storage storage_narrow], end: %i[fridge_free], fill: 'classic', wall: 'classic' },
+      { id: 'v13', name: '13 - Built-in fridge | glass display tall, oven tall', start: %i[fridge], end: %i[glass oven], fill: 'alternate', wall: 'classic' },
+      { id: 'v14', name: '14 - Freestanding fridge, oven tall | storage tall (doors)', start: %i[fridge_free oven], end: %i[storage], fill: 'doors', wall: 'classic' },
+      { id: 'v15', name: '15 - Narrow storage, built-in fridge | oven tall (open wall shelves)', start: %i[storage_narrow fridge], end: %i[oven], fill: 'alternate', wall: 'open' },
+      { id: 'v16', name: '16 - Built-in fridge | oven tall (drawer over doors)', start: %i[fridge], end: %i[oven], fill: 'drawer_door', wall: 'classic' },
+      { id: 'v17', name: '17 - Freezer, built-in fridge (drawers, open wall shelves)', start: %i[freezer fridge], end: [], fill: 'drawers', wall: 'open' },
+      { id: 'v18', name: '18 - Storage tall, oven tall', start: %i[storage oven], end: [], fill: 'classic', wall: 'classic' },
+      { id: 'v19', name: '19 - Oven tall, built-in fridge (drawers and doors)', start: %i[oven fridge], end: [], fill: 'alternate', wall: 'classic' },
+      { id: 'v20', name: '20 - Freestanding fridge | oven tall (drawers, open wall shelves)', start: %i[fridge_free], end: %i[oven], fill: 'drawers', wall: 'open' },
+      { id: 'v21', name: '21 - Glass display, storage tall | built-in fridge, oven tall', start: %i[glass storage], end: %i[fridge oven], fill: 'classic', wall: 'classic' },
+      { id: 'v22', name: '22 - Built-in fridge, freezer, storage tall (drawers and doors)', start: %i[fridge freezer storage], end: [], fill: 'alternate', wall: 'classic' },
+      { id: 'v23', name: '23 - Oven tall | storage tall, freestanding fridge (doors)', start: %i[oven], end: %i[storage fridge_free], fill: 'doors', wall: 'classic' },
+      { id: 'v24', name: '24 - Pantry, storage, oven tall | built-in fridge (drawer over doors, open wall shelves)', start: %i[pantry storage oven], end: %i[fridge], fill: 'drawer_door', wall: 'open' },
+      { id: 'v25', name: '25 - Tall drawers, built-in fridge, freezer | oven tall (drawers and doors)', start: %i[drawers fridge freezer], end: %i[oven], fill: 'alternate', wall: 'classic' }
+    ].freeze
+
+    def self.variations = VARIATIONS.map { |variation| { 'id' => variation[:id], 'name' => variation[:name] } }
+    def self.variation(id) = VARIATIONS.find { |variation| variation[:id] == id.to_s }
+
+
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'sink_drain' => true, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'variation' => '', 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -55,7 +98,7 @@ module KitchenCabinetMaster
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'sink_drain' => flag.call('sink_drain'), 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
-        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
+        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'variation' => (variation(raw['variation']) ? raw['variation'].to_s : ''), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_mirror' => flag.call('island_mirror'), 'panel_thickness' => raw['panel_thickness'].to_s.tr(',', '.').to_f.clamp(0.0, 60.0), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
@@ -85,8 +128,13 @@ module KitchenCabinetMaster
       runs = RUNS[o['layout']]
       lengths = { a: o['wall_a'], b: o['wall_b'], c: o['wall_c'] }
       notes = []
-      fridge_w = FRIDGE.key?(o['fridge']) ? FRIDGE[o['fridge']][1] : 0.0
-      oven_w = o['oven_tower'] ? OVEN[1] : 0.0
+      chosen = variation(o['variation'])
+      start_tall = chosen ? chosen[:start].map { |key| TALL[key] } : (FRIDGE.key?(o['fridge']) ? [[FRIDGE[o['fridge']][0], FRIDGE[o['fridge']][1], :fridge]] : [])
+      end_tall = chosen ? chosen[:end].map { |key| TALL[key] } : (o['oven_tower'] ? [[OVEN[0], OVEN[1], :oven]] : [])
+      fridge_w = start_tall.sum { |tall| tall[1] }
+      oven_w = end_tall.sum { |tall| tall[1] }
+      @fill_mode = chosen ? chosen[:fill] : 'classic'
+      @wall_mode = chosen ? chosen[:wall] : 'classic'
 
       # A tall unit beside lower units gets a full side panel, and the units after it stand one panel thickness further along.
       panel = o['panel_thickness'].to_f
@@ -113,13 +161,19 @@ module KitchenCabinetMaster
       sink_center = window ? (window[:from] + window[:to]) / 2.0 : nil
 
       base = []
-      base << Item.new(category: 'tall', type: FRIDGE[o['fridge']][0], width: fridge_w, kind: :fridge, run: :a, start: 0.0) if fridge_w.positive?
+      cursor = 0.0
+      start_tall.each do |type, width, kind|
+        base << Item.new(category: 'tall', type: type, width: width, kind: kind, run: :a, start: cursor)
+        cursor += width
+      end
       runs.each_with_index do |run, index|
         base.concat(safe_run(run, free[run], reserve.call(run)[0], sink_run == run, hob_run == run, notes, sink_center, style: o['style'], with_dish: o['dishwasher'], bowls: o['sink_bowls'], drain: o['sink_drain']))
         base << Item.new(category: 'base', type: 'base_corner_l', width: CORNER_BASE, kind: :corner, run: run, start: lengths[run] - CORNER_BASE) if index < runs.length - 1
       end
-      if oven_w.positive?
-        base << Item.new(category: 'tall', type: OVEN[0], width: oven_w, kind: :oven, run: runs.last, start: lengths[runs.last] - oven_w)
+      cursor = lengths[runs.last] - oven_w
+      end_tall.each do |type, width, kind|
+        base << Item.new(category: 'tall', type: type, width: width, kind: kind, run: runs.last, start: cursor)
+        cursor += width
       end
 
       wall = o['wall_units'] ? wall_items(o, base, runs, lengths, fridge_end, oven_end, notes, o['style']) : []
@@ -399,9 +453,16 @@ private_class_method :mirror_turn
 
     def self.fill_unit(width, index, anchor, run, style = 'classic')
       drawers = anchor ? index.zero? : (index % 3).zero? && index.positive?
+      case @fill_mode # (see VARIATIONS)
+      when 'drawers' then drawers = true
+      when 'doors' then drawers = anchor ? index.zero? : false
+      when 'alternate' then drawers = anchor ? index.zero? : index.odd?
+      end
       drawers = true if style == 'lift' # a lift-up kitchen has drawers below
       drawers &&= width <= 900.0
-      type = if drawers then 'base_3drawer'
+      over_doors = @fill_mode == 'drawer_door' && !anchor && style != 'lift'
+      type = if over_doors then width <= 600.0 ? 'base_drawer_door' : 'base_drawer_2door'
+             elsif drawers then 'base_3drawer'
              elsif width <= 600.0 then 'base_1door'
              else 'base_2door'
              end
@@ -541,8 +602,10 @@ private_class_method :mirror_turn
       n -= 1 while n > 1 && length / n < min
       widths = fill_widths(length, [n, 1].max)
       position = from
-      widths.map do |w|
-        item = wall_unit(lift ? 'wall_liftup_bifold' : (w <= 700.0 ? 'wall_1door' : 'wall_2door'), w, run, position, style)
+      widths.each_with_index.map do |w, index|
+        type = lift ? 'wall_liftup_bifold' : (w <= 700.0 ? 'wall_1door' : 'wall_2door')
+        type = 'wall_open' if @wall_mode == 'open' && !lift && index % 3 == 2 # (an open shelf now and then)
+        item = wall_unit(type, w, run, position, style)
         position += w
         item
       end
@@ -586,6 +649,8 @@ private_class_method :mirror_turn
       parts << 'a sink' if count.call(plan.base, :sink).positive?
       parts << 'a dishwasher space' if count.call(plan.base, :dish).positive?
       parts << 'a fridge housing' if count.call(plan.base, :fridge).positive?
+      parts << 'a freezer housing' if count.call(plan.base, :freezer).positive?
+      parts << "#{count.call(plan.base, :storage)} storage tall unit#{'s' unless count.call(plan.base, :storage) == 1}" if count.call(plan.base, :storage).positive?
       parts << 'an oven housing' if count.call(plan.base, :oven).positive?
       parts << { 'glass' => 'glass doors on the wall units', 'lift' => 'lift-up wall units over drawers' }[plan.style] if %w[glass lift].include?(plan.style)
       island_items = plan.island ? plan.island.items : []

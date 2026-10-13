@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.23.0';
+  const APP_VERSION = '1.24.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -623,7 +623,7 @@
   // The answers of the Auto Kitchen section.
   function collectKitchen() {
     return {
-      style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value,
+      style: $('kitchenStyle').value, mirror: $('kitchenMirror').checked, layout: $('kitchenLayout').value, wall_a: mmv('kitchenWallA'), wall_b: mmv('kitchenWallB'), wall_c: mmv('kitchenWallC'), fridge: $('kitchenFridge').value, variation: $('kitchenVariation').value,
       sink: $('kitchenSink').checked, sink_bowls: $('kitchenSinkType').value[0], sink_drain: $('kitchenSinkType').value[1] === 'd', dishwasher: $('kitchenDish').checked, dishwasher_handle: $('kitchenDishHandle').checked, hob: $('kitchenHob').checked, hood: $('kitchenHood').checked, oven_tower: $('kitchenOven').checked,
       wall_units: $('kitchenWall').checked, island: $('kitchenIsland').checked, island_length: mmv('kitchenIslandLength'), island_aisle: mmv('kitchenIslandAisle'), island_feature: $('kitchenIslandFeature').value, island_seating: $('kitchenIslandSeating').value, island_back_panel: $('kitchenIslandBackPanel').checked, island_mirror: $('kitchenIslandMirror').checked, panel_thickness: $('kitchenEndPanels').checked ? mmv('epThickness') : 0, island_back_panel_material: $('kitchenBackPanelMaterial').value, island_side_panels: $('kitchenIslandSidePanels').checked, open_ends: $('kitchenEndPanels').checked, run_end_panels: $('kitchenEndPanels').checked, island_hood_colour: $('kitchenHoodColour').value,
       windows: [1, 2].map((n) => ({ wall: $('kitchenWin' + n + 'Wall').value, from: mmv('kitchenWin' + n + 'From'), width: mmv('kitchenWin' + n + 'Width') })).filter((w) => w.wall)
@@ -1797,6 +1797,13 @@ if (details.length) {
   // Shows or hides a block (a group of fields) by easing its height and opacity.
   // Before the panel has finished building, or where the browser cannot animate,
   // it just shows / hides.
+  // A variation brings its own tall units (fridge, freezer, oven, storage): the fridge and oven answers are then not used.
+  function syncVariation() {
+    const own = !!$('kitchenVariation').value;
+    setSoft($('kitchenFridge').closest('.field'), own);
+    setSoft($('kitchenOven').closest('.check'), own);
+  }
+
   function setSoft(el, hide) {
     if (!el) return;
     const wanted = el.softHide === undefined ? el.hidden : el.softHide;
@@ -2474,7 +2481,7 @@ function liveEdit(el) {
     Object.keys(FALLBACK_LISTS).forEach((key) => {
       if (!list(m[key]).length) m[key] = FALLBACK_LISTS[key];
     });
-    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs', 'glass_designs'].forEach((key) => { m[key] = list(m[key]); });
+    ['catalogs', 'categories', 'directions', 'warnings', 'front_designs', 'glass_designs', 'kitchen_variations'].forEach((key) => { m[key] = list(m[key]); });
     if (!list(m.standard_widths).length) m.standard_widths = [300, 350, 400, 450, 500, 600, 700, 800, 900, 1000, 1200];
     m.handle_bundles = list(m.handle_bundles).map((b) => Object.assign({ lengths: [], finishes: [], defaults: {}, profile: 'bar' }, b));
     m.materials = { panel: list(m.materials && m.materials.panel), toe_kick: list(m.materials && m.materials.toe_kick), glass: list(m.materials && m.materials.glass), mine: list(m.materials && m.materials.mine) };
@@ -2497,6 +2504,7 @@ function liveEdit(el) {
       { id: 'full', name: 'One full panel' }
     ]);
     fillSelect($('catalog'), m.catalogs, { placeholder: m.catalogs.length ? 'Select a model...' : 'No catalogs found' });
+    fillSelect($('kitchenVariation'), [{ id: '', name: 'Standard (the fridge and oven answers above)' }, ...m.kitchen_variations]);
     fillSelect($('frontDesign'), m.front_designs.length ? m.front_designs : [{ id: 'flat', name: 'Flat (slab)' }]);
     fillSelect($('glassDoor'), [{ id: '', name: 'None' }, ...list(m.glass_designs)]);
     fillSelect($('handle'), arrangeHandles(m.handle_bundles), { placeholder: 'None' });
@@ -2624,6 +2632,7 @@ $('kitchenLayout').addEventListener('change', () => {
   setSoft($('kitchenWallBField'), $('kitchenLayout').value === 'straight');
   setSoft($('kitchenWallCField'), $('kitchenLayout').value !== 'u');
 });
+    $('kitchenVariation').addEventListener('change', syncVariation);
     $('kitchenIsland').addEventListener('change', () => setSoft($('kitchenIslandFields'), !$('kitchenIsland').checked));
     $('handlePosition').addEventListener('change', syncHandlePosition);
     $('handleOrientation').addEventListener('change', syncHandlePosition);
