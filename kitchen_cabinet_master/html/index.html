@@ -361,7 +361,7 @@
     <section class="card" id="sec-appliances">
       <button class="card-head" type="button" aria-expanded="true">My Appliances</button>
       <div class="card-body">
-        <p class="hint">Draw (or place) your own oven, microwave, fridge, sink, hob or hood in the model, select it (a group or component), choose which appliance it is and press Upload. Every cabinet that has one then shows your model in that place, scaled to the space of the drawn one, with its own materials. With nothing selected a model file (.skp) is asked for.</p>
+        <p class="hint">Draw (or place) your own oven, microwave, fridge, sink, hob or hood in the model, select it (a group or component), choose which appliance it is and press Save. It is kept, and every cabinet that has one then shows your model in that place, scaled to the space of the drawn one, with its own materials.</p>
         <label class="field">
           <span class="label">Appliance</span>
           <div class="input"><select id="applianceKind"></select></div>
@@ -372,7 +372,7 @@
         </label>
         <p class="hint" id="applianceState"></p>
         <div class="btn-row two">
-          <button class="btn primary" type="button" data-action="add_appliance" title="Select the appliance you drew in the model (or select nothing and choose a model file). It is kept in your folder and used at once in every cabinet that has this kind of appliance.">Upload My Appliance</button>
+          <button class="btn primary" type="button" data-action="add_appliance" title="Select the appliance you drew in the model, then press this: it is kept and used at once in every cabinet that has this kind of appliance.">Save Selected as My Appliance</button>
           <button class="btn" type="button" data-action="remove_appliance" title="Go back to the drawn appliance of this kind.">Remove</button>
         </div>
       </div>
