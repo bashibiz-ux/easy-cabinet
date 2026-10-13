@@ -307,15 +307,19 @@ module KitchenCabinetMaster
       arm = door_front_of(target, target_params)
       inverse = target.transformation.inverse
       base = start_z_of(target, target_params)
-      covered = target.parent.entities.grep(Sketchup::ComponentInstance).any? do |other|
-        next false if other.equal?(target) || !AttributeManager.occupant?(other)
+      touching = target.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |other|
+        next if other.equal?(target) || !AttributeManager.occupant?(other)
 
         box = occupant_box(inverse, other)
-        box[:x0] <= width + 3.0 && box[:x0] >= width - 1.0 && box[:x1] > width + 1.0 && box[:y0] < arm - 1.0 && box[:y1] > 1.0 && box[:z1] > base + 1.0
+        box if box[:x0] <= width + 3.0 && box[:x0] >= width - 1.0 && box[:x1] > width + 1.0 && box[:y0] < arm - 1.0 && box[:y1] > 1.0 && box[:z1] > base + 1.0
       end
-      return [0, 1, []] if covered
+      # Against a lower unit (a base unit) only the part above it shows, as on any tall unit beside a lower one: the panel covers that part. Against
+      # something as high as the unit nothing shows.
+      top = top_of(target_params)
+      reach = touching.map { |box| box[:z1] }.max
+      return [0, 1, []] if reach && reach >= top - 1.0
 
-      from, top = SideExposure.panel_span(inner: false, hangs: false, carcass: base, top: top_of(target_params))
+      from = reach ? [reach, base].max : SideExposure.panel_span(inner: false, hangs: false, carcass: base, top: top)[0]
       door = door_material_of(target_params)
       carcass = CabinetGenerator.carcass_material(target_params, door)
       params, failure = prepare_end_panel(values.merge('side' => 'right', 'depth' => arm, 'height' => top - from), door, carcass)
