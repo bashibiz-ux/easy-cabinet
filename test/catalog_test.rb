@@ -73,4 +73,14 @@ class CatalogTest < Minitest::Test
     end
     assert_equal %w[kitchen_cabinets.json kitchen_cabinets_no_handle.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
   end
+  def test_the_loft_cabinets_are_wall_units_that_start_400_tall
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      %w[wall_loft_1door wall_loft_2door wall_loft_liftup].each do |id|
+        entry = CatalogManager.cabinet(catalog, 'wall', id)
+        refute_nil entry, "#{catalog} #{id}"
+        assert_equal true, entry['loft']
+        assert_equal 400, entry.dig('defaults', 'height')
+      end
+    end
+  end
 end

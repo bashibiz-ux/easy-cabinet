@@ -37,7 +37,7 @@ module KitchenCabinetMaster
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: corner ? CabinetLayout.envelope(params)[0] : params['width'].to_f,
                  z_mm: params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0,
-                 wall: params['cabinet_category'].to_s == 'wall', base: params['cabinet_category'].to_s == 'base')
+                 wall: params['cabinet_category'].to_s == 'wall', base: params['cabinet_category'].to_s == 'base', loft: loft?(params))
     end
 
     # Only a wall unit hangs in the air: base, tall and corner units always start on
@@ -56,6 +56,8 @@ module KitchenCabinetMaster
     DEFAULT_WALL_BOTTOM_MM = 1480.0 # 100 toe kick + 780 base unit + 600
 
     def self.wall_origin_z(model, params, selected = nil)
+      return loft_bottom(model) if loft?(params)
+
       selected ||= SelectionManager.selected_occupant(model) || last_occupant(model)
       height = params['height'].to_f
 
@@ -68,6 +70,28 @@ module KitchenCabinetMaster
       return top_of_item(base) + WALL_ABOVE_BASE_MM if base
 
       DEFAULT_WALL_BOTTOM_MM
+    end
+
+    # A LOFT (Wall - loft ...): a box over the wall or tall units, up to the ceiling. It goes directly over the wall or tall unit that is selected (else the
+    # last one inserted), starting at its top; its height is cut to what is left under the ceiling when it was not typed.
+    LOFT_CEILING_MM = 2400.0
+
+    def self.loft?(params)
+      params['cabinet_type'].to_s.start_with?('wall_loft')
+    end
+
+    # The wall or tall unit a loft goes over, or nil when there is none.
+    def self.loft_base(model)
+      chosen = SelectionManager.selected_occupant(model)
+      return chosen if chosen && %w[wall tall].include?(category_of(chosen).to_s)
+
+      last_occupant(model) { |item| %w[wall tall].include?(category_of(item).to_s) }
+    end
+
+    # Where a loft starts (mm): the top of the unit under it; with none, where a standard wall unit ends.
+    def self.loft_bottom(model)
+      base = loft_base(model)
+      base ? top_of_item(base) : DEFAULT_WALL_BOTTOM_MM + 780.0
     end
 
     # The most recently inserted cabinet whose stored parameters satisfy the block.
@@ -102,7 +126,7 @@ module KitchenCabinetMaster
     # item's `own_width`, since a quarter turn swings it that far sideways.
     # Nothing selected: it follows the LAST cabinet or filler inserted (see
     # last_occupant); with none in the model yet, it goes at the origin unturned.
-    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil, wall: false, base: false)
+    def self.target_row(model, params, size, turn: nil, own_width: nil, z_mm: nil, wall: false, base: false, loft: false)
       chosen = SelectionManager.selected_occupant(model)
       selected = chosen || last_occupant(model)
       # The first wall unit goes above the START of the row, not after its last unit; the
@@ -122,6 +146,7 @@ module KitchenCabinetMaster
           row_start = first_occupant(model)
         end
       end
+      row_start = loft_base(model) if loft && loft_base(model) # (a loft goes directly over its unit)
       entities = selected ? selected.parent.entities : model.active_entities
       gap = params['placement_gap'].to_f.mm
 

@@ -342,4 +342,40 @@ class PlacementTest < Minitest::Test
     assert_in_delta 0.0, base.transformation.origin.z, 0.01, 'on the floor'
     refute_equal wall.transformation.origin.y, base.transformation.origin.y
   end
+  def loft_params(width = 800.0, height = 400.0)
+    params('wall', width).merge('cabinet_type' => 'wall_loft_2door', 'height' => height)
+  end
+
+  def insert_loft(width = 800.0, height = 400.0)
+    p = loft_params(width, height)
+    _entities, transformation = PlacementManager.target_for_new(@model, p)
+    cabinet = FakeCabinet.new(transformation, p, @parent, @sequence += 1)
+    @entities.add(cabinet)
+    SelectionManager.selected = cabinet
+    cabinet
+  end
+
+  def test_a_loft_goes_directly_over_the_selected_wall_unit_starting_at_its_top
+    wall = insert('wall', 600.0)
+    SelectionManager.selected = wall
+    loft = insert_loft(600.0)
+    assert_in_delta wall.transformation.origin.y, loft.transformation.origin.y, 0.01, 'over it, not beside it'
+    top = wall.transformation.origin.z.to_mm + wall.get_attribute('kcm', 'top_z')
+    assert_in_delta top, loft.transformation.origin.z.to_mm, 0.01, 'starting at the top of the wall unit'
+  end
+
+  def test_a_loft_goes_over_the_last_tall_or_wall_unit_when_nothing_is_selected
+    insert('base', 600.0)
+    tall = insert('tall', 600.0)
+    deselect
+    loft = insert_loft(600.0)
+    assert_in_delta tall.transformation.origin.y, loft.transformation.origin.y, 0.01
+    assert_operator loft.transformation.origin.z.to_mm, :>, 0.0
+  end
+
+  def test_the_ceiling_and_what_a_loft_is
+    assert PlacementManager.loft?('cabinet_type' => 'wall_loft_liftup')
+    refute PlacementManager.loft?('cabinet_type' => 'wall_2door')
+    assert_equal 2400.0, PlacementManager::LOFT_CEILING_MM
+  end
 end

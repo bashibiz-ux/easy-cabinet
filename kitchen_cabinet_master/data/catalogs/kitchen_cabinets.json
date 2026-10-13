@@ -502,6 +502,67 @@
         }
       },
       {
+        "id": "wall_loft_1door",
+        "name": "Wall - loft 1 door",
+        "code": "LU",
+        "doors": 1,
+        "shelves": 1,
+        "widths": [
+          300,
+          400,
+          450,
+          500,
+          600
+        ],
+        "defaults": {
+          "width": 600,
+          "depth": 320,
+          "height": 400
+        },
+        "loft": true
+      },
+      {
+        "id": "wall_loft_2door",
+        "name": "Wall - loft 2 doors",
+        "code": "LU",
+        "doors": 2,
+        "shelves": 1,
+        "widths": [
+          700,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 400
+        },
+        "loft": true
+      },
+      {
+        "id": "wall_loft_liftup",
+        "name": "Wall - loft lift-up",
+        "code": "LU",
+        "doors": 1,
+        "shelves": 1,
+        "lift_door": true,
+        "widths": [
+          600,
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 800,
+          "depth": 320,
+          "height": 400
+        },
+        "loft": true
+      },
+      {
         "id": "wall_glass_1door",
         "hidden": true,
         "name": "Wall - glass door, 1 door",

@@ -44,6 +44,10 @@ module KitchenCabinetMaster
       return failure if failure
 
       model = Sketchup.active_model
+      if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling)
+        room = PlacementManager::LOFT_CEILING_MM - PlacementManager.loft_bottom(model)
+        params['height'] = [room, 100.0].max if room < params['height'].to_f
+      end
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
           clear_live_parts(model)
