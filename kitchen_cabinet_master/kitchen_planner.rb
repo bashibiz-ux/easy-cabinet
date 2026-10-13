@@ -85,7 +85,7 @@ module KitchenCabinetMaster
 
     DEFAULTS = {
       'layout' => 'straight', 'wall_a' => 3600.0, 'wall_b' => 2400.0, 'wall_c' => 2400.0, 'fridge' => 'builtin', 'sink' => true, 'sink_bowls' => 1, 'sink_drain' => true, 'dishwasher' => true, 'dishwasher_handle' => true, 'hob' => true,
-      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'variation' => '', 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
+      'hood' => true, 'oven_tower' => false, 'wall_units' => true, 'style' => 'classic', 'mirror' => false, 'variation' => '', 'sink_wall' => '', 'hob_wall' => '', 'island' => false, 'island_feature' => 'none', 'island_length' => 1800.0, 'island_aisle' => 1100.0, 'island_seating' => 300.0, 'run_end_panels' => true, 'island_back_panel' => false, 'island_mirror' => false, 'panel_thickness' => 0.0, 'open_ends' => false, 'island_back_panel_material' => '', 'island_side_panels' => false, 'island_hood_colour' => 'Stainless Steel', 'ceiling' => 2400.0
     }.freeze
 
     # The options as the plan needs them: numbers as numbers, ticks as true / false, anything unknown as the default.
@@ -100,7 +100,7 @@ module KitchenCabinetMaster
       layout = RUNS.key?(raw['layout'].to_s) ? raw['layout'].to_s : 'straight'
       { 'layout' => layout, 'wall_a' => number.call('wall_a'), 'wall_b' => number.call('wall_b'), 'wall_c' => number.call('wall_c'), 'fridge' => fridge,
         'sink' => flag.call('sink'), 'sink_bowls' => raw['sink_bowls'].to_s == '2' ? 2 : 1, 'sink_drain' => flag.call('sink_drain'), 'dishwasher' => flag.call('dishwasher'), 'dishwasher_handle' => flag.call('dishwasher_handle'), 'hob' => flag.call('hob'), 'hood' => flag.call('hood'), 'oven_tower' => flag.call('oven_tower'),
-        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'variation' => (variation(raw['variation']) ? raw['variation'].to_s : ''), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
+        'wall_units' => flag.call('wall_units'), 'style' => STYLES.include?(raw['style'].to_s) ? raw['style'].to_s : 'classic', 'mirror' => flag.call('mirror'), 'variation' => (variation(raw['variation']) ? raw['variation'].to_s : ''), 'sink_wall' => (%w[a b c].include?(raw['sink_wall'].to_s.downcase) ? raw['sink_wall'].to_s.downcase : ''), 'hob_wall' => (%w[a b c].include?(raw['hob_wall'].to_s.downcase) ? raw['hob_wall'].to_s.downcase : ''), 'island' => flag.call('island'), 'island_feature' => ISLAND_FEATURES.include?(raw['island_feature'].to_s) ? raw['island_feature'].to_s : 'none', 'island_length' => number.call('island_length'),
         'island_aisle' => [number.call('island_aisle'), 700.0].max, 'ceiling' => number.call('ceiling'), 'island_back_panel' => flag.call('island_back_panel'), 'island_mirror' => flag.call('island_mirror'), 'panel_thickness' => raw['panel_thickness'].to_s.tr(',', '.').to_f.clamp(0.0, 60.0), 'open_ends' => flag.call('open_ends'), 'island_back_panel_material' => raw['island_back_panel_material'].to_s.strip, 'island_side_panels' => flag.call('island_side_panels'), 'island_hood_colour' => IslandHood::COLOURS.include?(raw['island_hood_colour'].to_s) ? raw['island_hood_colour'].to_s : DEFAULTS['island_hood_colour'], 'island_seating' => raw.key?('island_seating') ? raw['island_seating'].to_s.tr(',', '.').to_f.clamp(0.0, MAX_SEATING) : DEFAULTS['island_seating'], 'run_end_panels' => flag.call('run_end_panels'), 'windows' => windows_of(raw['windows'], RUNS[layout]) }
     end
 
@@ -261,14 +261,33 @@ private_class_method :mirror_turn
         under_window = o['windows'].map { |w| w[:run] }.find { |run| free[run] >= sink_width_for(o) }
         sink_run = under_window || (runs.length == 3 && free[:b] >= sink_width_for(o) ? :b : :a)
       end
+      sink_run = chosen_run(o['sink_wall'], 'sink', runs, free, sink_width_for(o), sink_run, notes) if o['sink']
       hob_run = nil
       if o['hob']
         candidate = runs.reverse.find { |run| run != :a && free[run] >= 900.0 && run != sink_run }
         hob_run = candidate || :a
         hob_run = runs.reverse.find { |run| free[run] >= 900.0 && run != sink_run } || hob_run if hob_run == sink_run && runs.length > 1
+        hob_run = chosen_run(o['hob_wall'], 'hob', runs, free, HOB_WIDTH, hob_run, notes)
       end
       [sink_run, hob_run]
     end
+
+    # The wall the user asked for (A, B or C), when it is one of the walls of the layout and has room for the unit; else `automatic`, with a note.
+    def self.chosen_run(wanted, what, runs, free, needed, automatic, notes)
+      return automatic if wanted.to_s.empty?
+
+      run = wanted.to_sym
+      unless runs.include?(run)
+        notes << "There is no wall #{wanted.upcase} in this layout, so the #{what} went where it fits best."
+        return automatic
+      end
+      if free[run] < needed
+        notes << "Wall #{wanted.upcase} is too short for the #{what}, so it went where it fits best."
+        return automatic
+      end
+      run
+    end
+    private_class_method :chosen_run
     private_class_method :appliance_runs
 
     def self.failure(message)
