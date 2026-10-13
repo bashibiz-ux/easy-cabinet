@@ -1069,6 +1069,8 @@ module KitchenCabinetMaster
 
     # ---- panel ---------------------------------------------------------------------
 
+    PANEL_START_Z = 3000.0 # mm: where a new panel is put on the Z axis
+
     # A plain panel (Category = Panel): vertical or horizontal, its own size. It goes after the last unit of the row (or the one selected); it is no
     # part of the row, so nothing is built against it, and it can be moved or sized afterwards.
     def self.insert_panel(raw)
@@ -1077,7 +1079,8 @@ module KitchenCabinetMaster
       return failure if failure
 
       layout = PartLayout.panel(params)
-      entities, transformation = PlacementManager.send(:target_row, model, { 'placement_gap' => 0.0 }, PartLayout.panel_envelope(params))
+    entities, transformation = PlacementManager.send(:target_row, model, { 'placement_gap' => 0.0 }, PartLayout.panel_envelope(params))
+    transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, PANEL_START_Z.mm - transformation.origin.z)) * transformation # (it starts 3000 mm up: it is moved from there)
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Panel') do
           params['part_id'] = AttributeManager.next_part_id(model)

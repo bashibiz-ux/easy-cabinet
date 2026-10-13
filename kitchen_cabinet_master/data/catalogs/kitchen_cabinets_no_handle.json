@@ -246,6 +246,8 @@
         "doors": 2,
         "shelves": 0,
         "widths": [
+          900,
+          1000,
           1200,
           1500
         ],
@@ -253,7 +255,7 @@
         "sink_bowls": 2,
         "sink_tray": true,
         "defaults": {
-          "width": 1200,
+          "width": 900,
           "depth": 560,
           "height": 780
         }
@@ -965,6 +967,24 @@
           "width": 600,
           "depth": 650,
           "height": 2260
+        }
+      },
+      {
+        "id": "tall_corner_l",
+        "name": "Tall - corner L shape",
+        "code": "TCL",
+        "doors": 2,
+        "shelves": 4,
+        "widths": [
+          900,
+          1000,
+          1100
+        ],
+        "corner": "l_shape",
+        "defaults": {
+          "width": 1000,
+          "depth": 560,
+          "height": 2160
         }
       }
     ]
