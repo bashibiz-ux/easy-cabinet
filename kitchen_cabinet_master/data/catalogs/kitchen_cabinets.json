@@ -208,8 +208,30 @@
         }
       },
       {
+        "id": "base_sink_1door",
+        "name": "Base - sink 1 bowl",
+        "code": "BS",
+        "doors": 1,
+        "shelves": 0,
+        "widths": [
+          400,
+          450,
+          500,
+          600
+        ],
+        "sink": true,
+        "sink_single": true,
+        "sink_bowls": 1,
+        "sink_tray": false,
+        "defaults": {
+          "width": 600,
+          "depth": 560,
+          "height": 780
+        }
+      },
+      {
         "id": "base_sink",
-        "name": "Base - sink, 2 doors",
+        "name": "Base - sink 1 bowl with drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
@@ -230,7 +252,7 @@
       },
       {
         "id": "base_sink_2bowl",
-        "name": "Base - sink, 2 bowls and drainer",
+        "name": "Base - sink 2 bowl with drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
@@ -249,7 +271,7 @@
       },
       {
         "id": "base_sink_2bowl_plain",
-        "name": "Base - sink, 2 bowls, no drainer",
+        "name": "Base - sink 2 bowl without drain",
         "code": "BS",
         "doors": 2,
         "shelves": 0,
@@ -263,28 +285,6 @@
         "sink_tray": false,
         "defaults": {
           "width": 900,
-          "depth": 560,
-          "height": 780
-        }
-      },
-      {
-        "id": "base_sink_1door",
-        "name": "Base - sink, 1 door",
-        "code": "BS",
-        "doors": 1,
-        "shelves": 0,
-        "widths": [
-          400,
-          450,
-          500,
-          600
-        ],
-        "sink": true,
-        "sink_single": true,
-        "sink_bowls": 1,
-        "sink_tray": false,
-        "defaults": {
-          "width": 600,
           "depth": 560,
           "height": 780
         }
