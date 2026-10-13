@@ -45,6 +45,11 @@ module KitchenCabinetMaster
       return failure if failure
 
       model = Sketchup.active_model
+      fit = entry && entry['loft'] ? PlacementManager.loft_fit(model) : nil # (a loft over a unit is as wide and as deep as it, and its doors line up with the unit's)
+      if fit && fit['width'].positive? && fit['depth'].positive?
+        params['width'] = fit['width']
+        params['depth'] = fit['depth']
+      end
       if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling)
         room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager::LOFT_FILLER_MM - PlacementManager.loft_bottom(model)
         params['height'] = [room, 100.0].max if room < params['height'].to_f
@@ -57,6 +62,7 @@ module KitchenCabinetMaster
           entities, transformation = PlacementManager.target_for_new(model, params)
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
           built = CabinetGenerator.build(model, entities, params, transformation)
+          AttributeManager.write(built, 'loft_over' => fit['unit']) if fit # (the unit it is over: the next loft goes over the next one)
           fill_blind_gap(model, entities, built, params)
           WorktopManager.refresh(model) if params['sink'] || params['hob'] # an existing worktop gets its opening
           built

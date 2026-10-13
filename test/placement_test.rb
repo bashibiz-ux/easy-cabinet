@@ -36,7 +36,7 @@ class FakeCabinet < Sketchup::ComponentInstance
     @parent = parent
     env = KitchenCabinetMaster::CabinetLayout.envelope(params)
     @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
-               'cabinet_category' => params['cabinet_category'], 'cabinet_type' => params['cabinet_type'].to_s, 'top_z' => env[2],
+               'cabinet_category' => params['cabinet_category'], 'cabinet_type' => params['cabinet_type'].to_s, 'depth' => params['depth'], 'top_z' => env[2],
                'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2],
                'corner_style' => params['corner_style'].to_s, 'door_opening_direction' => params['door_opening_direction'].to_s }
   end
@@ -348,8 +348,11 @@ class PlacementTest < Minitest::Test
 
   def insert_loft(width = 800.0, height = 400.0)
     p = loft_params(width, height)
+    fit = PlacementManager.loft_fit(@model)
+    p = p.merge('width' => fit['width'], 'depth' => fit['depth']) if fit
     _entities, transformation = PlacementManager.target_for_new(@model, p)
     cabinet = FakeCabinet.new(transformation, p, @parent, @sequence += 1)
+    cabinet.attrs['loft_over'] = fit['unit'] if fit
     @entities.add(cabinet)
     SelectionManager.selected = cabinet
     cabinet
@@ -374,19 +377,39 @@ class PlacementTest < Minitest::Test
     assert_in_delta first.transformation.origin.z.to_mm + first.get_attribute('kcm', 'top_z'), loft.transformation.origin.z.to_mm, 0.01
   end
 
-  def test_the_next_lofts_go_on_along_the_row_and_do_not_stack
-    wall = insert('wall', 600.0)
-    SelectionManager.selected = wall
-    one = insert_loft(600.0)
-    two = insert_loft(800.0) # (the loft just inserted is selected)
-    three = insert_loft(600.0)
-    assert_in_delta one.transformation.origin.z, two.transformation.origin.z, 0.01, 'the same height, not on top of the first'
-    assert_in_delta one.transformation.origin.z, three.transformation.origin.z, 0.01
-    assert_in_delta one.transformation.origin.y + 600.0, two.transformation.origin.y, 0.01, 'after the first'
-    assert_in_delta two.transformation.origin.y + 800.0, three.transformation.origin.y, 0.01, 'and after that'
+  def test_the_lofts_go_over_the_units_one_by_one_each_as_wide_and_as_deep_as_its_unit
+    one = insert('tall', 600.0, depth: 560.0)
+    two = insert('tall', 900.0, depth: 600.0)
+    three = insert('tall', 400.0, depth: 560.0)
     deselect
-    four = insert_loft(600.0)
-    assert_in_delta three.transformation.origin.y + 600.0, four.transformation.origin.y, 0.01, 'with nothing selected it carries on after the last loft'
+    lofts = [insert_loft, insert_loft, insert_loft]
+    [one, two, three].zip(lofts).each_with_index do |(unit, loft), i|
+      assert_in_delta unit.transformation.origin.y, loft.transformation.origin.y, 0.01, "loft #{i + 1} is over unit #{i + 1}"
+      assert_in_delta unit.get_attribute('kcm', 'width'), loft.get_attribute('kcm', 'width'), 0.01, 'as wide as its unit'
+      assert_in_delta unit.get_attribute('kcm', 'depth'), loft.get_attribute('kcm', 'depth'), 0.01, 'and as deep, so the doors line up'
+      assert_in_delta unit.transformation.origin.z.to_mm + unit.get_attribute('kcm', 'top_z'), loft.transformation.origin.z.to_mm, 0.01, 'on top of it'
+    end
+    assert_equal 1, lofts.map { |loft| loft.transformation.origin.z.to_mm.round }.uniq.length, 'no stacking'
+  end
+
+  def test_with_a_loft_selected_the_next_one_goes_over_the_unit_after_the_one_it_is_over
+    one = insert('wall', 600.0)
+    two = insert('wall', 800.0)
+    SelectionManager.selected = one
+    first = insert_loft
+    second = insert_loft # (the first loft is selected now)
+    assert_in_delta two.transformation.origin.y, second.transformation.origin.y, 0.01
+    assert_in_delta one.transformation.origin.y, first.transformation.origin.y, 0.01
+  end
+
+  def test_when_every_unit_has_a_loft_the_next_one_goes_after_the_last_loft
+    unit = insert('wall', 600.0)
+    SelectionManager.selected = unit
+    first = insert_loft
+    deselect
+    extra = insert_loft(500.0)
+    assert_in_delta first.transformation.origin.y + first.get_attribute('kcm', 'width'), extra.transformation.origin.y, 0.01
+    assert_in_delta first.transformation.origin.z, extra.transformation.origin.z, 0.01, 'at the same height'
   end
 
   def test_the_ceiling_and_what_a_loft_is

@@ -86,18 +86,39 @@ module KitchenCabinetMaster
       item.get_attribute(AttributeManager::DICTIONARY, 'cabinet_type').to_s.start_with?('wall_loft')
     end
 
-    # What a new loft goes with: [unit, :over] (directly over a wall or tall unit) or [unit, :after] (next to the loft before it); nil when there is no unit.
-    def self.loft_anchor(model)
-      chosen = SelectionManager.selected_occupant(model)
-      if chosen
-        return [chosen, :after] if loft_item?(chosen)
-        return [chosen, :over] if %w[wall tall].include?(category_of(chosen).to_s)
+    # The wall and tall units a loft can go over, in the order they were inserted (a loft is no such unit, nor is a corner unit).
+    def self.loft_units(model)
+      found = model.active_entities.grep(Sketchup::ComponentInstance).select do |item|
+        AttributeManager.row_item?(item) && %w[wall tall].include?(category_of(item).to_s) && !loft_item?(item) &&
+          item.get_attribute(AttributeManager::DICTIONARY, 'corner_style').to_s.empty?
       end
-      last_loft = last_occupant(model) { |item| loft_item?(item) }
-      return [last_loft, :after] if last_loft
+      found.each_with_index.sort_by { |item, index| [item.get_attribute(AttributeManager::DICTIONARY, 'sequence').to_i, index] }.map(&:first)
+    end
 
-      first = first_occupant(model) { |item| %w[wall tall].include?(category_of(item).to_s) }
-      first ? [first, :over] : nil
+    def self.unit_id(item)
+      item.get_attribute(AttributeManager::DICTIONARY, 'cabinet_id')
+    end
+
+    # What a new loft goes with: [unit, :over] (directly over that wall or tall unit, one loft for each unit, one after the other) or [unit, :after]
+    # (next to the last loft, when every unit has one); nil when there is no unit. A selected wall or tall unit is the one it goes over; with a loft
+    # selected, it is the unit after the one that loft is over; with nothing selected, the first unit that has no loft yet.
+    def self.loft_anchor(model)
+      units = loft_units(model)
+      chosen = SelectionManager.selected_occupant(model)
+      return [chosen, :over] if chosen && !loft_item?(chosen) && %w[wall tall].include?(category_of(chosen).to_s) && chosen.get_attribute(AttributeManager::DICTIONARY, 'corner_style').to_s.empty?
+
+      lofts = model.active_entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.row_item?(item) && loft_item?(item) }
+      covered = lofts.map { |loft| loft.get_attribute(AttributeManager::DICTIONARY, 'loft_over') }.compact
+      from = 0
+      if chosen && loft_item?(chosen)
+        under = units.index { |unit| unit_id(unit) == chosen.get_attribute(AttributeManager::DICTIONARY, 'loft_over') }
+        from = under ? under + 1 : 0
+      end
+      free = units.drop(from).find { |unit| !covered.include?(unit_id(unit)) } || units.find { |unit| !covered.include?(unit_id(unit)) }
+      return [free, :over] if free
+
+      last_loft = last_occupant(model) { |item| loft_item?(item) }
+      last_loft ? [last_loft, :after] : nil
     end
 
     # Where a loft starts (mm): the top of the unit under it, or the bottom of the loft before it; with no unit, where a standard wall unit ends.
@@ -106,6 +127,16 @@ module KitchenCabinetMaster
       return DEFAULT_WALL_BOTTOM_MM + 780.0 unless unit
 
       mode == :after ? unit.transformation.origin.z.to_mm : top_of_item(unit)
+    end
+
+    # The width and the depth of the carcass of the unit a loft goes over: the loft is as wide as it and as deep, so that the doors line up
+    # (the door distance is the same for both). nil when the loft goes beside another loft or there is no unit.
+    def self.loft_fit(model)
+      unit, mode = loft_anchor(model)
+      return nil unless unit && mode == :over
+
+      dictionary = AttributeManager::DICTIONARY
+      { 'unit' => unit_id(unit), 'width' => unit.get_attribute(dictionary, 'width').to_f, 'depth' => unit.get_attribute(dictionary, 'depth').to_f }
     end
 
 
