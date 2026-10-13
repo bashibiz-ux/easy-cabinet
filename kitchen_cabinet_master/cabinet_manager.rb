@@ -50,6 +50,10 @@ module KitchenCabinetMaster
         params['width'] = fit['width']
         params['depth'] = fit['depth']
       end
+      if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling, less its filler)
+        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager::LOFT_FILLER_MM - PlacementManager.loft_bottom(model)
+        params['height'] = [room, 100.0].max if room < params['height'].to_f
+      end
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
           clear_live_parts(model)
