@@ -496,3 +496,5 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 
 /* Nothing works until a model is chosen (Models card). */
 .gated { opacity: 0.45; filter: grayscale(0.4); pointer-events: none; user-select: none; }
+
+.section-sep { border: 0; border-top: 1px solid var(--line, rgba(128,128,128,.35)); margin: 12px 0; }

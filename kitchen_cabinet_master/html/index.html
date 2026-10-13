@@ -15,7 +15,7 @@
       <span class="badge" id="selectionBadge">Nothing selected</span>
     </div>
     <div class="topbar-row">
-      <label class="check"><input type="checkbox" id="followSelection" checked><span>collapse cabinet and extras when an object selected</span></label>
+      <label class="check"><input type="checkbox" id="followSelection" checked><span>collapse cabinets and extras when an object selected</span></label>
     </div>
   </header>
 
@@ -34,6 +34,7 @@
           <label class="check"><input type="checkbox" id="liveWorktop" checked><span>Worktop and back splash</span></label>
           <label class="check"><input type="checkbox" id="snapEnabled" checked><span>Sticking function</span></label>
         </div>
+        <hr class="section-sep">
         <label class="field narrow">
           <span class="label">Units</span>
           <div class="input"><select id="units" aria-label="Units used in this panel"></select></div>
@@ -59,14 +60,14 @@
           <label class="field"><span class="label">Depth</span><div class="input"><input id="sizeTallD" type="text" inputmode="decimal" autocomplete="off" placeholder="560"><em>mm</em></div></label>
           <label class="field"><span class="label">Height</span><div class="input"><input id="sizeTallH" type="text" inputmode="decimal" autocomplete="off" placeholder="2160"><em>mm</em></div></label>
         </div>
-        <p class="hint">The toe kick under the units (the same values as the Toe Kick fields of Cabinet and Extras).</p>
+        <p class="hint">The toe kick under the units (the same values as the Toe Kick fields of Cabinets and Extras).</p>
         <div class="grid-3">
           <label class="field"><span class="label">Toe-kick Height</span><div class="input"><input id="pToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Thickness</span><div class="input"><input id="pToeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Recess from Carcass</span><div class="input"><input id="pToeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
         </div>
         <div class="btn-row one">
-          <button class="btn" type="button" id="resetUnitSizes" title="Empties the sizes above and puts the toe kick values back to the standard ones. Nothing else in the Presets changes, and no unit in the model is changed by it.">Reset Unit Sizes</button>
+          <button class="btn" type="button" id="resetUnitSizes" title="Empties the sizes above and puts the toe kick values and the width, depth and height of Cabinets and Extras back to the standard ones. Nothing else in the Presets changes, and no unit in the model is changed by it.">Reset Unit Sizes</button>
         </div>
 
         <p class="group-title">Fronts</p>
@@ -398,7 +399,7 @@
 
     <!-- Cabinet & Extras: the cabinet itself, or, chosen in Cabinet Category, a filler, an side panel or a toe kick. -->
     <section class="card" id="sec-cabinet" data-feature="cabinet_extras">
-      <button class="card-head" type="button" aria-expanded="true">Cabinet and Extras</button>
+      <button class="card-head" type="button" aria-expanded="true">Cabinets and Extras</button>
       <div class="card-body">
         <label class="field">
           <span class="label">Category</span>
