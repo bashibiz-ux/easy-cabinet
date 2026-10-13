@@ -100,7 +100,7 @@ module KitchenCabinetMaster
         role: 'board', name: 'Side Panel',
         extent: [round2(depth), round2(params['thickness'].to_f), round2(height)],
         offset: [0.0, 0.0, round2(base_z)],
-        shape: (design == FrontDesign::DEFAULT && !params['front_radius'].to_f.positive? ? nil : "front_#{design}@#{params['side']}"),
+        shape: (design == FrontDesign::DEFAULT && !params['front_radius'].to_f.positive? ? nil : "front_#{design}@#{params['side'].to_s == 'front' ? 'left' : params['side']}"), # (a panel across the end of a tall L corner's arm is turned a quarter: its outer face is the low-Y one)
         round: params['front_radius'].to_f # (the outer edges are rounded)
       )
       with_overrides(Layout.new(base_z: round2(base_z), top_z: round2(base_z + height), board: board, toe_kick: []), params)
