@@ -23,6 +23,7 @@ module KitchenCabinetMaster
       when 'add_appliance' then MyAppliances.add(raw)
       when 'remove_appliance' then MyAppliances.remove(raw)
       when 'set_unit_sizes' then set_unit_sizes(raw)
+      when 'set_ceiling' then set_ceiling(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
       when 'apply_front_design' then apply_front_design(raw)
@@ -45,7 +46,7 @@ module KitchenCabinetMaster
 
       model = Sketchup.active_model
       if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling)
-        room = PlacementManager::LOFT_CEILING_MM - PlacementManager.loft_bottom(model)
+        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager.loft_bottom(model)
         params['height'] = [room, 100.0].max if room < params['height'].to_f
       end
       root = SelectionManager.suspend do
@@ -633,7 +634,8 @@ module KitchenCabinetMaster
       # A wall unit hangs by its top: when it gets taller it grows DOWNWARDS (and a
       # shorter one rises), so its top stays level with the tall units beside it.
       placed = root.transformation
-      if params['cabinet_category'] == 'wall' && root.get_attribute(dictionary, 'cabinet_category') == 'wall'
+      loft = root.get_attribute(dictionary, 'cabinet_type').to_s.start_with?('wall_loft') # (a loft keeps its bottom and grows upwards, towards the ceiling)
+      if params['cabinet_category'] == 'wall' && root.get_attribute(dictionary, 'cabinet_category') == 'wall' && !loft
         taller = params['height'] - root.get_attribute(dictionary, 'height').to_f
         placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, -taller.mm)) * placed if taller.abs > 0.01
       end
@@ -684,6 +686,40 @@ module KitchenCabinetMaster
     end
     private_class_method :follow_tall
     private_class_method :update_one
+
+    # The Ceiling Height of the Presets: every loft in the model reaches up to it (its bottom stays, its height is what is left under the ceiling).
+    def self.set_ceiling(raw)
+      raw = {} unless raw.is_a?(Hash)
+      ceiling = ValidationManager.to_float(raw['ceiling_height'])
+      return Response.fail('The ceiling height must be a number between 1500 and 6000 mm.') unless ceiling && ceiling.between?(1500.0, 6000.0)
+
+      model = Sketchup.active_model
+      lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && AttributeManager.read(item)['cabinet_type'].to_s.start_with?('wall_loft') }
+      return Response.ok('The ceiling height is kept for the next loft.') if lofts.empty?
+
+      done = 0
+      problems = []
+      @batch = true
+      model.start_operation('Ceiling Height', true)
+      begin
+        lofts.each do |root|
+          height = [ceiling - root.transformation.origin.z.to_mm, 100.0].max.round(2)
+          answer = update_one(model, root, { 'fields_only' => true, 'fields' => { 'height' => height }, 'resize_neighbours' => false })
+          answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      SelectionManager.push_selection(model)
+      return Response.fail(problems.first) if done.zero?
+
+      Response.ok("#{done} loft#{'s' unless done == 1} reach#{'es' if done == 1} the ceiling at #{format('%g', ceiling)} mm.#{" #{problems.length} could not (#{problems.first(2).join('; ')})." unless problems.empty?}")
+    end
+    private_class_method :set_ceiling
 
     UNIT_SIZE_KEYS = %w[width depth height].freeze
 
@@ -1227,6 +1263,7 @@ module KitchenCabinetMaster
     # Returns [params, nil] when valid, or [nil, failure_response].
     def self.prepare(raw)
       raw = {} unless raw.is_a?(Hash)
+      raw = raw.merge('cabinet_category' => 'wall') if raw['cabinet_category'].to_s == 'loft' # (a loft unit is a wall unit that stands over the others)
       model = Sketchup.active_model
 
       cabinet = CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])

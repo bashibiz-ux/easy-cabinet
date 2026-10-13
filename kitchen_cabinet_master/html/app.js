@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.35.0';
+  const APP_VERSION = '1.36.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -462,7 +462,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
+    'units', 'ceilingHeight', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -557,6 +557,12 @@
   // Filler, Side Panel, Toe Kick and Wall Bottom Panel are choices in the Category list, next
   // to the real cabinet categories.
   const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom', 'panel'];
+
+  // The category of what is built: a loft unit is a wall unit.
+  function catId() {
+    const value = $('category').value;
+    return value === 'loft' ? 'wall' : value;
+  }
 
   function categoryKind() {
     const value = $('category').value;
@@ -724,7 +730,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'ceilingHeight', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -854,7 +860,7 @@
     const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
     const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }, { id: 'panel', name: 'Panel' }];
-    fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' ? 'wall' : c.id)));
+    fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' || c.id === 'loft' ? 'wall' : c.id)));
 
     document.querySelectorAll('[data-feature]').forEach((el) => {
       const off = !on.has(el.dataset.feature);
@@ -1011,6 +1017,7 @@ function currentCabinet() {
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
+      ceiling_height: mmv('ceilingHeight'),
       placement_gap: mmv('gap'),
       width: mmv('width'),
       depth: mmv('depth'),
@@ -1518,7 +1525,7 @@ function currentCabinet() {
     setSelect('glassDoors', params.glass_doors || 'all'); // (on which of two doors)
     syncZoneField(); // (a glass design brings the Glass field)
     applyCatalogFeatures();
-    setSelect('category', params.cabinet_category);
+    setSelect('category', String(params.cabinet_type || '').startsWith('wall_loft') ? 'loft' : params.cabinet_category); // (a loft unit is a wall unit of its own list)
     updateCategoryUi();
     await refreshCabinets({ selectId: params.cabinet_type, keepValues: true });
     applyParams(params);
@@ -1563,7 +1570,7 @@ function currentCabinet() {
       length,
       horizontal: edge || (!knob && $('handleOrientation').value === 'horizontal'),
       position: $('handlePosition').value || 'auto',
-      category: $('category').value,
+      category: catId(),
       middle: edge || (!knob && $('handleOrientation').value === 'horizontal' && $('handleHPlace').value === 'middle'),
       side: numOr(mmv('handleSide'), 0),
       vertical: numOr(mmv('handleVert'), 0),
@@ -1609,7 +1616,7 @@ function currentCabinet() {
       return;
     }
 
-    const isWall = $('category').value === 'wall';
+    const isWall = catId() === 'wall';
     let toe = isWall ? 0 : num(mmv('toeHeight'));
     if (!Number.isFinite(toe) || toe < 0) toe = 0;
 
@@ -2499,6 +2506,18 @@ if (details.length) {
 
   // A field was edited: update the selected item if this field belongs to it.
 function liveEdit(el) {
+    if (el.id === 'ceilingHeight') { // the lofts reach up to the ceiling
+      clearTimeout(state.ceilingTimer);
+      state.ceilingTimer = setTimeout(async () => {
+        try {
+          const res = await call('set_ceiling', { ceiling_height: mmv('ceilingHeight') });
+          setStatus(res.ok ? 'ok' : 'error', res.message);
+        } catch (error) {
+          setStatus('error', error.message);
+        }
+      }, LIVE_TYPING_DELAY_MS);
+      return;
+    }
     if (TOE_FROM_PRESET[el.id]) { // a Toe Kick field of the Presets: it is the field of Cabinet and Extras that is edited
       const target = $(TOE_FROM_PRESET[el.id]);
       target.value = el.value;

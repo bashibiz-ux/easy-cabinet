@@ -21,6 +21,7 @@ module KitchenCabinetMaster
     CATEGORIES = [
       { 'id' => 'base', 'name' => 'Base Unit' },
       { 'id' => 'wall', 'name' => 'Wall Unit' },
+      { 'id' => 'loft', 'name' => 'Loft Unit' }, # (its units are wall units that stand over the others: see PlacementManager.loft?)
       { 'id' => 'tall', 'name' => 'Tall Unit' },
       { 'id' => 'corner', 'name' => 'Corner Unit' }
     ].freeze

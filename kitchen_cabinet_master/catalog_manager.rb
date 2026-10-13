@@ -62,9 +62,13 @@ module KitchenCabinetMaster
         found = catalog(catalog_id)
         return [] unless found
 
-        list = found.dig('categories', category.to_s)
+        # The Loft Unit category lists the loft units, which are kept with the wall units (they are wall units): the Wall Unit list leaves them out.
+        wanted = category.to_s == 'loft' ? 'wall' : category.to_s
+        list = found.dig('categories', wanted)
         return [] unless list.is_a?(Array)
 
+        list = list.select { |c| c['loft'] == true } if category.to_s == 'loft'
+        list = list.reject { |c| c['loft'] == true } if category.to_s == 'wall' && !with_hidden
         with_hidden ? list : list.reject { |c| c['hidden'] == true }
       end
 

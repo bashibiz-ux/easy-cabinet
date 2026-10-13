@@ -83,4 +83,14 @@ class CatalogTest < Minitest::Test
       end
     end
   end
+  def test_the_loft_units_are_their_own_category_and_the_wall_list_leaves_them_out
+    assert_equal 'Loft Unit', Defaults::CATEGORIES.find { |c| c['id'] == 'loft' }['name']
+    assert_equal %w[base wall loft tall corner], Defaults.category_ids
+    %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|
+      assert_equal ['Wall - loft 1 door', 'Wall - loft 2 doors', 'Wall - loft lift-up'], CatalogManager.cabinets(catalog, 'loft').map { |c| c['name'] }
+      refute CatalogManager.cabinets(catalog, 'wall').any? { |c| c['loft'] }, 'no loft in the wall list'
+      refute_nil CatalogManager.cabinet(catalog, 'loft', 'wall_loft_2door'), 'found as a loft'
+      refute_nil CatalogManager.cabinet(catalog, 'wall', 'wall_loft_2door'), 'and as the wall unit it is, when an existing one is updated'
+    end
+  end
 end
