@@ -121,12 +121,14 @@ module KitchenCabinetMaster
       last_loft ? [last_loft, :after] : nil
     end
 
-    # Where a loft starts (mm): the top of the unit under it, or the bottom of the loft before it; with no unit, where a standard wall unit ends.
+    # Where a loft starts (mm): every loft stands at one level, so that the row of lofts is straight: the level of the lofts already there, else the top of
+    # the highest wall or tall unit (a loft over a lower wall unit stands up at that level too); with no unit, where a standard wall unit ends.
     def self.loft_bottom(model)
-      unit, mode = loft_anchor(model)
-      return DEFAULT_WALL_BOTTOM_MM + 780.0 unless unit
+      lofts = model.active_entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.row_item?(item) && loft_item?(item) }
+      return lofts.first.transformation.origin.z.to_mm unless lofts.empty?
 
-      mode == :after ? unit.transformation.origin.z.to_mm : top_of_item(unit)
+      tops = loft_units(model).map { |unit| top_of_item(unit) }
+      tops.empty? ? DEFAULT_WALL_BOTTOM_MM + 780.0 : tops.max
     end
 
     # The width and the depth of the carcass of the unit a loft goes over: the loft is as wide as it and as deep, so that the doors line up

@@ -418,4 +418,15 @@ class PlacementTest < Minitest::Test
     assert_equal 2400.0, PlacementManager::LOFT_CEILING_MM
     assert_equal 50.0, PlacementManager::LOFT_FILLER_MM
   end
+  def test_every_loft_stands_at_one_level_whatever_is_under_it
+    tall = insert('tall', 600.0)
+    wall = insert('wall', 600.0)
+    deselect
+    over_tall = insert_loft
+    over_wall = insert_loft
+    top = [tall, wall].map { |unit| unit.transformation.origin.z.to_mm + unit.get_attribute('kcm', 'top_z') }.max
+    assert_in_delta top, over_tall.transformation.origin.z.to_mm, 0.01, 'at the top of the highest unit'
+    assert_in_delta over_tall.transformation.origin.z, over_wall.transformation.origin.z, 0.01, 'the loft over the lower wall unit is in line with the other'
+    assert_in_delta wall.transformation.origin.y, over_wall.transformation.origin.y, 0.01, 'and still over its own unit'
+  end
 end

@@ -145,6 +145,7 @@ module KitchenCabinetMaster
       keep_selection(model, kept)
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not refresh the live parts: #{e.message}"
+      DialogManager.push('notice', { 'message' => "Some parts could not be drawn: #{e.message} at #{Array(e.backtrace).first.to_s[/\w+\.rb:\d+/]}" }) if defined?(DialogManager)
     end
 
     # One step of Undo that joins the one before it.
