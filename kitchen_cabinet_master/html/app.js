@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.27.1';
+  const APP_VERSION = '1.27.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2378,8 +2378,17 @@ if (details.length) {
     setText('toeHeight', standard.toe_kick_height ?? 100);
     setText('toeThickness', standard.toe_kick_thickness ?? 18);
     setText('toeRecess', standard.toe_kick_recess ?? 50);
+    // and the size fields of Cabinets and Extras go back to the standard size of the cabinet chosen there (a filler, side panel or toe kick has none)
+    const cabinet = currentCabinet();
+    if (cabinet && !['filler', 'end_panel', 'toe_kick', 'wall_bottom'].includes(categoryKind())) {
+      const d = cabinet.defaults || {};
+      setText('width', d.width);
+      syncWidthPreset();
+      setText('depth', d.depth);
+      setText('height', d.height);
+    }
     drawPreview();
-    setStatus('ok', 'The Unit Sizes are back to how they began. The units in the model were not changed.');
+    setStatus('ok', 'The Unit Sizes and the size fields of Cabinets and Extras are back to the standard sizes. The units in the model were not changed.');
   }
 
   function scheduleUnitSize() {
