@@ -52,7 +52,7 @@ module KitchenCabinetMaster
       end
       if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling, less its filler)
         room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PartManager.send(:ceiling_filler_height, model) - PlacementManager.loft_bottom(model)
-        params['height'] = [room, 100.0].max if room < params['height'].to_f
+        params['height'] = [room, PlacementManager::LOFT_MIN_MM].max if room < params['height'].to_f
       end
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
@@ -631,7 +631,7 @@ module KitchenCabinetMaster
       dictionary = AttributeManager::DICTIONARY
       if root.get_attribute(dictionary, 'cabinet_type').to_s.start_with?('wall_loft') # (a loft grows upwards, and never past the ceiling less the ceiling filler)
         room = PlacementManager.loft_ceiling(model) - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm
-        params['height'] = [[params['height'].to_f, room].min, 100.0].max
+        params['height'] = [[params['height'].to_f, room].min, PlacementManager::LOFT_MIN_MM].max
       end
       growth = params['width'] - root.get_attribute(dictionary, 'width').to_f
       squeeze = nil
@@ -716,7 +716,7 @@ module KitchenCabinetMaster
       model.start_operation('Ceiling Height', true)
       begin
         lofts.each do |root|
-          height = [ceiling - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm, 100.0].max.round(2)
+          height = [ceiling - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm, PlacementManager::LOFT_MIN_MM].max.round(2)
           answer = update_one(model, root, { 'fields_only' => true, 'fields' => { 'height' => height }, 'resize_neighbours' => false })
           answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
         end
@@ -730,7 +730,13 @@ module KitchenCabinetMaster
       SelectionManager.push_selection(model)
       return Response.fail(problems.first) if done.zero?
 
-      Response.ok("#{done} loft#{'s' unless done == 1} reach#{'es' if done == 1} the ceiling at #{format('%g', ceiling)} mm.#{" #{problems.length} could not (#{problems.first(2).join('; ')})." unless problems.empty?}")
+      heights = lofts.select(&:valid?).map { |root| AttributeManager.read(root)['height'].to_f.round(1) }.uniq
+      bottom = lofts.first.transformation.origin.z.to_mm.round(1)
+      filler = PartManager.send(:ceiling_filler_height, model)
+      room = ceiling - filler - bottom
+      detail = " Loft height #{heights.map { |h| format('%g', h) }.join(' / ')} mm (it starts at #{format('%g', bottom)} mm, the ceiling filler is #{format('%g', filler)} mm)."
+      detail += " There is no room for more: the ceiling must be above #{format('%g', bottom + filler + PlacementManager::LOFT_MIN_MM)} mm for a loft taller than #{format('%g', PlacementManager::LOFT_MIN_MM)} mm." if room < PlacementManager::LOFT_MIN_MM
+      Response.ok("#{done} loft#{'s' unless done == 1} reach#{'es' if done == 1} the ceiling at #{format('%g', ceiling)} mm.#{detail}#{" #{problems.length} could not (#{problems.first(2).join('; ')})." unless problems.empty?}")
     end
     private_class_method :set_ceiling
 

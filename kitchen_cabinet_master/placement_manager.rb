@@ -77,6 +77,7 @@ module KitchenCabinetMaster
     # ones go on along the row, one after the other, at the same height. Its height, when it was not typed, is cut to what is left under the ceiling less the filler.
     LOFT_CEILING_MM = 2600.0
     LOFT_FILLER_MM = 50.0
+    LOFT_MIN_MM = 150.0 # the lowest a loft is made when the ceiling leaves it little room (with its shelf it needs more than 100)
 
     def self.loft?(params)
       params['cabinet_type'].to_s.start_with?('wall_loft')

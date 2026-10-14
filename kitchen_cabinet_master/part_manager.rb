@@ -1210,11 +1210,25 @@ module KitchenCabinetMaster
         [t.yaxis.x.round(3), t.yaxis.y.round(3), ((t.origin.x * t.xaxis.x) + (t.origin.y * t.xaxis.y)).to_mm.round(0)]
       end
       along = ->(loft) { t = loft.transformation; ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm }
+      panels = Sketchup.active_model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'end_panel' }
+      # Lofts with a side panel standing between them (the units under them are that far apart) are one row: the strip carries on over that panel, in
+      # pieces of the piece length like anywhere else. Only there: at the ends of a row it stops at the carcass.
+      panel_between = lambda do |key, from, to|
+        panels.any? do |panel|
+          pt = panel.transformation
+          panel_key = [pt.yaxis.x.round(3), pt.yaxis.y.round(3), ((pt.origin.x * pt.xaxis.x) + (pt.origin.y * pt.xaxis.y)).to_mm.round(0)]
+          next false unless panel_key == key
+
+          here = along.call(panel)
+          here >= from - 3.0 && here + AttributeManager.read(panel)['thickness'].to_f <= to + 3.0
+        end
+      end
       rows = []
-      groups.each_value do |group|
+      groups.each do |key, group|
         current = []
         group.sort_by { |loft| along.call(loft) }.each do |loft|
-          if current.empty? || along.call(loft) - (along.call(current.last) + AttributeManager.read(current.last)['width'].to_f) <= 3.0
+          reach = current.empty? ? nil : along.call(current.last) + AttributeManager.read(current.last)['width'].to_f
+          if current.empty? || along.call(loft) - reach <= 3.0 || (along.call(loft) - reach <= 80.0 && panel_between.call(key, reach, along.call(loft)))
             current << loft
           else
             rows << current
@@ -1271,7 +1285,7 @@ module KitchenCabinetMaster
 
         top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f
         loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm)))
-        CabinetManager.update_quiet(model, loft, 'height' => [top - level, 100.0].max.round(2))
+        CabinetManager.update_quiet(model, loft, 'height' => [top - level, PlacementManager::LOFT_MIN_MM].max.round(2))
       end
       lofts.each do |loft| # (and each stands over its own unit: a unit moved along by a side panel takes its loft with it)
         unit_id = AttributeManager.read(loft)['loft_over'].to_s
