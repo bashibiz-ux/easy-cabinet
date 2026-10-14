@@ -23,11 +23,12 @@
 
     <!-- Presets: units and the settings every cabinet shares -->
     <section class="card" id="sec-presets">
-      <button class="card-head" type="button" aria-expanded="true">Presets</button>
+      <button class="card-head" type="button" aria-expanded="true">Settings</button>
       <div class="card-body">
         <div class="switch-row">
           <label class="check"><input type="checkbox" id="liveDimensions"><span>Dimension</span></label>
           <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
+          <label class="check"><input type="checkbox" id="liveSideCeiling"><span>Side panels up to the ceiling (ends of a row, over the lofts)</span></label>
           <label class="check"><input type="checkbox" id="resizeNeighbours" checked><span>Resizing cabinet sticking option</span></label>
           <label class="check"><input type="checkbox" id="liveToeKicks" checked><span>Toe kick</span></label>
           <label class="check"><input type="checkbox" id="liveCeilingFiller" checked><span>Ceiling filler</span></label>
@@ -83,7 +84,7 @@
           <label class="field"><span class="label">Thickness</span><div class="input"><input id="pCfThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Recess from Carcass</span><div class="input"><input id="pCfRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
         </div>        <div class="btn-row one">
-          <button class="btn" type="button" id="resetUnitSizes" title="Empties the sizes above and puts the toe kick values and the width, depth and height of Cabinets and Extras back to the standard ones. Nothing else in the Presets changes, and no unit in the model is changed by it.">Reset Unit Sizes</button>
+          <button class="btn" type="button" id="resetUnitSizes" title="Empties the sizes above and puts the toe kick values and the width, depth and height of Cabinets and Extras back to the standard ones. Nothing else in the Settings changes, and no unit in the model is changed by it.">Reset Unit Sizes</button>
         </div>
 
         <p class="group-title">Fronts</p>
@@ -646,10 +647,10 @@
             <span class="label">Side</span>
             <div class="input"><select id="epSide"></select></div>
           </label>
-          <!-- On: the panel on the end of a row goes down to the floor. Off: it stands only on the cabinet and the toe kick runs under it. Goes with the side panel switch of the Presets. -->
+          <!-- On: the panel on the end of a row goes down to the floor. Off: it stands only on the cabinet and the toe kick runs under it. Goes with the side panel switch of the Settings. -->
           <label class="check"><input type="checkbox" id="epToFloor" checked><span>Continue to the floor (off: only on the cabinet, with the toe kick below it)</span></label>
           <!-- On: the panel beside a unit with a loft over it goes on up past the loft to the ceiling. Off: it stops at the top of the unit. -->
-          <label class="check"><input type="checkbox" id="epToCeiling" checked><span>Continue to the ceiling (over the loft above the unit)</span></label>
+          <label class="check"><input type="checkbox" id="epToCeiling"><span>Continue to the ceiling (the panels at the ends of a row, over the lofts)</span></label>
           <div class="grid-3">
             <label class="field">
               <span class="label">Depth</span>
@@ -677,7 +678,7 @@
 
         <!-- Ceiling Filler: shown when Category = Ceiling Filler. The strip over each loft, like the toe kick under the units. -->
         <div class="subblock" id="sub-ceiling-filler" data-feature="wall" hidden>
-          <p class="hint">The strip along the top of the lofts, up to the ceiling, in pieces of the Piece Length laid one after another over each row of lofts (the last one shorter), its front Recess behind the doors of the lofts. It is placed by the Ceiling filler switch in the Presets; what is entered here is the size and material of all of them, live. Delete takes one away; it stays away until the switch is turned off and on.</p>
+          <p class="hint">The strip along the top of the lofts, up to the ceiling, in pieces of the Piece Length laid one after another over each row of lofts (the last one shorter), its front Recess behind the doors of the lofts. It is placed by the Ceiling filler switch in the Settings; what is entered here is the size and material of all of them, live. Delete takes one away; it stays away until the switch is turned off and on.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Height</span>

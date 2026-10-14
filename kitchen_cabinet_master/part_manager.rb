@@ -281,7 +281,7 @@ module KitchenCabinetMaster
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
-      top = [top, ceiling_top_for(model, target) || top].max unless raw['to_ceiling'] == false # (over the loft above the unit, up to the ceiling)
+      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner # (an end panel only, never one between two units: over the loft above the unit, up to the ceiling)
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
@@ -1320,7 +1320,7 @@ module KitchenCabinetMaster
       return Response.fail("The material \"#{material}\" was not found in the model.") unless material.empty? || material == Defaults::SAME_AS_DOOR || MaterialManager.available?(Sketchup.active_model, material)
 
       LiveParts.absorb('apply_ceiling_fillers', raw)
-      Response.ok(LiveParts.ceiling_fillers? ? 'The ceiling fillers take these values.' : 'These values are kept for the ceiling fillers: switch Ceiling filler on in the Presets to have them.')
+      Response.ok(LiveParts.ceiling_fillers? ? 'The ceiling fillers take these values.' : 'These values are kept for the ceiling fillers: switch Ceiling filler on in the Settings to have them.')
     end
     private_class_method :apply_ceiling_fillers
 

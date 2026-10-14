@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.42.1';
+  const APP_VERSION = '1.43.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2188,7 +2188,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveSideCeiling', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2871,6 +2871,10 @@ $('kitchenLayout').addEventListener('change', () => {
   setSoft($('kitchenWallCField'), $('kitchenLayout').value !== 'u');
 });
     $('kitchenVariation').addEventListener('change', syncVariation);
+    $('liveSideCeiling').addEventListener('change', () => { // the Settings switch and the tick of the Side Panel section are one choice
+      $('epToCeiling').checked = $('liveSideCeiling').checked;
+      scheduleSidePanels();
+    });
     $('panelOrientation').addEventListener('change', syncPanelUi);
     $('applianceKind').addEventListener('change', renderAppliances);
     $('resetUnitSizes').addEventListener('click', resetUnitSizes);
@@ -2886,6 +2890,7 @@ $('kitchenLayout').addEventListener('change', () => {
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
         liveEdit(el); // update the selected item with what was just entered
+        if (el.id === 'epToCeiling') $('liveSideCeiling').checked = el.checked;
         if (el.closest('#sub-end-panel')) scheduleSidePanels(); // the panels placed by the Presets tick take the new Side Panel settings
         if (PRESET_IDS.includes(el.id)) schedulePresetSave();
         if (FOLLOWS_CABINET.includes(el.id)) state.touched.add(el.id); // the user's own value now
