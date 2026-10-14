@@ -29,7 +29,7 @@ module KitchenCabinetMaster
       'worktop_round' => 5.0,        # radius of the rounded front edge (0 = square)
       'worktop_piece' => 0.0,        # 0 = no maximum length
       'worktop_cuts' => '',          # distances (mm) from the start of a run to cut at, e.g. "1500,3000"
-      'backsplash_height' => 100.0,  # 0 = no back splash
+      'backsplash_height' => 580.0,  # 0 = no back splash (580: from the worktop up to the bottom panel under the wall units, 1480 - 900)
       'backsplash_thickness' => 20.0,
       'material' => 'White',
       'backsplash_material' => ''     # ''= the material of the worktop

@@ -88,7 +88,7 @@ class FakeLoft < Sketchup::ComponentInstance
       'top_panel_style' => KitchenCabinetMaster::Defaults::TOP_PANEL_STYLES.first, 'cabinet_id' => 'CABINET_0001', 'base_z' => 0.0, 'top_z' => 290.0,
       'envelope_depth' => 580.0, 'envelope_width' => 600.0, 'envelope_top' => 290.0
     )
-    @attrs = kind == :tall ? base.merge('cabinet_category' => 'tall', 'cabinet_type' => 'tall_1door', 'cabinet_id' => 'CABINET_0002', 'door_count' => 1, 'height' => 2160.0, 'toe_kick_height' => 100.0, 'base_z' => 100.0, 'top_z' => 2260.0, 'envelope_top' => 2260.0, 'sequence' => 1) : base.merge('sequence' => 2)
+    @attrs = kind == :wall ? base.merge('cabinet_type' => 'wall_2door', 'cabinet_id' => 'CABINET_0003', 'height' => 780.0, 'top_z' => 780.0, 'envelope_top' => 780.0, 'sequence' => 3) : kind == :tall ? base.merge('cabinet_category' => 'tall', 'cabinet_type' => 'tall_1door', 'cabinet_id' => 'CABINET_0002', 'door_count' => 1, 'height' => 2160.0, 'toe_kick_height' => 100.0, 'base_z' => 100.0, 'top_z' => 2260.0, 'envelope_top' => 2260.0, 'sequence' => 1) : base.merge('sequence' => 2)
   end
 
   def name = 'LU600'
@@ -176,5 +176,15 @@ class CeilingUpdateTest < Minitest::Test
     assert_in_delta 290.0, @loft.attrs['height'], 0.01, 'a loft goes back to 290 mm'
     assert_includes answer['message'], '1 unit'
     assert_in_delta 0.0, @model.get_attribute('kcm', 'loft_depth', 0.0), 0.01
+  end
+  def test_a_wall_unit_level_with_the_tall_unit_goes_up_with_it_when_the_tall_unit_grows
+    @tall = FakeLoft.new(0.0, nil, :tall)
+    @wall = FakeLoft.new(1480.0.mm, nil, :wall)
+    @model.entities = FakeEntities.new([@tall, @wall])
+    parent = Struct.new(:entities).new(@model.entities)
+    [@tall, @wall].each { |item| item.instance_variable_set(:@parent, parent) }
+    answer = CabinetManager.send(:update_one, @model, @tall, { 'fields_only' => true, 'fields' => { 'height' => 2500.0 }, 'resize_neighbours' => false })
+    assert answer['ok'], answer['message']
+    assert_in_delta 1480.0 + 340.0, @wall.transformation.origin.z.to_mm, 0.01, 'the wall unit rose by what the tall unit grew'
   end
 end

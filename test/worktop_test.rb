@@ -343,8 +343,8 @@ class WorktopTest < Minitest::Test
     slab = Worktop.slab(run, settings)
     walls = Worktop.splash(run, slab, settings)
     assert_equal 2, walls.length
-    assert_equal [20.0, 900.0, 100.0], walls[0][:extent]
-    assert_equal [880.0, 20.0, 100.0], walls[1][:extent], 'the second stops at the first, no overlap'
+    assert_equal [20.0, 900.0, 580.0], walls[0][:extent]
+    assert_equal [880.0, 20.0, 580.0], walls[1][:extent], 'the second stops at the first, no overlap'
   end
 
   def test_a_cut_piece_gets_a_back_splash_of_its_own_length
@@ -354,7 +354,7 @@ class WorktopTest < Minitest::Test
   end
 
   def test_the_new_defaults
-    assert_equal 100.0, Worktop::DEFAULTS['backsplash_height']
+    assert_equal 580.0, Worktop::DEFAULTS['backsplash_height']
     assert_equal 0.0, Worktop::DEFAULTS['worktop_piece']
     assert_equal '', Worktop::DEFAULTS['worktop_cuts']
   end
