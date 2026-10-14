@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.38.4';
+  const APP_VERSION = '1.39.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -248,7 +248,7 @@
         focusSection('sec-worktop', data.part_id || data.part_name);
         return;
       }
-      const kind = ['end_panel', 'toe_kick', 'panel'].includes(data.part_kind) ? data.part_kind : 'filler';
+      const kind = data.ceiling_filler ? 'ceiling_filler' : (['end_panel', 'toe_kick', 'panel'].includes(data.part_kind) ? data.part_kind : 'filler');
       state.selectedKind = kind;
       // A part is edited with the Cabinet & Extras fields, which need a catalog: use the first if none is chosen.
       if (!$('catalog').value && list(state.meta.catalogs)[0]) {
@@ -258,6 +258,7 @@
       setBadge(data.part_name);
       if (kind === 'end_panel') applyEndPanelDefaults(data);
       else if (kind === 'panel') applyPanelDefaults(data);
+      else if (kind === 'ceiling_filler') applyCeilingFillerDefaults(data);
       else if (kind === 'toe_kick') applyToeKickDefaults(data);
       else applyFillerDefaults(data);
       // A filler is something an side panel can go on: its front and top are what that panel starts from.
@@ -345,6 +346,39 @@
   function syncPanelUi() {
     const label = $('panelLengthLabel');
     if (label) label.textContent = $('panelOrientation').value === 'horizontal' ? 'Depth' : 'Height';
+  }
+
+  // The Ceiling Filler section: like the Toe Kick fields, what is entered is for every ceiling filler (live).
+  const CEILING_FILLER_IDS = ['cfHeight', 'cfThickness', 'cfMaterial'];
+
+  function collectCeilingFiller() {
+    return { height: mmv('cfHeight'), thickness: mmv('cfThickness'), material: $('cfMaterial').value };
+  }
+
+  function applyCeilingFillerDefaults(d) {
+    setText('cfHeight', d.height);
+    setText('cfThickness', d.thickness);
+    setSelect('cfMaterial', d.material_choice || '__door__');
+    updateChips();
+    drawPreview();
+  }
+
+  function scheduleCeilingFiller(delay) {
+    clearTimeout(state.cfTimer);
+    state.cfTimer = setTimeout(async () => {
+      if (state.busy) { scheduleCeilingFiller(300); return; }
+      state.busy = true;
+      state.liveBusy = true;
+      try {
+        const res = await call('apply_ceiling_fillers', collectCeilingFiller());
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      } catch (error) {
+        setStatus('error', error.message);
+      } finally {
+        state.busy = false;
+        state.liveBusy = false;
+      }
+    }, delay);
   }
 
   function applyFillerDefaults(d) {
@@ -462,7 +496,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'ceilingHeight', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
+    'units', 'loftCeiling', 'cfHeight', 'cfThickness', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -551,12 +585,13 @@
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
     toe_kick: () => collectToeKick(),
-    panel: () => collectPanel()
+    panel: () => collectPanel(),
+    ceiling_filler: () => collectCeilingFiller()
   };
 
   // Filler, Side Panel, Toe Kick and Wall Bottom Panel are choices in the Category list, next
   // to the real cabinet categories.
-  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom', 'panel'];
+  const PART_CATEGORIES = ['filler', 'end_panel', 'toe_kick', 'wall_bottom', 'panel', 'ceiling_filler'];
 
   // The category of what is built: a loft unit is a wall unit.
   function catId() {
@@ -584,7 +619,7 @@
 
   // Cabinets have their own Insert / Update / Delete; a filler, side panel or toe
   // kick has its own Insert and shares one Update / Delete (update_part / delete_part).
-  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom', panel: 'insert_panel' };
+  const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom', panel: 'insert_panel', ceiling_filler: 'apply_ceiling_fillers' };
 
   // Removing a cabinet from your own catalog says which one.
   const CATALOG_PAYLOAD = {
@@ -730,7 +765,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'ceilingHeight', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'loftCeiling', 'cfHeight', 'cfThickness', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -859,8 +894,8 @@
     // No catalog chosen yet: nothing is active except the catalog selection itself.
     const on = new Set(!catalog ? [] : (Array.isArray(catalog.features) ? catalog.features : ALL_FEATURES));
 
-    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }, { id: 'panel', name: 'Panel' }];
-    fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' || c.id === 'loft' ? 'wall' : c.id)));
+    const categories = [...list(state.meta.categories), { id: 'filler', name: 'Filler' }, { id: 'end_panel', name: 'Side Panel' }, { id: 'toe_kick', name: 'Toe Kick' }, { id: 'wall_bottom', name: 'Wall Bottom Panel' }, { id: 'panel', name: 'Panel' }, { id: 'ceiling_filler', name: 'Ceiling Filler' }];
+    fillSelect($('category'), categories.filter((c) => on.has(c.id === 'wall_bottom' || c.id === 'loft' || c.id === 'ceiling_filler' ? 'wall' : c.id)));
 
     document.querySelectorAll('[data-feature]').forEach((el) => {
       const off = !on.has(el.dataset.feature);
@@ -936,6 +971,7 @@ function currentCabinet() {
     fillSelect($('toeMaterial'), toeKick);
     fillSelect($('epMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('panelMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
+    fillSelect($('cfMaterial'), [{ id: '__door__', name: 'Same as door material' }, ...panel]);
     fillSelect($('wtMaterial'), panel);
     fillSelect($('glassMaterial'), glass.length ? glass : [{ id: 'Glass - Clear', name: 'Glass - Clear' }]);
     fillSelect($('wtSplashMaterial'), [{ id: '__same__', name: 'Same as worktop' }, ...panel]);
@@ -1017,7 +1053,7 @@ function currentCabinet() {
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
-      ceiling_height: mmv('ceilingHeight'),
+      ceiling_height: mmv('loftCeiling'),
       placement_gap: mmv('gap'),
       width: mmv('width'),
       depth: mmv('depth'),
@@ -1508,6 +1544,7 @@ function currentCabinet() {
     setSoft($('sub-toe-kick'), kind !== 'toe_kick');
     setSoft($('sub-wall-bottom'), kind !== 'wall_bottom');
     setSoft($('sub-panel'), kind !== 'panel');
+    setSoft($('sub-ceiling-filler'), kind !== 'ceiling_filler');
     syncPanelUi();
     setSoft($('toeNote'), true);
     setSoft($('legFields'), !(kind === 'cabinet' && (currentCabinet() || {}).corner === 'l_shape'));
@@ -1756,6 +1793,11 @@ function currentCabinet() {
 
   function drawExtraPreview(kind) {
     const svg = $('preview');
+    if (kind === 'ceiling_filler') {
+      svg.innerHTML = '';
+      $('previewCaption').textContent = `Ceiling filler ${fmtU(num(mmv('cfHeight')))} ${unitInfo().label} high over every loft.`;
+      return;
+    }
     if (kind === 'panel') {
       svg.innerHTML = '';
       $('previewCaption').textContent = `Panel ${fmtU(num(mmv('panelWidth')))} × ${fmtU(num(mmv('panelLength')))} ${unitInfo().label}, ${$('panelOrientation').value}.`;
@@ -2506,11 +2548,15 @@ if (details.length) {
 
   // A field was edited: update the selected item if this field belongs to it.
 function liveEdit(el) {
-    if (el.id === 'ceilingHeight') { // the lofts reach up to the ceiling
+    if (CEILING_FILLER_IDS.includes(el.id)) { // the Ceiling Filler fields are for all the ceiling fillers
+      scheduleCeilingFiller(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      return;
+    }
+    if (el.id === 'loftCeiling') { // the lofts reach up to the ceiling
       clearTimeout(state.ceilingTimer);
       state.ceilingTimer = setTimeout(async () => {
         try {
-          const res = await call('set_ceiling', { ceiling_height: mmv('ceilingHeight') });
+          const res = await call('set_ceiling', { ceiling_height: mmv('loftCeiling') });
           setStatus(res.ok ? 'ok' : 'error', res.message);
         } catch (error) {
           setStatus('error', error.message);
@@ -2864,7 +2910,8 @@ $('kitchenLayout').addEventListener('change', () => {
   const LIVE_PART_TICKS = {
     liveToeKicks: ['set_live_toe_kicks', () => collectToeKick()],
     liveWallBottom: ['set_live_wall_bottom', () => COLLECTORS.wall_bottom()],
-    liveWorktop: ['set_live_worktop', () => collectWorktop()]
+    liveWorktop: ['set_live_worktop', () => collectWorktop()],
+    liveCeilingFiller: ['set_live_ceiling_filler', () => collectCeilingFiller()]
   };
 
   async function sendLivePart(id) {
@@ -2936,6 +2983,7 @@ $('kitchenLayout').addEventListener('change', () => {
       $('liveToeKicks').checked = res.data.live_toe_kicks !== false;
       $('liveWallBottom').checked = res.data.live_wall_bottom !== false;
       $('liveWorktop').checked = res.data.live_worktop !== false;
+      $('liveCeilingFiller').checked = res.data.live_ceiling_filler !== false;
       await buildUi();
       if ($('liveSidePanels').checked) await sendSidePanels(); // (on to begin with: the Side Panel settings of the panel go with it)
       for (const id of Object.keys(LIVE_PART_TICKS)) { if ($(id).checked) await sendLivePart(id); } // (and the settings of the toe kick, bottom panel and worktop sections)

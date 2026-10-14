@@ -30,6 +30,7 @@
           <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
           <label class="check"><input type="checkbox" id="resizeNeighbours" checked><span>Resizing cabinet sticking option</span></label>
           <label class="check"><input type="checkbox" id="liveToeKicks" checked><span>Toe kick</span></label>
+          <label class="check"><input type="checkbox" id="liveCeilingFiller" checked><span>Ceiling filler</span></label>
           <label class="check"><input type="checkbox" id="liveWallBottom" checked><span>Wall unit bottom panel</span></label>
           <label class="check"><input type="checkbox" id="liveWorktop" checked><span>Worktop and back splash</span></label>
           <label class="check"><input type="checkbox" id="snapEnabled" checked><span>Sticking function</span></label>
@@ -37,7 +38,7 @@
         <hr class="section-sep">
         <label class="field narrow">
           <span class="label">Ceiling Height (a loft reaches up to it)</span>
-          <div class="input"><input id="ceilingHeight" type="text" inputmode="decimal" autocomplete="off" value="2400"><em>mm</em></div>
+          <div class="input"><input id="loftCeiling" type="text" inputmode="decimal" autocomplete="off" value="2600"><em>mm</em></div>
         </label>
         <label class="field narrow">
           <span class="label">Units</span>
@@ -658,6 +659,25 @@
           <label class="field">
             <span class="label">Face</span>
             <div class="input"><select id="epFace"><option value="flat">Flat</option><option value="design">As the selected normal door</option></select></div>
+          </label>
+        </div>
+
+        <!-- Ceiling Filler: shown when Category = Ceiling Filler. The strip over each loft, like the toe kick under the units. -->
+        <div class="subblock" id="sub-ceiling-filler" data-feature="wall" hidden>
+          <p class="hint">The strip over each loft, up to the ceiling, flush with the loft's doors. It is placed by the Ceiling filler switch in the Presets, one over every loft; what is entered here is the size and material of all of them, live. Delete takes one away; it stays away until the switch is turned off and on.</p>
+          <div class="grid-2">
+            <label class="field">
+              <span class="label">Height</span>
+              <div class="input"><input id="cfHeight" type="text" inputmode="decimal" autocomplete="off" value="50"><em>mm</em></div>
+            </label>
+            <label class="field">
+              <span class="label">Thickness</span>
+              <div class="input"><input id="cfThickness" type="text" inputmode="decimal" autocomplete="off" value="18"><em>mm</em></div>
+            </label>
+          </div>
+          <label class="field">
+            <span class="label">Material</span>
+            <div class="input has-chip"><i class="chip" data-chip-for="cfMaterial"></i><select id="cfMaterial" data-material></select></div>
           </label>
         </div>
 

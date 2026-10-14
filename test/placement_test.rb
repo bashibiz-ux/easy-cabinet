@@ -415,7 +415,7 @@ class PlacementTest < Minitest::Test
   def test_the_ceiling_and_what_a_loft_is
     assert PlacementManager.loft?('cabinet_type' => 'wall_loft_liftup')
     refute PlacementManager.loft?('cabinet_type' => 'wall_2door')
-    assert_equal 2400.0, PlacementManager::LOFT_CEILING_MM
+    assert_equal 2600.0, PlacementManager::LOFT_CEILING_MM
     assert_equal 50.0, PlacementManager::LOFT_FILLER_MM
   end
   def test_every_loft_stands_at_one_level_whatever_is_under_it

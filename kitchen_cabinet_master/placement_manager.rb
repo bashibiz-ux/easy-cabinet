@@ -75,7 +75,7 @@ module KitchenCabinetMaster
     # A LOFT (Wall - loft ...): a box over the wall or tall units, up to the ceiling (with a 50 mm ceiling filler on top, see PartManager.sync_ceiling_fillers).
     # The first loft goes directly over the selected wall or tall unit (with none selected, over the first one of the row) and starts at its top; the next
     # ones go on along the row, one after the other, at the same height. Its height, when it was not typed, is cut to what is left under the ceiling less the filler.
-    LOFT_CEILING_MM = 2400.0
+    LOFT_CEILING_MM = 2600.0
     LOFT_FILLER_MM = 50.0
 
     def self.loft?(params)

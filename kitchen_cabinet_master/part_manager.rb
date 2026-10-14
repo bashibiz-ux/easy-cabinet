@@ -14,6 +14,7 @@ module KitchenCabinetMaster
       when 'insert_exposed_side_panels' then insert_exposed_side_panels(raw)
       when 'insert_toe_kick' then insert_toe_kick(raw)
       when 'apply_toe_kicks' then apply_toe_kicks(raw)
+      when 'apply_ceiling_fillers' then apply_ceiling_fillers(raw)
       when 'update_placed' then update_placed(raw)
       when 'update_part' then update_part(raw)
       when 'delete_part' then delete_part
@@ -1146,36 +1147,31 @@ module KitchenCabinetMaster
     end
     private_class_method :update_placed
 
-    # The CEILING FILLER of a loft: a 50 mm strip across the front of the loft, over its top, up to the ceiling. One for every loft, as wide as the loft,
-    # in its door material, flush with its doors; made again where the loft is by every refresh (a loft that is gone takes its filler away).
-    def self.sync_ceiling_fillers(model)
+    # The CEILING FILLER of a loft: a strip across the front of the loft, over its top, up to the ceiling (50 mm to start). Like the toe kicks it follows the
+    # Presets switch (Ceiling filler) and the values of its section (height, thickness, material); one for every loft, as wide as the loft, flush with its doors.
+    # Made again where the loft is by every refresh: a loft that is gone takes its filler away, one you deleted stays away (`skip`: the lofts it was deleted
+    # from) until the switch is turned off and on. `values` nil: the switch is off, none is wanted.
+    def self.sync_ceiling_fillers(model, values, skip = [])
       dictionary = AttributeManager::DICTIONARY
       lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
       fillers = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'filler' && !item.get_attribute(dictionary, 'ceiling_filler').nil? }
-      level = PlacementManager.loft_level(model) # (the lofts stand at one level: any that is not there (put by an older version, or a unit grew) is moved to it)
-      lofts.each do |loft|
-        off = level - loft.transformation.origin.z.to_mm
-        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
-      end
-      depth = PlacementManager.loft_depth(model) # (and one depth, so that the fronts of all the lofts are flush)
-      lofts.each do |loft|
-        next unless depth && (AttributeManager.read(loft)['depth'].to_f - depth).abs > 0.5
-
-        CabinetManager.update_quiet(model, loft, 'depth' => depth)
-      end
-      ids = lofts.map { |loft| AttributeManager.cabinet_id(loft) }
+      wanted = values ? lofts.reject { |loft| skip.include?(AttributeManager.cabinet_id(loft)) } : []
+      ids = wanted.map { |loft| AttributeManager.cabinet_id(loft) }
       kept = {}
       fillers.each do |filler|
         owner = filler.get_attribute(dictionary, 'ceiling_filler')
         if ids.include?(owner) && !kept.key?(owner) then kept[owner] = filler else PartGenerator.remove(model, filler) end
       end
-      lofts.each do |loft|
+      wanted.each do |loft|
         stored = AttributeManager.read(loft)
         id = AttributeManager.cabinet_id(loft)
-        params = { 'part_kind' => 'filler', 'width' => stored['width'].to_f, 'thickness' => stored['material_thickness'].to_f, 'height' => PlacementManager::LOFT_FILLER_MM,
-                   'material' => door_material_of(stored), 'target_id' => id, 'target_width' => stored['width'].to_f, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0,
-                   'target_category' => 'wall', 'target_flush_x' => door_front_of(loft, stored), 'side' => 'right', 'ceiling_filler' => id }
-        params['thickness'] = 18.0 unless params['thickness'].positive?
+        height = values['height'].to_f.positive? ? values['height'].to_f : PlacementManager::LOFT_FILLER_MM
+        thickness = values['thickness'].to_f.positive? ? values['thickness'].to_f : (stored['material_thickness'].to_f.positive? ? stored['material_thickness'].to_f : 18.0)
+        choice = values['material'].to_s
+        material = choice.empty? || choice == Defaults::SAME_AS_DOOR || !MaterialManager.available?(model, choice) ? door_material_of(stored) : choice
+        params = { 'part_kind' => 'filler', 'width' => stored['width'].to_f, 'thickness' => thickness, 'height' => height, 'material' => material, 'target_id' => id,
+                   'target_width' => stored['width'].to_f, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0, 'target_category' => 'wall',
+                   'target_flush_x' => door_front_of(loft, stored), 'side' => 'right', 'ceiling_filler' => id }
         transformation = loft.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, stored['top_z'].to_f.mm))
         layout = PartLayout.filler(params)
         params['part_name'] = NamingManager.filler_name(params)
@@ -1188,6 +1184,53 @@ module KitchenCabinetMaster
         end
       end
     end
+
+    # The lofts stand at one level (the top of the highest wall or tall unit: a loft over a lower unit stands up at that level, and they all move up or down
+    # with a tall unit that gets taller or shorter) and have one depth (the deepest unit's, so that all the fronts are flush). Inside an operation.
+    def self.align_lofts(model)
+      return if @aligning
+
+      @aligning = true
+      lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
+      level = PlacementManager.loft_level(model)
+      lofts.each do |loft|
+        off = level - loft.transformation.origin.z.to_mm
+        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
+      end
+      depth = PlacementManager.loft_depth(model)
+      lofts.each do |loft|
+        next unless depth && (AttributeManager.read(loft)['depth'].to_f - depth).abs > 0.5
+
+        CabinetManager.update_quiet(model, loft, 'depth' => depth)
+      end
+    ensure
+      @aligning = false
+    end
+    private_class_method :align_lofts
+
+    # How high the ceiling fillers are (mm): what a loft leaves under the ceiling; 0 with the Ceiling filler switch off.
+    def self.ceiling_filler_height(model)
+      return 0.0 unless LiveParts.ceiling_fillers?
+
+      height = LiveParts.ceiling_values(model)['height'].to_f
+      height.positive? ? height : PlacementManager::LOFT_FILLER_MM
+    end
+
+    # The Ceiling Filler section: its values are the ones every ceiling filler is drawn with (the refresh after this action draws them again).
+    def self.apply_ceiling_fillers(raw)
+      raw = stringify(raw)
+      height = ValidationManager.to_float(raw['height'])
+      thickness = ValidationManager.to_float(raw['thickness'])
+      return Response.fail('The ceiling filler height must be between 5 and 500 mm.', [{ 'field' => 'height', 'message' => 'Height must be between 5 and 500 mm.' }]) if !raw['height'].to_s.strip.empty? && !(height && height.between?(5.0, 500.0))
+      return Response.fail('The ceiling filler thickness must be between 3 and 100 mm.', [{ 'field' => 'thickness', 'message' => 'Thickness must be between 3 and 100 mm.' }]) if !raw['thickness'].to_s.strip.empty? && !(thickness && thickness.between?(3.0, 100.0))
+
+      material = raw['material'].to_s
+      return Response.fail("The material \"#{material}\" was not found in the model.") unless material.empty? || material == Defaults::SAME_AS_DOOR || MaterialManager.available?(Sketchup.active_model, material)
+
+      LiveParts.absorb('apply_ceiling_fillers', raw)
+      Response.ok(LiveParts.ceiling_fillers? ? 'The ceiling fillers take these values.' : 'These values are kept for the ceiling fillers: switch Ceiling filler on in the Presets to have them.')
+    end
+    private_class_method :apply_ceiling_fillers
 
     # ---- panel ---------------------------------------------------------------------
 
@@ -1254,6 +1297,8 @@ module KitchenCabinetMaster
       model = Sketchup.active_model
       root = SelectionManager.selected_part(model)
       return Response.fail('Select a filler, side panel or toe kick to update.') unless root
+
+      return apply_ceiling_fillers(raw) unless root.get_attribute(AttributeManager::DICTIONARY, 'ceiling_filler').nil? # (a ceiling filler takes the values of the section for all of them)
 
       case AttributeManager.part_kind(root)
       when 'filler' then update_filler(model, root, raw)

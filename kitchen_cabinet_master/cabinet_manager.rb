@@ -51,7 +51,7 @@ module KitchenCabinetMaster
         params['depth'] = fit['depth']
       end
       if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling, less its filler)
-        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PlacementManager::LOFT_FILLER_MM - PlacementManager.loft_bottom(model)
+        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PartManager.send(:ceiling_filler_height, model) - PlacementManager.loft_bottom(model)
         params['height'] = [room, 100.0].max if room < params['height'].to_f
       end
       root = SelectionManager.suspend do
@@ -661,6 +661,7 @@ module KitchenCabinetMaster
           WorktopManager.refresh(model) if params['sink'] || params['hob'] # its opening in the worktop follows
           RowResizer.apply(model, squeeze) if squeeze
           follow_tall(model, root, old_top) if old_top
+          PartManager.send(:align_lofts, model) if old_top # (the lofts go up or down with the tall unit)
           # Its filler, side panels and toe kicks follow its door material.
           PartManager.follow_door(model, root)
           WallBottomManager.refresh(model) if defined?(WallBottomManager)
@@ -709,7 +710,7 @@ module KitchenCabinetMaster
       model.start_operation('Ceiling Height', true)
       begin
         lofts.each do |root|
-          height = [ceiling - PlacementManager::LOFT_FILLER_MM - root.transformation.origin.z.to_mm, 100.0].max.round(2)
+          height = [ceiling - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm, 100.0].max.round(2)
           answer = update_one(model, root, { 'fields_only' => true, 'fields' => { 'height' => height }, 'resize_neighbours' => false })
           answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
         end
@@ -783,10 +784,11 @@ module KitchenCabinetMaster
 
     # One cabinet changed with the fields given, inside an operation that is already open (the refresh of the live parts).
     def self.update_quiet(model, root, fields)
+      previous = @batch
       @batch = true
       update_one(model, root, { 'fields_only' => true, 'fields' => fields, 'resize_neighbours' => false })
     ensure
-      @batch = false
+      @batch = previous
     end
 
     # ---- settings that belong to every cabinet -------------------------------------

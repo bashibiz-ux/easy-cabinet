@@ -14,7 +14,8 @@ module KitchenCabinetMaster
     KEY_TOE_KICKS = 'live_toe_kicks_on' # (the keys are new: a model that has an old Off written down starts On again)
     KEY_WALL_BOTTOM = 'live_wall_bottom_on'
     KEY_WORKTOP = 'live_worktop_on'
-    VALUES = { KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
+    KEY_CEILING = 'live_ceiling_filler_on' # the ceiling filler over every loft (see PartManager.sync_ceiling_fillers)
+    VALUES = { KEY_CEILING => 'live_ceiling_values', KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
     MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
 
     def self.perform(action, raw)
@@ -37,6 +38,10 @@ module KitchenCabinetMaster
         keep(model, KEY_TOE_KICKS, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Toe Kicks") { sync_toe_kicks(model) }
         Response.ok(on ? 'Toe kicks are on: they follow the cabinets.' : 'The toe kicks placed by the tick are taken away.')
+      when 'set_live_ceiling_filler'
+        keep(model, KEY_CEILING, on, raw)
+        apply(model, "#{on ? 'Place' : 'Remove'} Ceiling Fillers") { sync_ceiling(model) }
+        Response.ok(on ? 'Ceiling fillers are on: every loft has one.' : 'The ceiling fillers placed by the tick are taken away.')
       when 'set_live_wall_bottom'
         keep(model, KEY_WALL_BOTTOM, on, raw)
         sync_wall_bottom(model)
@@ -52,7 +57,7 @@ module KitchenCabinetMaster
     # What the user took away with Delete stays away while the switch is on (the way it is told apart: a side panel by its cabinet and side, a toe
     # kick by the unit it starts at, the worktop and the bottom panels by their run of units). Turning the switch off and on again brings it back.
     KEY_DISMISSED = 'live_dismissed'
-    DISMISS_PREFIX = { KEY_SIDE_PANELS => 'side', KEY_TOE_KICKS => 'toe', KEY_WORKTOP => 'worktop', KEY_WALL_BOTTOM => 'bottom' }.freeze
+    DISMISS_PREFIX = { KEY_CEILING => 'ceiling', KEY_SIDE_PANELS => 'side', KEY_TOE_KICKS => 'toe', KEY_WORKTOP => 'worktop', KEY_WALL_BOTTOM => 'bottom' }.freeze
 
     def self.dismissed(model = Sketchup.active_model)
       JSON.parse(model.get_attribute(DICTIONARY, KEY_DISMISSED, '[]'))
@@ -82,6 +87,9 @@ module KitchenCabinetMaster
     def self.key_for(part)
       dictionary = AttributeManager::DICTIONARY
       stored = AttributeManager.read(part) || {}
+      ceiling = part.get_attribute(dictionary, 'ceiling_filler')
+      return "ceiling:#{ceiling}" if ceiling # (a ceiling filler is told apart by its loft)
+
       case AttributeManager.part_kind(part)
       when 'end_panel', 'filler' then part.get_attribute(dictionary, AUTO) == true ? "side:#{stored['target_id']}:#{stored['side']}" : nil
       when 'toe_kick' then part.get_attribute(dictionary, AUTO_TOE) == true ? "toe:#{stored['toe_kick_from']}" : nil
@@ -101,6 +109,10 @@ module KitchenCabinetMaster
     def self.on?(key, default = true) = Sketchup.active_model.get_attribute(DICTIONARY, key, default) == true
     # Every switch is on to begin with, the dimensions apart.
     def self.toe_kicks? = on?(KEY_TOE_KICKS)
+    def self.ceiling_fillers? = on?(KEY_CEILING)
+
+    # The settings the ceiling fillers are drawn with (height, thickness, material), as sent by the panel.
+    def self.ceiling_values(model = Sketchup.active_model) = values_of(model, KEY_CEILING)
     def self.wall_bottom? = on?(KEY_WALL_BOTTOM)
     def self.worktop? = on?(KEY_WORKTOP)
 
@@ -118,6 +130,7 @@ module KitchenCabinetMaster
 
       model = Sketchup.active_model
       case action
+      when 'apply_ceiling_fillers' then model.set_attribute(DICTIONARY, VALUES[KEY_CEILING], JSON.generate(values_of(model, KEY_CEILING).merge(data.reject { |_, value| value.to_s.strip.empty? })))
       when 'apply_toe_kicks' then model.set_attribute(DICTIONARY, VALUES[KEY_TOE_KICKS], JSON.generate(values_of(model, KEY_TOE_KICKS).merge(data.reject { |_, value| value.to_s.strip.empty? })))
       when 'apply_worktop' then model.set_attribute(DICTIONARY, VALUES[KEY_WORKTOP], JSON.generate(data)) if worktop?
       when 'apply_wall_bottom' then model.set_attribute(DICTIONARY, VALUES[KEY_WALL_BOTTOM], JSON.generate(data)) if wall_bottom?
@@ -131,13 +144,13 @@ module KitchenCabinetMaster
     # After an action of the panel: draw again what the ticks keep up. Quietly: nothing changes when no tick is on.
     def self.refresh
       model = Sketchup.active_model
-      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop?)
+      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers?)
 
       apply(model, 'Refresh Dimensions and Side Panels') do
         sync_side_panels(model) # (first: the dimensions are of the units)
         sync_toe_kicks(model)
         sync_dimensions(model)
-        PartManager.send(:sync_ceiling_fillers, model) # (a loft has its 50 mm ceiling filler)
+        sync_ceiling(model) # (the lofts stand in line, and each has its ceiling filler)
       end
       kept = model.selection.to_a
       sync_worktop(model) # (the worktop and the bottom panels are steps of their own)
@@ -227,6 +240,14 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :sync_wall_bottom
+
+    # The lofts are put in line (see PartManager.align_lofts); the ceiling fillers are drawn like the toe kicks: with the tick on, one over every loft but the
+    # ones that were deleted, with the values of the Ceiling Filler section; with it off, none.
+    def self.sync_ceiling(model)
+      PartManager.send(:align_lofts, model)
+      PartManager.send(:sync_ceiling_fillers, model, ceiling_fillers? ? values_of(model, KEY_CEILING) : nil, dismissed_ids(model, 'ceiling'))
+    end
+    private_class_method :sync_ceiling
 
     def self.sync_side_panels(model)
       PartManager.send(:remove_auto_panels, model)
