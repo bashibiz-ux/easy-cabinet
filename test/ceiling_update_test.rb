@@ -77,7 +77,7 @@ end
 class FakeLoft < Sketchup::ComponentInstance
   attr_reader :attrs, :transformation, :parent
 
-  def initialize(z, parent)
+  def initialize(z, parent, kind = :loft)
     super()
     @transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, z))
     @parent = parent
@@ -87,7 +87,7 @@ class FakeLoft < Sketchup::ComponentInstance
       'top_panel_style' => KitchenCabinetMaster::Defaults::TOP_PANEL_STYLES.first, 'cabinet_id' => 'CABINET_0001', 'base_z' => 0.0, 'top_z' => 290.0,
       'envelope_depth' => 580.0, 'envelope_width' => 600.0, 'envelope_top' => 290.0
     )
-    @attrs = base
+    @attrs = kind == :tall ? base.merge('cabinet_category' => 'tall', 'cabinet_type' => 'tall_1door', 'cabinet_id' => 'CABINET_0002', 'door_count' => 1, 'height' => 2160.0, 'toe_kick_height' => 100.0, 'base_z' => 100.0, 'top_z' => 2260.0, 'envelope_top' => 2260.0, 'sequence' => 1) : base.merge('sequence' => 2)
   end
 
   def name = 'LU600'
@@ -111,6 +111,8 @@ class FakeModel
   def entities=(value)
     @entities = value
   end
+
+  def active_entities = @entities
 
   def start_operation(*) = nil
   def commit_operation = nil
@@ -156,5 +158,33 @@ class CeilingUpdateTest < Minitest::Test
 
   def test_the_message_says_how_tall_the_loft_is
     assert_includes set_ceiling(2900.0)['message'], '590'
+  end
+  def with_tall
+    @tall = FakeLoft.new(0.0, nil, :tall)
+    @model.entities = FakeEntities.new([@tall, @loft])
+    parent = Struct.new(:entities).new(@model.entities)
+    [@tall, @loft].each { |item| item.instance_variable_set(:@parent, parent) }
+  end
+
+  def test_a_tall_unit_can_grow_into_the_place_of_the_loft_above_it
+    with_tall
+    answer = CabinetManager.send(:update_one, @model, @tall, { 'fields_only' => true, 'fields' => { 'height' => 2260.0 }, 'resize_neighbours' => false })
+    assert answer['ok'], answer['message']
+    assert_in_delta 2260.0, @tall.attrs['height'], 0.01
+  end
+
+  def test_a_tall_unit_cannot_grow_so_much_that_the_loft_is_left_lower_than_the_lowest_it_is_made
+    with_tall
+    answer = CabinetManager.send(:update_one, @model, @tall, { 'fields_only' => true, 'fields' => { 'height' => 2360.0 }, 'resize_neighbours' => false })
+    refute answer['ok']
+    assert_includes answer['message'], 'taller at most'
+    assert_includes answer['message'], '140'
+    assert_in_delta 2160.0, @tall.attrs['height'], 0.01, 'nothing was changed'
+  end
+
+  def test_a_tall_unit_can_get_shorter
+    with_tall
+    answer = CabinetManager.send(:update_one, @model, @tall, { 'fields_only' => true, 'fields' => { 'height' => 2000.0 }, 'resize_neighbours' => false })
+    assert answer['ok'], answer['message']
   end
 end

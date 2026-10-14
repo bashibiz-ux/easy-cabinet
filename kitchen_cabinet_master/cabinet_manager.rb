@@ -652,9 +652,18 @@ module KitchenCabinetMaster
 
       old_size = %w[envelope_depth envelope_width envelope_top].map { |key| root.get_attribute(dictionary, key).to_f }
       old_top = params['cabinet_category'] == 'tall' && root.get_attribute(dictionary, 'cabinet_category') == 'tall' ? PlacementManager.send(:top_of_item, root) : nil # (the wall units level with it go with it)
+      lofts = params['cabinet_category'] == 'tall' ? PlacementManager.lofts(model) : [] # (a loft over a tall unit gives or takes the height the unit gets or loses: it is no obstacle)
+      if old_top && !lofts.empty?
+        rise = (root.transformation.origin.z.to_mm + params['toe_kick_height'].to_f + params['height'].to_f) - old_top
+        over = lofts.select { |item| (item.transformation.origin.z.to_mm - old_top).abs < 1.0 } # (the lofts that stand on it)
+        limit = over.map { |item| item.transformation.origin.z.to_mm + item.get_attribute(dictionary, 'top_z').to_f }.min
+        if rise > 0.01 && limit && old_top + rise > limit - PlacementManager::LOFT_MIN_MM
+          return Response.fail("The loft above would be lower than #{format('%g', PlacementManager::LOFT_MIN_MM)} mm. The unit can be #{format('%g', [(limit - PlacementManager::LOFT_MIN_MM - old_top).round(1), 0.0].max)} mm taller at most.")
+        end
+      end
       same_footprint = loft && (params['width'] - root.get_attribute(dictionary, 'width').to_f).abs < 0.01 && (params['depth'] - root.get_attribute(dictionary, 'depth').to_f).abs < 0.01
       if !same_footprint && PlacementManager.crowds?(root.parent.entities, root, placed, CabinetLayout.envelope(params), old_size, # (a loft that only gets taller has nothing in its way: the ceiling is its limit)
-                                  also: squeeze && squeeze[:neighbour])
+                                  also: [squeeze && squeeze[:neighbour], *lofts])
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
       end
 

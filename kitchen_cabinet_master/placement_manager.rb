@@ -133,6 +133,11 @@ module KitchenCabinetMaster
       model.set_attribute(AttributeManager::DICTIONARY, 'loft_ceiling', number) if number && number.between?(1500.0, 6000.0)
     end
 
+    # Every loft in the model.
+    def self.lofts(model)
+      model.active_entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.row_item?(item) && loft_item?(item) }
+    end
+
     # The one level (mm) every loft stands at, so that the row of lofts is straight: the top of the highest wall or tall unit (a loft over a lower wall
     # unit stands up at that level too); nil when there is no unit.
     def self.loft_level(model)
