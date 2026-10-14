@@ -1228,7 +1228,7 @@ module KitchenCabinetMaster
       first = roots.first || parts.first || others.first
       name = first.respond_to?(:name) ? first.name.to_s : ''
       label = count == 1 ? (name.empty? ? 'It' : name) : "#{count} items"
-      LiveParts.dismiss_parts(model, parts) # (what a Presets switch made and is deleted stays deleted)
+      LiveParts.dismiss_parts(model, parts + roots) # (what a Settings switch made and is deleted stays deleted)
       SelectionManager.suspend do
         with_operation(model, count == 1 ? 'Delete Cabinet' : 'Delete Selected') do
           parts.each { |part| PartGenerator.remove(model, part) if part.valid? }

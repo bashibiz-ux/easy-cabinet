@@ -1172,6 +1172,42 @@ module KitchenCabinetMaster
     end
     private_class_method :update_placed
 
+    # The LOFT switch: a loft over every wall and tall unit that has none, as wide as its unit, standing at the level of the lofts, made like any unit of the
+    # Auto Kitchen from the settings of the unit under it (its materials, door gap, handle ...). Marked 'auto_loft' and 'loft_over'. A loft whose unit is gone
+    # is taken away, and all of them when the switch is off (`values` nil). `skip`: the units whose loft was deleted. Inside an operation.
+    def self.sync_auto_lofts(model, values, skip = [])
+      dictionary = AttributeManager::DICTIONARY
+      units = PlacementManager.loft_units(model)
+      unit_ids = units.map { |unit| AttributeManager.cabinet_id(unit) }
+      PlacementManager.lofts(model).each do |loft|
+        next unless loft.get_attribute(dictionary, 'auto_loft') == true
+
+        CabinetGenerator.remove(model, loft) if values.nil? || !unit_ids.include?(loft.get_attribute(dictionary, 'loft_over'))
+      end
+      return unless values
+
+      level = PlacementManager.loft_level(model)
+      covered = PlacementManager.lofts(model).map { |loft| loft.get_attribute(dictionary, 'loft_over') }
+      units.each do |unit|
+        id = AttributeManager.cabinet_id(unit)
+        next if skip.include?(id) || covered.include?(id)
+
+        stored = AttributeManager.read(unit)
+        type = stored['width'].to_f <= 600.0 ? 'wall_loft_1door' : 'wall_loft_2door'
+        next unless CatalogManager.cabinet(stored['catalog_id'], 'wall', type)
+
+        item = KitchenPlanner::Item.new(category: 'wall', type: type, width: stored['width'].to_f, kind: :loft)
+        t = unit.transformation
+        override = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, level.mm - t.origin.z)) * t
+        loft = KitchenManager.send(:build_unit, model, stored.merge('custom_overrides' => {}), stored['catalog_id'], item, override)
+        AttributeManager.write(loft, 'loft_over' => id, 'auto_loft' => true)
+        height = values['height'].to_f
+        CabinetManager.update_quiet(model, loft, 'height' => height) if height.positive?
+      rescue StandardError => e
+        warn "[Kitchen Cabinet Master] Could not place a loft over #{unit.name}: #{e.message}"
+      end
+    end
+
     # The CEILING FILLER over the lofts: like the toe kick under the units. Every straight row of lofts has a strip along the front of its top, up to the
     # ceiling (it stops at the carcass of the lofts: the side panels go up to the ceiling beside it): pieces of `piece_length` laid one after another (the last one shorter) over the whole row, `height` high (50 mm to start), `thickness` thick,
     # its front face `recess` mm behind the doors of the lofts, in the material chosen (the doors' by default). It follows the Presets switch (Ceiling

@@ -14,8 +14,9 @@ module KitchenCabinetMaster
     KEY_TOE_KICKS = 'live_toe_kicks_on' # (the keys are new: a model that has an old Off written down starts On again)
     KEY_WALL_BOTTOM = 'live_wall_bottom_on'
     KEY_WORKTOP = 'live_worktop_on'
+    KEY_LOFT = 'live_loft_on' # a loft over every wall and tall unit (see PartManager.sync_auto_lofts); off to begin with
     KEY_CEILING = 'live_ceiling_filler_on' # the ceiling filler over every loft (see PartManager.sync_ceiling_fillers)
-    VALUES = { KEY_CEILING => 'live_ceiling_values', KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
+    VALUES = { KEY_LOFT => 'live_loft_values', KEY_CEILING => 'live_ceiling_values', KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
     MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
 
     def self.perform(action, raw)
@@ -38,6 +39,10 @@ module KitchenCabinetMaster
         keep(model, KEY_TOE_KICKS, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Toe Kicks") { sync_toe_kicks(model) }
         Response.ok(on ? 'Toe kicks are on: they follow the cabinets.' : 'The toe kicks placed by the tick are taken away.')
+      when 'set_live_loft'
+        keep(model, KEY_LOFT, on, raw)
+        apply(model, "#{on ? 'Place' : 'Remove'} Lofts") { sync_lofts(model) }
+        Response.ok(on ? 'Lofts are on: every wall and tall unit has one.' : 'The lofts placed by the switch are taken away.')
       when 'set_live_ceiling_filler'
         keep(model, KEY_CEILING, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Ceiling Fillers") { sync_ceiling(model) }
@@ -57,7 +62,7 @@ module KitchenCabinetMaster
     # What the user took away with Delete stays away while the switch is on (the way it is told apart: a side panel by its cabinet and side, a toe
     # kick by the unit it starts at, the worktop and the bottom panels by their run of units). Turning the switch off and on again brings it back.
     KEY_DISMISSED = 'live_dismissed'
-    DISMISS_PREFIX = { KEY_CEILING => 'ceiling', KEY_SIDE_PANELS => 'side', KEY_TOE_KICKS => 'toe', KEY_WORKTOP => 'worktop', KEY_WALL_BOTTOM => 'bottom' }.freeze
+    DISMISS_PREFIX = { KEY_LOFT => 'loft', KEY_CEILING => 'ceiling', KEY_SIDE_PANELS => 'side', KEY_TOE_KICKS => 'toe', KEY_WORKTOP => 'worktop', KEY_WALL_BOTTOM => 'bottom' }.freeze
 
     def self.dismissed(model = Sketchup.active_model)
       JSON.parse(model.get_attribute(DICTIONARY, KEY_DISMISSED, '[]'))
@@ -87,6 +92,8 @@ module KitchenCabinetMaster
     def self.key_for(part)
       dictionary = AttributeManager::DICTIONARY
       stored = AttributeManager.read(part) || {}
+      return "loft:#{stored['loft_over']}" if part.get_attribute(dictionary, 'auto_loft') == true # (a loft the switch placed is told apart by its unit)
+
       ceiling = part.get_attribute(dictionary, 'ceiling_filler')
       return "ceiling:#{ceiling}" if ceiling # (a ceiling filler is told apart by its loft)
 
@@ -110,6 +117,7 @@ module KitchenCabinetMaster
     # Every switch is on to begin with, the dimensions apart.
     def self.toe_kicks? = on?(KEY_TOE_KICKS)
     def self.ceiling_fillers? = on?(KEY_CEILING)
+    def self.lofts? = on?(KEY_LOFT, false)
 
     # The settings the ceiling fillers are drawn with (height, thickness, material), as sent by the panel.
     def self.ceiling_values(model = Sketchup.active_model) = values_of(model, KEY_CEILING)
@@ -130,6 +138,7 @@ module KitchenCabinetMaster
 
       model = Sketchup.active_model
       case action
+      when 'set_unit_sizes' then model.set_attribute(DICTIONARY, VALUES[KEY_LOFT], JSON.generate(values_of(model, KEY_LOFT).merge('height' => data['fields']['height']))) if data['category'] == 'loft' && data['fields'].is_a?(Hash) && !data['fields']['height'].to_s.strip.empty?
       when 'apply_ceiling_fillers' then model.set_attribute(DICTIONARY, VALUES[KEY_CEILING], JSON.generate(values_of(model, KEY_CEILING).merge(data.reject { |_, value| value.to_s.strip.empty? })))
       when 'apply_toe_kicks' then model.set_attribute(DICTIONARY, VALUES[KEY_TOE_KICKS], JSON.generate(values_of(model, KEY_TOE_KICKS).merge(data.reject { |_, value| value.to_s.strip.empty? })))
       when 'apply_worktop' then model.set_attribute(DICTIONARY, VALUES[KEY_WORKTOP], JSON.generate(data)) if worktop?
@@ -144,9 +153,10 @@ module KitchenCabinetMaster
     # After an action of the panel: draw again what the ticks keep up. Quietly: nothing changes when no tick is on.
     def self.refresh
       model = Sketchup.active_model
-      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers?)
+      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers? || lofts?)
 
       apply(model, 'Refresh Dimensions and Side Panels') do
+        sync_lofts(model) # (the lofts the switch places first: they are units like the others for what follows)
         PartManager.send(:align_lofts, model) # (the lofts over their units first: a side panel goes up beside a loft)
         sync_side_panels(model) # (first: the dimensions are of the units)
         sync_toe_kicks(model)
@@ -249,6 +259,13 @@ module KitchenCabinetMaster
       PartManager.send(:sync_ceiling_fillers, model, ceiling_fillers? ? values_of(model, KEY_CEILING) : nil, dismissed_ids(model, 'ceiling'))
     end
     private_class_method :sync_ceiling
+
+    # The lofts of the Loft switch: with it on, every wall and tall unit that has no loft gets one (except where one was deleted: that stays so until the switch is
+    # turned off and on); with it off, the lofts it placed are taken away.
+    def self.sync_lofts(model)
+      PartManager.send(:sync_auto_lofts, model, lofts? ? values_of(model, KEY_LOFT) : nil, dismissed_ids(model, 'loft'))
+    end
+    private_class_method :sync_lofts
 
     def self.sync_side_panels(model)
       PartManager.send(:remove_auto_panels, model)
