@@ -1147,43 +1147,83 @@ module KitchenCabinetMaster
     end
     private_class_method :update_placed
 
-    # The CEILING FILLER of a loft: a strip across the front of the loft, over its top, up to the ceiling (50 mm to start). Like the toe kicks it follows the
-    # Presets switch (Ceiling filler) and the values of its section (height, thickness, material); one for every loft, as wide as the loft, flush with its doors.
-    # Made again where the loft is by every refresh: a loft that is gone takes its filler away, one you deleted stays away (`skip`: the lofts it was deleted
-    # from) until the switch is turned off and on. `values` nil: the switch is off, none is wanted.
+    # The CEILING FILLER over the lofts: like the toe kick under the units. Every straight row of lofts has a strip along the front of its top, up to the
+    # ceiling: pieces of `piece_length` laid one after another (the last one shorter) over the whole row, `height` high (50 mm to start), `thickness` thick,
+    # its front face `recess` mm behind the doors of the lofts, in the material chosen (the doors' by default). It follows the Presets switch (Ceiling
+    # filler) and the values of its section. Made again where the lofts are by every refresh: lofts that are gone take their pieces away, a piece you
+    # deleted stays away (`skip`: the keys it was deleted under) until the switch is turned off and on. `values` nil: the switch is off, none is wanted.
     def self.sync_ceiling_fillers(model, values, skip = [])
       dictionary = AttributeManager::DICTIONARY
       lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
       fillers = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'filler' && !item.get_attribute(dictionary, 'ceiling_filler').nil? }
-      wanted = values ? lofts.reject { |loft| skip.include?(AttributeManager.cabinet_id(loft)) } : []
-      ids = wanted.map { |loft| AttributeManager.cabinet_id(loft) }
+      pieces = values ? ceiling_pieces(lofts, values).reject { |piece| skip.include?(piece[:key]) } : []
+      keys = pieces.map { |piece| piece[:key] }
       kept = {}
       fillers.each do |filler|
         owner = filler.get_attribute(dictionary, 'ceiling_filler')
-        if ids.include?(owner) && !kept.key?(owner) then kept[owner] = filler else PartGenerator.remove(model, filler) end
+        if keys.include?(owner) && !kept.key?(owner) then kept[owner] = filler else PartGenerator.remove(model, filler) end
       end
-      wanted.each do |loft|
-        stored = AttributeManager.read(loft)
-        id = AttributeManager.cabinet_id(loft)
-        height = values['height'].to_f.positive? ? values['height'].to_f : PlacementManager::LOFT_FILLER_MM
-        thickness = values['thickness'].to_f.positive? ? values['thickness'].to_f : (stored['material_thickness'].to_f.positive? ? stored['material_thickness'].to_f : 18.0)
-        choice = values['material'].to_s
-        material = choice.empty? || choice == Defaults::SAME_AS_DOOR || !MaterialManager.available?(model, choice) ? door_material_of(stored) : choice
-        params = { 'part_kind' => 'filler', 'width' => stored['width'].to_f, 'thickness' => thickness, 'height' => height, 'material' => material, 'target_id' => id,
-                   'target_width' => stored['width'].to_f, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0, 'target_category' => 'wall',
-                   'target_flush_x' => door_front_of(loft, stored), 'side' => 'right', 'ceiling_filler' => id }
-        transformation = loft.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, 0, stored['top_z'].to_f.mm))
+      pieces.each do |piece|
+        params = piece[:params]
         layout = PartLayout.filler(params)
         params['part_name'] = NamingManager.filler_name(params)
-        if kept[id]
-          params['part_id'] = AttributeManager.part_id(kept[id])
-          PartGenerator.update(model, kept[id], params, layout, transformation)
+        if kept[piece[:key]]
+          params['part_id'] = AttributeManager.part_id(kept[piece[:key]])
+          PartGenerator.update(model, kept[piece[:key]], params, layout, piece[:transformation])
         else
           params['part_id'] = AttributeManager.next_part_id(model)
-          PartGenerator.build(model, loft.parent.entities, params, transformation, layout)
+          PartGenerator.build(model, piece[:parent], params, piece[:transformation], layout)
         end
       end
     end
+
+    # The pieces of the ceiling filler: [{ key:, params:, transformation:, parent: }]. The lofts are grouped in rows (the same way along, the same back line,
+    # touching one another), and every row is cut into pieces.
+    def self.ceiling_pieces(lofts, values)
+      groups = lofts.group_by do |loft|
+        t = loft.transformation
+        [t.yaxis.x.round(3), t.yaxis.y.round(3), ((t.origin.x * t.xaxis.x) + (t.origin.y * t.xaxis.y)).to_mm.round(0)]
+      end
+      along = ->(loft) { t = loft.transformation; ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm }
+      rows = []
+      groups.each_value do |group|
+        current = []
+        group.sort_by { |loft| along.call(loft) }.each do |loft|
+          if current.empty? || along.call(loft) - (along.call(current.last) + AttributeManager.read(current.last)['width'].to_f) <= 3.0
+            current << loft
+          else
+            rows << current
+            current = [loft]
+          end
+        end
+        rows << current unless current.empty?
+      end
+      height = values['height'].to_f.positive? ? values['height'].to_f : PlacementManager::LOFT_FILLER_MM
+      recess = values['recess'].to_f.positive? ? values['recess'].to_f : 0.0
+      length = values['piece_length'].to_f
+      rows.flat_map do |row|
+        first = row.first
+        stored = AttributeManager.read(first)
+        total = (along.call(row.last) + AttributeManager.read(row.last)['width'].to_f) - along.call(first)
+        lengths = length.positive? ? ToeKick.piece_lengths(total, length) : [total]
+        thickness = values['thickness'].to_f.positive? ? values['thickness'].to_f : (stored['material_thickness'].to_f.positive? ? stored['material_thickness'].to_f : 18.0)
+        choice = values['material'].to_s
+        material = choice.empty? || choice == Defaults::SAME_AS_DOOR || !MaterialManager.available?(Sketchup.active_model, choice) ? door_material_of(stored) : choice
+        id = AttributeManager.cabinet_id(first)
+        start = 0.0
+        lengths.each_with_index.map do |piece_length, index|
+          offset = start
+          start += piece_length
+          params = { 'part_kind' => 'filler', 'width' => piece_length, 'thickness' => thickness, 'height' => height, 'material' => material, 'target_id' => id,
+                     'target_width' => piece_length, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0, 'target_category' => 'wall',
+                     'target_flush_x' => door_front_of(first, stored) - recess, 'side' => 'right', 'ceiling_filler' => "#{id}:#{index}",
+                     'ceiling_recess' => recess, 'ceiling_piece_length' => length, 'material_choice' => choice }
+          { key: "#{id}:#{index}", params: params, parent: first.parent.entities,
+            transformation: first.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, offset.mm, stored['top_z'].to_f.mm)) }
+        end
+      end
+    end
+    private_class_method :ceiling_pieces
 
     # The lofts stand at one level (the top of the highest wall or tall unit: a loft over a lower unit stands up at that level, and they all move up or down
     # with a tall unit that gets taller or shorter) and have one depth (the deepest unit's, so that all the fronts are flush). Inside an operation.
@@ -1223,6 +1263,11 @@ module KitchenCabinetMaster
       thickness = ValidationManager.to_float(raw['thickness'])
       return Response.fail('The ceiling filler height must be between 5 and 500 mm.', [{ 'field' => 'height', 'message' => 'Height must be between 5 and 500 mm.' }]) if !raw['height'].to_s.strip.empty? && !(height && height.between?(5.0, 500.0))
       return Response.fail('The ceiling filler thickness must be between 3 and 100 mm.', [{ 'field' => 'thickness', 'message' => 'Thickness must be between 3 and 100 mm.' }]) if !raw['thickness'].to_s.strip.empty? && !(thickness && thickness.between?(3.0, 100.0))
+
+      recess = ValidationManager.to_float(raw['recess'])
+      piece = ValidationManager.to_float(raw['piece_length'])
+      return Response.fail('The recess must be between 0 and 500 mm.', [{ 'field' => 'recess', 'message' => 'Recess must be between 0 and 500 mm.' }]) if !raw['recess'].to_s.strip.empty? && !(recess && recess.between?(0.0, 500.0))
+      return Response.fail('The piece length must be between 50 and 6000 mm.', [{ 'field' => 'piece_length', 'message' => 'Piece length must be between 50 and 6000 mm.' }]) if !raw['piece_length'].to_s.strip.empty? && !(piece && piece.between?(50.0, 6000.0))
 
       material = raw['material'].to_s
       return Response.fail("The material \"#{material}\" was not found in the model.") unless material.empty? || material == Defaults::SAME_AS_DOOR || MaterialManager.available?(Sketchup.active_model, material)

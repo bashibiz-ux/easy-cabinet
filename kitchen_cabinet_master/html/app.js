@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.39.0';
+  const APP_VERSION = '1.40.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -349,15 +349,17 @@
   }
 
   // The Ceiling Filler section: like the Toe Kick fields, what is entered is for every ceiling filler (live).
-  const CEILING_FILLER_IDS = ['cfHeight', 'cfThickness', 'cfMaterial'];
+  const CEILING_FILLER_IDS = ['cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial'];
 
   function collectCeilingFiller() {
-    return { height: mmv('cfHeight'), thickness: mmv('cfThickness'), material: $('cfMaterial').value };
+    return { height: mmv('cfHeight'), thickness: mmv('cfThickness'), recess: mmv('cfRecess'), piece_length: mmv('cfPiece'), material: $('cfMaterial').value };
   }
 
   function applyCeilingFillerDefaults(d) {
     setText('cfHeight', d.height);
     setText('cfThickness', d.thickness);
+    setText('cfRecess', d.ceiling_recess);
+    setText('cfPiece', d.ceiling_piece_length);
     setSelect('cfMaterial', d.material_choice || '__door__');
     updateChips();
     drawPreview();
@@ -496,7 +498,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'loftCeiling', 'cfHeight', 'cfThickness', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
+    'units', 'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -765,7 +767,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'loftCeiling', 'cfHeight', 'cfThickness', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -850,8 +852,8 @@
   }
 
   // The Toe Kick fields of the Presets (under the Tall Unit sizes) and those of Cabinet and Extras are the same values.
-  const TOE_PRESET = { toeHeight: 'pToeHeight', toeThickness: 'pToeThickness', toeRecess: 'pToeRecess' };
-  const TOE_FROM_PRESET = { pToeHeight: 'toeHeight', pToeThickness: 'toeThickness', pToeRecess: 'toeRecess' };
+  const TOE_PRESET = { toeHeight: 'pToeHeight', toeThickness: 'pToeThickness', toeRecess: 'pToeRecess', cfHeight: 'pCfHeight', cfThickness: 'pCfThickness', cfRecess: 'pCfRecess' };
+  const TOE_FROM_PRESET = { pToeHeight: 'toeHeight', pToeThickness: 'toeThickness', pToeRecess: 'toeRecess', pCfHeight: 'cfHeight', pCfThickness: 'cfThickness', pCfRecess: 'cfRecess' };
   function mirrorToe(id) {
     if (TOE_PRESET[id] && $(TOE_PRESET[id])) $(TOE_PRESET[id]).value = $(id).value;
   }
@@ -2503,6 +2505,10 @@ if (details.length) {
     setText('toeHeight', standard.toe_kick_height ?? 100);
     setText('toeThickness', standard.toe_kick_thickness ?? 18);
     setText('toeRecess', standard.toe_kick_recess ?? 50);
+    setText('cfHeight', 50);
+    setText('cfThickness', 18);
+    setText('cfRecess', 0);
+    setText('cfPiece', 2000);
     // and the size fields of Cabinets and Extras go back to the standard size of the cabinet chosen there (a filler, side panel or toe kick has none)
     const cabinet = currentCabinet();
     if (cabinet && !['filler', 'end_panel', 'toe_kick', 'wall_bottom'].includes(categoryKind())) {

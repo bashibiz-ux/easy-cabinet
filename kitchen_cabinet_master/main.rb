@@ -73,10 +73,19 @@ module KitchenCabinetMaster
       false
     end
 
-    # What the menu item and the toolbar button run.
+    # What the menu item runs.
     def open_panel
       reload_if_updated
       DialogManager.show
+    end
+
+    # What the toolbar button runs: the panel opens when it is shut, and shuts when it is open.
+    def toggle_panel
+      if DialogManager.open?
+        DialogManager.close
+      else
+        open_panel
+      end
     end
   end
 
@@ -89,9 +98,9 @@ module KitchenCabinetMaster
     menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
 
     icons = File.join(PLUGIN_DIR, 'icons')
-    open_cmd = UI::Command.new('Kitchen Cabinet Master') { KitchenCabinetMaster.open_panel }
+    open_cmd = UI::Command.new('Kitchen Cabinet Master') { KitchenCabinetMaster.toggle_panel }
     open_cmd.tooltip = 'Kitchen Cabinet Master'
-    open_cmd.status_bar_text = 'Open the Kitchen Cabinet Master control panel'
+    open_cmd.status_bar_text = 'Open the Kitchen Cabinet Master control panel (click again to close it)'
     open_cmd.small_icon = File.join(icons, 'icon_24.png')
     open_cmd.large_icon = File.join(icons, 'icon_32.png')
     toolbar = UI::Toolbar.new(EXTENSION_NAME)
