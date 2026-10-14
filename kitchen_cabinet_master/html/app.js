@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.41.1';
+  const APP_VERSION = '1.42.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -487,6 +487,7 @@
       height_auto: !state.touched.has('epHeight'),
       material: $('epMaterial').value,
       face: $('epFace').value,
+      to_ceiling: $('epToCeiling').checked, // (on: beside a unit with a loft over it the panel goes on up to the ceiling)
       to_floor: $('epToFloor').checked, // (on: the end of a row goes down to the floor; off: only on the cabinet)
       front_radius: mmv('frontRadius'), // its outer edges are as round as the doors'
       front_design: $('frontDesign').value // the design an side panel set to follow the front design is cut in

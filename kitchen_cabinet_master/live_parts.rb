@@ -147,6 +147,7 @@ module KitchenCabinetMaster
       return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers?)
 
       apply(model, 'Refresh Dimensions and Side Panels') do
+        PartManager.send(:align_lofts, model) # (the lofts over their units first: a side panel goes up beside a loft)
         sync_side_panels(model) # (first: the dimensions are of the units)
         sync_toe_kicks(model)
         sync_dimensions(model)

@@ -281,6 +281,7 @@ module KitchenCabinetMaster
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
+      top = [top, ceiling_top_for(model, target) || top].max unless raw['to_ceiling'] == false # (over the loft above the unit, up to the ceiling)
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
@@ -349,6 +350,29 @@ module KitchenCabinetMaster
     private_class_method :place_corner_front_panel
 
     private_class_method :place_exposed_panels
+
+    # How high (in the unit's own frame, mm) a side panel on `target` reaches when it continues to the ceiling: over the loft that stands above the unit, with the
+    # ceiling filler over that (never past the ceiling); nil when no loft is above it.
+    def self.ceiling_top_for(model, target)
+      t = target.transformation
+      from = ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm
+      to = from + AttributeManager.read(target)['width'].to_f
+      back = ((t.origin.x * t.xaxis.x) + (t.origin.y * t.xaxis.y)).to_mm
+      loft = model.entities.grep(Sketchup::ComponentInstance).find do |item|
+        next false unless AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) && !item.equal?(target)
+
+        lt = item.transformation
+        next false unless (lt.yaxis.x * t.yaxis.x) + (lt.yaxis.y * t.yaxis.y) > 0.999 && (((lt.origin.x * lt.xaxis.x) + (lt.origin.y * lt.xaxis.y)).to_mm - back).abs < 1.5
+
+        start = ((lt.origin.x * lt.yaxis.x) + (lt.origin.y * lt.yaxis.y)).to_mm
+        start < to - 1.0 && start + AttributeManager.read(item)['width'].to_f > from + 1.0
+      end
+      return nil unless loft
+
+      top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f + ceiling_filler_height(model)
+      [top, PlacementManager.loft_ceiling(model)].min - t.origin.z.to_mm
+    end
+    private_class_method :ceiling_top_for
 
     # The widest gap between a cabinet and a wall that a filler fills (mm); a wall further away leaves the end of the row open, with a side panel.
     WALL_FILL_MAX = 200.0
@@ -661,6 +685,7 @@ module KitchenCabinetMaster
       box = PlacementManager.box_for(transformation, size.map(&:mm))
       entities.grep(Sketchup::ComponentInstance).any? do |other|
         next false unless AttributeManager.occupant?(other)
+        next false if AttributeManager.cabinet?(other) && PlacementManager.loft_item?(other) # (a loft is put back over its unit after a panel moved the unit: it is no obstacle)
 
         stored = AttributeManager.read(other) || {}
         extent = %w[envelope_depth envelope_width envelope_top].map { |key| other.get_attribute(AttributeManager::DICTIONARY, key).to_f.mm }
@@ -1148,7 +1173,7 @@ module KitchenCabinetMaster
     private_class_method :update_placed
 
     # The CEILING FILLER over the lofts: like the toe kick under the units. Every straight row of lofts has a strip along the front of its top, up to the
-    # ceiling: pieces of `piece_length` laid one after another (the last one shorter) over the whole row, `height` high (50 mm to start), `thickness` thick,
+    # ceiling (it stops at the carcass of the lofts: the side panels go up to the ceiling beside it): pieces of `piece_length` laid one after another (the last one shorter) over the whole row, `height` high (50 mm to start), `thickness` thick,
     # its front face `recess` mm behind the doors of the lofts, in the material chosen (the doors' by default). It follows the Presets switch (Ceiling
     # filler) and the values of its section. Made again where the lofts are by every refresh: lofts that are gone take their pieces away, a piece you
     # deleted stays away (`skip`: the keys it was deleted under) until the switch is turned off and on. `values` nil: the switch is off, none is wanted.
@@ -1185,24 +1210,11 @@ module KitchenCabinetMaster
         [t.yaxis.x.round(3), t.yaxis.y.round(3), ((t.origin.x * t.xaxis.x) + (t.origin.y * t.xaxis.y)).to_mm.round(0)]
       end
       along = ->(loft) { t = loft.transformation; ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm }
-      panels = Sketchup.active_model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'end_panel' }
-      # Lofts with a side panel standing between them (the units under them are that far apart) are one row: the filler carries on over the panel.
-      panel_between = lambda do |key, from, to|
-        panels.any? do |panel|
-          pt = panel.transformation
-          panel_key = [pt.yaxis.x.round(3), pt.yaxis.y.round(3), ((pt.origin.x * pt.xaxis.x) + (pt.origin.y * pt.xaxis.y)).to_mm.round(0)]
-          next false unless panel_key == key
-
-          here = along.call(panel)
-          here >= from - 3.0 && here + AttributeManager.read(panel)['thickness'].to_f <= to + 3.0
-        end
-      end
       rows = []
-      groups.each do |key, group|
+      groups.each_value do |group|
         current = []
         group.sort_by { |loft| along.call(loft) }.each do |loft|
-          reach = current.empty? ? nil : along.call(current.last) + AttributeManager.read(current.last)['width'].to_f
-          if current.empty? || along.call(loft) - reach <= 3.0 || (along.call(loft) - reach <= 80.0 && panel_between.call(key, reach, along.call(loft)))
+          if current.empty? || along.call(loft) - (along.call(current.last) + AttributeManager.read(current.last)['width'].to_f) <= 3.0
             current << loft
           else
             rows << current
@@ -1222,33 +1234,15 @@ module KitchenCabinetMaster
         row_height = [height, room].min
         next [] if row_height < 1.0
 
-        # It carries on over the side panels at the ends of the row (those of the lofts and of the units under them): their thickness is added.
-        direction = first.transformation.yaxis
-        back = ((first.transformation.origin.x * first.transformation.xaxis.x) + (first.transformation.origin.y * first.transformation.xaxis.y)).to_mm
         from = along.call(first)
-        to = along.call(row.last) + AttributeManager.read(row.last)['width'].to_f
-        lead = 0.0
-        trail = 0.0
-        panels.each do |panel|
-          pt = panel.transformation
-          next unless (pt.yaxis.x * direction.x) + (pt.yaxis.y * direction.y) > 0.999
-          next unless (((pt.origin.x * pt.xaxis.x) + (pt.origin.y * pt.xaxis.y)).to_mm - back).abs < 1.5
-
-          panel_stored = AttributeManager.read(panel)
-          next if pt.origin.z.to_mm + panel_stored['target_base_z'].to_f + panel_stored['height'].to_f < first.transformation.origin.z.to_mm - 1.0 # (one that does not reach the lofts)
-
-          thick = panel_stored['thickness'].to_f
-          here = along.call(panel)
-          lead = [lead, thick].max if (here + thick - from).abs <= 3.0
-          trail = [trail, thick].max if (here - to).abs <= 3.0
-        end
-        total = (to + trail) - (from - lead)
+        to = along.call(row.last) + AttributeManager.read(row.last)['width'].to_f # (it stops at the carcass of the lofts: a side panel is not covered)
+        total = to - from
         lengths = length.positive? ? ToeKick.piece_lengths(total, length) : [total]
         thickness = values['thickness'].to_f.positive? ? values['thickness'].to_f : (stored['material_thickness'].to_f.positive? ? stored['material_thickness'].to_f : 18.0)
         choice = values['material'].to_s
         material = choice.empty? || choice == Defaults::SAME_AS_DOOR || !MaterialManager.available?(Sketchup.active_model, choice) ? door_material_of(stored) : choice
         id = AttributeManager.cabinet_id(first)
-        start = -lead
+        start = 0.0
         lengths.each_with_index.map do |piece_length, index|
           offset = start
           start += piece_length
@@ -1274,6 +1268,17 @@ module KitchenCabinetMaster
       lofts.each do |loft|
         off = level - loft.transformation.origin.z.to_mm
         loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
+      end
+      lofts.each do |loft| # (and each stands over its own unit: a unit moved along by a side panel takes its loft with it)
+        unit_id = AttributeManager.read(loft)['loft_over'].to_s
+        next if unit_id.empty?
+
+        unit = model.entities.grep(Sketchup::ComponentInstance).find { |item| AttributeManager.cabinet?(item) && AttributeManager.cabinet_id(item) == unit_id }
+        next unless unit
+
+        dx = unit.transformation.origin.x - loft.transformation.origin.x
+        dy = unit.transformation.origin.y - loft.transformation.origin.y
+        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(dx, dy, 0))) if dx.to_mm.abs > 0.5 || dy.to_mm.abs > 0.5
       end
       depth = PlacementManager.loft_depth(model)
       lofts.each do |loft|
