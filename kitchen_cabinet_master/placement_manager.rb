@@ -121,6 +121,17 @@ module KitchenCabinetMaster
       last_loft ? [last_loft, :after] : nil
     end
 
+    # The ceiling the lofts and their fillers stay under (mm): the Ceiling Height of the Presets, kept in the model as the panel sends it.
+    def self.loft_ceiling(model)
+      value = model.get_attribute(AttributeManager::DICTIONARY, 'loft_ceiling', LOFT_CEILING_MM).to_f
+      value.positive? ? value : LOFT_CEILING_MM
+    end
+
+    def self.remember_ceiling(model, value)
+      number = ValidationManager.to_float(value)
+      model.set_attribute(AttributeManager::DICTIONARY, 'loft_ceiling', number) if number && number.between?(1500.0, 6000.0)
+    end
+
     # The one level (mm) every loft stands at, so that the row of lofts is straight: the top of the highest wall or tall unit (a loft over a lower wall
     # unit stands up at that level too); nil when there is no unit.
     def self.loft_level(model)
@@ -131,6 +142,9 @@ module KitchenCabinetMaster
     # The depth every loft has: the deepest carcass of the wall and tall units (the tall units', usually), so that the fronts of all the lofts are flush
     # whatever is under them (the doors of a loft over a shallower wall unit stand out to line up with those over the tall units). nil when there is no unit.
     def self.loft_depth(model)
+      chosen = model.get_attribute(AttributeManager::DICTIONARY, 'loft_depth', 0).to_f # (a depth typed for the lofts in the Presets)
+      return chosen if chosen.positive?
+
       depths = loft_units(model).map { |unit| unit.get_attribute(AttributeManager::DICTIONARY, 'depth').to_f }.select(&:positive?)
       depths.empty? ? nil : depths.max
     end

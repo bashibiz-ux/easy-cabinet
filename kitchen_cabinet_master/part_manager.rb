@@ -1201,20 +1201,46 @@ module KitchenCabinetMaster
       height = values['height'].to_f.positive? ? values['height'].to_f : PlacementManager::LOFT_FILLER_MM
       recess = values['recess'].to_f.positive? ? values['recess'].to_f : 0.0
       length = values['piece_length'].to_f
+      ceiling = PlacementManager.loft_ceiling(Sketchup.active_model)
+      panels = Sketchup.active_model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.part_kind(item) == 'end_panel' }
       rows.flat_map do |row|
         first = row.first
         stored = AttributeManager.read(first)
-        total = (along.call(row.last) + AttributeManager.read(row.last)['width'].to_f) - along.call(first)
+        room = ceiling - (first.transformation.origin.z.to_mm + stored['top_z'].to_f) # (never past the ceiling)
+        row_height = [height, room].min
+        next [] if row_height < 1.0
+
+        # It carries on over the side panels at the ends of the row (those of the lofts and of the units under them): their thickness is added.
+        direction = first.transformation.yaxis
+        back = ((first.transformation.origin.x * first.transformation.xaxis.x) + (first.transformation.origin.y * first.transformation.xaxis.y)).to_mm
+        from = along.call(first)
+        to = along.call(row.last) + AttributeManager.read(row.last)['width'].to_f
+        lead = 0.0
+        trail = 0.0
+        panels.each do |panel|
+          pt = panel.transformation
+          next unless (pt.yaxis.x * direction.x) + (pt.yaxis.y * direction.y) > 0.999
+          next unless (((pt.origin.x * pt.xaxis.x) + (pt.origin.y * pt.xaxis.y)).to_mm - back).abs < 1.5
+
+          panel_stored = AttributeManager.read(panel)
+          next if pt.origin.z.to_mm + panel_stored['target_base_z'].to_f + panel_stored['height'].to_f < first.transformation.origin.z.to_mm - 1.0 # (one that does not reach the lofts)
+
+          thick = panel_stored['thickness'].to_f
+          here = along.call(panel)
+          lead = [lead, thick].max if (here + thick - from).abs <= 3.0
+          trail = [trail, thick].max if (here - to).abs <= 3.0
+        end
+        total = (to + trail) - (from - lead)
         lengths = length.positive? ? ToeKick.piece_lengths(total, length) : [total]
         thickness = values['thickness'].to_f.positive? ? values['thickness'].to_f : (stored['material_thickness'].to_f.positive? ? stored['material_thickness'].to_f : 18.0)
         choice = values['material'].to_s
         material = choice.empty? || choice == Defaults::SAME_AS_DOOR || !MaterialManager.available?(Sketchup.active_model, choice) ? door_material_of(stored) : choice
         id = AttributeManager.cabinet_id(first)
-        start = 0.0
+        start = -lead
         lengths.each_with_index.map do |piece_length, index|
           offset = start
           start += piece_length
-          params = { 'part_kind' => 'filler', 'width' => piece_length, 'thickness' => thickness, 'height' => height, 'material' => material, 'target_id' => id,
+          params = { 'part_kind' => 'filler', 'width' => piece_length, 'thickness' => thickness, 'height' => row_height, 'material' => material, 'target_id' => id,
                      'target_width' => piece_length, 'target_depth' => stored['depth'].to_f, 'target_base_z' => 0.0, 'target_category' => 'wall',
                      'target_flush_x' => door_front_of(first, stored) - recess, 'side' => 'right', 'ceiling_filler' => "#{id}:#{index}",
                      'ceiling_recess' => recess, 'ceiling_piece_length' => length, 'material_choice' => choice }

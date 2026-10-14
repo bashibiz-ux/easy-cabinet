@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.40.0';
+  const APP_VERSION = '1.41.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -767,7 +767,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH'
+    'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -2491,7 +2491,8 @@ if (details.length) {
   const UNIT_SIZE_FIELDS = {
     sizeBaseW: ['base', 'width'], sizeBaseD: ['base', 'depth'], sizeBaseH: ['base', 'height'],
     sizeWallW: ['wall', 'width'], sizeWallD: ['wall', 'depth'], sizeWallH: ['wall', 'height'],
-    sizeTallW: ['tall', 'width'], sizeTallD: ['tall', 'depth'], sizeTallH: ['tall', 'height']
+    sizeTallW: ['tall', 'width'], sizeTallD: ['tall', 'depth'], sizeTallH: ['tall', 'height'],
+    sizeLoftW: ['loft', 'width'], sizeLoftD: ['loft', 'depth'], sizeLoftH: ['loft', 'height']
   };
   const unitSizeDirty = new Map(); // kind -> Map(key -> element id)
 
@@ -2540,7 +2541,7 @@ if (details.length) {
         edits.forEach((id, key) => { if ($(id).value.trim() !== '') fields[key] = mmv(id); });
         unitSizeDirty.delete(category);
         if (!Object.keys(fields).length) continue;
-        const res = await call('set_unit_sizes', { category, fields, resize_neighbours: $('resizeNeighbours').checked });
+        const res = await call('set_unit_sizes', { category, fields, resize_neighbours: $('resizeNeighbours').checked, ceiling_height: mmv('loftCeiling') });
         setStatus(res.ok ? 'ok' : 'error', res.message);
       }
     } catch (error) {
