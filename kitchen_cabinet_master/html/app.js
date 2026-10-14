@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.43.2';
+  const APP_VERSION = '1.44.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -499,7 +499,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
+    'units', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -768,7 +768,7 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'loftCeiling', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH'
+    'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
@@ -1056,7 +1056,6 @@ function currentCabinet() {
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
-      ceiling_height: mmv('loftCeiling'),
       placement_gap: mmv('gap'),
       width: mmv('width'),
       depth: mmv('depth'),
@@ -1569,6 +1568,18 @@ function currentCabinet() {
     updateCategoryUi();
     await refreshCabinets({ selectId: params.cabinet_type, keepValues: true });
     applyParams(params);
+    syncUnitSizeFields(params);
+  }
+
+  // The size of a selected unit shows in the Unit Sizes of the Settings, in the block of its kind (base, wall, tall or loft).
+  function syncUnitSizeFields(p) {
+    const kind = String(p.cabinet_type || '').startsWith('wall_loft') ? 'loft' : p.cabinet_category;
+    const ids = { base: ['sizeBaseW', 'sizeBaseD', 'sizeBaseH'], wall: ['sizeWallW', 'sizeWallD', 'sizeWallH'], tall: ['sizeTallW', 'sizeTallD', 'sizeTallH'], loft: ['sizeLoftW', 'sizeLoftD', 'sizeLoftH'] }[kind];
+    if (!ids) return;
+
+    setText(ids[0], p.width);
+    setText(ids[1], p.depth);
+    setText(ids[2], p.height);
   }
 
   function setBadge(name) {
@@ -2499,7 +2510,7 @@ if (details.length) {
 
     // "Reset Unit Sizes": only the Unit Sizes of the Presets go back to how they began (the sizes empty, the toe kick at its standard values). No unit
   // in the model is changed by it, and the rest of the Presets is left alone.
-  function resetUnitSizes() {
+  async function resetUnitSizes() {
     clearTimeout(state.unitSizeTimer);
     unitSizeDirty.clear();
     Object.keys(UNIT_SIZE_FIELDS).forEach((id) => { $(id).value = ''; });
@@ -2521,7 +2532,20 @@ if (details.length) {
       setText('height', d.height);
     }
     drawPreview();
-    setStatus('ok', 'The Unit Sizes and the size fields of Cabinets and Extras are back to the standard sizes. The units in the model were not changed.');
+    // The units in the model go back too: the selected ones, or all of them, to the standard size of their own entry; the toe kicks and the ceiling fillers to
+    // the standard values.
+    try {
+      const res = await call('reset_unit_sizes', { resize_neighbours: $('resizeNeighbours').checked });
+      setStatus(res.ok ? 'ok' : 'error', res.message);
+    } catch (error) {
+      setStatus('error', error.message);
+    }
+    toeDirty.set('toe_kick_height', 'toeHeight');
+    toeDirty.set('toe_kick_thickness', 'toeThickness');
+    toeDirty.set('toe_kick_recess', 'toeRecess');
+    scheduleToe(60);
+    scheduleCeilingFiller(120);
+    try { await call('get_selection'); } catch (_) { /* nothing is selected */ }
   }
 
   function scheduleUnitSize() {
@@ -2542,7 +2566,7 @@ if (details.length) {
         edits.forEach((id, key) => { if ($(id).value.trim() !== '') fields[key] = mmv(id); });
         unitSizeDirty.delete(category);
         if (!Object.keys(fields).length) continue;
-        const res = await call('set_unit_sizes', { category, fields, resize_neighbours: $('resizeNeighbours').checked, ceiling_height: mmv('loftCeiling') });
+        const res = await call('set_unit_sizes', { category, fields, resize_neighbours: $('resizeNeighbours').checked });
         setStatus(res.ok ? 'ok' : 'error', res.message);
       }
     } catch (error) {
@@ -2558,18 +2582,6 @@ if (details.length) {
 function liveEdit(el) {
     if (CEILING_FILLER_IDS.includes(el.id)) { // the Ceiling Filler fields are for all the ceiling fillers
       scheduleCeilingFiller(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
-      return;
-    }
-    if (el.id === 'loftCeiling') { // the lofts reach up to the ceiling
-      clearTimeout(state.ceilingTimer);
-      state.ceilingTimer = setTimeout(async () => {
-        try {
-          const res = await call('set_ceiling', { ceiling_height: mmv('loftCeiling') });
-          setStatus(res.ok ? 'ok' : 'error', res.message);
-        } catch (error) {
-          setStatus('error', error.message);
-        }
-      }, LIVE_TYPING_DELAY_MS);
       return;
     }
     if (TOE_FROM_PRESET[el.id]) { // a Toe Kick field of the Presets: it is the field of Cabinet and Extras that is edited

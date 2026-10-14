@@ -421,7 +421,6 @@ class PlacementTest < Minitest::Test
   def test_the_ceiling_and_what_a_loft_is
     assert PlacementManager.loft?('cabinet_type' => 'wall_loft_liftup')
     refute PlacementManager.loft?('cabinet_type' => 'wall_2door')
-    assert_equal 2600.0, PlacementManager::LOFT_CEILING_MM
     assert_equal 50.0, PlacementManager::LOFT_FILLER_MM
   end
   def test_every_loft_stands_at_one_level_whatever_is_under_it
@@ -457,15 +456,6 @@ class PlacementTest < Minitest::Test
     assert_in_delta 560.0, PlacementManager.loft_depth(@model), 0.01
     refute_nil tall
   end
-  def test_the_ceiling_the_lofts_stay_under_is_what_the_panel_sent_and_starts_at_2600
-    assert_equal 2600.0, PlacementManager.loft_ceiling(@model)
-    PlacementManager.remember_ceiling(@model, '2750')
-    assert_equal 2750.0, PlacementManager.loft_ceiling(@model)
-    PlacementManager.remember_ceiling(@model, 'nonsense')
-    PlacementManager.remember_ceiling(@model, '90')
-    assert_equal 2750.0, PlacementManager.loft_ceiling(@model), 'not a number, or not a ceiling: what was kept stays'
-  end
-
   def test_a_depth_typed_for_the_lofts_is_the_one_every_loft_has
     insert('tall', 600.0, depth: 560.0)
     assert_in_delta 560.0, PlacementManager.loft_depth(@model), 0.01

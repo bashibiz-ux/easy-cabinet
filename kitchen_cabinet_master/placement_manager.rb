@@ -75,7 +75,6 @@ module KitchenCabinetMaster
     # A LOFT (Wall - loft ...): a box over the wall or tall units, up to the ceiling (with a 50 mm ceiling filler on top, see PartManager.sync_ceiling_fillers).
     # The first loft goes directly over the selected wall or tall unit (with none selected, over the first one of the row) and starts at its top; the next
     # ones go on along the row, one after the other, at the same height. Its height, when it was not typed, is cut to what is left under the ceiling less the filler.
-    LOFT_CEILING_MM = 2600.0
     LOFT_FILLER_MM = 50.0
     LOFT_MIN_MM = 150.0 # the lowest a loft is made when the ceiling leaves it little room (with its shelf it needs more than 100)
 
@@ -120,17 +119,6 @@ module KitchenCabinetMaster
 
       last_loft = last_occupant(model) { |item| loft_item?(item) }
       last_loft ? [last_loft, :after] : nil
-    end
-
-    # The ceiling the lofts and their fillers stay under (mm): the Ceiling Height of the Presets, kept in the model as the panel sends it.
-    def self.loft_ceiling(model)
-      value = model.get_attribute(AttributeManager::DICTIONARY, 'loft_ceiling', LOFT_CEILING_MM).to_f
-      value.positive? ? value : LOFT_CEILING_MM
-    end
-
-    def self.remember_ceiling(model, value)
-      number = ValidationManager.to_float(value)
-      model.set_attribute(AttributeManager::DICTIONARY, 'loft_ceiling', number) if number && number.between?(1500.0, 6000.0)
     end
 
     # Every loft in the model.

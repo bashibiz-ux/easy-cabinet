@@ -23,7 +23,7 @@ module KitchenCabinetMaster
       when 'add_appliance' then MyAppliances.add(raw)
       when 'remove_appliance' then MyAppliances.remove(raw)
       when 'set_unit_sizes' then set_unit_sizes(raw)
-      when 'set_ceiling' then set_ceiling(raw)
+      when 'reset_unit_sizes' then reset_unit_sizes(raw)
       when 'get_selection' then (SelectionManager.push_selection; Response.ok(''))
       when 'customize' then customize
       when 'apply_front_design' then apply_front_design(raw)
@@ -49,10 +49,6 @@ module KitchenCabinetMaster
       if fit && fit['width'].positive? && fit['depth'].positive?
         params['width'] = fit['width']
         params['depth'] = fit['depth']
-      end
-      if entry && entry['loft'] && params['height'].to_f == entry.dig('defaults', 'height').to_f # (a loft that was not sized stops at the ceiling, less its filler)
-        room = (ValidationManager.to_float(raw['ceiling_height']) || PlacementManager::LOFT_CEILING_MM) - PartManager.send(:ceiling_filler_height, model) - PlacementManager.loft_bottom(model)
-        params['height'] = [room, PlacementManager::LOFT_MIN_MM].max if room < params['height'].to_f
       end
       root = SelectionManager.suspend do
         with_operation(model, 'Insert Cabinet') do
@@ -629,10 +625,6 @@ module KitchenCabinetMaster
       # A wider cabinet takes its space from the one next to it in the row, which
       # gets narrower (see RowResizer). Anything else it would run into refuses the edit.
       dictionary = AttributeManager::DICTIONARY
-      if root.get_attribute(dictionary, 'cabinet_type').to_s.start_with?('wall_loft') # (a loft grows upwards, and never past the ceiling less the ceiling filler)
-        room = PlacementManager.loft_ceiling(model) - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm
-        params['height'] = [[params['height'].to_f, room].min, PlacementManager::LOFT_MIN_MM].max
-      end
       growth = params['width'] - root.get_attribute(dictionary, 'width').to_f
       squeeze = nil
       resize = !raw.is_a?(Hash) || raw['resize_neighbours'] != false # (the Presets switch: the next cabinet gives or takes the room)
@@ -708,25 +700,38 @@ module KitchenCabinetMaster
     private_class_method :follow_tall
     private_class_method :update_one
 
-    # The Ceiling Height of the Presets: every loft in the model reaches up to it (its bottom stays, its height is what is left under the ceiling).
-    def self.set_ceiling(raw)
+    # "Reset Unit Sizes": the selected units (every unit when none is selected) go back to the standard size of their own catalog entry. A loft is as wide
+    # as the unit it is over (its depth is the common one again, see PlacementManager.loft_depth). Corner units and models of your own are left alone.
+    def self.reset_unit_sizes(raw)
       raw = {} unless raw.is_a?(Hash)
-      ceiling = ValidationManager.to_float(raw['ceiling_height'])
-      return Response.fail('The ceiling height must be a number between 1500 and 6000 mm.') unless ceiling && ceiling.between?(1500.0, 6000.0)
-
       model = Sketchup.active_model
-      PlacementManager.remember_ceiling(model, ceiling)
-      lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && AttributeManager.read(item)['cabinet_type'].to_s.start_with?('wall_loft') }
-      return Response.ok('The ceiling height is kept for the next loft.') if lofts.empty?
+      picked = selected_cabinets(model)
+      targets = picked.empty? ? model.active_entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) } : picked
+      targets = targets.reject { |item| AttributeManager.custom_model?(item) || Defaults.corner?(AttributeManager.read(item)) }
+      targets = targets.sort_by { |item| AttributeManager.read(item)['sequence'].to_i }
+      return Response.ok('No units to put back to the standard sizes.') if targets.empty?
 
+      resize = raw['resize_neighbours'] != false
       done = 0
       problems = []
       @batch = true
-      model.start_operation('Ceiling Height', true)
+      model.start_operation('Reset Unit Sizes', true)
       begin
-        lofts.each do |root|
-          height = [ceiling - PartManager.send(:ceiling_filler_height, model) - root.transformation.origin.z.to_mm, PlacementManager::LOFT_MIN_MM].max.round(2)
-          answer = update_one(model, root, { 'fields_only' => true, 'fields' => { 'height' => height }, 'resize_neighbours' => false })
+        model.set_attribute(AttributeManager::DICTIONARY, 'loft_depth', 0.0) # (the lofts have the common depth again)
+        targets.each do |root|
+          stored = AttributeManager.read(root)
+          loft = stored['cabinet_type'].to_s.start_with?('wall_loft')
+          entry = CatalogManager.cabinet(stored['catalog_id'], loft ? 'loft' : stored['cabinet_category'], stored['cabinet_type'])
+          defaults = entry && entry['defaults']
+          next unless defaults
+
+          fields = { 'width' => defaults['width'], 'depth' => defaults['depth'], 'height' => defaults['height'] }
+          if loft
+            fields.delete('depth')
+            unit = model.active_entities.grep(Sketchup::ComponentInstance).find { |item| AttributeManager.cabinet?(item) && AttributeManager.cabinet_id(item) == stored['loft_over'].to_s }
+            fields['width'] = AttributeManager.read(unit)['width'] if unit
+          end
+          answer = update_one(model, root, { 'fields_only' => true, 'fields' => fields.compact, 'resize_neighbours' => resize })
           answer['ok'] ? done += 1 : problems << "#{root.name}: #{answer['message']}"
         end
         model.commit_operation
@@ -737,17 +742,13 @@ module KitchenCabinetMaster
         @batch = false
       end
       SelectionManager.push_selection(model)
-      return Response.fail(problems.first) if done.zero?
+      return Response.fail(problems.first) if done.zero? && !problems.empty?
 
-      heights = lofts.select(&:valid?).map { |root| AttributeManager.read(root)['height'].to_f.round(1) }.uniq
-      bottom = lofts.first.transformation.origin.z.to_mm.round(1)
-      filler = PartManager.send(:ceiling_filler_height, model)
-      room = ceiling - filler - bottom
-      detail = " Loft height #{heights.map { |h| format('%g', h) }.join(' / ')} mm (it starts at #{format('%g', bottom)} mm, the ceiling filler is #{format('%g', filler)} mm)."
-      detail += " There is no room for more: the ceiling must be above #{format('%g', bottom + filler + PlacementManager::LOFT_MIN_MM)} mm for a loft taller than #{format('%g', PlacementManager::LOFT_MIN_MM)} mm." if room < PlacementManager::LOFT_MIN_MM
-      Response.ok("#{done} loft#{'s' unless done == 1} reach#{'es' if done == 1} the ceiling at #{format('%g', ceiling)} mm.#{detail}#{" #{problems.length} could not (#{problems.first(2).join('; ')})." unless problems.empty?}")
+      message = "#{done} unit#{'s' unless done == 1} back to the standard size."
+      message += " #{problems.length} could not (#{problems.first(2).join('; ')})." unless problems.empty?
+      Response.ok(message)
     end
-    private_class_method :set_ceiling
+    private_class_method :reset_unit_sizes
 
     UNIT_SIZE_KEYS = %w[width depth height].freeze
 
@@ -757,8 +758,6 @@ module KitchenCabinetMaster
       raw = {} unless raw.is_a?(Hash)
       category = raw['category'].to_s
       return Response.fail('Unknown kind of unit.') unless %w[base wall tall loft].include?(category)
-
-      PlacementManager.remember_ceiling(Sketchup.active_model, raw['ceiling_height'])
 
       given = raw['fields'].is_a?(Hash) ? raw['fields'].transform_keys(&:to_s) : {}
       fields = UNIT_SIZE_KEYS.to_h { |key| [key, given[key].to_s.strip] }.reject { |_, value| value.empty? }
@@ -1303,7 +1302,6 @@ module KitchenCabinetMaster
     # Returns [params, nil] when valid, or [nil, failure_response].
     def self.prepare(raw)
       raw = {} unless raw.is_a?(Hash)
-      PlacementManager.remember_ceiling(Sketchup.active_model, raw['ceiling_height'])
       raw = raw.merge('cabinet_category' => 'wall') if raw['cabinet_category'].to_s == 'loft' # (a loft unit is a wall unit that stands over the others)
       model = Sketchup.active_model
 

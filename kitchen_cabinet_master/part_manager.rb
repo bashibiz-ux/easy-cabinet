@@ -370,7 +370,7 @@ module KitchenCabinetMaster
       return nil unless loft
 
       top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f + ceiling_filler_height(model)
-      [top, PlacementManager.loft_ceiling(model)].min - t.origin.z.to_mm
+      top - t.origin.z.to_mm
     end
     private_class_method :ceiling_top_for
 
@@ -1240,13 +1240,10 @@ module KitchenCabinetMaster
       height = values['height'].to_f.positive? ? values['height'].to_f : PlacementManager::LOFT_FILLER_MM
       recess = values['recess'].to_f.positive? ? values['recess'].to_f : 0.0
       length = values['piece_length'].to_f
-      ceiling = PlacementManager.loft_ceiling(Sketchup.active_model)
       rows.flat_map do |row|
         first = row.first
         stored = AttributeManager.read(first)
-        room = ceiling - (first.transformation.origin.z.to_mm + stored['top_z'].to_f) # (never past the ceiling)
-        row_height = [height, room].min
-        next [] if row_height < 1.0
+        row_height = height
 
         from = along.call(first)
         to = along.call(row.last) + AttributeManager.read(row.last)['width'].to_f # (it stops at the carcass of the lofts: a side panel is not covered)

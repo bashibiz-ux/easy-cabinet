@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# The Ceiling Height changes the height of the lofts: CabinetManager.set_ceiling and update_one run for real, with a fake model and loft.
+# A tall unit's height and the lofts over it, and Reset Unit Sizes: CabinetManager.update_one and reset_unit_sizes run for real, with a fake model and units.
 # Run:  ruby test/ceiling_update_test.rb
 
 require 'minitest/autorun'
@@ -51,6 +51,7 @@ module KitchenCabinetMaster
   end
   module CatalogManager
     def self.handle_bundle(*) = nil
+    def self.cabinet(_catalog, category, _type) = { 'defaults' => { 'width' => 600.0, 'depth' => 560.0, 'height' => category == 'loft' ? 290.0 : 2160.0 } }
     def self.method_missing(*) = nil
     def self.respond_to_missing?(*) = true
   end
@@ -113,6 +114,8 @@ class FakeModel
   end
 
   def active_entities = @entities
+  def selection = []
+  def active_path = nil
 
   def start_operation(*) = nil
   def commit_operation = nil
@@ -131,34 +134,6 @@ class CeilingUpdateTest < Minitest::Test
     Sketchup.active_model = @model
   end
 
-  def set_ceiling(value) = CabinetManager.send(:set_ceiling, 'ceiling_height' => value)
-
-  def test_raising_the_ceiling_makes_the_loft_taller_up_to_it
-    answer = set_ceiling(2800.0)
-    assert answer['ok'], answer['message']
-    assert_in_delta 2800.0 - 50.0 - 2260.0, @loft.attrs['height'], 0.01, answer['message']
-  end
-
-  def test_lowering_the_ceiling_makes_it_shorter_but_never_under_the_lowest_a_loft_is_made
-    set_ceiling(2800.0)
-    set_ceiling(2550.0)
-    assert_in_delta 240.0, @loft.attrs['height'], 0.01
-    answer = set_ceiling(2300.0)
-    assert answer['ok'], answer['message']
-    assert_in_delta KitchenCabinetMaster::PlacementManager::LOFT_MIN_MM, @loft.attrs['height'], 0.01
-    assert_includes answer['message'], 'no room'
-  end
-
-  def test_a_loft_cannot_be_typed_past_the_ceiling
-    set_ceiling(2800.0)
-    answer = CabinetManager.send(:update_one, @model, @loft, { 'fields_only' => true, 'fields' => { 'height' => 900.0 }, 'resize_neighbours' => false })
-    assert answer['ok'], answer['message']
-    assert_in_delta 490.0, @loft.attrs['height'], 0.01, 'the ceiling less the filler is the limit'
-  end
-
-  def test_the_message_says_how_tall_the_loft_is
-    assert_includes set_ceiling(2900.0)['message'], '590'
-  end
   def with_tall
     @tall = FakeLoft.new(0.0, nil, :tall)
     @model.entities = FakeEntities.new([@tall, @loft])
@@ -186,5 +161,20 @@ class CeilingUpdateTest < Minitest::Test
     with_tall
     answer = CabinetManager.send(:update_one, @model, @tall, { 'fields_only' => true, 'fields' => { 'height' => 2000.0 }, 'resize_neighbours' => false })
     assert answer['ok'], answer['message']
+  end
+  def test_a_loft_is_not_cut_at_any_ceiling_whatever_height_is_typed
+    answer = CabinetManager.send(:update_one, @model, @loft, { 'fields_only' => true, 'fields' => { 'height' => 900.0 }, 'resize_neighbours' => false })
+    assert answer['ok'], answer['message']
+    assert_in_delta 900.0, @loft.attrs['height'], 0.01
+  end
+
+  def test_reset_unit_sizes_puts_the_units_in_the_model_back_to_the_standard_size_of_their_entry
+    @loft.attrs['height'] = 500.0
+    @loft.attrs['top_z'] = 500.0
+    answer = CabinetManager.send(:reset_unit_sizes, 'resize_neighbours' => false)
+    assert answer['ok'], answer['message']
+    assert_in_delta 290.0, @loft.attrs['height'], 0.01, 'a loft goes back to 290 mm'
+    assert_includes answer['message'], '1 unit'
+    assert_in_delta 0.0, @model.get_attribute('kcm', 'loft_depth', 0.0), 0.01
   end
 end
