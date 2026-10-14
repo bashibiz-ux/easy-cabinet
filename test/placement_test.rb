@@ -22,7 +22,7 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults toe_kick cabinet_layout attribute_manager placement_manager naming_manager].each do |f|
+%w[response defaults toe_kick cabinet_layout attribute_manager validation_manager placement_manager naming_manager].each do |f|
   require File.join(plugin, f)
 end
 
@@ -60,7 +60,13 @@ end
 class FakeModel
   attr_reader :active_entities
 
-  def initialize(entities) = @active_entities = entities
+  def initialize(entities)
+    @active_entities = entities
+    @attrs = {}
+  end
+
+  def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
+  def set_attribute(_dict, key, value) = @attrs[key] = value
 end
 
 class PlacementTest < Minitest::Test
@@ -450,5 +456,20 @@ class PlacementTest < Minitest::Test
     assert_in_delta 320.0, wall.get_attribute('kcm', 'depth'), 0.01, 'the wall unit itself is unchanged'
     assert_in_delta 560.0, PlacementManager.loft_depth(@model), 0.01
     refute_nil tall
+  end
+  def test_the_ceiling_the_lofts_stay_under_is_what_the_panel_sent_and_starts_at_2600
+    assert_equal 2600.0, PlacementManager.loft_ceiling(@model)
+    PlacementManager.remember_ceiling(@model, '2750')
+    assert_equal 2750.0, PlacementManager.loft_ceiling(@model)
+    PlacementManager.remember_ceiling(@model, 'nonsense')
+    PlacementManager.remember_ceiling(@model, '90')
+    assert_equal 2750.0, PlacementManager.loft_ceiling(@model), 'not a number, or not a ceiling: what was kept stays'
+  end
+
+  def test_a_depth_typed_for_the_lofts_is_the_one_every_loft_has
+    insert('tall', 600.0, depth: 560.0)
+    assert_in_delta 560.0, PlacementManager.loft_depth(@model), 0.01
+    @model.set_attribute('kcm', 'loft_depth', 450.0)
+    assert_in_delta 450.0, PlacementManager.loft_depth(@model), 0.01
   end
 end
