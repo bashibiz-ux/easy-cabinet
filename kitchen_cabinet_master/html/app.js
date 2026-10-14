@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.45.0';
+  const APP_VERSION = '1.45.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1053,6 +1053,7 @@ function currentCabinet() {
       show_cabinet_names: $('showNames').checked,
       hide_base_handles: !$('hideBaseHandles').checked, // the tick says Show
       hide_tall_handles: !$('hideTallHandles').checked, // the tick says Show
+      hide_loft_handles: !$('hideLoftHandles').checked, // the tick says Show
       door_reveal: mmv('doorReveal'),
       cabinet_category: $('category').value,
       cabinet_type: $('cabinet').value,
@@ -1191,6 +1192,7 @@ function currentCabinet() {
     if ('show_cabinet_names' in p) $('showNames').checked = !!p.show_cabinet_names;
     if ('hide_base_handles' in p) $('hideBaseHandles').checked = !p.hide_base_handles; // the tick says Show
     if ('hide_tall_handles' in p) $('hideTallHandles').checked = !p.hide_tall_handles; // the tick says Show
+    if ('hide_loft_handles' in p) $('hideLoftHandles').checked = !p.hide_loft_handles; // the tick says Show
     if ('hide_wall_handles' in p) $('hideWallHandles').checked = !p.hide_wall_handles; // the tick says Show
     if (p.visibility_settings && typeof p.visibility_settings === 'object') {
       const v = p.visibility_settings;
@@ -2199,7 +2201,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveLoft', 'liveSideCeiling', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveLoft', 'liveSideCeiling', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2677,6 +2679,7 @@ function liveEdit(el) {
         show_cabinet_names: $('showNames').checked,
         hide_base_handles: !$('hideBaseHandles').checked, // the tick says Show
         hide_tall_handles: !$('hideTallHandles').checked, // the tick says Show
+        hide_loft_handles: !$('hideLoftHandles').checked, // the tick says Show
         door_symbol: $('showDoorSymbol').checked // the dashed lines on each door
       });
       setStatus(res.ok ? 'ok' : 'error', res.message);
@@ -2706,6 +2709,7 @@ function liveEdit(el) {
     $('showNames').checked = d.show_cabinet_names === true;
     $('hideBaseHandles').checked = d.hide_base_handles !== true;
     $('hideTallHandles').checked = d.hide_tall_handles !== true;
+    $('hideLoftHandles').checked = d.hide_loft_handles !== true;
     const v = d.visibility_settings || {};
     $('visCarcass').checked = v.carcass !== false;
     $('visDoor').checked = v.door !== false;
@@ -2915,7 +2919,7 @@ $('kitchenLayout').addEventListener('change', () => {
       button.addEventListener('click', () => runAction(button.dataset.action));
     });
 
-    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
+    ['visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol'].forEach((id) => $(id).addEventListener('change', applyVisibility));
 
     window.addEventListener('focus', refreshMaterials);
   }

@@ -1047,6 +1047,7 @@ module KitchenCabinetMaster
       show_names = on.call(raw['show_cabinet_names'])
       hide_base_handles = on.call(raw['hide_base_handles'])
       hide_tall_handles = on.call(raw['hide_tall_handles'])
+      hide_loft_handles = on.call(raw['hide_loft_handles'])
 
       model = Sketchup.active_model
       instances = model.entities.grep(Sketchup::ComponentInstance)
@@ -1071,6 +1072,7 @@ module KitchenCabinetMaster
           show_worktop = raw.key?('worktop') && !only ? on.call(raw['worktop']) : WorktopManager.shown?(model, 'worktop')
           show_splash = raw.key?('backsplash') && !only ? on.call(raw['backsplash']) : WorktopManager.shown?(model, 'backsplash')
           WorktopManager.set_shown(model, show_worktop, show_splash)
+          model.set_attribute(AttributeManager::DICTIONARY, 'hide_loft_handles', hide_loft_handles) unless only # (the lofts the Loft switch places follow it)
           cabinets.each do |cabinet|
             AttributeManager.write(cabinet, 'visibility_settings' => visibility,
                                             'show_opening_direction' => show_floor_symbol,
@@ -1079,9 +1081,10 @@ module KitchenCabinetMaster
                                             'hide_wall_handles' => hide_wall_handles,
                                             'hide_base_handles' => hide_base_handles,
                                             'hide_tall_handles' => hide_tall_handles,
+                                            'hide_loft_handles' => hide_loft_handles,
                                             'show_cabinet_names' => show_names)
             CabinetGenerator.apply_visibility(cabinet, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol, hide_wall_handles,
-                                              hide_base_handles, hide_tall_handles)
+                                              hide_base_handles, hide_tall_handles, hide_loft_handles)
             CabinetGenerator.sync_name_label_for(model, cabinet)
           end
           # The toe kicks are separate entities: the Toe Kick tick shows or hides them.

@@ -41,7 +41,7 @@ module KitchenCabinetMaster
         Response.ok(on ? 'Toe kicks are on: they follow the cabinets.' : 'The toe kicks placed by the tick are taken away.')
       when 'set_live_loft'
         keep(model, KEY_LOFT, on, raw)
-        apply(model, "#{on ? 'Place' : 'Remove'} Lofts") { sync_lofts(model) }
+        refresh # (the lofts are placed, put in line with their units, and get their side panels and ceiling fillers, like after any change)
         Response.ok(on ? 'Lofts are on: every wall and tall unit has one.' : 'The lofts placed by the switch are taken away.')
       when 'set_live_ceiling_filler'
         keep(model, KEY_CEILING, on, raw)

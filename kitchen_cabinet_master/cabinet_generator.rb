@@ -102,7 +102,7 @@ module KitchenCabinetMaster
     # the dashed lines on each door. Only flips `visible` on existing containers;
     # nothing is rebuilt.
     def self.apply_visibility(root, visibility, show_floor_symbol, show_door_symbol, show_wall_symbol = false, hide_wall_handles = false,
-                             hide_base_handles = false, hide_tall_handles = false)
+                             hide_base_handles = false, hide_tall_handles = false, hide_loft_handles = false)
       return apply_custom_visibility(root, 'visibility_settings' => visibility, 'hide_wall_handles' => hide_wall_handles, 'hide_base_handles' => hide_base_handles,
                                            'hide_tall_handles' => hide_tall_handles) if AttributeManager.custom_model?(root)
 
@@ -110,6 +110,7 @@ module KitchenCabinetMaster
       wall = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
       base_like = %w[base corner].include?(root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category'))
       tall = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'tall'
+      loft = root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_type').to_s.start_with?('wall_loft') # (a loft has a tick of its own)
       # A wall unit's plan line has its own switch.
       show_floor_symbol = show_wall_symbol if root.get_attribute(AttributeManager::DICTIONARY, 'cabinet_category') == 'wall'
 
@@ -124,7 +125,7 @@ module KitchenCabinetMaster
           symbol.visible = show_door_symbol if symbol
           handle = index_by_role(instance.definition.entities)[HANDLE_ROLE]
           if handle
-            hidden = if wall then hide_wall_handles elsif tall then hide_tall_handles else base_like && hide_base_handles end
+            hidden = if loft then hide_loft_handles elsif wall then hide_wall_handles elsif tall then hide_tall_handles else base_like && hide_base_handles end
             handle.visible = !hidden
           end
         end
@@ -433,7 +434,7 @@ module KitchenCabinetMaster
                               HandleManager.transformation(spot, door.extent[0]))
       handle.name = 'Handle'
       handle.visible = !case params['cabinet_category']
-                        when 'wall' then params['hide_wall_handles'] == true
+                        when 'wall' then params['cabinet_type'].to_s.start_with?('wall_loft') ? params['hide_loft_handles'] == true : params['hide_wall_handles'] == true
                         when 'tall' then params['hide_tall_handles'] == true
                         when 'base', 'corner' then params['hide_base_handles'] == true
                         else false

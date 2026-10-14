@@ -1199,7 +1199,8 @@ module KitchenCabinetMaster
         item = KitchenPlanner::Item.new(category: 'wall', type: type, width: stored['width'].to_f, kind: :loft)
         t = unit.transformation
         override = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, level.mm - t.origin.z)) * t
-        loft = KitchenManager.send(:build_unit, model, stored.merge('custom_overrides' => {}), stored['catalog_id'], item, override)
+        panel = stored.merge('custom_overrides' => {}, 'hide_loft_handles' => model.get_attribute(dictionary, 'hide_loft_handles', false) == true)
+    loft = KitchenManager.send(:build_unit, model, panel, stored['catalog_id'], item, override)
         AttributeManager.write(loft, 'loft_over' => id, 'auto_loft' => true)
         height = values['height'].to_f
         CabinetManager.update_quiet(model, loft, 'height' => height) if height.positive?

@@ -87,8 +87,14 @@ class AutoLoftTest < Minitest::Test
   class Model
     attr_reader :entities_list
 
-    def initialize = @entities_list = []
+    def initialize
+      @entities_list = []
+      @attrs = {}
+    end
+
     def active_entities = Entities.new(@entities_list)
+    def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
+    def set_attribute(_dict, key, value) = @attrs[key] = value
   end
 
   class Entities
@@ -159,5 +165,16 @@ class AutoLoftTest < Minitest::Test
     @model.entities_list.delete(@wall)
     sync({})
     assert_equal ['CABINET_0001'], PlacementManager.lofts(@model).map { |l| l.attrs['loft_over'] }
+  end
+  def test_the_lofts_follow_the_loft_handles_tick_of_the_visibility
+    @model.set_attribute('KitchenCabinetMaster', 'hide_loft_handles', true)
+    sync({})
+    assert(KitchenManager.built.all? { |b| b[:panel]['hide_loft_handles'] == true })
+    KitchenManager.reset!
+    @model.entities_list.clear
+    @tall = unit(@model, 'CABINET_0001', 'tall', 600.0)
+    @model.set_attribute('KitchenCabinetMaster', 'hide_loft_handles', false)
+    sync({})
+    assert(KitchenManager.built.none? { |b| b[:panel]['hide_loft_handles'] == true })
   end
 end
