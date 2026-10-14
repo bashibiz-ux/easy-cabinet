@@ -472,4 +472,18 @@ class PlacementTest < Minitest::Test
     @model.set_attribute('kcm', 'loft_depth', 450.0)
     assert_in_delta 450.0, PlacementManager.loft_depth(@model), 0.01
   end
+  def test_the_ceiling_filler_over_a_loft_does_not_stop_the_loft_from_growing
+    wall = insert('wall', 600.0)
+    SelectionManager.selected = wall
+    loft = insert_loft(600.0, 290.0)
+    top = loft.transformation.origin.z.to_mm + loft.get_attribute('kcm', 'top_z')
+    filler = FakeCabinet.new(Geom::Transformation.new(loft.transformation.to_a), params('wall', 600.0).merge('height' => 50.0), @parent, 0)
+    filler.attrs['ceiling_filler'] = "#{loft.get_attribute('kcm', 'cabinet_id')}:0"
+    filler.attrs['part_id'] = 'PART_1'
+    filler.attrs.delete('cabinet_id')
+    @entities.add(filler)
+    refute AttributeManager.occupant?(filler), 'a ceiling filler is no occupant'
+    taller = [loft.get_attribute('kcm', 'envelope_depth'), 600.0, top - loft.transformation.origin.z.to_mm + 200.0]
+    refute PlacementManager.collides?(@entities, loft.transformation, taller, exclude: loft), 'the loft 200 mm taller does not run into its filler'
+  end
 end
