@@ -1257,17 +1257,21 @@ module KitchenCabinetMaster
     end
     private_class_method :ceiling_pieces
 
-    # The lofts stand at one level (the top of the highest wall or tall unit: a loft over a lower unit stands up at that level, and they all move up or down
-    # with a tall unit that gets taller or shorter) and have one depth (the deepest unit's, so that all the fronts are flush). Inside an operation.
+    # The lofts stand at one level (the top of the highest wall or tall unit: a loft over a lower unit stands up at that level; when a tall unit gets taller or
+    # shorter the loft keeps its top and its bottom follows the unit, so the loft gives or takes the height) and have one depth (the deepest unit's, so that all the fronts are flush). Inside an operation.
     def self.align_lofts(model)
       return if @aligning
 
       @aligning = true
       lofts = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && PlacementManager.loft_item?(item) }
       level = PlacementManager.loft_level(model)
-      lofts.each do |loft|
-        off = level - loft.transformation.origin.z.to_mm
-        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm))) if level && off.abs > 0.5
+      lofts.each do |loft| # (the top of a loft stays where it is: a tall unit that grows takes the height from the loft, one that shrinks gives it)
+        off = level - loft.transformation.origin.z.to_mm if level
+        next unless level && off.abs > 0.5
+
+        top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f
+        loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(0, 0, off.mm)))
+        CabinetManager.update_quiet(model, loft, 'height' => [top - level, 100.0].max.round(2))
       end
       lofts.each do |loft| # (and each stands over its own unit: a unit moved along by a side panel takes its loft with it)
         unit_id = AttributeManager.read(loft)['loft_over'].to_s
