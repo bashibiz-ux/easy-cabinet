@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.50.0';
+  const APP_VERSION = '1.50.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2220,7 +2220,7 @@ if (details.length) {
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
   // it raises cabinets and is the height of a toe kick.
-  const SIZE_IDS = new Set(['width', 'depth', 'height', 'leg2Length', 'leg2Depth', 'blindWidth', 'shelves']);
+  const SIZE_IDS = new Set(['widthPreset', 'width', 'depth', 'height', 'leg2Length', 'leg2Depth', 'blindWidth', 'shelves']);
 
   function fieldKinds(el) {
     if (el.closest('#sub-filler')) return ['filler'];
@@ -2883,6 +2883,7 @@ function liveEdit(el) {
           setText('depth', standard.depth);
           setText('height', standard.height);
         }
+        if (state.selectedKind && $('liveSizes').checked) $('width').dispatchEvent(new Event('input', { bubbles: true })); // (the selected cabinet takes the standard width live, like a typed one)
       }
       drawPreview();
     });
