@@ -46,6 +46,11 @@ class WallBottomSetbackTest < Minitest::Test
     assert_equal [[0.0, 1200.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
   end
 
+  def test_a_gap_between_two_units_where_a_side_panel_stands_is_left_open
+    run = { items: [item(0.0, 320.0), item(618.0, 320.0)], length: 1218.0 }
+    assert_equal [[0.0, 600.0], [618.0, 1218.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
+  end
+
   def test_a_change_of_depth_along_the_run_starts_a_new_stretch_with_its_own_depth
     run = { items: [item(0.0, 320.0), item(600.0, 320.0), item(1200.0, 580.0)], length: 1800.0 }
     stretches = WallBottomManager.send(:segments_of, run)

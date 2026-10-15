@@ -258,11 +258,13 @@ module KitchenCabinetMaster
       marks[0][0] = 0.0
       stretches = []
       marks.each_with_index do |(start, item), index|
-        stop = index + 1 < marks.length ? marks[index + 1][0] : run[:length]
+        edge = start + item[:width].to_f # (a panel stops at the carcass: where a side panel stands between two units it does not go through it)
+        stop = index + 1 < marks.length && marks[index + 1][0] - edge <= 1.0 ? marks[index + 1][0] : edge
+        stop = [stop, run[:length]].min if index + 1 == marks.length
         next if stop - start < 0.5
 
         last = stretches.last
-        if last && (last[2][:depth] - item[:depth]).abs < 0.5 && last[2][:loft] == item[:loft]
+        if last && (start - last[1]).abs <= 1.0 && (last[2][:depth] - item[:depth]).abs < 0.5 && last[2][:loft] == item[:loft]
           last[1] = stop
         else
           stretches << [start, stop, item]
