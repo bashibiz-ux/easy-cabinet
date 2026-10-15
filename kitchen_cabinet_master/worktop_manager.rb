@@ -29,6 +29,7 @@ module KitchenCabinetMaster
       'worktop_round' => 5.0,        # radius of the rounded front edge (0 = square)
       'worktop_piece' => 0.0,        # 0 = no maximum length
       'worktop_cuts' => '',          # distances (mm) from the start of a run to cut at, e.g. "1500,3000"
+      'backsplash_auto' => true,     # the back splash reaches the bottom of the wall units above it (false: the height typed)
       'backsplash_height' => 580.0,  # 0 = no back splash (580: from the worktop up to the bottom panel under the wall units, 1480 - 900)
       'backsplash_thickness' => 20.0,
       'material' => 'White',
@@ -335,6 +336,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
     # corner has one along each of the two walls.
     def self.splash(run, slab, params)
       height = params['backsplash_height'].to_f
+      height = run[:wall_z] - run[:top] - slab[:extent][2] if params['backsplash_auto'] != false && height.positive? && run[:wall_z] # (it goes up to the wall units: it grows and squeezes with them)
       thick = params['backsplash_thickness'].to_f
       return [] unless height.positive? && thick.positive?
       return [] if run[:back] # (an island has no wall behind it)
@@ -513,6 +515,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
     # selected, moved or deleted, all on the Worktop tag. Returns how many slabs.
     def self.build(model, run, params)
       params = params.merge('run_key' => run_key(run))
+      run = run.merge(wall_z: wall_bottom_over(model, run)) if params['backsplash_auto'] != false
       first = run[:items].first[:ref]
       total = run[:corner] ? 0.0 : run[:length] + Worktop.extension(run, params).sum
       spans = run[:corner] ? [[0.0, nil]] : Worktop.pieces(total, params)
@@ -539,6 +542,28 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
       end
       spans.length
     end
+
+    # How high (mm) the lowest wall unit (or its bottom panel) over a run hangs; nil when there is none above the run.
+    def self.wall_bottom_over(model, run)
+      zs = model.entities.grep(Sketchup::ComponentInstance).filter_map do |item|
+        next unless AttributeManager.cabinet?(item) && AttributeManager.read(item)['cabinet_category'] == 'wall'
+
+        origin = item.transformation.origin
+        z = origin.z.to_mm
+        next unless z > run[:top] + 1.0
+
+        over = run[:items].any? do |entry|
+          dx = origin.x.to_mm - entry[:x]
+          dy = origin.y.to_mm - entry[:y]
+          along = (dx * entry[:hx]) + (dy * entry[:hy])
+          across = ((dx * entry[:hy]) - (dy * entry[:hx])).abs
+          along > -1.0 && along < entry[:width] + 1.0 && across < 1200.0
+        end
+        z if over
+      end
+      zs.min
+    end
+    private_class_method :wall_bottom_over
 
     # The openings this piece needs over its cabinets' sinks and hobs, as [x0, x1, y0, y1] in the piece's own frame. One
     # that does not lie wholly inside the piece (a cut between pieces runs through it) is left out.

@@ -736,6 +736,7 @@ module KitchenCabinetMaster
       material = raw['material'].to_s.strip
       out['material'] = material unless material.empty?
       out['backsplash_material'] = raw['backsplash_material'].to_s.strip # blank: the material of the worktop
+      out['backsplash_auto'] = ![false, 'false', 0, '0'].include?(raw['backsplash_auto']) # (not typed: the back splash follows the wall units)
 
       # Where to cut: distances from the start of a run, all positive numbers.
       cuts = raw['worktop_cuts'].to_s.strip

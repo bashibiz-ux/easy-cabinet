@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.45.2';
+  const APP_VERSION = '1.45.3';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -424,8 +424,12 @@
     drawPreview();
   }
 
+  let splashTyped = false; // the back splash height was typed: it stays, instead of following the wall units
+  document.addEventListener('input', (e) => { if (e.target && e.target.id === 'wtSplash') splashTyped = true; }, true);
+
   function collectWorktop() {
     return {
+      backsplash_auto: !splashTyped,
       worktop_thickness: mmv('wtThickness'),
       worktop_front: mmv('wtFront'),
       worktop_end: mmv('wtEnd'),
@@ -462,6 +466,7 @@
     setText('wtRound', d.worktop_round);
     setText('wtPiece', d.worktop_piece);
     setText('wtSplash', d.backsplash_height);
+    splashTyped = d.backsplash_auto === false;
     showCuts(d.worktop_cuts);
     setSelect('wtMaterial', d.material);
     setSelect('wtSplashMaterial', d.backsplash_material || '__same__');

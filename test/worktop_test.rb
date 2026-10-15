@@ -338,6 +338,17 @@ class WorktopTest < Minitest::Test
     assert_empty Worktop.splash(run, slab, settings('backsplash_height' => 0.0))
   end
 
+  def test_the_back_splash_goes_up_to_the_wall_units_and_follows_them
+    run = run_of(2)
+    slab = Worktop.slab(run, settings)
+    top = run[:top] + slab[:extent][2]
+    higher = run.merge(wall_z: top + 700.0)
+    assert_equal 700.0, Worktop.splash(higher, slab, settings).first[:extent][2], 'a higher wall unit: a taller splash'
+    lower = run.merge(wall_z: top + 500.0)
+    assert_equal 500.0, Worktop.splash(lower, slab, settings).first[:extent][2], 'a lower one squeezes it'
+    assert_equal 60.0, Worktop.splash(lower, slab, settings('backsplash_height' => 60.0, 'backsplash_auto' => false)).first[:extent][2], 'a typed height stays'
+  end
+
   def test_a_corner_has_a_back_splash_along_each_of_its_two_walls
     run = Worktop.runs([item(y: 0, width: 900.0, depth: 900.0, corner: true, return_depth: 600.0)]).first
     slab = Worktop.slab(run, settings)
