@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.45.5';
+  const APP_VERSION = '1.45.6';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2211,7 +2211,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveLoft', 'liveSideCeiling', 'liveLoftSideFiller', 'epLoftToFiller', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['liveLoft', 'liveLoftFollow', 'liveSideCeiling', 'liveLoftSideFiller', 'epLoftToFiller', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2957,6 +2957,7 @@ $('kitchenLayout').addEventListener('change', () => {
     liveWallBottom: ['set_live_wall_bottom', () => COLLECTORS.wall_bottom()],
     liveWorktop: ['set_live_worktop', () => collectWorktop()],
     liveLoft: ['set_live_loft', () => ({ height: mmv('sizeLoftH') })],
+    liveLoftFollow: ['set_live_loft_follow', () => ({})],
     liveCeilingFiller: ['set_live_ceiling_filler', () => collectCeilingFiller()]
   };
 
@@ -3031,6 +3032,7 @@ $('kitchenLayout').addEventListener('change', () => {
       $('liveWorktop').checked = res.data.live_worktop !== false;
       $('liveCeilingFiller').checked = res.data.live_ceiling_filler !== false;
       $('liveLoft').checked = res.data.live_loft === true; // (off to begin with)
+      $('liveLoftFollow').checked = res.data.live_loft_follow === true; // (off to begin with)
       await buildUi();
       if ($('liveSidePanels').checked) await sendSidePanels(); // (on to begin with: the Side Panel settings of the panel go with it)
       for (const id of Object.keys(LIVE_PART_TICKS)) { if ($(id).checked) await sendLivePart(id); } // (and the settings of the toe kick, bottom panel and worktop sections)

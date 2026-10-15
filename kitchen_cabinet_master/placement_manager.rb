@@ -155,7 +155,7 @@ module KitchenCabinetMaster
       return nil unless unit && mode == :over
 
       dictionary = AttributeManager::DICTIONARY
-    { 'unit' => unit_id(unit), 'width' => unit.get_attribute(dictionary, 'width').to_f, 'depth' => loft_depth(model) || unit.get_attribute(dictionary, 'depth').to_f }
+    { 'unit' => unit_id(unit), 'width' => unit.get_attribute(dictionary, 'width').to_f, 'depth' => (defined?(LiveParts) && LiveParts.loft_follow? ? nil : loft_depth(model)) || unit.get_attribute(dictionary, 'depth').to_f }
     end
 
 

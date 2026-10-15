@@ -1333,13 +1333,26 @@ module KitchenCabinetMaster
         dy = unit.transformation.origin.y - loft.transformation.origin.y
         loft.transform!(Geom::Transformation.translation(Geom::Vector3d.new(dx, dy, 0))) if dx.to_mm.abs > 0.5 || dy.to_mm.abs > 0.5
       end
-      depth = PlacementManager.loft_depth(model)
-      lofts.each do |loft|
-        next unless depth && (AttributeManager.read(loft)['depth'].to_f - depth).abs > 0.5
+      if defined?(LiveParts) && LiveParts.loft_follow? # (the Loft follows switch: each loft is as wide and as deep as the unit under it; the ones that get narrower first, so that none runs into its neighbour)
+        units = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) }.to_h { |item| [AttributeManager.cabinet_id(item), item] }
+        wanted = lofts.filter_map do |loft|
+          unit = units[AttributeManager.read(loft)['loft_over'].to_s]
+          next unless unit
 
-        CabinetManager.update_quiet(model, loft, 'depth' => depth)
-      end
-    ensure
+          stored = AttributeManager.read(loft)
+          fields = { 'width' => AttributeManager.read(unit)['width'].to_f, 'depth' => AttributeManager.read(unit)['depth'].to_f }
+          fields.reject! { |key, value| (stored[key].to_f - value).abs <= 0.5 }
+          [loft, fields, fields.fetch('width', stored['width'].to_f) - stored['width'].to_f] unless fields.empty?
+        end
+        wanted.sort_by { |_, _, change| change }.each { |loft, fields, _| CabinetManager.update_quiet(model, loft, fields) }
+      else
+        depth = PlacementManager.loft_depth(model)
+        lofts.each do |loft|
+          next unless depth && (AttributeManager.read(loft)['depth'].to_f - depth).abs > 0.5
+
+          CabinetManager.update_quiet(model, loft, 'depth' => depth)
+        end
+      end    ensure
       @aligning = false
     end
     private_class_method :align_lofts

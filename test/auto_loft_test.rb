@@ -31,7 +31,7 @@ module KitchenCabinetMaster
     end
   end
   module CabinetManager
-    def self.update_quiet(_model, loft, fields) = loft.attrs['height'] = fields['height']
+    def self.update_quiet(_model, loft, fields) = fields.each { |key, value| loft.attrs[key] = value }
   end
   module KitchenManager
     class << self
@@ -66,6 +66,16 @@ module KitchenCabinetMaster
 end
 load File.join(plugin, 'part_manager.rb')
 
+module KitchenCabinetMaster
+  module LiveParts
+    class << self
+      attr_accessor :follow
+
+      def loft_follow? = follow == true
+    end
+  end
+end
+
 class AutoLoftTest < Minitest::Test
   include KitchenCabinetMaster
 
@@ -93,6 +103,7 @@ class AutoLoftTest < Minitest::Test
     end
 
     def active_entities = Entities.new(@entities_list)
+    def entities = Entities.new(@entities_list)
     def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
     def set_attribute(_dict, key, value) = @attrs[key] = value
   end
@@ -176,5 +187,30 @@ class AutoLoftTest < Minitest::Test
     @model.set_attribute('KitchenCabinetMaster', 'hide_loft_handles', false)
     sync({})
     assert(KitchenManager.built.none? { |b| b[:panel]['hide_loft_handles'] == true })
+  end
+  def lofts_over_units
+    @tall.attrs['depth'] = 600.0
+    sync({})
+    PlacementManager.lofts(@model)
+  end
+
+  def test_with_the_follow_switch_a_loft_takes_the_width_and_depth_of_its_unit
+    lofts = lofts_over_units
+    @wall.attrs['width'] = 800.0
+    @tall.attrs['depth'] = 640.0
+    LiveParts.follow = true
+    PartManager.send(:align_lofts, @model)
+    over = ->(id) { lofts.find { |l| l.attrs['loft_over'] == id } }
+    assert_equal [800.0, 560.0], [over.call('CABINET_0002').attrs['width'], over.call('CABINET_0002').attrs['depth']]
+    assert_equal 640.0, over.call('CABINET_0001').attrs['depth'], 'the loft over the tall unit is as deep as the tall unit, not as the deepest unit'
+  ensure
+    LiveParts.follow = false
+  end
+
+  def test_without_it_the_lofts_share_the_deepest_depth
+    lofts = lofts_over_units
+    @tall.attrs['depth'] = 640.0
+    PartManager.send(:align_lofts, @model)
+    assert_equal [640.0], lofts.map { |l| l.attrs['depth'] }.uniq
   end
 end

@@ -15,6 +15,7 @@ module KitchenCabinetMaster
     KEY_WALL_BOTTOM = 'live_wall_bottom_on'
     KEY_WORKTOP = 'live_worktop_on'
     KEY_LOFT = 'live_loft_on' # a loft over every wall and tall unit (see PartManager.sync_auto_lofts); off to begin with
+    KEY_LOFT_FOLLOW = 'live_loft_follow_on' # each loft takes the width and depth of the unit under it (see PartManager.align_lofts); off to begin with
     KEY_CEILING = 'live_ceiling_filler_on' # the ceiling filler over every loft (see PartManager.sync_ceiling_fillers)
     VALUES = { KEY_LOFT => 'live_loft_values', KEY_CEILING => 'live_ceiling_values', KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
     MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
@@ -43,6 +44,10 @@ module KitchenCabinetMaster
         keep(model, KEY_LOFT, on, raw)
         refresh # (the lofts are placed, put in line with their units, and get their side panels and ceiling fillers, like after any change)
         Response.ok(on ? 'Lofts are on: every wall and tall unit has one.' : 'The lofts placed by the switch are taken away.')
+      when 'set_live_loft_follow'
+        model.set_attribute(DICTIONARY, KEY_LOFT_FOLLOW, on)
+        refresh # (the lofts take the sizes of their units, or the common depth again)
+        Response.ok(on ? 'Each loft follows the size of the unit under it.' : 'The lofts keep their own widths and the common depth.')
       when 'set_live_ceiling_filler'
         keep(model, KEY_CEILING, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Ceiling Fillers") { sync_ceiling(model) }
@@ -118,6 +123,7 @@ module KitchenCabinetMaster
     def self.toe_kicks? = on?(KEY_TOE_KICKS)
     def self.ceiling_fillers? = on?(KEY_CEILING)
     def self.lofts? = on?(KEY_LOFT, false)
+    def self.loft_follow? = on?(KEY_LOFT_FOLLOW, false)
 
     # The settings the ceiling fillers are drawn with (height, thickness, material), as sent by the panel.
     def self.ceiling_values(model = Sketchup.active_model) = values_of(model, KEY_CEILING)
@@ -153,7 +159,7 @@ module KitchenCabinetMaster
     # After an action of the panel: draw again what the ticks keep up. Quietly: nothing changes when no tick is on.
     def self.refresh
       model = Sketchup.active_model
-      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers? || lofts?)
+      return unless model && (dimensions? || side_panels? || toe_kicks? || wall_bottom? || worktop? || ceiling_fillers? || lofts? || loft_follow?)
 
       apply(model, 'Refresh Dimensions and Side Panels') do
         sync_lofts(model) # (the lofts the switch places first: they are units like the others for what follows)
