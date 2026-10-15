@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.45.3';
+  const APP_VERSION = '1.45.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -69,6 +69,7 @@
     wall_bottom_thickness: 'wbThickness',
     wall_bottom_length: 'wbLength',
     wall_bottom_setback: 'wbSetback',
+    wall_bottom_loft_setback: 'wbLoftSetback',
     shelf_count: 'shelves',
     carcass_material: 'carcassMaterial',
     door_reveal: 'doorReveal',
@@ -234,6 +235,7 @@
         if (data.wall_bottom_thickness) setText('wbThickness', data.wall_bottom_thickness);
         if (data.wall_bottom_length !== undefined) setText('wbLength', data.wall_bottom_length);
         if (data.wall_bottom_setback !== undefined) setText('wbSetback', data.wall_bottom_setback);
+        if (data.wall_bottom_loft_setback !== undefined) setText('wbLoftSetback', data.wall_bottom_loft_setback);
         if (data.material) setSelect('wbMaterial', data.material);
         updateChips();
         setSelect('category', 'wall_bottom'); // (it is a Category of the Cabinet & Extras section)
@@ -271,6 +273,8 @@
       state.selectedKind = null;
       state.focusKey = null;
       setBadge(null);
+    } else if (name === 'splash_height') {
+      if (document.activeElement !== $('wtSplash') && data.height > 0) setText('wtSplash', data.height); // (the height the back splash has now: it follows the wall units)
     } else if (name === 'notice') {
       setStatus('error', data.message || '');
     } else if (name === 'snap') {
@@ -509,7 +513,7 @@
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
     'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtSplash', 'wtMaterial', 'wtSplashMaterial',
-    'wbThickness', 'wbLength', 'wbSetback', 'wbMaterial'
+    'wbThickness', 'wbLength', 'wbSetback', 'wbLoftSetback', 'wbMaterial'
   ];
 
   function gatherPresets() {
@@ -588,7 +592,7 @@
     rotate: () => ({ degrees: $('rotateDegrees').value }),
     worktop: () => collectWorktop(),
     cutlist: () => ({ group: $('cutGroup').checked }),
-    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_material: $('wbMaterial').value, selected_only: state.wallBottomSelected }),
+    wall_bottom: () => ({ wall_bottom_thickness: mmv('wbThickness'), wall_bottom_length: mmv('wbLength'), wall_bottom_setback: mmv('wbSetback'), wall_bottom_loft_setback: mmv('wbLoftSetback'), wall_bottom_material: $('wbMaterial').value, selected_only: state.wallBottomSelected }),
     cabinet: () => collect(),
     filler: () => collectFiller(),
     end_panel: () => collectEndPanel(),
@@ -770,7 +774,7 @@
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
     'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'thickness', 'backThickness',
-    'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
+    'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'wbLoftSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
     'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH'
@@ -2405,7 +2409,7 @@ if (details.length) {
   }
 
   // The Wall bottom panel fields apply the panels live (no need to press Apply first).
-  const WALL_BOTTOM_IDS = new Set(['wbLength', 'wbThickness', 'wbSetback', 'wbMaterial']);
+  const WALL_BOTTOM_IDS = new Set(['wbLength', 'wbThickness', 'wbSetback', 'wbLoftSetback', 'wbMaterial']);
 
   function scheduleWallBottom(delay = LIVE_TYPING_DELAY_MS) {
     clearTimeout(state.wallBottomTimer);
@@ -2791,6 +2795,7 @@ function liveEdit(el) {
     setText('wbThickness', 18);
     setText('wbLength', 2000);
     setText('wbSetback', 20);
+    setText('wbLoftSetback', 20);
     await restorePresets();
     updateCategoryUi();
     await refreshCabinets();

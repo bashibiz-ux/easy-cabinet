@@ -167,6 +167,7 @@ module KitchenCabinetMaster
       sync_worktop(model) # (the worktop and the bottom panels are steps of their own)
       sync_wall_bottom(model)
       keep_selection(model, kept)
+      WorktopManager.report_splash(model) if defined?(WorktopManager)
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not refresh the live parts: #{e.message}"
       DialogManager.push('notice', { 'message' => "Some parts could not be drawn: #{e.message} at #{Array(e.backtrace).first.to_s[/\w+\.rb:\d+/]}" }) if defined?(DialogManager)

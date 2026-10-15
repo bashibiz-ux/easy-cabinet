@@ -417,6 +417,7 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
         end
       end
       SelectionManager.push_selection(model)
+      report_splash(model)
       Response.ok("#{count} worktop piece#{'s' unless count == 1} #{existing.empty? ? 'applied' : 'updated'}: #{format('%g', params['worktop_thickness'])} mm thick" \
                   "#{", back splash #{format('%g', params['backsplash_height'])} mm" if params['backsplash_height'].positive?}." \
                   "#{" #{problems.uniq.join(' ')}" unless problems.empty?}")
@@ -541,6 +542,13 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
         end
       end
       spans.length
+    end
+
+    # Tells the panel how high the back splash is now (it follows the wall units, so the field shows the real height).
+    def self.report_splash(model)
+      piece = pieces_in(model).find { |item| AttributeManager.part_kind(item) == 'backsplash' }
+      extent = piece && AttributeManager.read(piece)['board_extent']
+      DialogManager.push('splash_height', { 'height' => extent[2].to_f.round(1) }) if extent && defined?(DialogManager)
     end
 
     # How high (mm) the lowest wall unit (or its bottom panel) over a run hangs; nil when there is none above the run.
