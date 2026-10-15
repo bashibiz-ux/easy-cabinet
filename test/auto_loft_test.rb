@@ -213,4 +213,10 @@ class AutoLoftTest < Minitest::Test
     PartManager.send(:align_lofts, @model)
     assert_equal [640.0], lofts.map { |l| l.attrs['depth'] }.uniq
   end
+  def test_a_side_panel_of_the_switch_is_as_round_as_the_doors_of_its_cabinet
+    radius = ->(values, target) { PartManager.send(:panel_radius, values, target) }
+    assert_equal 6.0, radius.call({ 'auto' => true, 'front_radius' => '3' }, { 'front_radius' => 6.0 }), 'the cabinet decides when the panels are placed again'
+    assert_equal '3', radius.call({ 'front_radius' => '3' }, { 'front_radius' => 6.0 }), 'a panel inserted by hand has its own value'
+    assert_equal '3', radius.call({ 'auto' => true, 'front_radius' => '3' }, {}), 'a filler has none: the panel values stay'
+  end
 end

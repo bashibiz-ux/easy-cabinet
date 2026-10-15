@@ -286,6 +286,7 @@ module KitchenCabinetMaster
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
+      values['front_radius'] = panel_radius(values, target_params) unless panel_radius(values, target_params).nil? # (an automatic panel is as round as the doors of its own cabinet)
       values.delete('depth_auto')
       values.delete('height_auto')
       answer = insert_end_panel(values)
@@ -299,10 +300,20 @@ module KitchenCabinetMaster
       end
     end
 
+    # The front edge radius of a side panel placed by the switch: the one of the cabinet it is on (its doors), so that it follows the Front Edge Radius
+    # whenever the panels are placed again; a panel you insert yourself, or one on a filler, has the radius of the panel's own values. nil: no radius known.
+    def self.panel_radius(values, target_params)
+      return target_params['front_radius'].to_f if values['auto'] == true && target_params.key?('front_radius') && !target_params['front_radius'].nil?
+
+      values['front_radius']
+    end
+    private_class_method :panel_radius
+
     # The end of the second arm of a tall L corner (the face of the square that looks the way the row came from): a panel across it, turned a
     # quarter, when nothing stands against that end. Marked 'corner_arm' so that Update leaves it where it is.
     def self.place_corner_front_panel(model, target, target_params, raw)
       values = stringify(raw)
+      values['front_radius'] = panel_radius(values, target_params) unless panel_radius(values, target_params).nil?
       thickness = values['thickness'].to_f
       return [0, 1, []] unless thickness.positive?
 
