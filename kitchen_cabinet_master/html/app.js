@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.50.1';
+  const APP_VERSION = '1.50.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -159,6 +159,7 @@
    * ---------------------------------------------------------------------- */
 
   function call(action, data = {}) {
+    if (/^(set_live_|visibility$|set_snap$|set_unit_sizes$|reset_unit_sizes$)/.test(action)) state.noFocusUntil = Date.now() + 4000; // (a switch of the Settings: the item it re-selects does not open Cabinets and Extras)
     return new Promise((resolve, reject) => {
       if (!window.sketchup || typeof window.sketchup.kcm_request !== 'function') {
         reject(new Error('Not connected to SketchUp. Open this panel from Extensions > Kitchen Cabinet Master.'));
@@ -288,7 +289,7 @@
   // Clicking an item in the model opens the section that edits it, ready to edit (the sections are an accordion).
   // Only when it is a different item than the one already open, so editing is never interrupted.
   function focusSection(id, key) {
-    if (state.focusKey === key) return;
+    if (state.focusKey === key || Date.now() < (state.noFocusUntil || 0)) return; // (not while a switch of the Settings is working)
     state.focusKey = key;
     const card = $(id);
     if (!card) return;
