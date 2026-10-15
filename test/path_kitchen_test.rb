@@ -109,7 +109,7 @@ class PathKitchenTest < Minitest::Test
     assert_in_delta 3000.0, corners.first['x'], 0.01
     assert_in_delta 0.0, corners.first['y'], 0.01, 'its origin is the corner of the walls'
     assert_equal [0.0, 1.0], [corners.first['out_x'], corners.first['out_y']], 'its depth runs back along the first wall (which came down along x = 3000), its width along the second'
-    straight = places.reject { |p| p['corner'] }
+    straight = places.reject { |p| p['corner'] || p['filler'] }
     assert_equal 2, straight.count { |p| p['x'].round == 3000 }, 'the first wall has 1400 mm left for the straight cabinets'
     assert_equal 3, straight.count { |p| p['y'].round.zero? }, 'the second wall starts 1000 mm from the corner'
     assert_in_delta 2000.0, straight.select { |p| p['y'].round.zero? }.map { |p| p['x'] }.max, 0.01
@@ -123,5 +123,16 @@ class PathKitchenTest < Minitest::Test
   def test_no_corner_unit_for_a_single_wall_or_without_a_corner_width
     assert_equal 0, PK.placements([[[0, 0], [3000, 0]]], 600.0, 560.0, corner: 1000.0)[:places].count { |p| p['corner'] }
     assert_equal 0, PK.placements([[[0, 0], [3000, 0]], [[3000, 0], [3000, 2400]]], 600.0, 560.0, eye: [1500, 1000])[:places].count { |p| p['corner'] }
+  end
+  def test_what_is_left_of_a_wall_before_a_corner_is_a_filler_after_the_last_cabinet
+    segments = [[[0, 0], [3000, 0]], [[3000, 0], [3000, 2400]]]
+    places = PK.placements(segments, 600.0, 560.0, eye: [1500, 1000], corner: 1000.0)[:places]
+    fillers = places.select { |p| p['filler'] }
+    assert_equal [200.0], fillers.map { |p| p['filler'] }, 'the first wall: 2400 - 1000 for the corner = 1400, two cabinets of 600 leave 200'
+    assert_in_delta 1200.0, (fillers.first['y'] - 2400.0).abs, 0.01, 'it starts where the second cabinet ends'
+  end
+
+  def test_no_filler_where_the_cabinets_fill_the_wall_or_at_the_end_of_the_path
+    assert_empty PK.placements([[[0, 0], [3000, 0]]], 600.0, 560.0, eye: [1500, -3000])[:places].select { |p| p['filler'] }
   end
 end

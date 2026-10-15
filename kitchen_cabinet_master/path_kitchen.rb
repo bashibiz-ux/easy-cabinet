@@ -170,7 +170,7 @@ module KitchenCabinetMaster
     # Where cabinets of one size stand along the walls of a path (Insert on Path): [{ 'x', 'y', 'out_x', 'out_y' }] in mm, one for each whole cabinet that fits
     # on a wall, from the start of the wall, its back against it. A wall that follows an inner corner starts `depth` from it (the room the cabinets of the
     # wall before take), and so does the end of the last wall of a closed loop. With `corner` (the width of a corner unit, mm) a corner unit goes into every
-    # inner corner instead (its place has 'corner' => true, at the corner of the walls, turned a quarter like a corner unit inserted after a row): it takes that much of the end of the wall before it and of the start of the wall after it.
+    # inner corner instead (its place has 'corner' => true, and what is left of a wall before a corner has 'filler' => its width, at the corner of the walls, turned a quarter like a corner unit inserted after a row): it takes that much of the end of the wall before it and of the start of the wall after it.
     # { places:, notes: }.
     def self.placements(segments, width, depth, eye: nil, flip: false, corner: nil)
       places = []
@@ -195,9 +195,15 @@ module KitchenCabinetMaster
               start = index.positive? ? depth : 0.0
               stop = wall[:length] - (run[:loop] && index == count - 1 ? depth : 0.0)
             end
-            ((stop - start + 0.5) / width).floor.times do |i|
+            fit = ((stop - start + 0.5) / width).floor
+            fit.times do |i|
               along = start + (i * width)
               places << { 'x' => wall[:from][0] + (wall[:dir][0] * along), 'y' => wall[:from][1] + (wall[:dir][1] * along), 'out_x' => wall[:dir][1], 'out_y' => -wall[:dir][0] }
+            end
+            rest = (stop - start) - (fit * width) # (what is left before the corner is a filler: 'filler' => its width)
+            if fit.positive? && after && rest >= 10.0
+              along = start + (fit * width)
+              places << { 'x' => wall[:from][0] + (wall[:dir][0] * along), 'y' => wall[:from][1] + (wall[:dir][1] * along), 'out_x' => wall[:dir][1], 'out_y' => -wall[:dir][0], 'filler' => rest.round(1) }
             end
             next unless corner && after
 
