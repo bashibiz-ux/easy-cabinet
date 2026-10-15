@@ -16,8 +16,6 @@ module KitchenCabinetMaster
     MAX_WALLS = 3       # walls in one piece: A, B, C
     RIGHT_ANGLE = 3.0   # degrees either way that still count as a right angle
     LAYOUTS = %w[straight l u].freeze
-    FITS = %w[auto u l straight all].freeze # the Design from Floor Plan choices: the best fit, a U, an L, one wall, every wall
-    MIN_WALL = 1800.0   # mm: a wall shorter than this is left out when a layout is picked from a floor plan
     DICTIONARY = 'KitchenCabinetMaster'
     KEY_PATH = 'kitchen_path'
 
@@ -153,53 +151,18 @@ module KitchenCabinetMaster
       end
     end
 
-    # The layout that fits a floor plan best, from the runs of walls round the room (room on the right): the walls that turn into each other
-    # at the inner corners are candidates, 1 to 3 walls in a row, each at least MIN_WALL long. `fit`: 'u', 'l' and 'straight' ask for that layout
-    # (the next smaller one when the room has none), 'auto' tries a U, then an L, then the longest wall. The one with the most wall wins.
-    # => [piece, ...] (one), with the note for what could not be had.
-    def self.fit_pieces(runs, fit)
-      candidates = []
-      runs.each do |run|
-        walls = run[:walls]
-        count = walls.length
-        (1..[MAX_WALLS, count].min).each do |size|
-          starts = run[:loop] ? (0...count).to_a : (0..(count - size)).to_a
-          starts.each do |start|
-            group = (0...size).map { |j| walls[(start + j) % count] }
-            candidates << { size: size, walls: group, total: group.sum { |wall| wall[:length] }, shortest: group.map { |wall| wall[:length] }.min }
-          end
-        end
-      end
-      order = { 'u' => [3, 2, 1], 'l' => [2, 1], 'straight' => [1] }.fetch(fit, [3, 2, 1])
-      best = nil
-      order.each do |size|
-        pool = candidates.select { |c| c[:size] == size && c[:shortest] >= MIN_WALL }
-        next if pool.empty?
-
-        best = pool.max_by { |c| c[:total] }
-        break
-      end
-      best ||= candidates.select { |c| c[:size] == 1 }.max_by { |c| c[:total] }
-      return [] unless best
-
-      group = best[:walls]
-      [{ layout: LAYOUTS[group.length - 1], origin: group.first[:from], dir: group.first[:dir], lengths: group.map { |wall| wall[:length].round(1) } }]
-    end
-
-    # Everything from the segments: { pieces: [...], notes: [...] }. `fit`: one of FITS other than 'all': only the layout that fits the floor plan best.
-    def self.layout(segments, eye: nil, flip: false, fit: nil)
+    # Everything from the segments: { pieces: [...], notes: [...] }.
+    def self.layout(segments, eye: nil, flip: false)
       pieces = []
       notes = []
-      all_runs = []
       chains(segments).each do |chain|
         if chain[:points].length < 2
           notes << 'A selected edge is too short to be a wall.'
           next
         end
         chain = oriented(chain, eye, flip)
-        runs(walls(chain[:points], chain[:closed]), chain[:closed]).each { |run| fit && fit != 'all' ? all_runs << run : pieces.concat(pieces(run)) }
+        runs(walls(chain[:points], chain[:closed]), chain[:closed]).each { |run| pieces.concat(pieces(run)) }
       end
-      pieces = fit_pieces(all_runs, fit) if fit && fit != 'all'
       notes << 'Some walls are too short to be built.' if pieces.empty? && !segments.empty?
       { pieces: pieces, notes: notes }
     end
@@ -253,9 +216,9 @@ module KitchenCabinetMaster
       if replace && segments.empty?
         pieces = stored_pieces(model)
       else
-        return Response.fail('Select the path first: the edges that are the walls (the backs of the units stand against them), or the face of the room (the floor plan).') if segments.empty?
+        return Response.fail('Select the path first: the edges that are the walls (the backs of the units stand against them).') if segments.empty?
 
-        laid = layout(segments, eye: eye_of(model), flip: raw['flip'] == true, fit: FITS.include?(raw['fit'].to_s) ? raw['fit'] : nil)
+        laid = layout(segments, eye: eye_of(model), flip: raw['flip'] == true)
         pieces = laid[:pieces]
         notes += laid[:notes]
       end
@@ -309,7 +272,7 @@ module KitchenCabinetMaster
 
       SelectionManager.push_selection(model)
       described = built_plans.map { |_, plan| KitchenPlanner.describe(plan) }
-      message = "Kitchen designed #{raw['fit'] ? 'from the floor plan' : 'on the path'}, #{built_plans.length} run#{'s' unless built_plans.length == 1}: #{described.join('; ')}."
+      message = "Kitchen designed on the path, #{built_plans.length} run#{'s' unless built_plans.length == 1}: #{described.join('; ')}."
       message += " Toe kicks: #{parts[:toe_kicks]}." if raw['toe_kick'].is_a?(Hash)
       message += " Side panels: #{parts[:end_panels]}." if raw['end_panel'].is_a?(Hash)
       notes += parts[:notes]
