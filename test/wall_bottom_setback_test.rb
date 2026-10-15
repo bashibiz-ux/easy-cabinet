@@ -25,8 +25,9 @@ class WallBottomSetbackTest < Minitest::Test
     assert_equal 45.0, given['loft_setback']
   end
 
-  def test_an_empty_loft_setback_is_the_standard_one
-    assert_equal WallBottomManager::DEFAULT_SETBACK, params({})['loft_setback']
+  def test_an_empty_loft_setback_is_flush_with_the_front
+    assert_equal 0.0, params({})['loft_setback']
+    assert_equal 20.0, params({})['setback']
   end
 
   def test_a_panel_remembers_both

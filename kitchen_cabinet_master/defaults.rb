@@ -209,7 +209,7 @@ module KitchenCabinetMaster
       'blind_width' => 0.0,          # a blind corner: how much of the width is the blind (closed) part
       'show_cabinet_names' => false, # the name flat on the cabinet top (a tick in Visibility)
       'hide_tall_handles' => false, # tall units' handles hidden (a tick in Visibility)
-      'hide_loft_handles' => false, # lofts' handles hidden (a tick in Visibility)
+      'hide_loft_handles' => true, # lofts' handles hidden (a tick in Visibility): off to begin with
       'hide_base_handles' => false, # base units' handles hidden (a tick in Visibility)
       'hide_wall_handles' => false, # wall units' handles hidden (a tick in Visibility)
       'show_wall_opening_direction' => false, # a wall unit's plan line on the floor has its own tick

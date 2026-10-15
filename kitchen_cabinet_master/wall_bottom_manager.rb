@@ -13,6 +13,7 @@ module KitchenCabinetMaster
     MAX_THICKNESS = 50.0
     DEFAULT_LENGTH = 2000.0 # each piece, laid end to end along the run (0 = one piece for the whole run)
     DEFAULT_SETBACK = 20.0  # the panel stops this far short of the carcass front
+    DEFAULT_LOFT_SETBACK = 0.0 # (under a loft: flush with its front)
 
     def self.perform(action, raw)
       case action
@@ -162,7 +163,7 @@ module KitchenCabinetMaster
       { 'thickness' => thickness.positive? ? thickness : DEFAULT_THICKNESS,
         'length' => stored['wall_bottom_length'].to_f, 'depth' => stored['wall_bottom_depth'].to_f,
         'setback' => stored['wall_bottom_setback'].nil? ? DEFAULT_SETBACK : stored['wall_bottom_setback'].to_f,
-        'loft_setback' => stored['wall_bottom_loft_setback'].nil? ? DEFAULT_SETBACK : stored['wall_bottom_loft_setback'].to_f,
+        'loft_setback' => stored['wall_bottom_loft_setback'].nil? ? DEFAULT_LOFT_SETBACK : stored['wall_bottom_loft_setback'].to_f,
         'material' => stored['wall_bottom_material'].to_s.empty? ? Defaults::SAME_AS_DOOR : stored['wall_bottom_material'] }
     end
 
@@ -205,7 +206,7 @@ module KitchenCabinetMaster
       values = {}
       limits.each do |key, (label, min, max)|
         value = number.call(key, { 'wall_bottom_thickness' => DEFAULT_THICKNESS, 'wall_bottom_length' => DEFAULT_LENGTH, 'wall_bottom_depth' => 0.0,
-                                   'wall_bottom_setback' => DEFAULT_SETBACK, 'wall_bottom_loft_setback' => DEFAULT_SETBACK }[key])
+                                   'wall_bottom_setback' => DEFAULT_SETBACK, 'wall_bottom_loft_setback' => DEFAULT_LOFT_SETBACK }[key])
         if value.nil? || value < min || value > max
           return [nil, { 'field' => key, 'message' => "#{label} must be between #{format('%g', min)} and #{format('%g', max)} mm." }]
         end

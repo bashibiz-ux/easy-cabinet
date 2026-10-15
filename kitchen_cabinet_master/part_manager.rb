@@ -282,6 +282,7 @@ module KitchenCabinetMaster
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
       top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner # (an end panel only, never one between two units: over the loft above the unit, up to the ceiling)
+      top += ceiling_filler_height(model) if truthy?(raw['loft_to_filler']) && !inner && PlacementManager.loft_item?(target) # (the side panel of a loft goes up to the top of the ceiling filler)
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
@@ -1199,7 +1200,7 @@ module KitchenCabinetMaster
         item = KitchenPlanner::Item.new(category: 'wall', type: type, width: stored['width'].to_f, kind: :loft)
         t = unit.transformation
         override = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, level.mm - t.origin.z)) * t
-        panel = stored.merge('custom_overrides' => {}, 'hide_loft_handles' => model.get_attribute(dictionary, 'hide_loft_handles', false) == true)
+        panel = stored.merge('custom_overrides' => {}, 'hide_loft_handles' => model.get_attribute(dictionary, 'hide_loft_handles', true) != false)
     loft = KitchenManager.send(:build_unit, model, panel, stored['catalog_id'], item, override)
         AttributeManager.write(loft, 'loft_over' => id, 'auto_loft' => true)
         height = values['height'].to_f
