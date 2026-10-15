@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.47.0';
+  const APP_VERSION = '1.48.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -626,7 +626,7 @@
     if (action === 'apply_wall_bottom') return 'wall_bottom';
     if (action === 'get_cut_list' || action === 'export_cut_list') return 'cutlist';
     if (action === 'insert') return categoryKind();
-    if (action === 'insert_at_point') return 'cabinet'; // (the cabinet of the panel, put where you click)
+    if (action === 'insert_at_point' || action === 'insert_on_path') return 'cabinet'; // (the cabinet of the panel, put where you click)
     if (action === 'insert_exposed_side_panels') return 'end_panel';
     if (action === 'update') return state.selectedKind || categoryKind();
     if (action === 'rotate') return 'rotate';
@@ -2176,6 +2176,7 @@ if (details.length) {
     try {
       const kind = formKind(action);
       const payload = kind ? COLLECTORS[kind]() : (CATALOG_PAYLOAD[action] ? CATALOG_PAYLOAD[action]() : {});
+      if (action === 'insert_on_path') payload.flip = $('kitchenPathFlip').checked; // (the tick of the Auto Kitchen card turns the cabinets round)
       if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
       const res = await call(serverAction(action), payload);
       if (res.ok) {

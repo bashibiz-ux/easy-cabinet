@@ -14,6 +14,7 @@ module KitchenCabinetMaster
       case action
       when 'insert' then insert(raw)
       when 'insert_at_point' then insert_at_point(raw)
+      when 'insert_on_path' then insert_on_path(raw)
       when 'update' then update(raw)
       when 'duplicate' then duplicate
       when 'delete' then delete(raw)
@@ -91,6 +92,48 @@ module KitchenCabinetMaster
       PlaceTool.start(raw)
     end
     private_class_method :insert_at_point
+
+    # "Insert on Path": the cabinet of the panel, again and again along the selected edges (the walls: the backs stand against them, the fronts face the side
+    # you are looking from; "Units on the other side of the path" turns them round), as many as fit on each wall, from its start. One Undo step.
+    def self.insert_on_path(raw)
+      raw = {} unless raw.is_a?(Hash)
+      entry = CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type'])
+      return Response.fail('A model of your own is inserted after the selected cabinet: use Insert.') if entry && entry['component']
+
+      params, failure = prepare(raw)
+      return failure if failure
+      return Response.fail('A corner unit is inserted with Insert: it turns the row by itself.') if CabinetLayout.corner?(params)
+
+      model = Sketchup.active_model
+      segments, notes = PathKitchen.selected_segments(model)
+      return Response.fail('Select the path first: the edges that are the walls (the backs of the cabinets stand against them).') if segments.empty?
+
+      laid = PathKitchen.placements(segments, params['width'].to_f, params['depth'].to_f, eye: PathKitchen.eye_of(model), flip: raw['flip'] == true)
+      return Response.fail((laid[:notes] + notes).uniq.join(' ')) if laid[:places].empty?
+
+      done = 0
+      problems = []
+      @batch = true
+      model.start_operation('Insert Cabinets on Path', true)
+      begin
+        laid[:places].each do |at|
+          answer = insert(raw.merge('place_at' => at))
+          answer['ok'] ? done += 1 : problems << answer['message']
+        end
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @batch = false
+      end
+      return Response.fail(problems.first) if done.zero?
+
+      message = "#{done} cabinet#{'s' unless done == 1} inserted along the path."
+      message += " #{problems.length} could not be inserted (#{problems.first})." unless problems.empty?
+      Response.ok("#{message} #{notes.uniq.join(' ')}".strip)
+    end
+    private_class_method :insert_on_path
 
     # The side panels and wall fillers that follow the cabinets are taken away before a cabinet is put in the row, so that it stands against the
     # last one and not against its panel; they are placed again, at the new end of the row, when the action is done (see LiveParts.refresh).

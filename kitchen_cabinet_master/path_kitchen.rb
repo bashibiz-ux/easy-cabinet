@@ -167,6 +167,36 @@ module KitchenCabinetMaster
       { pieces: pieces, notes: notes }
     end
 
+    # Where cabinets of one size stand along the walls of a path (Insert on Path): [{ 'x', 'y', 'out_x', 'out_y' }] in mm, one for each whole cabinet that fits
+    # on a wall, from the start of the wall, its back against it. A wall that follows an inner corner starts `depth` from it (the room the cabinets of the
+    # wall before take), and so does the end of the last wall of a closed loop. { places:, notes: }.
+    def self.placements(segments, width, depth, eye: nil, flip: false)
+      places = []
+      notes = []
+      return { places: places, notes: ['A cabinet needs a width.'] } unless width.positive?
+
+      chains(segments).each do |chain|
+        if chain[:points].length < 2
+          notes << 'A selected edge is too short to be a wall.'
+          next
+        end
+        chain = oriented(chain, eye, flip)
+        runs(walls(chain[:points], chain[:closed]), chain[:closed]).each do |run|
+          count = run[:walls].length
+          run[:walls].each_with_index do |wall, index|
+            start = index.positive? ? depth : 0.0
+            stop = wall[:length] - (run[:loop] && index == count - 1 ? depth : 0.0)
+            ((stop - start + 0.5) / width).floor.times do |i|
+              along = start + (i * width)
+              places << { 'x' => wall[:from][0] + (wall[:dir][0] * along), 'y' => wall[:from][1] + (wall[:dir][1] * along), 'out_x' => wall[:dir][1], 'out_y' => -wall[:dir][0] }
+            end
+          end
+        end
+      end
+      notes << 'No wall of the path is long enough for a cabinet of that width.' if places.empty?
+      { places: places, notes: notes }
+    end
+
     # ---- SketchUp ----------------------------------------------------------------
 
     def self.perform(raw)

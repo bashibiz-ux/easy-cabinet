@@ -69,4 +69,36 @@ class PathKitchenTest < Minitest::Test
     assert_equal ['u'], pieces.map { |p| p[:layout] }
     assert_equal [3000.0, 2400.0, 3000.0], pieces.first[:lengths]
   end
+  # ---- Insert on Path ---------------------------------------------------------------------
+
+  def test_as_many_whole_cabinets_as_fit_stand_along_a_wall_from_its_start
+    laid = PK.placements([[[0, 0], [2500, 0]]], 600.0, 560.0, eye: [1000, -3000])
+    assert_equal 4, laid[:places].length
+    assert_equal [0.0, 600.0, 1200.0, 1800.0], laid[:places].map { |p| p['x'].round(1) }
+    assert_equal [0.0, -1.0], [laid[:places].first['out_x'], laid[:places].first['out_y']], 'the front faces the side the eye is on'
+  end
+
+  def test_the_other_side_of_the_path
+    laid = PK.placements([[[0, 0], [1300, 0]]], 600.0, 560.0, eye: [500, -3000], flip: true)
+    assert_equal [0.0, 1.0], [laid[:places].first['out_x'], laid[:places].first['out_y']]
+  end
+
+  def test_the_wall_after_an_inner_corner_starts_a_cabinet_depth_from_it
+    segments = [[[0, 0], [3000, 0]], [[3000, 0], [3000, 2400]]]
+    places = PK.placements(segments, 600.0, 560.0, eye: [1500, 1000])[:places]
+    along_y0 = places.select { |p| p['y'].abs < 0.01 } # (the path runs from the far wall: the wall at y = 0 is the second one)
+    assert_in_delta 3000.0 - 560.0, along_y0.map { |p| p['x'] }.max, 0.01
+  end
+
+  def test_a_closed_room_stops_the_last_wall_a_depth_short_of_the_first
+    places = PK.placements(rectangle(3000.0, 3000.0), 600.0, 560.0)[:places]
+    refute_empty places
+    assert_equal places.length, places.map { |p| [p['x'].round(1), p['y'].round(1)] }.uniq.length, 'no two cabinets in one place'
+  end
+
+  def test_a_wall_too_short_gives_nothing_and_a_note
+    laid = PK.placements([[[0, 0], [400, 0]]], 600.0, 560.0)
+    assert_empty laid[:places]
+    refute_empty laid[:notes]
+  end
 end
