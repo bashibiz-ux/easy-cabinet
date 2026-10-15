@@ -16,7 +16,7 @@ module KitchenCabinetMaster
     def self.perform(action, raw)
       case action
       when 'design_kitchen' then design(raw)
-      when 'design_path_kitchen' then PathKitchen.perform(raw)
+      when 'design_path_kitchen', 'design_plan_kitchen' then PathKitchen.perform(raw)
       when 'design_kitchen_options' then design((raw.is_a?(Hash) ? raw : {}).merge('options' => true))
       else Response.fail("Unknown action \"#{action}\".")
       end

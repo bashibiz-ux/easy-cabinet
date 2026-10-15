@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.45.9';
+  const APP_VERSION = '1.46.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -646,7 +646,8 @@
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
     add_appliance: () => ({ kind: $('applianceKind').value, front: $('applianceFront').value }),
     remove_appliance: () => ({ kind: $('applianceKind').value }),
-    design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
+    design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked }),
+    design_plan_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked, fit: $('kitchenPlanFit').value })
   };
 
   // A front design chosen from the list goes on the selected cabinets (every cabinet when none is selected).
@@ -2184,7 +2185,7 @@ if (details.length) {
         if (action === 'add_appliance' || action === 'remove_appliance') appliancesChanged(res.data || {});
         if (action === 'reset_presets') location.reload(); // starts again from the standard values
         if (action === 'design_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = false; } // from here on a change of the answers builds it again
-        if (action === 'design_path_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = true; } // (along the path that was selected)
+        if (action === 'design_path_kitchen' || action === 'design_plan_kitchen') { state.kitchenDesigned = true; state.kitchenOnPath = true; } // (along the path that was selected)
         if (action === 'design_kitchen_options') state.kitchenDesigned = false;
         if (action === 'insert' && (kind === 'filler' || kind === 'end_panel')) resetFollowing();
       } else {

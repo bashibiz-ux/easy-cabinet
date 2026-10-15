@@ -297,9 +297,20 @@
           <div class="input"><select id="kitchenVariation"><option value="">Standard (the fridge and oven answers above)</option></select></div>
         </label>
         <label class="check"><input type="checkbox" id="kitchenPathFlip"><span>Units on the other side of the path</span></label>
+        <label class="field">
+          <span class="label">Floor Plan Layout</span>
+          <div class="input"><select id="kitchenPlanFit">
+            <option value="auto">Best fit (U, then L, then one wall)</option>
+            <option value="u">U shape</option>
+            <option value="l">L shape</option>
+            <option value="straight">One wall</option>
+            <option value="all">Every wall of the plan</option>
+          </select></div>
+        </label>
         <div class="btn-row">
           <button class="btn primary" type="button" id="designKitchen" data-action="design_kitchen" title="Build the whole kitchen: one Undo step">Design Kitchen</button>
           <button class="btn" type="button" id="designPathKitchen" data-action="design_path_kitchen" title="Select the edges that are the walls (the backs of the units stand against them) and press this: the kitchen is built along them with the answers above. Edges that join up are one run, with L corners; separate edges are separate runs. The units stand on the side you are looking from (inside a closed shape). One Undo step.">Design on Selected Path</button>
+          <button class="btn" type="button" id="designPlanKitchen" data-action="design_plan_kitchen" title="Select the floor plan (the face of the room, or the edges round it) and press this: the walls that fit best for the Floor Plan Layout are picked (walls shorter than 1800 mm are left out) and the kitchen is built along them with the answers above. The units stand inside the room. One Undo step.">Design from Floor Plan</button>
         </div>
       </div>
     </section>    <!-- Handle -->

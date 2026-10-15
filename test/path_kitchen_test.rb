@@ -69,4 +69,33 @@ class PathKitchenTest < Minitest::Test
     assert_equal ['u'], pieces.map { |p| p[:layout] }
     assert_equal [3000.0, 2400.0, 3000.0], pieces.first[:lengths]
   end
+  # ---- the floor plan: the best fit ------------------------------------------------------
+
+  def test_the_floor_plan_best_fit_is_one_u_on_the_three_longest_walls_in_a_row
+    pieces = PK.layout(rectangle, fit: 'auto')[:pieces]
+    assert_equal ['u'], pieces.map { |p| p[:layout] }
+    assert_equal [4000.0, 3000.0, 4000.0], pieces.first[:lengths]
+  end
+
+  def test_an_l_or_one_wall_can_be_asked_for
+    assert_equal [[4000.0, 3000.0]], PK.layout(rectangle, fit: 'l')[:pieces].map { |p| p[:lengths] }
+    assert_equal [[4000.0]], PK.layout(rectangle, fit: 'straight')[:pieces].map { |p| p[:lengths] }
+  end
+
+  def test_walls_that_are_too_short_for_a_u_give_an_l_then_a_straight
+    narrow = rectangle(4000.0, 1500.0)
+    assert_equal ['straight'], PK.layout(narrow, fit: 'auto')[:pieces].map { |p| p[:layout] }, 'only the 4000 walls are long enough, and they are not next to one another'
+    assert_equal [[4000.0]], PK.layout(narrow, fit: 'u')[:pieces].map { |p| p[:lengths] }, 'a U that does not fit gives what does'
+  end
+
+  def test_every_wall_keeps_the_old_way
+    assert_equal %w[u straight], PK.layout(rectangle, fit: 'all')[:pieces].map { |p| p[:layout] }
+  end
+
+  def test_the_units_stand_inside_the_room_with_the_best_fit_too
+    piece = PK.layout(rectangle, fit: 'straight')[:pieces].first
+    centre = [2000.0, 1500.0] # the room is on the right of the way the row runs
+    assert_operator PK.cross(piece[:dir], PK.vec(piece[:origin], centre)), :<, 0
+    assert_in_delta 1.0, Math.hypot(*piece[:dir]), 1e-9
+  end
 end
