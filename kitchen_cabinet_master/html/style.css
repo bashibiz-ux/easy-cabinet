@@ -378,6 +378,8 @@ input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline
 input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 
 .switch-row { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 10px; }
+.switch-row > .group-title { margin: 10px 0 0; }
+.switch-row > .group-title:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .checks { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; } /* the switches are always one below another */
 .checks .check { width: auto; }
 
