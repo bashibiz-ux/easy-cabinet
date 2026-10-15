@@ -476,4 +476,24 @@ class PlacementTest < Minitest::Test
     taller = [loft.get_attribute('kcm', 'envelope_depth'), 600.0, top - loft.transformation.origin.z.to_mm + 200.0]
     refute PlacementManager.collides?(@entities, loft.transformation, taller, exclude: loft), 'the loft 200 mm taller does not run into its filler'
   end
+  def test_a_clicked_spot_is_where_the_cabinet_goes_whatever_stands_in_the_model
+    insert('base', 600.0)
+    PlacementManager.place_at = { 'x' => 3000.0, 'y' => 1200.0, 'out_x' => 0.0, 'out_y' => -1.0 }
+    cabinet = insert('base', 800.0)
+    PlacementManager.place_at = nil
+    origin = cabinet.transformation.origin
+    assert_in_delta 3000.0, origin.x, 0.01
+    assert_in_delta 1200.0, origin.y, 0.01
+    assert_in_delta 0.0, origin.z, 0.01, 'a base unit stands on the floor'
+    assert_in_delta(-1.0, cabinet.transformation.xaxis.y, 1e-9, 'its front faces the way that was asked')
+  end
+
+  def test_the_next_cabinet_carries_on_from_the_one_that_was_clicked
+    PlacementManager.place_at = { 'x' => 3000.0, 'y' => 1200.0, 'out_x' => 1.0, 'out_y' => 0.0 }
+    first = insert('base', 600.0)
+    PlacementManager.place_at = nil
+    second = insert('base', 600.0)
+    assert_in_delta first.transformation.origin.x, second.transformation.origin.x, 0.01
+    assert_in_delta 1800.0, second.transformation.origin.y, 0.01
+  end
 end

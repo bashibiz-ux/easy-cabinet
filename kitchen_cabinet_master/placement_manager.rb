@@ -31,8 +31,24 @@ module KitchenCabinetMaster
       attr_reader :blind_gap
     end
 
+    # Where the next cabinet goes when a spot was clicked (Insert at Point): { 'x' =>, 'y' =>, 'out_x' =>, 'out_y' => } (mm; `out` is the way its front
+    # faces); nil: after the selected or last cabinet, as usual.
+    class << self
+      attr_accessor :place_at
+    end
+
+    # The cabinet at a clicked spot: its origin there, its front along `out`, its row along z x out; a wall unit at the height it would hang at.
+    def self.target_at(model, params, at)
+      out = Geom::Vector3d.new(at['out_x'].to_f, at['out_y'].to_f, 0)
+      along = Geom::Vector3d.new(-out.y, out.x, 0)
+      z = params['cabinet_category'].to_s == 'wall' ? wall_origin_z(model, params) : 0.0
+      [model.active_entities, Geom::Transformation.axes(Geom::Point3d.new(at['x'].to_f.mm, at['y'].to_f.mm, z.mm), out, along, Geom::Vector3d.new(0, 0, 1))]
+    end
+    private_class_method :target_at
+
     def self.target_for_new(model, params)
       @blind_gap = nil
+      return target_at(model, params, place_at) if place_at.is_a?(Hash)
       corner = CabinetLayout.corner?(params)
       target_row(model, params, CabinetLayout.envelope(params),
                  turn: corner ? CORNER_TURN_DEGREES : nil, own_width: corner ? CabinetLayout.envelope(params)[0] : params['width'].to_f,

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.46.1';
+  const APP_VERSION = '1.47.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -275,6 +275,8 @@
       setBadge(null);
     } else if (name === 'splash_height') {
       if (document.activeElement !== $('wtSplash') && data.height > 0) setText('wtSplash', data.height); // (the height the back splash has now: it follows the wall units)
+    } else if (name === 'info') {
+      setStatus('ok', data.message || '');
     } else if (name === 'notice') {
       setStatus('error', data.message || '');
     } else if (name === 'snap') {
@@ -624,6 +626,7 @@
     if (action === 'apply_wall_bottom') return 'wall_bottom';
     if (action === 'get_cut_list' || action === 'export_cut_list') return 'cutlist';
     if (action === 'insert') return categoryKind();
+    if (action === 'insert_at_point') return 'cabinet'; // (the cabinet of the panel, put where you click)
     if (action === 'insert_exposed_side_panels') return 'end_panel';
     if (action === 'update') return state.selectedKind || categoryKind();
     if (action === 'rotate') return 'rotate';

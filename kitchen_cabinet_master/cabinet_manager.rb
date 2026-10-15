@@ -13,6 +13,7 @@ module KitchenCabinetMaster
     def self.perform(action, raw)
       case action
       when 'insert' then insert(raw)
+      when 'insert_at_point' then insert_at_point(raw)
       when 'update' then update(raw)
       when 'duplicate' then duplicate
       when 'delete' then delete(raw)
@@ -55,7 +56,12 @@ module KitchenCabinetMaster
           clear_live_parts(model)
           params['cabinet_id'] = AttributeManager.next_cabinet_id(model)
           params['sequence'] = AttributeManager.next_sequence(model)
-          entities, transformation = PlacementManager.target_for_new(model, params)
+          PlacementManager.place_at = raw['place_at'] if raw.is_a?(Hash) # (a spot that was clicked: Insert at Point)
+          entities, transformation = begin
+            PlacementManager.target_for_new(model, params)
+          ensure
+            PlacementManager.place_at = nil
+          end
           params['cabinet_name'] = NamingManager.unique_name(entities, NamingManager.base_name(params))
           built = CabinetGenerator.build(model, entities, params, transformation)
           AttributeManager.write(built, 'loft_over' => fit['unit']) if fit # (the unit it is over: the next loft goes over the next one)
@@ -73,6 +79,18 @@ module KitchenCabinetMaster
       )
     end
     private_class_method :insert
+
+    # "Insert at Point": checks the cabinet, then waits for a click in the model (see PlaceTool), which inserts it there.
+    def self.insert_at_point(raw)
+      entry = raw.is_a?(Hash) ? CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type']) : nil
+      return Response.fail('A model of your own is inserted after the selected cabinet: use Insert.') if entry && entry['component']
+
+      _params, failure = prepare(raw)
+      return failure if failure
+
+      PlaceTool.start(raw)
+    end
+    private_class_method :insert_at_point
 
     # The side panels and wall fillers that follow the cabinets are taken away before a cabinet is put in the row, so that it stands against the
     # last one and not against its panel; they are placed again, at the new end of the row, when the action is done (see LiveParts.refresh).
