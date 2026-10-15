@@ -1266,7 +1266,8 @@ module KitchenCabinetMaster
         current = []
         group.sort_by { |loft| along.call(loft) }.each do |loft|
           reach = current.empty? ? nil : along.call(current.last) + AttributeManager.read(current.last)['width'].to_f
-          if current.empty? || along.call(loft) - reach <= 3.0 || (along.call(loft) - reach <= 80.0 && panel_between.call(key, reach, along.call(loft)))
+          same_front = current.empty? || (door_front_of(current.last, AttributeManager.read(current.last)) - door_front_of(loft, AttributeManager.read(loft))).abs < 0.5 # (lofts of another depth have their own filler: its face follows their doors)
+          if current.empty? || (same_front && (along.call(loft) - reach <= 3.0 || (along.call(loft) - reach <= 80.0 && panel_between.call(key, reach, along.call(loft)))))
             current << loft
           else
             rows << current

@@ -39,4 +39,16 @@ class WallBottomSetbackTest < Minitest::Test
     answer = WallBottomManager.send(:read_params, 'wall_bottom_loft_setback' => '600')
     assert_equal 'wall_bottom_loft_setback', answer.last['field']
   end
+  def item(x, depth, width: 600.0, loft: false) = { x: x, y: 0.0, hx: 1.0, hy: 0.0, width: width, depth: depth, loft: loft }
+
+  def test_a_run_of_units_of_one_depth_is_one_stretch
+    run = { items: [item(0.0, 320.0), item(600.0, 320.0)], length: 1200.0 }
+    assert_equal [[0.0, 1200.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
+  end
+
+  def test_a_change_of_depth_along_the_run_starts_a_new_stretch_with_its_own_depth
+    run = { items: [item(0.0, 320.0), item(600.0, 320.0), item(1200.0, 580.0)], length: 1800.0 }
+    stretches = WallBottomManager.send(:segments_of, run)
+    assert_equal [[0.0, 1200.0, 320.0], [1200.0, 1800.0, 580.0]], stretches.map { |from, to, unit| [from, to, unit[:depth]] }
+  end
 end

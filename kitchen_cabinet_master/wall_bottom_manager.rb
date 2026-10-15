@@ -228,27 +228,49 @@ module KitchenCabinetMaster
     def self.build(model, run, params)
       thickness = params['thickness']
       first = run[:items].first
-      depth = params['depth'].positive? ? params['depth'] : [run[:depth] - (first[:loft] ? params['loft_setback'] : params['setback']), 10.0].max # (the bottom panel under a loft has a front setback of its own)
       material = material_for(model, params['material'] == Defaults::SAME_AS_DOOR ? first[:door_material] : params['material'])
 
-      spans_of(run, params).each do |from, to|
-        placed = first[:ref].transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, from.mm, 0))
-        lift = (run[:top] - thickness).mm - placed.origin.z
-        placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
+      segments_of(run).each do |seg_from, seg_to, item| # (a panel is as deep as the units it is under: where the depth changes along the run, so does the panel)
+        depth = params['depth'].positive? ? params['depth'] : [item[:depth] - (item[:loft] ? params['loft_setback'] : params['setback']), 10.0].max
+        Worktop.pieces(seg_to - seg_from, 'worktop_piece' => params['length'], 'worktop_cuts' => '').each do |from, to|
+          placed = first[:ref].transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, (seg_from + from).mm, 0))
+          lift = (run[:top] - thickness).mm - placed.origin.z
+          placed = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, lift)) * placed
 
-        extent = [depth, to - from, thickness]
-        stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'wall_bottom_length' => params['length'],
-                   'wall_bottom_depth' => params['depth'], 'wall_bottom_setback' => params['setback'], 'wall_bottom_loft_setback' => params['loft_setback'],
-                   'wall_bottom_material' => params['material'], 'run_key' => run_key(run), 'width' => extent[1], 'depth' => extent[0], 'material' => material }
-        stored['part_id'] = AttributeManager.next_part_id(model)
-        stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
-        layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)
-        root = PartGenerator.build(model, model.entities, stored, placed, layout)
-        TagManager.assign(model, root, TagManager::WALL)
+          extent = [depth, to - from, thickness]
+          stored = { 'part_kind' => KIND, 'wall_bottom_thickness' => thickness, 'wall_bottom_length' => params['length'],
+                     'wall_bottom_depth' => params['depth'], 'wall_bottom_setback' => params['setback'], 'wall_bottom_loft_setback' => params['loft_setback'],
+                     'wall_bottom_material' => params['material'], 'run_key' => run_key(run), 'width' => extent[1], 'depth' => extent[0], 'material' => material }
+          stored['part_id'] = AttributeManager.next_part_id(model)
+          stored['part_name'] = "Wall Bottom Panel #{stored['part_id'].to_s.split('_').last.to_i}"
+          layout = PartLayout.worktop(extent, nil, 'Wall Bottom Panel', 0.0)
+          root = PartGenerator.build(model, model.entities, stored, placed, layout)
+          TagManager.assign(model, root, TagManager::WALL)
+        end
       end
     end
     private_class_method :build
-    # The carcass material of the units above it, when the model has it.
+
+    # The stretches of a run [[from, to, item]] (mm along it from its first unit): consecutive units of one depth (and kind) are one stretch.
+    def self.segments_of(run)
+      first = run[:items].first
+      marks = run[:items].map { |item| [((item[:x] - first[:x]) * first[:hx]) + ((item[:y] - first[:y]) * first[:hy]), item] }.sort_by(&:first)
+      marks[0][0] = 0.0
+      stretches = []
+      marks.each_with_index do |(start, item), index|
+        stop = index + 1 < marks.length ? marks[index + 1][0] : run[:length]
+        next if stop - start < 0.5
+
+        last = stretches.last
+        if last && (last[2][:depth] - item[:depth]).abs < 0.5 && last[2][:loft] == item[:loft]
+          last[1] = stop
+        else
+          stretches << [start, stop, item]
+        end
+      end
+      stretches.empty? ? [[0.0, run[:length], first]] : stretches
+    end
+    private_class_method :segments_of    # The carcass material of the units above it, when the model has it.
     def self.material_for(model, name)
       MaterialManager.available?(model, name) ? name : Defaults::PARAMS['carcass_material']
     end
