@@ -101,4 +101,26 @@ class PathKitchenTest < Minitest::Test
     assert_empty laid[:places]
     refute_empty laid[:notes]
   end
+  def test_a_corner_unit_goes_into_an_inner_corner_and_the_walls_make_room_for_it
+    segments = [[[0, 0], [3000, 0]], [[3000, 0], [3000, 2400]]]
+    places = PK.placements(segments, 600.0, 560.0, eye: [1500, 1000], corner: 1000.0)[:places]
+    corners = places.select { |p| p['corner'] }
+    assert_equal 1, corners.length
+    assert_in_delta 3000.0, corners.first['x'], 0.01
+    assert_in_delta 1000.0, corners.first['y'], 0.01, 'the last 1000 mm of the first wall'
+    straight = places.reject { |p| p['corner'] }
+    assert_equal 2, straight.count { |p| p['x'].round == 3000 }, 'the first wall has 1400 mm left for the straight cabinets'
+    assert_equal 3, straight.count { |p| p['y'].round.zero? }, 'the second wall starts 1000 mm from the corner'
+    assert_in_delta 2000.0, straight.select { |p| p['y'].round.zero? }.map { |p| p['x'] }.max, 0.01
+  end
+
+  def test_a_closed_room_has_a_corner_unit_in_every_corner
+    places = PK.placements(rectangle(4000.0, 3000.0), 600.0, 560.0, corner: 1000.0)[:places]
+    assert_equal 4, places.count { |p| p['corner'] }
+  end
+
+  def test_no_corner_unit_for_a_single_wall_or_without_a_corner_width
+    assert_equal 0, PK.placements([[[0, 0], [3000, 0]]], 600.0, 560.0, corner: 1000.0)[:places].count { |p| p['corner'] }
+    assert_equal 0, PK.placements([[[0, 0], [3000, 0]], [[3000, 0], [3000, 2400]]], 600.0, 560.0, eye: [1500, 1000])[:places].count { |p| p['corner'] }
+  end
 end

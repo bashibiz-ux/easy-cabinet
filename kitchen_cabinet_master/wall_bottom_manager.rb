@@ -103,12 +103,35 @@ module KitchenCabinetMaster
       end
     end
 
-    # Every wall unit of the extension (not a model of your own).
+    # Whether the panels go under the lofts too (the switch in the Settings; on to begin with).
+    def self.under_lofts? = !defined?(LiveParts) || LiveParts.loft_bottom?
+
+    def self.loft?(stored) = stored['cabinet_type'].to_s.start_with?('wall_loft')
+
+    # Every wall unit of the extension (not a model of your own); the lofts only while the panels go under them.
     def self.wall_units(model)
       model.entities.grep(Sketchup::ComponentInstance).select do |item|
-        AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && AttributeManager.read(item)['cabinet_category'] == 'wall'
+        AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && AttributeManager.read(item)['cabinet_category'] == 'wall' && (under_lofts? || !loft?(AttributeManager.read(item)))
       end
     end
+
+    # The lofts whose carcass was lifted for a bottom panel stand on their carcass again (the panels under the lofts were switched off). Inside an operation.
+    def self.drop_loft_raise(model)
+      model.entities.grep(Sketchup::ComponentInstance).each do |item|
+        next unless AttributeManager.cabinet?(item)
+
+        stored = AttributeManager.read(item)
+        next unless loft?(stored) && stored['carcass_raise'].to_f.positive?
+
+        params, errors = CabinetManager.send(:restyle_params, model, stored, 'carcass_raise' => 0.0)
+        next if params.nil? || !errors.empty?
+
+        params['custom_overrides'] = ValidationManager.clean_overrides(stored['custom_overrides'])
+        params['cabinet_name'] = NamingManager.for_update(item, params)
+        CabinetGenerator.update(model, item, params)
+      end
+    end
+    private_class_method :drop_loft_raise
 
     # Raises the carcass bottom of every wall unit that is raised by less than `thickness`, to `thickness`. Inside an operation.
     # Returns [how many, the problems].
@@ -179,6 +202,7 @@ module KitchenCabinetMaster
 
         stored = AttributeManager.read(item)
         next unless stored && stored['cabinet_category'] == 'wall'
+        next if loft?(stored) && !under_lofts?
 
         raise_mm = stored['carcass_raise'].to_f
         next unless raise_mm.positive?

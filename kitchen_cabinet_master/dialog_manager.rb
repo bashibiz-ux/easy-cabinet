@@ -12,7 +12,7 @@ module KitchenCabinetMaster
     PREFERENCES_KEY = 'KitchenCabinetMaster.ControlPanel'
     CABINET_ACTIONS = %w[insert insert_at_point insert_on_path update duplicate delete toggle visibility rotate apply_all set_unit_sizes reset_unit_sizes add_appliance remove_appliance get_selection customize apply_front_design apply_glass_design save_to_catalog remove_from_catalog add_handle remove_handle].freeze
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks apply_ceiling_fillers update_placed update_part delete_part].freeze
-    LIVE_ACTIONS = %w[set_live_loft set_live_loft_follow set_live_ceiling_filler set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop].freeze
+    LIVE_ACTIONS = %w[set_live_loft set_live_loft_follow set_live_loft_bottom set_live_ceiling_filler set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
@@ -20,7 +20,7 @@ module KitchenCabinetMaster
     # After these the dimensions and side panels that are ticked in the Presets are drawn again (not after what only shows or hides things).
     # After these what was selected stays selected (with its new size or settings) until the user picks something else.
     KEEP_SELECTION = %w[toggle visibility update apply_all set_unit_sizes reset_unit_sizes apply_toe_kicks update_placed update_part apply_front_design apply_glass_design rotate customize
-                        set_live_loft set_live_loft_follow set_live_ceiling_filler set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop apply_worktop apply_wall_bottom].freeze
+                        set_live_loft set_live_loft_follow set_live_loft_bottom set_live_ceiling_filler set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop apply_worktop apply_wall_bottom].freeze
     REFRESHING = (CABINET_ACTIONS + PART_ACTIONS + WORKTOP_ACTIONS + KITCHEN_ACTIONS - %w[toggle visibility get_selection]).freeze
 
     class << self
@@ -216,6 +216,7 @@ module KitchenCabinetMaster
           'live_ceiling_filler' => LiveParts.ceiling_fillers?,
           'live_loft' => LiveParts.lofts?,
           'live_loft_follow' => LiveParts.loft_follow?,
+          'live_loft_bottom' => LiveParts.loft_bottom?,
           'live_wall_bottom' => LiveParts.wall_bottom?,
           'live_worktop' => LiveParts.worktop?,
           'categories'      => Defaults::CATEGORIES,

@@ -16,6 +16,7 @@ module KitchenCabinetMaster
     KEY_WORKTOP = 'live_worktop_on'
     KEY_LOFT = 'live_loft_on' # a loft over every wall and tall unit (see PartManager.sync_auto_lofts); off to begin with
     KEY_LOFT_FOLLOW = 'live_loft_follow_on' # each loft takes the width and depth of the unit under it (see PartManager.align_lofts); off to begin with
+    KEY_LOFT_BOTTOM = 'live_loft_bottom_on' # the wall unit bottom panel goes under the lofts too (on to begin with)
     KEY_CEILING = 'live_ceiling_filler_on' # the ceiling filler over every loft (see PartManager.sync_ceiling_fillers)
     VALUES = { KEY_LOFT => 'live_loft_values', KEY_CEILING => 'live_ceiling_values', KEY_TOE_KICKS => 'live_toe_values', KEY_WALL_BOTTOM => 'live_bottom_values', KEY_WORKTOP => 'live_worktop_values' }.freeze
     MADE = { KEY_WALL_BOTTOM => 'live_bottom_made', KEY_WORKTOP => 'live_worktop_made' }.freeze # (made by the tick: taken away when it is turned off)
@@ -48,6 +49,11 @@ module KitchenCabinetMaster
         model.set_attribute(DICTIONARY, KEY_LOFT_FOLLOW, on)
         refresh # (the lofts take the sizes of their units, or the common depth again)
         Response.ok(on ? 'Each loft follows the size of the unit under it.' : 'The lofts keep their own widths and the common depth.')
+      when 'set_live_loft_bottom'
+        model.set_attribute(DICTIONARY, KEY_LOFT_BOTTOM, on)
+        apply(model, 'Loft Bottom Panels') { WallBottomManager.send(:drop_loft_raise, model) unless on } # (the carcass of a loft comes down again by what its panel had lifted it)
+        sync_wall_bottom(model)
+        Response.ok(on ? 'The wall unit bottom panels go under the lofts too.' : 'No bottom panels under the lofts.')
       when 'set_live_ceiling_filler'
         keep(model, KEY_CEILING, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Ceiling Fillers") { sync_ceiling(model) }
@@ -124,6 +130,7 @@ module KitchenCabinetMaster
     def self.ceiling_fillers? = on?(KEY_CEILING)
     def self.lofts? = on?(KEY_LOFT, false)
     def self.loft_follow? = on?(KEY_LOFT_FOLLOW, false)
+    def self.loft_bottom? = on?(KEY_LOFT_BOTTOM, true)
 
     # The settings the ceiling fillers are drawn with (height, thickness, material), as sent by the panel.
     def self.ceiling_values(model = Sketchup.active_model) = values_of(model, KEY_CEILING)

@@ -108,7 +108,10 @@ module KitchenCabinetMaster
       segments, notes = PathKitchen.selected_segments(model)
       return Response.fail('Select the path first: the edges that are the walls (the backs of the cabinets stand against them).') if segments.empty?
 
-      laid = PathKitchen.placements(segments, params['width'].to_f, params['depth'].to_f, eye: PathKitchen.eye_of(model), flip: raw['flip'] == true)
+      corner_type = { 'base' => 'base_corner_l', 'wall' => 'wall_corner_l', 'tall' => 'tall_corner_l' }[params['cabinet_category'].to_s]
+      corner_entry = corner_type && !(entry && entry['loft']) ? CatalogManager.cabinet(raw['catalog_id'], params['cabinet_category'], corner_type) : nil # (an L corner unit of the same kind goes into the inner corners)
+      corner_width = corner_entry ? corner_entry.dig('defaults', 'width').to_f : 0.0
+      laid = PathKitchen.placements(segments, params['width'].to_f, params['depth'].to_f, eye: PathKitchen.eye_of(model), flip: raw['flip'] == true, corner: corner_width.positive? ? corner_width : nil)
       return Response.fail((laid[:notes] + notes).uniq.join(' ')) if laid[:places].empty?
 
       done = 0
@@ -117,6 +120,10 @@ module KitchenCabinetMaster
       model.start_operation('Insert Cabinets on Path', true)
       begin
         laid[:places].each do |at|
+          if at['corner']
+            insert_corner(model, raw, params, corner_type, corner_width, at) ? done += 1 : problems << "the corner unit (#{corner_entry['name']})"
+            next
+          end
           answer = insert(raw.merge('place_at' => at))
           answer['ok'] ? done += 1 : problems << answer['message']
         end
@@ -134,6 +141,22 @@ module KitchenCabinetMaster
       Response.ok("#{message} #{notes.uniq.join(' ')}".strip)
     end
     private_class_method :insert_on_path
+
+    # An L corner unit of the kind of the cabinet of the panel (made like the ones of the Auto Kitchen) in the corner at `at`.
+    def self.insert_corner(model, raw, params, type, width, at)
+      out = Geom::Vector3d.new(at['out_x'], at['out_y'], 0)
+      along = Geom::Vector3d.new(-out.y, out.x, 0)
+      height = CatalogManager.cabinet(raw['catalog_id'], params['cabinet_category'], type).dig('defaults', 'height').to_f
+      z = params['cabinet_category'].to_s == 'wall' ? PlacementManager.wall_origin_z(model, { 'height' => height }) : 0.0
+      frame = Geom::Transformation.axes(Geom::Point3d.new(at['x'].mm, at['y'].mm, z.mm), out, along, Geom::Vector3d.new(0, 0, 1))
+      item = KitchenPlanner::Item.new(category: params['cabinet_category'].to_s, type: type, width: width, kind: :corner)
+      KitchenManager.send(:build_unit, model, raw, raw['catalog_id'], item, frame)
+      true
+    rescue StandardError => e
+      warn "[Kitchen Cabinet Master] Could not put in a corner unit: #{e.message}"
+      false
+    end
+    private_class_method :insert_corner
 
     # The side panels and wall fillers that follow the cabinets are taken away before a cabinet is put in the row, so that it stands against the
     # last one and not against its panel; they are placed again, at the new end of the row, when the action is done (see LiveParts.refresh).
