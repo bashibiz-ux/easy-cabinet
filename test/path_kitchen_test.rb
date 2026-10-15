@@ -107,7 +107,8 @@ class PathKitchenTest < Minitest::Test
     corners = places.select { |p| p['corner'] }
     assert_equal 1, corners.length
     assert_in_delta 3000.0, corners.first['x'], 0.01
-    assert_in_delta 1000.0, corners.first['y'], 0.01, 'the last 1000 mm of the first wall'
+    assert_in_delta 0.0, corners.first['y'], 0.01, 'its origin is the corner of the walls'
+    assert_equal [0.0, 1.0], [corners.first['out_x'], corners.first['out_y']], 'its depth runs back along the first wall (which came down along x = 3000), its width along the second'
     straight = places.reject { |p| p['corner'] }
     assert_equal 2, straight.count { |p| p['x'].round == 3000 }, 'the first wall has 1400 mm left for the straight cabinets'
     assert_equal 3, straight.count { |p| p['y'].round.zero? }, 'the second wall starts 1000 mm from the corner'

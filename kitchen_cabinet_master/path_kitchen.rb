@@ -170,7 +170,7 @@ module KitchenCabinetMaster
     # Where cabinets of one size stand along the walls of a path (Insert on Path): [{ 'x', 'y', 'out_x', 'out_y' }] in mm, one for each whole cabinet that fits
     # on a wall, from the start of the wall, its back against it. A wall that follows an inner corner starts `depth` from it (the room the cabinets of the
     # wall before take), and so does the end of the last wall of a closed loop. With `corner` (the width of a corner unit, mm) a corner unit goes into every
-    # inner corner instead (its place has 'corner' => true): it takes that much of the end of the wall before it and of the start of the wall after it.
+    # inner corner instead (its place has 'corner' => true, at the corner of the walls, turned a quarter like a corner unit inserted after a row): it takes that much of the end of the wall before it and of the start of the wall after it.
     # { places:, notes: }.
     def self.placements(segments, width, depth, eye: nil, flip: false, corner: nil)
       places = []
@@ -201,7 +201,9 @@ module KitchenCabinetMaster
             end
             next unless corner && after
 
-            places << { 'x' => wall[:from][0] + (wall[:dir][0] * (wall[:length] - corner)), 'y' => wall[:from][1] + (wall[:dir][1] * (wall[:length] - corner)), 'out_x' => wall[:dir][1], 'out_y' => -wall[:dir][0], 'corner' => true }
+            # (a corner unit is turned a quarter, as when it is inserted after a row: its origin is the corner of the walls, its depth runs back along the wall it ends, its
+            # width along the next one)
+            places << { 'x' => wall[:from][0] + (wall[:dir][0] * wall[:length]), 'y' => wall[:from][1] + (wall[:dir][1] * wall[:length]), 'out_x' => -wall[:dir][0], 'out_y' => -wall[:dir][1], 'corner' => true }
           end
         end
       end

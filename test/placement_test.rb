@@ -496,4 +496,16 @@ class PlacementTest < Minitest::Test
     assert_in_delta first.transformation.origin.x, second.transformation.origin.x, 0.01
     assert_in_delta 1800.0, second.transformation.origin.y, 0.01
   end
+  def test_the_corner_of_insert_on_path_is_placed_like_a_corner_unit_inserted_after_a_row
+    # a row along y whose last cabinet ends at 1000: the corner unit is turned a quarter at the far end (see turned), its front looking back along the row
+    turned = PlacementManager.send(:turned, Geom::Transformation.new, PlacementManager::CORNER_TURN_DEGREES, 1000.0)
+    out = [0.0, -1.0] # what PathKitchen.placements gives for a wall running along +y: the opposite of the way the wall runs
+    along = [-out[1], out[0]]
+    placed = Geom::Transformation.axes(Geom::Point3d.new(0.0, 1000.0, 0.0), Geom::Vector3d.new(out[0], out[1], 0), Geom::Vector3d.new(along[0], along[1], 0), Geom::Vector3d.new(0, 0, 1))
+    assert_in_delta turned.origin.y, placed.origin.y, 0.01
+    assert_in_delta turned.xaxis.x, placed.xaxis.x, 1e-9
+    assert_in_delta turned.xaxis.y, placed.xaxis.y, 1e-9
+    assert_in_delta turned.yaxis.x, placed.yaxis.x, 1e-9
+    assert_in_delta turned.yaxis.y, placed.yaxis.y, 1e-9
+  end
 end
