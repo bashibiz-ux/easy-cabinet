@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module KitchenCabinetMaster
   # "Room": a floor, walls and a roof drawn round the kitchen that is in the model, with the doors and windows you ask for. The room is the box that holds every
   # cabinet and part; a side of it where the backs of cabinets stand against is a wall right behind them, a side with no backs (the open side of a straight kitchen,
@@ -24,6 +26,13 @@ module KitchenCabinetMaster
     FRAME_WIDTH = 50.0      # mm: how wide the frame round a door or window is
     LEAF_THICKNESS = 40.0   # mm
     GLASS_THICKNESS = 10.0  # mm
+    TRIM_WIDTH = 70.0       # mm: the boards round a door on the faces of the wall
+    TRIM_THICKNESS = 14.0
+    PANEL_RAISE = 8.0       # mm: how far the panels of a door stand out of its leaf
+    WINDOW_FRAME = 60.0     # mm: the frame of a window
+    SILL_IN = 35.0          # mm: how far the sill board of a window comes into the room
+    SILL_OUT = 45.0         # mm: and how far the one outside comes out of the wall
+    MOVED = 1.0             # mm: a door or window that is this far from where it was drawn has been moved
 
     # items: [{ min: [x, y], max: [x, y], top: z, origin: [x, y], front: [x, y] }] in mm (the box of each cabinet or part, where its origin is,
     # which way its front faces). => { x0:, y0:, x1:, y1:, height:, backs: { min_x:, max_x:, min_y:, max_y: } } or nil without items. (x0..x1, y0..y1) is the
@@ -146,6 +155,112 @@ module KitchenCabinetMaster
       { frame: frame, infill: infill }
     end
 
+    # The numbers the parts of an opening are drawn from: `mk` makes a box from its coordinates along the wall (a), across it (c) and up (z); the wall fills
+    # c0..c1, `sign` says whether the way out is towards the larger c (1) or the smaller (-1).
+    def self.opening_space(cut)
+      along = cut[:out][0].zero? ? 0 : 1
+      across = along.zero? ? 1 : 0
+      mk = lambda do |a0, a1, c0, c1, z0, z1|
+        low = [0.0, 0.0, z0]
+        high = [0.0, 0.0, z1]
+        low[along] = a0
+        high[along] = a1
+        low[across] = c0
+        high[across] = c1
+        { from: low, to: high }
+      end
+      { mk: mk, u0: cut[:from][along], u1: cut[:to][along], c0: cut[:from][across], c1: cut[:to][across], z0: cut[:from][2], z1: cut[:to][2],
+        mid: (cut[:from][across] + cut[:to][across]) / 2.0, sign: cut[:out][across].positive? ? 1 : -1 }
+    end
+
+    # A panel door: the frame (jambs, head, and boards on both faces of the wall), the leaf (stiles, rails and two raised panels on each face) and the lever
+    # handle. => { 'Frame' => [boxes], 'Leaf' => [boxes], 'Handle' => [boxes] } in mm; the boxes of one group never overlap.
+    def self.door_parts(cut)
+      s = opening_space(cut)
+      mk = s[:mk]
+      u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
+      fw = [FRAME_WIDTH, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
+      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1)]
+      [[c0 - TRIM_THICKNESS, c0], [c1, c1 + TRIM_THICKNESS]].each do |a, b|
+        frame << mk.call(u0 - TRIM_WIDTH, u0, a, b, z0, z1) << mk.call(u1, u1 + TRIM_WIDTH, a, b, z0, z1) << mk.call(u0 - TRIM_WIDTH, u1 + TRIM_WIDTH, a, b, z1, z1 + TRIM_WIDTH)
+      end
+      lu0 = u0 + fw + 3.0
+      lu1 = u1 - fw - 3.0
+      lz0 = z0 + 10.0
+      lz1 = z1 - fw - 3.0
+      half = LEAF_THICKNESS / 2.0
+      leaf = [mk.call(lu0, lu1, mid - half, mid + half, lz0, lz1)]
+      stile = 110.0
+      if (lu1 - lu0) > (2 * stile) + 150.0 && (lz1 - lz0) > 700.0
+        zm = lz0 + ((lz1 - lz0) * 0.55)
+        [[zm + 65.0, lz1 - 110.0], [lz0 + 180.0, zm - 65.0]].each do |za, zb|
+          next unless zb - za > 100.0
+
+          [[mid + half, mid + half + PANEL_RAISE], [mid - half - PANEL_RAISE, mid - half]].each { |a, b| leaf << mk.call(lu0 + stile, lu1 - stile, a, b, za, zb) }
+        end
+      end
+      hx = lu1 - 70.0
+      hz = [z0 + 1000.0, lz1 - 200.0].min
+      handle = []
+      [[mid + half, 1], [mid - half, -1]].each do |face, dir|
+        handle << mk.call(hx - 25.0, hx + 25.0, *(dir.positive? ? [face, face + 6.0] : [face - 6.0, face]), hz - 25.0, hz + 25.0)
+        handle << mk.call(hx - 110.0, hx + 8.0, *(dir.positive? ? [face + 6.0, face + 22.0] : [face - 22.0, face - 6.0]), hz - 9.0, hz + 9.0)
+      end
+      { 'Frame' => frame, 'Leaf' => leaf, 'Handle' => handle }
+    end
+
+    # A casement window: the frame (and boards on the room face), one or two sashes with their glass, a handle, and a sill board inside and one outside.
+    # => { 'Frame' =>, 'Sash' =>, 'Glass' =>, 'Handle' =>, 'Sill' => } (boxes, mm).
+    def self.window_parts(cut)
+      s = opening_space(cut)
+      mk = s[:mk]
+      u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
+      fw = [WINDOW_FRAME, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
+      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + fw)]
+      room_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS, c0] : [c1, c1 + TRIM_THICKNESS]
+      frame << mk.call(u0 - 60.0, u0, *room_face, z0 + fw, z1) << mk.call(u1, u1 + 60.0, *room_face, z0 + fw, z1) << mk.call(u0 - 60.0, u1 + 60.0, *room_face, z1, z1 + 60.0)
+      iu0 = u0 + fw
+      iu1 = u1 - fw
+      iz0 = z0 + fw
+      iz1 = z1 - fw
+      leaves = (iu1 - iu0) > 900.0 ? 2 : 1
+      span = (iu1 - iu0) / leaves
+      sw = 45.0
+      half = 22.0
+      sash = []
+      glass = []
+      leaves.times do |k|
+        lu0 = iu0 + (k * span) + 2.0
+        lu1 = iu0 + ((k + 1) * span) - 2.0
+        lz0 = iz0 + 2.0
+        lz1 = iz1 - 2.0
+        sash << mk.call(lu0, lu0 + sw, mid - half, mid + half, lz0, lz1) << mk.call(lu1 - sw, lu1, mid - half, mid + half, lz0, lz1)
+        sash << mk.call(lu0 + sw, lu1 - sw, mid - half, mid + half, lz1 - sw, lz1) << mk.call(lu0 + sw, lu1 - sw, mid - half, mid + half, lz0, lz0 + sw)
+        glass << mk.call(lu0 + sw, lu1 - sw, mid - 3.0, mid + 3.0, lz0 + sw, lz1 - sw)
+      end
+      hx = iu0 + span - 2.0 - (sw / 2.0)
+      hz = z0 + ((z1 - z0) * 0.5)
+      handle = [mk.call(hx - 12.0, hx + 12.0, mid + half, mid + half + 5.0, hz - 35.0, hz + 35.0), mk.call(hx - 7.0, hx + 7.0, mid + half + 5.0, mid + half + 25.0, hz - 80.0, hz + 5.0)]
+      inner = s[:sign].positive? ? [c0 - SILL_IN, c0] : [c1, c1 + SILL_IN]
+      outer = s[:sign].positive? ? [c1, c1 + SILL_OUT] : [c0 - SILL_OUT, c0]
+      sill = [mk.call(u0 - 40.0, u1 + 40.0, *inner, z0 + fw - 28.0, z0 + fw), mk.call(u0 - 30.0, u1 + 30.0, *outer, z0 + fw - 28.0, z0 + fw)]
+      { 'Frame' => frame, 'Sash' => sash, 'Glass' => glass, 'Handle' => handle, 'Sill' => sill }
+    end
+
+    # A door or window that was moved: it goes to the wall nearest to where it now is, parallel to it, and its place along the wall (and, for a window, its sill
+    # height) follow. `x`, `y` is the middle of it and `z` its bottom (mm). => the spec with the new 'wall', 'from' and 'sill'.
+    def self.relocate(plan, spec, x, y, z)
+      distances = { 'west' => (x - plan[:x0]).abs, 'east' => (x - plan[:x1]).abs, 'south' => (y - plan[:y0]).abs, 'north' => (y - plan[:y1]).abs }
+      wall = distances.min_by { |_, d| d }.first
+      across = %i[min_x max_x].include?(SIDES[wall])
+      along = across ? y - plan[:y0] : x - plan[:x0]
+      length = across ? plan[:y1] - plan[:y0] : plan[:x1] - plan[:x0]
+      width = spec['width'].to_f
+      from = (along - (width / 2.0)).clamp(0.0, [length - width, 0.0].max)
+      sill = spec['kind'] == 'Door' ? 0.0 : z.clamp(0.0, [plan[:height] - spec['height'].to_f, 0.0].max)
+      spec.merge('wall' => wall, 'from' => from, 'sill' => sill)
+    end
+
     def self.auto_side(backs, kind)
       order = %w[south north west east]
       wanted = order.find { |name| kind == 'Door' ? !backs[SIDES[name]] : backs[SIDES[name]] }
@@ -165,7 +280,8 @@ module KitchenCabinetMaster
       when :min_y then from = [plan[:x0] + u0, plan[:y0] - wall, z0]; to = [plan[:x0] + u1, plan[:y0], z1]; out = [0.0, -1.0]
       else from = [plan[:x0] + u0, plan[:y1], z0]; to = [plan[:x0] + u1, plan[:y1] + wall, z1]; out = [0.0, 1.0]
       end
-      { kind: o[:kind], wall: o[:wall], from: from, to: to, out: out, thickness: wall }
+      { kind: o[:kind], wall: o[:wall], from: from, to: to, out: out, thickness: wall,
+        spec: { 'kind' => o[:kind], 'wall' => o[:wall], 'from' => o[:from], 'width' => o[:width], 'sill' => o[:sill], 'height' => o[:height] } }
     end
     private_class_method :box_of
 
@@ -286,12 +402,14 @@ module KitchenCabinetMaster
         cuts.each { |cut| cut_wall(walls.entities, cut) }
       end
       boxes(plan, options).select { |b| b[:name] == 'Roof' }.each { |box| solid(model, inside, box) }
-      group_of = {}
-      cuts.each do |cut|
-        name = cut[:kind] == 'Door' ? 'Doors' : 'Windows'
-        group = group_of[name] ||= part(model, inside, name)
-        fill(model, group.entities, cut)
+      counts = Hash.new(0)
+      cuts.each_with_index do |cut, index|
+        counts[cut[:kind]] += 1
+        draw_opening(model, inside, cut, index, "#{cut[:kind]} #{counts[cut[:kind]]}")
       end
+      room.set_attribute(DICTIONARY, 'room_plan', JSON.generate(plan))
+      room.set_attribute(DICTIONARY, 'room_options', JSON.generate(options))
+      room.set_attribute(DICTIONARY, 'room_specs', JSON.generate(cuts.map { |c| c[:spec] }))
       room
     end
     private_class_method :draw_room
@@ -360,21 +478,158 @@ module KitchenCabinetMaster
     end
     private_class_method :cut_wall
 
-    # What goes in an opening: its frame (a group of its own, white) and the leaf of a door or the glass of a window (a group of its own).
-    def self.fill(model, entities, cut)
-      parts = frame_parts(cut)
-      frame = entities.add_group
-      frame.name = "#{cut[:kind]} Frame"
-      frame_material = model.materials['Room Frame'] || model.materials.add('Room Frame')
-      frame_material.color = Sketchup::Color.new(246, 246, 244)
-      frame.material = frame_material
-      parts[:frame].each { |box| slab(frame.entities, box[:from], box[:to]) }
-      infill = entities.add_group
-      infill.name = cut[:kind] == 'Door' ? 'Door Leaf' : 'Window Glass'
-      infill.material = model.materials["Room #{cut[:kind] == 'Door' ? 'Doors' : 'Windows'}"]
-      slab(infill.entities, parts[:infill][:from], parts[:infill][:to])
+    METAL = [190, 190, 196].freeze
+    PART_MATERIALS = { 'Frame' => 'Room Frame', 'Sash' => 'Room Frame', 'Sill' => 'Room Frame', 'Leaf' => 'Room Doors', 'Glass' => 'Room Windows', 'Handle' => 'Room Metal' }.freeze
+
+    # A door or a window: a group of its own (on the tag Room Doors or Room Windows) holding a group for each of its parts, each in its material. It can be moved
+    # (see after_move): the opening in the wall goes with it, turned parallel to the wall it is nearest to.
+    def self.draw_opening(model, entities, cut, index, name)
+      kind = cut[:kind]
+      group = entities.add_group
+      group.name = name
+      group.layer = model.layers[TAGS[kind == 'Door' ? 'Doors' : 'Windows']] || model.layers.add(TAGS[kind == 'Door' ? 'Doors' : 'Windows'])
+      (kind == 'Door' ? door_parts(cut) : window_parts(cut)).each do |part_name, boxes|
+        sub = group.entities.add_group
+        sub.name = part_name
+        sub.material = opening_material(model, PART_MATERIALS.fetch(part_name))
+        boxes.each { |box| slab(sub.entities, box[:from], box[:to]) }
+      end
+      bounds = group.bounds
+      group.set_attribute(DICTIONARY, 'room_opening', index)
+      group.set_attribute(DICTIONARY, 'home', [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm])
+      group
     end
-    private_class_method :fill
+    private_class_method :draw_opening
+
+    def self.opening_material(model, name)
+      material = model.materials[name] || model.materials.add(name)
+      case name
+      when 'Room Frame' then material.color = Sketchup::Color.new(246, 246, 244)
+      when 'Room Metal' then material.color = Sketchup::Color.new(*METAL)
+      when 'Room Doors' then material.color = Sketchup::Color.new(*COLOURS['Doors'][0, 3])
+      when 'Room Windows'
+        material.color = Sketchup::Color.new(*COLOURS['Windows'][0, 3])
+        material.alpha = COLOURS['Windows'][3]
+      end
+      material
+    end
+    private_class_method :opening_material
+
+    # ---- moving a door or a window -------------------------------------------------------
+
+    def self.load_plan(room)
+      raw = JSON.parse(room.get_attribute(DICTIONARY, 'room_plan', '{}'))
+      return nil unless raw['x0']
+
+      { x0: raw['x0'], y0: raw['y0'], x1: raw['x1'], y1: raw['y1'], height: raw['height'], backs: (raw['backs'] || {}).transform_keys(&:to_sym) }
+    rescue JSON::ParserError
+      nil
+    end
+    private_class_method :load_plan
+
+    # A move is over: a door or window that is not where it was drawn takes the opening of the wall with it, and the room is drawn again.
+    def self.after_move(model)
+      return if @busy || model.nil?
+
+      parts_in(model).each do |room|
+        plan = load_plan(room)
+        next unless plan
+
+        specs = JSON.parse(room.get_attribute(DICTIONARY, 'room_specs', '[]'))
+        options = JSON.parse(room.get_attribute(DICTIONARY, 'room_options', '{}'))
+        moved = {}
+        room.entities.grep(Sketchup::Group).each do |group|
+          index = group.get_attribute(DICTIONARY, 'room_opening')
+          home = group.get_attribute(DICTIONARY, 'home')
+          next unless index && home && specs[index]
+
+          bounds = group.bounds
+          now = [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm]
+          moved[index] = now if now.zip(home).any? { |a, b| (a - b).abs > MOVED }
+        end
+        next if moved.empty?
+
+        redo_room(model, room, plan, options, specs, moved)
+      end
+    rescue StandardError => e
+      warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
+    end
+
+    def self.redo_room(model, room, plan, options, specs, moved)
+      changed = specs.map(&:dup)
+      moved.each { |index, (x, y, z)| changed[index] = relocate(plan, changed[index], x, y, z) }
+      cuts, problem = openings(plan, changed, options)
+      unless cuts # it does not fit there: it goes back where it was
+        DialogManager.push('notice', { 'message' => "#{problem} The door or window went back." }) if defined?(DialogManager)
+        cuts, problem = openings(plan, specs, options)
+        return if problem
+      end
+      @busy = true
+      model.start_operation('Move Door or Window', true)
+      begin
+        room.erase!
+        draw_room(model, plan, options, cuts)
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @busy = false
+      end
+      DialogManager.push('info', { 'message' => 'The opening in the wall moved with the door or window.' }) if defined?(DialogManager) && !problem
+    end
+    private_class_method :redo_room
+
+    if defined?(Sketchup::ToolsObserver)
+      # The Move tool lets go (or the tool changes): look at the doors and windows after a moment, outside whatever SketchUp is doing.
+      class ToolWatcher < Sketchup::ToolsObserver
+        def onToolStateChanged(_tools, _name, tool_id, tool_state)
+          RoomShell.request if tool_id == SnapManager::MOVE_TOOL_ID && tool_state.zero?
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+        end
+
+        def onActiveToolChanged(_tools, _name, _tool_id)
+          RoomShell.request
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+        end
+      end
+
+      class AppWatcher < Sketchup::AppObserver
+        def expectsStartupModelNotifications = true
+        def onNewModel(model) = RoomShell.attach(model)
+        def onOpenModel(model) = RoomShell.attach(model)
+        def onActivateModel(model) = RoomShell.attach(model)
+      end
+    end
+
+    # Call once when the extension loads.
+    def self.install
+      @attached = {}
+      @tool_watcher = ToolWatcher.new
+      Sketchup.add_observer(AppWatcher.new)
+      attach(Sketchup.active_model)
+    end
+
+    def self.attach(model)
+      return unless model
+
+      key = model.guid
+      return if @attached[key]
+
+      model.tools.add_observer(@tool_watcher)
+      @attached[key] = true
+    end
+
+    def self.request
+      return if @timer || @busy
+
+      @timer = UI.start_timer(0.4, false) do
+        @timer = nil
+        after_move(Sketchup.active_model)
+      end
+    end
 
     def self.remove
       model = Sketchup.active_model

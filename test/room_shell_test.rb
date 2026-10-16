@@ -204,4 +204,108 @@ class RoomShellTest < Minitest::Test
     cabinet = island_worktop.merge(cabinet: true)
     assert RS.plan(straight + [cabinet])[:backs][:max_x], 'the same thing as a cabinet is a back against a wall'
   end
+  # ---- realistic doors and windows ------------------------------------------------------------------
+
+  def overlap(a, b)
+    (0..2).map { |i| [[a[:to][i], b[:to][i]].min - [a[:from][i], b[:from][i]].max, 0.0].max }.reduce(:*)
+  end
+
+  def no_overlaps_in(parts)
+    parts.each do |name, boxes|
+      boxes.combination(2).each { |a, b| assert_operator overlap(a, b), :<, 1e-6, "two boxes of #{name} run into one another" }
+      boxes.each { |box| assert(box[:from].zip(box[:to]).all? { |lo, hi| hi - lo > 0.001 }, "a box of #{name} has no size") }
+    end
+  end
+
+  def door_cut(wall = 'north', from = 1000.0)
+    RS.openings(RS.plan(straight), [{ 'kind' => 'Door', 'wall' => wall, 'width' => 900.0, 'height' => 2100.0, 'from' => from }]).first.first
+  end
+
+  def window_cut(wall = 'south', width = 1200.0)
+    RS.openings(RS.plan(straight), [{ 'kind' => 'Window', 'wall' => wall, 'width' => width, 'sill' => 900.0, 'height' => 1200.0, 'from' => 300.0 }]).first.first
+  end
+
+  def test_a_door_is_a_frame_with_trim_a_panelled_leaf_and_a_handle_and_nothing_overlaps
+    parts = RS.door_parts(door_cut)
+    assert_equal %w[Frame Handle Leaf], parts.keys.sort
+    assert_equal 3 + 6, parts['Frame'].length, 'two jambs and a head, and three boards on each face of the wall'
+    leaf = parts['Leaf']
+    assert_equal 1 + 4, leaf.length, 'the leaf and two raised panels on each face'
+    assert_equal 4, parts['Handle'].length, 'a rose and a lever on each face'
+    no_overlaps_in(parts)
+  end
+
+  def test_the_door_leaf_is_inside_the_frame_and_off_the_floor_a_little_and_the_handle_is_at_hand_height
+    cut = door_cut
+    parts = RS.door_parts(cut)
+    leaf = parts['Leaf'].first
+    assert_operator leaf[:from][0], :>, cut[:from][0] + 50.0, 'inside the jambs'
+    assert_operator leaf[:to][0], :<, cut[:to][0] - 50.0
+    assert_in_delta 10.0, leaf[:from][2], 0.01, 'a little clear of the floor'
+    assert_operator leaf[:to][2], :<, cut[:to][2] - 50.0, 'under the head'
+    zs = parts['Handle'].map { |b| (b[:from][2] + b[:to][2]) / 2.0 }
+    assert(zs.all? { |z| (z - 1000.0).abs < 1.0 }, 'about a metre up')
+  end
+
+  def test_a_window_has_a_frame_sashes_glass_a_handle_and_two_sills_and_nothing_overlaps
+    parts = RS.window_parts(window_cut)
+    assert_equal %w[Frame Glass Handle Sash Sill], parts.keys.sort
+    assert_equal 4 + 3, parts['Frame'].length
+    assert_equal 2 * 4, parts['Sash'].length, 'a wide window has two sashes, four sticks each'
+    assert_equal 2, parts['Glass'].length
+    assert_equal 2, parts['Sill'].length, 'one inside, one outside'
+    no_overlaps_in(parts)
+    assert_equal 1 * 4, RS.window_parts(window_cut('south', 700.0))['Sash'].length, 'a narrow one has one sash'
+  end
+
+  def test_the_sills_stand_out_of_the_wall_on_both_sides
+    cut = window_cut # the south wall: it fills y from plan y0 - 150 to plan y0, the way out is -y
+    inner, outer = RS.window_parts(cut)['Sill']
+    assert_in_delta cut[:to][1], inner[:from][1], 0.01, 'the inside board starts at the inside face of the wall and comes into the room'
+    assert_in_delta cut[:to][1] + 35.0, inner[:to][1], 0.01
+    assert_in_delta cut[:from][1], outer[:to][1], 0.01
+    assert_in_delta cut[:from][1] - 45.0, outer[:from][1], 0.01, 'and the outside one comes out of the wall'
+  end
+
+  def test_the_parts_of_a_window_on_a_west_or_east_wall_run_along_y
+    cut = window_cut('east', 1000.0)
+    sash = RS.window_parts(cut)['Sash']
+    assert(sash.all? { |b| b[:from][1] >= cut[:from][1] && b[:to][1] <= cut[:to][1] }, 'the sashes are inside the opening along y')
+    glass = RS.window_parts(cut)['Glass'].first
+    assert_in_delta 6.0, glass[:to][0] - glass[:from][0], 0.01, 'thin across the wall, which is x here'
+  end
+
+  # ---- moving a door or a window ---------------------------------------------------------------------
+
+  def test_a_moved_door_goes_to_the_nearest_wall_and_its_place_follows
+    plan = RS.plan(straight) # inside x -1200 .. 3000, y 0 .. 1760
+    spec = { 'kind' => 'Door', 'wall' => 'north', 'from' => 1000.0, 'width' => 900.0, 'sill' => 0.0, 'height' => 2100.0 }
+    moved = RS.relocate(plan, spec, 2800.0, 1000.0, 0.0) # the middle is now near the east wall
+    assert_equal 'east', moved['wall']
+    assert_in_delta 1000.0 - 450.0, moved['from'], 0.01, 'its middle is 1000 along the east wall (from the south end)'
+    assert_equal 0.0, moved['sill']
+  end
+
+  def test_it_stays_on_the_wall_whatever_the_distance_and_is_kept_inside_its_ends
+    plan = RS.plan(straight)
+    spec = { 'kind' => 'Window', 'wall' => 'south', 'from' => 300.0, 'width' => 1200.0, 'sill' => 900.0, 'height' => 1200.0 }
+    near_south = RS.relocate(plan, spec, 0.0, 30.0, 1100.0)
+    assert_equal 'south', near_south['wall']
+    assert_in_delta 1200.0 - 600.0, near_south['from'], 0.01, 'its middle is at x = 0, which is 1200 from the west end'
+    assert_equal 1100.0, near_south['sill'], 'a window can be moved up and down'
+    far = RS.relocate(plan, spec, 2900.0, 20.0, 900.0)
+    assert_in_delta 4200.0 - 1200.0, far['from'], 0.01, 'it is kept inside the end of the wall'
+    assert_equal 0.0, RS.relocate(plan, spec, -1190.0, 20.0, -500.0)['sill'], 'and not under the floor'
+    assert_equal [1760.0 - 1200.0, 1760.0 - 1200.0], [RS.relocate(plan, spec, 2990.0, 5000.0, 900.0)['from']] * 2
+  end
+
+  def test_the_moved_opening_is_cut_where_the_door_now_is
+    plan = RS.plan(straight)
+    spec = { 'kind' => 'Door', 'wall' => 'north', 'from' => 1000.0, 'width' => 900.0, 'sill' => 0.0, 'height' => 2100.0 }
+    moved = RS.relocate(plan, spec, 2800.0, 1000.0, 0.0)
+    cut = RS.openings(plan, [moved]).first.first
+    assert_equal [plan[:x1], plan[:x1] + 150.0], [cut[:from][0], cut[:to][0]]
+    assert_equal [plan[:y0] + 550.0, plan[:y0] + 1450.0], [cut[:from][1], cut[:to][1]]
+    assert_equal [1.0, 0.0], cut[:out], 'the opening is parallel to the east wall: it runs along y'
+  end
 end
