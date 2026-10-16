@@ -41,4 +41,20 @@ class FeedbackTest < Minitest::Test
     url, = mail({ 'kind' => 'x', 'message' => 'Hi' })
     assert_includes url, 'Comment'
   end
+  def test_web_mail_links_carry_the_address_the_subject_and_the_text
+    links, subject, body, problem = FM.compose({ 'message' => 'Nice & fast', 'kind' => 'praise' })
+    assert_nil problem
+    assert_equal %w[gmail mailto outlook yahoo], links.keys.sort
+    assert_equal 'Kitchen Cabinet Master feedback: Praise', subject
+    assert_includes body, 'Nice & fast'
+    assert links['gmail'].start_with?('https://mail.google.com/mail/?view=cm')
+    assert_includes links['gmail'], 'to=bashibiz%40gmail.com'
+    assert_includes links['outlook'], 'outlook.live.com'
+    assert_includes links['yahoo'], 'compose.mail.yahoo.com'
+    assert_includes links['gmail'], 'Nice%20%26%20fast', 'the & is written out, so it does not end the text'
+  end
+
+  def test_no_web_link_is_made_for_an_empty_message
+    assert_equal 'Write your feedback first.', FM.compose({ 'message' => '' }).last
+  end
 end

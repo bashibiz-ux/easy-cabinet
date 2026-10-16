@@ -450,17 +450,19 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .actions .btn { border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .actions .btn[hidden] { display: none; }
 .btn .ico { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.btn.lg { height: 40px; font-size: 14px; }
+.btn.lg { height: 32px; font-size: 13px; }
 .btn.primary { box-shadow: 0 2px 8px rgba(47, 95, 204, 0.3); }
 .btn.primary:hover:not(:disabled) { box-shadow: 0 3px 12px rgba(47, 95, 204, 0.4); }
 .btn.soft { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
 .btn.soft:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
-.btn.tint { height: 34px; background: transparent; border-color: var(--line-strong); font-size: 12px; font-weight: 600; }
+.btn.tint { height: 30px; background: transparent; border-color: var(--line-strong); font-size: 12px; font-weight: 600; }
 .btn.tint .ico { color: var(--accent); }
 .btn.ghost { height: 30px; padding: 0 4px; border-color: transparent; background: transparent; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; gap: 4px; }
 .btn.ghost:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
 .btn.ghost.danger { color: var(--danger); }
 .btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+.btn-row.fb-send { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.btn-row.fb-send .btn { padding: 0 2px; }
 .btn-row.two-eq { grid-template-columns: 1fr 1fr; margin-top: 12px; }
 
 /* the Feedback window */

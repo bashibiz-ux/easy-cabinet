@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.51.1';
+  const APP_VERSION = '1.52.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -297,11 +297,28 @@
     $('feedbackCancel').addEventListener('click', close);
     modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
-    $('feedbackSend').addEventListener('click', async () => {
+    const payload = (via) => ({ via, kind: $('feedbackKind').value, message: $('feedbackMessage').value, reply_to: $('feedbackReply').value, include_info: $('feedbackInfo').checked });
+    modal.querySelectorAll('[data-via]').forEach((button) => button.addEventListener('click', async () => {
       try {
-        const res = await call('send_feedback', { kind: $('feedbackKind').value, message: $('feedbackMessage').value, reply_to: $('feedbackReply').value, include_info: $('feedbackInfo').checked });
+        const res = await call('send_feedback', payload(button.dataset.via));
         setStatus(res.ok ? 'ok' : 'error', res.message);
         if (res.ok) { $('feedbackMessage').value = ''; close(); }
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    }));
+    $('feedbackCopy').addEventListener('click', async () => {
+      try {
+        const res = await call('send_feedback', payload('text'));
+        if (!res.ok) { setStatus('error', res.message); return; }
+        const holder = document.createElement('textarea');
+        holder.value = res.data.text;
+        document.body.appendChild(holder);
+        holder.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        holder.remove();
+        setStatus(copied ? 'ok' : 'error', copied ? 'Copied: paste it into a mail to the address at the top.' : `It could not be copied here. Send your message to ${res.data.text.split('\n')[0].replace('To: ', '')}.`);
       } catch (error) {
         setStatus('error', error.message);
       }
