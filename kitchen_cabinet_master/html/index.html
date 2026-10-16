@@ -936,7 +936,7 @@
     <section class="card" id="sec-room">
       <button class="card-head" type="button" aria-expanded="true">Room</button>
       <div class="card-body">
-        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model, as one group (the floor, walls, roof, doors and windows each on a tag of their own: Room Floor, Room Walls, Room Roof, Room Doors, Room Windows), with the door and windows you ask for cut through the walls. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the open-side distance below away, one for the x (red) and one for the y (green) direction. The roof is flat, has one slope (the low side you choose) or two slopes (the ridge along the longer side). A wall is measured along its inside from its start: the south and north walls from the west end, the west and east walls from the south end. Build Room draws it again; Remove Room takes it away.</p>
+        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model, as one group (the floor, walls, roof, doors and windows each on a tag of their own: Room Floor, Room Walls, Room Roof, Room Doors, Room Windows), with the door and windows you ask for cut through the walls. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the open-side distance below away, one for the x (red) and one for the y (green) direction. A wall is measured along its inside from its start: the south and north walls from the west end, the west and east walls from the south end. Build Room draws it again; Remove Room takes it away.</p>
         <div class="checks">
           <label class="check"><input type="checkbox" id="roomFloorOn" checked><span>Floor</span></label>
           <label class="check"><input type="checkbox" id="roomWallsOn" checked><span>Walls</span></label>
@@ -951,12 +951,6 @@
         <div class="grid-2">
           <label class="field"><span class="label">Open Side in X (red axis)</span><div class="input"><input id="roomOpenX" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
           <label class="field"><span class="label">Open Side in Y (green axis)</span><div class="input"><input id="roomOpenY" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
-        </div>
-        <p class="group-title">Roof</p>
-        <div class="grid-2">
-          <label class="field"><span class="label">Roof Shape</span><div class="input"><select id="roomRoofShape"><option value="flat">Flat</option><option value="one">One slope</option><option value="two">Two slopes</option></select></div></label>
-          <label class="field"><span class="label">Slope</span><div class="input"><input id="roomRoofAngle" type="text" inputmode="decimal" autocomplete="off" value="15"><em>deg</em></div></label>
-          <label class="field"><span class="label">Low Side (one slope)</span><div class="input"><select id="roomRoofLow"><option value="south">South (-Y)</option><option value="north">North (+Y)</option><option value="west">West (-X)</option><option value="east">East (+X)</option></select></div></label>
         </div>
         <p class="group-title">Door</p>
         <label class="check"><input type="checkbox" id="roomDoorOn" checked><span>Door</span></label>

@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.58.0';
+  const APP_VERSION = '1.58.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -713,7 +713,7 @@
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
     add_appliance: () => ({ kind: $('applianceKind').value, front: $('applianceFront').value }),
     remove_appliance: () => ({ kind: $('applianceKind').value }),
-    build_room: () => ({ wall_thickness: mmv('roomWall'), floor_thickness: mmv('roomFloor'), roof_thickness: mmv('roomRoof'), room_height: mmv('roomHeight'), open_x: mmv('roomOpenX'), open_y: mmv('roomOpenY'), roof_shape: $('roomRoofShape').value, roof_angle: $('roomRoofAngle').value, roof_low: $('roomRoofLow').value, openings: roomOpenings(), floor: $('roomFloorOn').checked, walls: $('roomWallsOn').checked, roof: $('roomRoofOn').checked }),
+    build_room: () => ({ wall_thickness: mmv('roomWall'), floor_thickness: mmv('roomFloor'), roof_thickness: mmv('roomRoof'), room_height: mmv('roomHeight'), open_x: mmv('roomOpenX'), open_y: mmv('roomOpenY'), openings: roomOpenings(), floor: $('roomFloorOn').checked, walls: $('roomWallsOn').checked, roof: $('roomRoofOn').checked }),
     design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
   };
 

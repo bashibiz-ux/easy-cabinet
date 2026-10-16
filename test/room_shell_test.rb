@@ -143,40 +143,14 @@ class RoomShellTest < Minitest::Test
     assert_in_delta(-500.0, RS.plan(straight, 'open_distance' => 1000.0, 'open_x' => 500.0)[:x0], 0.01)
   end
 
-  # ---- the sloping roof ------------------------------------------------------------------------
 
-  def test_a_flat_roof_is_a_box_and_has_no_slope_profile
-    plan = RS.plan(straight)
-    assert_nil RS.roof_solid(plan)
-    assert_nil RS.roof_solid(plan, 'roof_shape' => 'one', 'roof_angle' => 0.0)
-    assert_equal %w[Floor Roof], RS.boxes(plan).map { |b| b[:name] }
-  end
-
-  def test_one_slope_falls_to_the_side_chosen
-    plan = RS.plan(straight)
-    solid = RS.roof_solid(plan, 'roof_shape' => 'one', 'roof_angle' => 10.0, 'roof_low' => 'west')
-    assert_equal :x, solid[:axis], 'the slope runs along x when it falls to the west'
-    run = (plan[:x1] - plan[:x0]) + 300.0
-    rise = run * Math.tan(10.0 * Math::PI / 180.0)
-    h = plan[:height]
-    low, high = solid[:profile].values_at(3, 2).map(&:last)
-    assert_in_delta h + 150.0, low, 0.01, 'the low edge is as thick as the roof'
-    assert_in_delta h + 150.0 + rise, high, 0.01, 'the high edge is higher by the rise'
-    assert_equal [0.0, h], solid[:profile].first
-    refute_includes RS.boxes(plan, 'roof_shape' => 'one', 'roof_angle' => 10.0).map { |b| b[:name] }, 'Roof', 'a sloping roof is not the flat box'
-    east = RS.roof_solid(plan, 'roof_shape' => 'one', 'roof_angle' => 10.0, 'roof_low' => 'east')
-    assert_operator east[:profile][3].last, :>, east[:profile][2].last, 'falling to the east: the west end is the high one'
-    assert_equal :y, RS.roof_solid(plan, 'roof_shape' => 'one', 'roof_angle' => 10.0, 'roof_low' => 'north')[:axis]
-  end
-
-  def test_two_slopes_meet_in_a_ridge_along_the_longer_side
-    plan = RS.plan(straight) # 4200 wide in x, 1760 deep in y: the ridge runs along x, the slopes fall across y
-    solid = RS.roof_solid(plan, 'roof_shape' => 'two', 'roof_angle' => 20.0)
-    assert_equal :y, solid[:axis]
-    assert_equal 5, solid[:profile].length
-    run = (plan[:y1] - plan[:y0]) + 300.0
-    apex = solid[:profile][3]
-    assert_in_delta run / 2.0, apex[0], 0.01
-    assert_in_delta plan[:height] + 150.0 + ((run / 2.0) * Math.tan(20.0 * Math::PI / 180.0)), apex[1], 0.01
+  def test_the_back_of_an_island_is_no_wall_so_that_side_is_open_and_gets_the_distance
+    items = straight + [item(2500, 1000, 3060, 2200, [1.0, 0.0], [2500, 1000]).merge(origin: [3060, 1000], front: [-1.0, 0.0], island: true)] # the back of the island is on x = 3060, the edge of the box
+    plan = RS.plan(items, 'open_x' => 700.0)
+    refute plan[:backs][:max_x], 'an island is not against a wall'
+    assert_in_delta 3060.0 + 700.0, plan[:x1], 0.01, 'the east side is open: the distance in x'
+    walls = RS.plan(items.map { |i| i.merge(island: false) }, 'open_x' => 700.0)
+    assert walls[:backs][:max_x]
+    assert_in_delta 3060.0, walls[:x1], 0.01, 'the same unit as a cabinet against a wall: the wall is right behind it'
   end
 end
