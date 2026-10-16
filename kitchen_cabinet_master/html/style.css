@@ -463,6 +463,13 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn.ghost:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
 .btn.ghost.danger { color: var(--danger); }
 .btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+/* every button of the action bar is the same: soft blue, one size (the Delete button has the same shape in soft red) */
+.actions .btn-row.quad, .actions .btn-row.tools { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
+.actions .btn.soft { height: 32px; padding: 0 4px; border: 1px solid transparent; border-radius: 10px; background: var(--accent-soft); color: var(--accent-deep); font-size: 12px; font-weight: 600; letter-spacing: 0; box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.actions .btn.soft:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-deep); }
+.actions .btn.soft.danger { background: var(--danger-soft); color: var(--danger); }
+.actions .btn.soft.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-soft); color: var(--danger); }
+.actions .btn-row.tools { margin-top: 5px; }
 .btn-row.fb-send { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .btn-row.fb-send .btn, .modal .btn { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn-row.fb-send .btn { padding: 0 2px; font-size: 12px; }
