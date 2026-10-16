@@ -451,6 +451,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .actions .btn[hidden] { display: none; }
 .btn .ico { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn.lg { height: 32px; font-size: 13px; }
+.actions .btn-row.quad { grid-template-columns: 0.9fr 1fr 1.25fr 1.25fr; gap: 5px; }
+.actions .btn-row.quad .btn { height: 32px; padding: 0 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn.primary { box-shadow: 0 2px 8px rgba(47, 95, 204, 0.3); }
 .btn.primary:hover:not(:disabled) { box-shadow: 0 3px 12px rgba(47, 95, 204, 0.4); }
 .btn.soft { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
