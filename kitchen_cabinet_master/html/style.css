@@ -462,7 +462,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn.ghost.danger { color: var(--danger); }
 .btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 .btn-row.fb-send { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.btn-row.fb-send .btn { padding: 0 2px; }
+.btn-row.fb-send .btn, .modal .btn { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-row.fb-send .btn { padding: 0 2px; font-size: 12px; }
 .btn-row.two-eq { grid-template-columns: 1fr 1fr; margin-top: 12px; }
 
 /* the Feedback window */
