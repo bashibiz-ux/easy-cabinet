@@ -932,6 +932,30 @@
       </div>
     </section>
 
+    <!-- Room: a floor, walls and a roof round the kitchen -->
+    <section class="card" id="sec-room">
+      <button class="card-head" type="button" aria-expanded="true">Room</button>
+      <div class="card-body">
+        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the distance below away. Build Room draws it again; Remove Room takes it away.</p>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="roomFloorOn" checked><span>Floor</span></label>
+          <label class="check"><input type="checkbox" id="roomWallsOn" checked><span>Walls</span></label>
+          <label class="check"><input type="checkbox" id="roomRoofOn" checked><span>Roof</span></label>
+        </div>
+        <div class="grid-2">
+          <label class="field"><span class="label">Wall Thickness</span><div class="input"><input id="roomWall" type="text" inputmode="decimal" autocomplete="off" value="150"><em>mm</em></div></label>
+          <label class="field"><span class="label">Floor Thickness</span><div class="input"><input id="roomFloor" type="text" inputmode="decimal" autocomplete="off" value="100"><em>mm</em></div></label>
+          <label class="field"><span class="label">Roof Thickness</span><div class="input"><input id="roomRoof" type="text" inputmode="decimal" autocomplete="off" value="150"><em>mm</em></div></label>
+          <label class="field"><span class="label">Room Height</span><div class="input"><input id="roomHeight" type="text" inputmode="decimal" autocomplete="off" placeholder="automatic"><em>mm</em></div></label>
+        </div>
+        <label class="field narrow"><span class="label">Distance to an Open Side</span><div class="input"><input id="roomOpen" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
+        <div class="btn-row two">
+          <button class="btn" type="button" data-action="build_room">Build Room</button>
+          <button class="btn" type="button" data-action="remove_room">Remove Room</button>
+        </div>
+      </div>
+    </section>
+
     <!-- Cut list: every board in the model, grouped, with a CSV export -->
     <section class="card" id="sec-cutlist">
       <button class="card-head" type="button" aria-expanded="true">Cut List</button>

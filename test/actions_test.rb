@@ -32,6 +32,11 @@ class ActionsTest < Minitest::Test
     assert_equal handled.sort, routed('WORKTOP_ACTIONS').sort
   end
 
+  def test_every_room_action_is_handled
+    handled = source('room_shell.rb')[/def self\.perform\(action, raw\)(.*?)\n    end\n/m, 1].scan(/when '(\w+)'/).flatten
+    assert_equal handled.sort, routed('ROOM_ACTIONS').sort
+  end
+
   def test_every_cut_list_action_is_handled
     handled = source('cut_list_manager.rb')[/def self\.perform\(action, raw\)(.*?)\n    end\n/m, 1].scan(/when '(\w+)'/).flatten
     assert_equal handled.sort, routed('CUT_LIST_ACTIONS').sort
@@ -43,7 +48,7 @@ class ActionsTest < Minitest::Test
   end
 
   def test_every_action_the_panel_calls_is_routed
-    known = routed('CABINET_ACTIONS') + routed('PART_ACTIONS') + routed('WORKTOP_ACTIONS') + routed('LIVE_ACTIONS') + routed('CUT_LIST_ACTIONS') + routed('PRESET_ACTIONS') + %w[init get_cabinets get_materials undo set_snap send_feedback open_donation add_material remove_material]
+    known = routed('CABINET_ACTIONS') + routed('PART_ACTIONS') + routed('WORKTOP_ACTIONS') + routed('ROOM_ACTIONS') + routed('LIVE_ACTIONS') + routed('CUT_LIST_ACTIONS') + routed('PRESET_ACTIONS') + %w[init get_cabinets get_materials undo set_snap send_feedback open_donation add_material remove_material]
     sent = source('html/app.js').scan(/call\('(\w+)'/).flatten.uniq
     assert_empty sent - known, 'the panel calls actions Ruby does not know'
   end

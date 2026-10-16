@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.55.5';
+  const APP_VERSION = '1.56.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -707,6 +707,7 @@
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
     add_appliance: () => ({ kind: $('applianceKind').value, front: $('applianceFront').value }),
     remove_appliance: () => ({ kind: $('applianceKind').value }),
+    build_room: () => ({ wall_thickness: mmv('roomWall'), floor_thickness: mmv('roomFloor'), roof_thickness: mmv('roomRoof'), room_height: mmv('roomHeight'), open_distance: mmv('roomOpen'), floor: $('roomFloorOn').checked, walls: $('roomWallsOn').checked, roof: $('roomRoofOn').checked }),
     design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
   };
 
@@ -839,7 +840,8 @@
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'wbLoftSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
-    'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH'
+    'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH',
+    'roomWall', 'roomFloor', 'roomRoof', 'roomHeight', 'roomOpen'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }
