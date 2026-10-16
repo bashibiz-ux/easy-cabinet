@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.56.0';
+  const APP_VERSION = '1.57.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -696,6 +696,12 @@
   const INSERT_ACTION = { cabinet: 'insert', filler: 'insert_filler', end_panel: 'insert_end_panel', toe_kick: 'insert_toe_kick', wall_bottom: 'apply_wall_bottom', panel: 'insert_panel', ceiling_filler: 'apply_ceiling_fillers' };
 
   // Removing a cabinet from your own catalog says which one.
+  // The door and the windows of the Room card, as the list Ruby wants.
+  function roomOpenings() {
+    const one = (kind, prefix, sill) => ({ kind, on: $(`${prefix}On`).checked, wall: $(`${prefix}Wall`).value, from: mmv(`${prefix}From`), width: mmv(`${prefix}Width`), sill, height: mmv(`${prefix}Height`) });
+    return [one('Door', 'roomDoor', '0'), one('Window', 'roomWin1', mmv('roomWin1Sill')), one('Window', 'roomWin2', mmv('roomWin2Sill'))];
+  }
+
   const CATALOG_PAYLOAD = {
     delete: () => (categoryKind() === 'wall_bottom' ? { when_empty: 'remove_wall_bottom' } : {}), // (Delete takes what is selected; with nothing selected, the bottom panels)
     add_material: () => ({ from: $('myFrom').value, name: $('myName').value, category: $('myCat').value }),
@@ -707,7 +713,7 @@
     design_kitchen_options: () => CATALOG_PAYLOAD.design_kitchen(),
     add_appliance: () => ({ kind: $('applianceKind').value, front: $('applianceFront').value }),
     remove_appliance: () => ({ kind: $('applianceKind').value }),
-    build_room: () => ({ wall_thickness: mmv('roomWall'), floor_thickness: mmv('roomFloor'), roof_thickness: mmv('roomRoof'), room_height: mmv('roomHeight'), open_distance: mmv('roomOpen'), floor: $('roomFloorOn').checked, walls: $('roomWallsOn').checked, roof: $('roomRoofOn').checked }),
+    build_room: () => ({ wall_thickness: mmv('roomWall'), floor_thickness: mmv('roomFloor'), roof_thickness: mmv('roomRoof'), room_height: mmv('roomHeight'), open_distance: mmv('roomOpen'), openings: roomOpenings(), floor: $('roomFloorOn').checked, walls: $('roomWallsOn').checked, roof: $('roomRoofOn').checked }),
     design_path_kitchen: () => ({ ...CATALOG_PAYLOAD.design_kitchen(), flip: $('kitchenPathFlip').checked })
   };
 
@@ -841,7 +847,9 @@
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
     'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'pCfHeight', 'pCfThickness', 'pCfRecess', 'panelWidth', 'panelLength', 'panelThickness', 'pToeHeight', 'pToeThickness', 'pToeRecess', 'sizeBaseW', 'sizeBaseD', 'sizeBaseH', 'sizeWallW', 'sizeWallD', 'sizeWallH', 'sizeTallW', 'sizeTallD', 'sizeTallH', 'sizeLoftW', 'sizeLoftD', 'sizeLoftH',
-    'roomWall', 'roomFloor', 'roomRoof', 'roomHeight', 'roomOpen'
+    'roomWall', 'roomFloor', 'roomRoof', 'roomHeight', 'roomOpen',
+    'roomDoorFrom', 'roomDoorWidth', 'roomDoorHeight',
+    'roomWin1From', 'roomWin1Width', 'roomWin1Sill', 'roomWin1Height', 'roomWin2From', 'roomWin2Width', 'roomWin2Sill', 'roomWin2Height'
   ];
 
   function unitInfo() { return UNITS[state.unit] || UNITS.mm; }

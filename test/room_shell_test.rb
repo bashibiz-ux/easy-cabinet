@@ -57,27 +57,73 @@ class RoomShellTest < Minitest::Test
     assert_nil RS.plan([])
   end
 
-  def test_the_boxes_are_a_floor_four_walls_and_a_roof_with_the_inside_left_free
+  def test_the_floor_and_the_roof_are_boxes_and_the_walls_one_ring_with_the_inside_left_free
     plan = RS.plan(straight)
     boxes = RS.boxes(plan)
-    assert_equal %w[Floor Walls Walls Walls Walls Roof], boxes.map { |b| b[:name] }
-    floor = boxes.first
-    roof = boxes.last
+    assert_equal %w[Floor Roof], boxes.map { |b| b[:name] }
+    floor, roof = boxes
     assert_equal [-100.0, 0.0], [floor[:from][2], floor[:to][2]]
     assert_equal [plan[:height], plan[:height] + 150.0], [roof[:from][2], roof[:to][2]]
-    walls = boxes.select { |b| b[:name] == 'Walls' }
-    assert(walls.all? { |w| w[:from][2] == 0.0 && w[:to][2] == plan[:height] })
-    walls.each do |w| # no wall comes into the inside of the room
-      overlap_x = [w[:to][0], plan[:x1]].min - [w[:from][0], plan[:x0]].max
-      overlap_y = [w[:to][1], plan[:y1]].min - [w[:from][1], plan[:y0]].max
-      refute overlap_x > 0.01 && overlap_y > 0.01, 'a wall inside the room'
-    end
     assert_equal [plan[:x0] - 150.0, plan[:x1] + 150.0], [floor[:from][0], floor[:to][0]], 'the floor reaches under the walls'
+    ring = RS.ring(plan)
+    assert_equal [plan[:x0], plan[:y0], plan[:x1], plan[:y1]], ring[:inner]
+    assert_equal [plan[:x0] - 150.0, plan[:y0] - 150.0, plan[:x1] + 150.0, plan[:y1] + 150.0], ring[:outer]
+    assert_equal plan[:height], ring[:height]
   end
 
   def test_parts_can_be_left_out
     plan = RS.plan(straight)
-    assert_equal %w[Walls Walls Walls Walls], RS.boxes(plan, 'floor' => false, 'roof' => false).map { |b| b[:name] }
+    assert_equal %w[Roof], RS.boxes(plan, 'floor' => false).map { |b| b[:name] }
     assert_equal %w[Floor Roof], RS.boxes(plan, 'walls' => false).map { |b| b[:name] }
+    assert_nil RS.ring(plan, 'walls' => false)
+  end
+
+  # ---- the doors and windows -----------------------------------------------------------------
+
+  def test_a_door_is_in_the_middle_of_an_open_side_standing_on_the_floor
+    plan = RS.plan(straight) # inside x -1200 .. 3000, y 0 .. 1760; the backs are on the south side
+    found, problem = RS.openings(plan, [{ 'kind' => 'Door', 'wall' => 'auto', 'width' => 900.0, 'height' => 2100.0 }])
+    assert_nil problem
+    door = found.first
+    assert_equal 'north', door[:wall], 'the first open side: the south has the backs, the north is open'
+    assert_in_delta(-1200.0 + ((4200.0 - 900.0) / 2.0), door[:from][0], 0.01, 'in the middle')
+    assert_equal [0.0, 2100.0], [door[:from][2], door[:to][2]]
+    assert_equal [plan[:y1], plan[:y1] + 150.0], [door[:from][1], door[:to][1]], 'right through the thickness of the wall'
+    assert_equal [0.0, 1.0], door[:out]
+  end
+
+  def test_a_window_goes_in_the_wall_behind_the_cabinets_at_its_sill_height
+    plan = RS.plan(straight)
+    found, = RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'auto', 'width' => 1200.0, 'sill' => 900.0, 'height' => 1200.0, 'from' => 500.0 }])
+    window = found.first
+    assert_equal 'south', window[:wall]
+    assert_equal [900.0, 2100.0], [window[:from][2], window[:to][2]]
+    assert_in_delta(-1200.0 + 500.0, window[:from][0], 0.01)
+    assert_equal [plan[:y0] - 150.0, plan[:y0]], [window[:from][1], window[:to][1]]
+    assert_equal [0.0, -1.0], window[:out]
+  end
+
+  def test_a_wall_can_be_chosen_and_west_and_east_walls_are_measured_from_the_south
+    plan = RS.plan(straight)
+    found, = RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'east', 'width' => 1000.0, 'sill' => 900.0, 'height' => 1000.0, 'from' => 200.0 }])
+    window = found.first
+    assert_equal [plan[:x1], plan[:x1] + 150.0], [window[:from][0], window[:to][0]]
+    assert_equal [plan[:y0] + 200.0, plan[:y0] + 1200.0], [window[:from][1], window[:to][1]]
+  end
+
+  def test_an_opening_that_does_not_fit_is_refused_with_the_reason
+    plan = RS.plan(straight)
+    assert_match(/past the end/, RS.openings(plan, [{ 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0, 'from' => 3800.0 }]).last)
+    assert_match(/higher than the wall/, RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'south', 'width' => 900.0, 'sill' => 2000.0, 'height' => 1000.0 }]).last)
+    assert_match(/wider/, RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'west', 'width' => 9000.0, 'sill' => 900.0, 'height' => 1000.0 }]).last)
+    assert_match(/overlap/, RS.openings(plan, [{ 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0 }, { 'kind' => 'Window', 'wall' => 'north', 'width' => 900.0, 'sill' => 900.0, 'height' => 1000.0 }]).last)
+  end
+
+  def test_two_openings_on_a_wall_that_do_not_meet_are_fine
+    plan = RS.plan(straight)
+    found, problem = RS.openings(plan, [{ 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0, 'from' => 100.0 },
+                                        { 'kind' => 'Window', 'wall' => 'north', 'width' => 900.0, 'sill' => 900.0, 'height' => 1000.0, 'from' => 2000.0 }])
+    assert_nil problem
+    assert_equal 2, found.length
   end
 end
