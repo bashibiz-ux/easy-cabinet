@@ -444,15 +444,10 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn:disabled { opacity: 0.55; cursor: default; }
 
 /* The action bar: the two main actions big, the insert variants tinted, the rest quiet. */
-.actions .btn-row.main { grid-template-columns: 1fr 1fr; }
-.actions .btn-row.main:nth-of-type(2) { grid-template-columns: 1.35fr 1fr; }
-.actions .btn-row.tools { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .actions .btn { border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .actions .btn[hidden] { display: none; }
 .btn .ico { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn.lg { height: 32px; font-size: 13px; }
-.actions .btn-row.quad { grid-template-columns: 0.9fr 1fr 1.25fr 1.25fr; gap: 5px; }
-.actions .btn-row.quad .btn { height: 32px; padding: 0 4px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn.primary { box-shadow: 0 2px 8px rgba(47, 95, 204, 0.3); }
 .btn.primary:hover:not(:disabled) { box-shadow: 0 3px 12px rgba(47, 95, 204, 0.4); }
 .btn.soft { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
@@ -465,19 +460,17 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 /* every button of the action bar is the same: soft blue, one size (the Delete button has the same shape in soft red) */
 .actions .btn-row.quad, .actions .btn-row.tools { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
-.actions .btn.soft { height: 32px; padding: 0 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: transparent; color: var(--ink); font-size: 12px; font-weight: 600; letter-spacing: 0; box-shadow: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.actions .btn.soft:hover:not(:disabled) { border-color: var(--accent); background: transparent; color: var(--accent-hover); }
-.actions .btn.soft.danger { background: transparent; color: var(--danger); }
-.actions .btn.soft.danger:hover:not(:disabled) { border-color: var(--danger); background: transparent; color: var(--danger); }
-.actions .btn-row.tools { margin-top: 5px; }
-.actions .btn-row.donate-row { margin-top: 5px; grid-auto-columns: minmax(0, 1fr); }
-/* the buttons of the action bar: dark tiles with the symbol over the name, orange under the mouse, and orange for the one that was pressed last */
-.actions .btn-row.quad, .actions .btn-row.tools { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
-.actions .btn-row.tools { margin-top: 5px; }
-.actions .btn.tile { --tile: #403c37; --tile-on: #f5820a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 52px; padding: 4px 2px; border: 0; border-radius: 6px; background: var(--tile); color: #fff; font-size: 10.5px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.2s var(--ease), transform 0.15s var(--ease); }
-.actions .btn.tile .ico { width: 19px; height: 19px; color: #fff; }
+/* the buttons of the action bar: dark brown blocks side by side and one under the other, no space between them and no rounded corners; the one under the
+   mouse and the one pressed last are light */
+.actions .btn-row.quad, .actions .btn-row.tools { gap: 0; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; }
+.actions .btn-row + .btn-row, .actions .btn-row.tools { margin-top: 0; }
+.actions { padding: 0; }
+.actions .status { margin: 8px 14px; }
+.actions .btn.tile { --tile: #3f3b33; --tile-on: #e6e2d8; display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 2px; border: 0; border-right: 1px solid #2c2923; border-bottom: 1px solid #2c2923; border-radius: 0; background: var(--tile); color: #fff; font-size: 12px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.15s var(--ease), color 0.15s var(--ease); }
+.actions .btn.tile:last-child { border-right: 0; }
 .actions .btn.tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
-.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: #fff; border: 0; }
+.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: #3f3b33; border-color: #2c2923; }
+.actions .btn.tile:active:not(:disabled) { transform: none; }
 .actions .btn.tile:disabled { opacity: 0.5; }
 .actions .btn.tile[hidden] { display: none; }
 .btn-row.fb-send { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
