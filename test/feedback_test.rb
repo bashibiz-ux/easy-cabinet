@@ -23,7 +23,7 @@ class FeedbackTest < Minitest::Test
 
   def test_the_mail_has_the_address_the_kind_in_the_subject_and_the_text_in_the_body
     url, = mail({ 'kind' => 'suggestion', 'message' => 'A hob with 5 rings & a hood' }, extension_version: '1.51.0', sketchup_version: '24.0')
-    assert url.start_with?("mailto:#{FM::FEEDBACK_EMAIL}?")
+    assert url.start_with?("mailto:#{FM.email}?")
     query = URI.decode_www_form(url.split('?', 2).last.gsub('+', '%2B')).to_h
     assert_equal 'Kitchen Cabinet Master feedback: Suggestion', query['subject']
     assert_includes query['body'], 'A hob with 5 rings & a hood'
@@ -61,5 +61,23 @@ class FeedbackTest < Minitest::Test
     assert_equal [nil, 'The donation page is not set up yet.'], FM.donation_url('  ')
     assert_equal [nil, 'The donation link must start with https://.'], FM.donation_url('http://example.com')
     assert_equal ['https://paypal.me/someone', nil], FM.donation_url(' https://paypal.me/someone ')
+  end
+  def test_the_address_and_the_donation_page_come_from_config_json
+    require 'tmpdir'
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'config.json')
+      File.write(path, '{"feedback_email": "  me@example.org ", "donation_url": "https://paypal.me/me"}')
+      assert_equal({ 'feedback_email' => 'me@example.org', 'donation_url' => 'https://paypal.me/me' }, FM.config(path))
+      File.write(path, '{"feedback_email": "not an address"}')
+      assert_equal FM::DEFAULT_EMAIL, FM.config(path)['feedback_email'], 'an address that is none gives the default'
+      File.write(path, 'this is not json')
+      assert_equal FM::DEFAULT_EMAIL, FM.config(path)['feedback_email']
+      assert_equal FM::DEFAULT_EMAIL, FM.config(File.join(dir, 'missing.json'))['feedback_email']
+    end
+    assert_equal 'bashibiz@gmail.com', FM.config['feedback_email'], 'the file that goes with the extension'
+  end
+
+  def test_the_links_use_the_address_they_are_given
+    assert_includes FM.links('s', 'b', 'x@y.org')['gmail'], 'to=x%40y.org'
   end
 end

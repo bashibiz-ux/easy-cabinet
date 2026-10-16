@@ -471,6 +471,15 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .actions .btn.soft.danger:hover:not(:disabled) { border-color: var(--danger); background: transparent; color: var(--danger); }
 .actions .btn-row.tools { margin-top: 5px; }
 .actions .btn-row.donate-row { margin-top: 5px; grid-auto-columns: minmax(0, 1fr); }
+/* the buttons of the action bar: dark tiles with the symbol over the name, orange under the mouse, and orange for the one that was pressed last */
+.actions .btn-row.quad, .actions .btn-row.tools { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
+.actions .btn-row.tools { margin-top: 5px; }
+.actions .btn.tile { --tile: #403c37; --tile-on: #f5820a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 52px; padding: 4px 2px; border: 0; border-radius: 6px; background: var(--tile); color: #fff; font-size: 10.5px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.2s var(--ease), transform 0.15s var(--ease); }
+.actions .btn.tile .ico { width: 19px; height: 19px; color: #fff; }
+.actions .btn.tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
+.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: #fff; border: 0; }
+.actions .btn.tile:disabled { opacity: 0.5; }
+.actions .btn.tile[hidden] { display: none; }
 .btn-row.fb-send { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
 .btn-row.fb-send .btn, .modal .btn { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn-row.fb-send .btn { padding: 0 2px; font-size: 12px; }

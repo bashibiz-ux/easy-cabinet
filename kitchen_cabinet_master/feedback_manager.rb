@@ -1,24 +1,41 @@
 # frozen_string_literal: true
 
 require 'erb'
+require 'json'
 
 module KitchenCabinetMaster
   # The Feedback button: a comment, suggestion or problem report from the user of the extension, written in the panel and sent from the user's own
   # mail program (a mail is opened with the address, the subject and the text filled in; nothing is sent from here by itself).
   module FeedbackManager
-    FEEDBACK_EMAIL = 'bashibiz@gmail.com' # where the feedback goes
+    # Where the feedback goes and where the Donate button leads are kept in kitchen_cabinet_master/config.json: change them there, no code to touch.
+    CONFIG_PATH = File.join(__dir__, 'config.json')
+    DEFAULT_EMAIL = 'bashibiz@gmail.com'
+
+    # => { 'feedback_email' =>, 'donation_url' => } as written in config.json (a missing or unreadable file, or an address that is not one, gives the defaults).
+    def self.config(path = CONFIG_PATH)
+      stored = begin
+        JSON.parse(File.read(path, encoding: 'UTF-8'))
+      rescue StandardError
+        {}
+      end
+      stored = {} unless stored.is_a?(Hash)
+      email = stored['feedback_email'].to_s.strip
+      email = DEFAULT_EMAIL unless email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+      { 'feedback_email' => email, 'donation_url' => stored['donation_url'].to_s.strip }
+    end
+
+    def self.email = config['feedback_email']
     KINDS = { 'comment' => 'Comment', 'suggestion' => 'Suggestion', 'problem' => 'Problem', 'praise' => 'Praise' }.freeze
-    DONATION_URL = '' # the page where the users can donate (PayPal.me, Buy Me a Coffee, Ko-fi, a page of your own ...): its https:// link goes between the quotes
     MAX_MESSAGE = 1500 # characters (a mail link can only carry so much)
 
     # Where the feedback can be sent from: the mail program of the computer, or the web page of a web mail that writes it (for those who have no mail
     # program set up). { 'mailto' => url, 'gmail' => url, 'outlook' => url, 'yahoo' => url }
-    def self.links(subject, body)
-      to = ERB::Util.url_encode(FEEDBACK_EMAIL)
+    def self.links(subject, body, address = email)
+      to = ERB::Util.url_encode(address)
       s = ERB::Util.url_encode(subject)
       b = ERB::Util.url_encode(body)
       {
-        'mailto' => "mailto:#{FEEDBACK_EMAIL}?subject=#{s}&body=#{b}",
+        'mailto' => "mailto:#{address}?subject=#{s}&body=#{b}",
         'gmail' => "https://mail.google.com/mail/?view=cm&fs=1&to=#{to}&su=#{s}&body=#{b}",
         'outlook' => "https://outlook.live.com/mail/0/deeplink/compose?to=#{to}&subject=#{s}&body=#{b}",
         'yahoo' => "https://compose.mail.yahoo.com/?to=#{to}&subject=#{s}&body=#{b}"
@@ -51,7 +68,7 @@ module KitchenCabinetMaster
     end
 
     # The donation page: => [url, nil] or [nil, why there is none].
-    def self.donation_url(url = DONATION_URL)
+    def self.donation_url(url = config['donation_url'])
       link = url.to_s.strip
       return [nil, 'The donation page is not set up yet.'] if link.empty?
       return [nil, 'The donation link must start with https://.'] unless link.start_with?('https://')
@@ -77,7 +94,7 @@ module KitchenCabinetMaster
       return Response.fail(problem) if problem
 
       via = raw['via'].to_s
-      return Response.ok('The feedback is ready to copy.', { 'text' => "To: #{FEEDBACK_EMAIL}\nSubject: #{subject}\n\n#{body}" }) if via == 'text'
+      return Response.ok('The feedback is ready to copy.', { 'text' => "To: #{email}\nSubject: #{subject}\n\n#{body}" }) if via == 'text'
 
       UI.openURL(found.fetch(via, found['mailto']))
       names = { 'gmail' => 'Gmail', 'outlook' => 'Outlook.com', 'yahoo' => 'Yahoo Mail' }

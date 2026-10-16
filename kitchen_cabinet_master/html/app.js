@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.54.0';
+  const APP_VERSION = '1.55.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -290,8 +290,15 @@
   // Only when it is a different item than the one already open, so editing is never interrupted.
   // The Feedback window: the message goes out from the user's own mail program (see FeedbackManager).
   // The Donate button opens the donation page (see FeedbackManager).
-  function wireDonate() {
-    const button = $('openDonate');
+  // The button of the action bar that was pressed last stays orange (the others are dark brown).
+  function wireActiveTile() {
+    const tiles = [...document.querySelectorAll('.actions .btn.tile')];
+    tiles.forEach((tile) => tile.addEventListener('click', () => {
+      tiles.forEach((other) => other.classList.toggle('active', other === tile));
+    }));
+  }
+
+  function wireDonate() {    const button = $('openDonate');
     if (!button) return;
     button.addEventListener('click', async () => {
       try {
@@ -3052,6 +3059,7 @@ $('kitchenLayout').addEventListener('change', () => {
   async function init() {
     wireFeedback();
     wireDonate();
+    wireActiveTile();
     wrapCardBodies();
     try {
       if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;
