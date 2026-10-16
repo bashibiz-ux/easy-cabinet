@@ -540,3 +540,17 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .gated { opacity: 0.45; filter: grayscale(0.4); pointer-events: none; user-select: none; }
 
 .section-sep { border: 0; border-top: 1px solid var(--line, rgba(128,128,128,.35)); margin: 12px 0; }
+
+/* Every button of the extension looks the same: flat, square, no colour, a thin outline, light grey under the mouse (the buttons of the action bar
+   have their own rows above: the same look without outlines between them). Buttons of a row touch one another. */
+.btn, .btn.primary, .btn.soft, .btn.tint, .btn.ghost, .btn.danger {
+  height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 0; background: transparent; color: var(--ink);
+  font-weight: 500; letter-spacing: 0; box-shadow: none;
+}
+.btn:hover:not(:disabled), .btn.primary:hover:not(:disabled), .btn.soft:hover:not(:disabled), .btn.tint:hover:not(:disabled), .btn.ghost:hover:not(:disabled), .btn.danger:hover:not(:disabled) {
+  background: rgba(120, 130, 150, 0.16); color: var(--ink); border-color: var(--line-strong); box-shadow: none;
+}
+.btn-row, .btn-row.fb-send { gap: 0; }
+.btn-row > .btn:not(:last-child) { border-right-width: 0; }
+.sub-btn { width: 100%; }
+
