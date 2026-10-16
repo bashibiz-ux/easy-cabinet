@@ -57,4 +57,9 @@ class FeedbackTest < Minitest::Test
   def test_no_web_link_is_made_for_an_empty_message
     assert_equal 'Write your feedback first.', FM.compose({ 'message' => '' }).last
   end
+  def test_the_donation_link_must_be_set_and_secure
+    assert_equal [nil, 'The donation page is not set up yet.'], FM.donation_url('  ')
+    assert_equal [nil, 'The donation link must start with https://.'], FM.donation_url('http://example.com')
+    assert_equal ['https://paypal.me/someone', nil], FM.donation_url(' https://paypal.me/someone ')
+  end
 end

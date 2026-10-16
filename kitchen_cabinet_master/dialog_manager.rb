@@ -87,6 +87,7 @@ module KitchenCabinetMaster
         when 'undo'          then undo_last
         when 'set_snap'      then (SnapManager.enabled = data['enabled'] == true; Response.ok(SnapManager.enabled? ? 'Moved cabinets stick to their neighbours and the walls.' : 'Moved cabinets stay where you put them.'))
         when 'send_feedback' then FeedbackManager.perform(data)
+        when 'open_donation' then FeedbackManager.donate
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
         when 'add_material', 'remove_material' then MaterialManager.perform(action, data) # your own materials

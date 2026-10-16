@@ -8,6 +8,7 @@ module KitchenCabinetMaster
   module FeedbackManager
     FEEDBACK_EMAIL = 'bashibiz@gmail.com' # where the feedback goes
     KINDS = { 'comment' => 'Comment', 'suggestion' => 'Suggestion', 'problem' => 'Problem', 'praise' => 'Praise' }.freeze
+    DONATION_URL = '' # the page where the users can donate (PayPal.me, Buy Me a Coffee, Ko-fi, a page of your own ...): its https:// link goes between the quotes
     MAX_MESSAGE = 1500 # characters (a mail link can only carry so much)
 
     # Where the feedback can be sent from: the mail program of the computer, or the web page of a web mail that writes it (for those who have no mail
@@ -47,6 +48,24 @@ module KitchenCabinetMaster
     def self.mailto(raw, extension_version: nil, sketchup_version: nil)
       found, _subject, _body, problem = compose(raw, extension_version: extension_version, sketchup_version: sketchup_version)
       problem ? [nil, problem] : [found['mailto'], nil]
+    end
+
+    # The donation page: => [url, nil] or [nil, why there is none].
+    def self.donation_url(url = DONATION_URL)
+      link = url.to_s.strip
+      return [nil, 'The donation page is not set up yet.'] if link.empty?
+      return [nil, 'The donation link must start with https://.'] unless link.start_with?('https://')
+
+      [link, nil]
+    end
+
+    # The Donate button: opens the donation page in the browser.
+    def self.donate
+      url, problem = donation_url
+      return Response.fail(problem) if problem
+
+      UI.openURL(url)
+      Response.ok('The donation page opened in your browser. Thank you for supporting Kitchen Cabinet Master!')
     end
 
     # `via`: 'mailto' (the mail program), 'gmail', 'outlook' or 'yahoo' (their web pages, opened in the browser) or 'text' (nothing is opened:

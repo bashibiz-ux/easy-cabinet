@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.52.4';
+  const APP_VERSION = '1.53.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -289,8 +289,21 @@
   // Clicking an item in the model opens the section that edits it, ready to edit (the sections are an accordion).
   // Only when it is a different item than the one already open, so editing is never interrupted.
   // The Feedback window: the message goes out from the user's own mail program (see FeedbackManager).
-  function wireFeedback() {
-    const modal = $('feedbackModal');
+  // The Donate button opens the donation page (see FeedbackManager).
+  function wireDonate() {
+    const button = $('openDonate');
+    if (!button) return;
+    button.addEventListener('click', async () => {
+      try {
+        const res = await call('open_donation', {});
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    });
+  }
+
+  function wireFeedback() {    const modal = $('feedbackModal');
     if (!modal) return;
     const close = () => { modal.hidden = true; };
     $('openFeedback').addEventListener('click', () => { modal.hidden = false; $('feedbackMessage').focus(); });
@@ -3028,6 +3041,7 @@ $('kitchenLayout').addEventListener('change', () => {
 
   async function init() {
     wireFeedback();
+    wireDonate();
     wrapCardBodies();
     try {
       if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;
