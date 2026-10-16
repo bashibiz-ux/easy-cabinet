@@ -468,7 +468,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .modal[hidden] { display: none; }
 .modal-card { width: 100%; max-width: 420px; max-height: 100%; overflow: auto; padding: 16px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
 .modal-card h2 { margin: 0 0 6px; font-size: 16px; }
-.modal-card textarea { width: 100%; resize: vertical; font: inherit; color: inherit; background: transparent; border: 0; outline: 0; padding: 6px 0; }
+.input.area { height: auto; align-items: stretch; padding: 8px 10px; }
+.modal-card textarea { display: block; width: 100%; min-height: 120px; resize: vertical; box-sizing: border-box; font: inherit; color: inherit; background: transparent; border: 0; outline: 0; padding: 0; line-height: 1.4; }
 
 .status {
   margin-bottom: 8px;
