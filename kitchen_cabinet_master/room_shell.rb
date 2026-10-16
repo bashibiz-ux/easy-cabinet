@@ -21,6 +21,7 @@ module KitchenCabinetMaster
     COLOURS = { 'Floor' => [168, 160, 148, 1.0], 'Walls' => [236, 233, 226, 1.0], 'Roof' => [244, 244, 242, 1.0],
                 'Doors' => [150, 110, 70, 1.0], 'Windows' => [170, 210, 230, 0.35] }.freeze
     SIDES = { 'west' => :min_x, 'east' => :max_x, 'south' => :min_y, 'north' => :max_y }.freeze
+    FRAME_WIDTH = 50.0      # mm: how wide the frame round a door or window is
     LEAF_THICKNESS = 40.0   # mm
     GLASS_THICKNESS = 10.0  # mm
 
@@ -35,7 +36,7 @@ module KitchenCabinetMaster
               min_y: items.map { |i| i[:min][1] }.min, max_y: items.map { |i| i[:max][1] }.max }
       backs = { min_x: false, max_x: false, min_y: false, max_y: false }
       items.each do |item|
-        next if item[:island] # (the back of an island is not against a wall: the side is open, and gets the distance)
+        next if item[:island] || item[:cabinet] == false # (the back of an island is not against a wall, and a part (worktop, side panel, toe kick) is no back: the side is open, and gets the distance)
 
         fx, fy = item[:front]
         ox, oy = item[:origin]
@@ -112,6 +113,39 @@ module KitchenCabinetMaster
       [found.map { |o| box_of(o, plan, wall) }, nil]
     end
 
+    # The frame and what is in it for one opening (the box that goes through the wall, see openings): { frame: [boxes], infill: box } in mm. The frame is
+    # `width` wide: a jamb on each side and a head over the opening, and a sill under a window; a door's leaf stands on the floor, a window's glass is in the
+    # frame. Both are thin and in the middle of the thickness of the wall.
+    def self.frame_parts(cut, width = FRAME_WIDTH)
+      along = cut[:out][0].zero? ? 0 : 1 # the axis along the wall: x for a south or north wall, y for a west or east one
+      across = along.zero? ? 1 : 0
+      from = cut[:from]
+      to = cut[:to]
+      door = cut[:kind] == 'Door'
+      u0 = from[along]
+      u1 = to[along]
+      z0 = from[2]
+      z1 = to[2]
+      width = [width, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
+      box = lambda do |a0, a1, b0, b1|
+        low = from.dup
+        high = to.dup
+        low[along] = a0
+        high[along] = a1
+        low[2] = b0
+        high[2] = b1
+        { from: low, to: high }
+      end
+      frame = [box.call(u0, u0 + width, z0, z1), box.call(u1 - width, u1, z0, z1), box.call(u0 + width, u1 - width, z1 - width, z1)]
+      frame << box.call(u0 + width, u1 - width, z0, z0 + width) unless door
+      infill = box.call(u0 + width, u1 - width, door ? z0 : z0 + width, z1 - width)
+      thickness = door ? LEAF_THICKNESS : GLASS_THICKNESS
+      middle = (from[across] + to[across]) / 2.0
+      infill[:from][across] = middle - (thickness / 2.0)
+      infill[:to][across] = middle + (thickness / 2.0)
+      { frame: frame, infill: infill }
+    end
+
     def self.auto_side(backs, kind)
       order = %w[south north west east]
       wanted = order.find { |name| kind == 'Door' ? !backs[SIDES[name]] : backs[SIDES[name]] }
@@ -165,7 +199,7 @@ module KitchenCabinetMaster
         bounds = item.bounds
         t = item.transformation
         { min: [bounds.min.x.to_mm, bounds.min.y.to_mm], max: [bounds.max.x.to_mm, bounds.max.y.to_mm], top: bounds.max.z.to_mm,
-          origin: [t.origin.x.to_mm, t.origin.y.to_mm], front: [t.xaxis.x, t.xaxis.y], island: !item.get_attribute(AttributeManager::DICTIONARY, 'island_seating').nil? }
+          origin: [t.origin.x.to_mm, t.origin.y.to_mm], front: [t.xaxis.x, t.xaxis.y], island: !item.get_attribute(AttributeManager::DICTIONARY, 'island_seating').nil?, cabinet: AttributeManager.cabinet?(item) }
       end
     end
 
@@ -256,7 +290,7 @@ module KitchenCabinetMaster
       cuts.each do |cut|
         name = cut[:kind] == 'Door' ? 'Doors' : 'Windows'
         group = group_of[name] ||= part(model, inside, name)
-        fill(group.entities, cut)
+        fill(model, group.entities, cut)
       end
       room
     end
@@ -326,16 +360,19 @@ module KitchenCabinetMaster
     end
     private_class_method :cut_wall
 
-    # What goes in an opening: the leaf of a door, the glass of a window (thin boxes in the middle of the wall).
-    def self.fill(entities, cut)
-      thickness = cut[:kind] == 'Door' ? LEAF_THICKNESS : GLASS_THICKNESS
-      from = cut[:from].dup
-      to = cut[:to].dup
-      axis = cut[:out][0].zero? ? 1 : 0 # across the wall: x for a west or east wall, y for a south or north one
-      middle = (from[axis] + to[axis]) / 2.0
-      from[axis] = middle - (thickness / 2.0)
-      to[axis] = middle + (thickness / 2.0)
-      slab(entities, from, to)
+    # What goes in an opening: its frame (a group of its own, white) and the leaf of a door or the glass of a window (a group of its own).
+    def self.fill(model, entities, cut)
+      parts = frame_parts(cut)
+      frame = entities.add_group
+      frame.name = "#{cut[:kind]} Frame"
+      frame_material = model.materials['Room Frame'] || model.materials.add('Room Frame')
+      frame_material.color = Sketchup::Color.new(246, 246, 244)
+      frame.material = frame_material
+      parts[:frame].each { |box| slab(frame.entities, box[:from], box[:to]) }
+      infill = entities.add_group
+      infill.name = cut[:kind] == 'Door' ? 'Door Leaf' : 'Window Glass'
+      infill.material = model.materials["Room #{cut[:kind] == 'Door' ? 'Doors' : 'Windows'}"]
+      slab(infill.entities, parts[:infill][:from], parts[:infill][:to])
     end
     private_class_method :fill
 

@@ -153,4 +153,55 @@ class RoomShellTest < Minitest::Test
     assert walls[:backs][:max_x]
     assert_in_delta 3060.0, walls[:x1], 0.01, 'the same unit as a cabinet against a wall: the wall is right behind it'
   end
+  # ---- the frames ---------------------------------------------------------------------------------
+
+  def test_a_door_has_a_jamb_each_side_and_a_head_and_its_leaf_stands_on_the_floor
+    plan = RS.plan(straight)
+    cut = RS.openings(plan, [{ 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0, 'from' => 1000.0 }]).first.first
+    parts = RS.frame_parts(cut)
+    assert_equal 3, parts[:frame].length
+    left, right, head = parts[:frame]
+    assert_equal [cut[:from][0], cut[:from][0] + 50.0], [left[:from][0], left[:to][0]]
+    assert_equal [cut[:to][0] - 50.0, cut[:to][0]], [right[:from][0], right[:to][0]]
+    assert_equal [2050.0, 2100.0], [head[:from][2], head[:to][2]]
+    assert_equal [cut[:from][1], cut[:to][1]], [left[:from][1], left[:to][1]], 'the frame goes through the whole thickness of the wall'
+    leaf = parts[:infill]
+    assert_equal 0.0, leaf[:from][2], 'the leaf stands on the floor'
+    assert_equal 2050.0, leaf[:to][2]
+    assert_in_delta 40.0, leaf[:to][1] - leaf[:from][1], 0.01
+    assert_in_delta((cut[:from][1] + cut[:to][1]) / 2.0, (leaf[:from][1] + leaf[:to][1]) / 2.0, 0.01, 'in the middle of the wall')
+  end
+
+  def test_a_window_has_a_frame_all_round_and_its_glass_inside_it
+    plan = RS.plan(straight)
+    cut = RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'east', 'width' => 1000.0, 'sill' => 900.0, 'height' => 1200.0, 'from' => 300.0 }]).first.first
+    parts = RS.frame_parts(cut)
+    assert_equal 4, parts[:frame].length
+    sill = parts[:frame].last
+    assert_equal [900.0, 950.0], [sill[:from][2], sill[:to][2]]
+    glass = parts[:infill]
+    assert_equal [950.0, 2050.0], [glass[:from][2], glass[:to][2]]
+    assert_equal [cut[:from][1] + 50.0, cut[:to][1] - 50.0], [glass[:from][1], glass[:to][1]], 'a west or east wall runs along y'
+    assert_in_delta 10.0, glass[:to][0] - glass[:from][0], 0.01
+  end
+
+  def test_a_frame_never_takes_more_than_a_quarter_of_a_narrow_opening
+    plan = RS.plan(straight)
+    cut = RS.openings(plan, [{ 'kind' => 'Window', 'wall' => 'north', 'width' => 200.0, 'sill' => 900.0, 'height' => 300.0 }]).first.first
+    left = RS.frame_parts(cut)[:frame].first
+    assert_in_delta 50.0, left[:to][0] - left[:from][0], 0.01
+    narrow = RS.frame_parts(cut, 400.0)[:frame].first
+    assert_in_delta 50.0, narrow[:to][0] - narrow[:from][0], 0.01
+  end
+
+  # ---- parts are no backs --------------------------------------------------------------------------
+
+  def test_a_part_whose_back_is_on_the_edge_of_the_box_is_no_wall_behind_it
+    island_worktop = item(2500, 1000, 3060, 2200, [1.0, 0.0], [3060, 1000]).merge(front: [-1.0, 0.0], cabinet: false)
+    plan = RS.plan(straight + [island_worktop], 'open_x' => 700.0)
+    refute plan[:backs][:max_x]
+    assert_in_delta 3060.0 + 700.0, plan[:x1], 0.01
+    cabinet = island_worktop.merge(cabinet: true)
+    assert RS.plan(straight + [cabinet])[:backs][:max_x], 'the same thing as a cabinet is a back against a wall'
+  end
 end
