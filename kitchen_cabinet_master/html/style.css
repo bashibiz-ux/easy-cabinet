@@ -460,16 +460,13 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
 /* every button of the action bar is the same: soft blue, one size (the Delete button has the same shape in soft red) */
 .actions .btn-row.quad, .actions .btn-row.tools { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
-/* the buttons of the action bar: dark brown blocks side by side and one under the other, no space between them and no rounded corners; the one under the
-   mouse and the one pressed last are light */
+/* the buttons of the action bar: five in a row, side by side and one under the other with no space between them, no colour: only thin lines between them */
 .actions .btn-row.quad, .actions .btn-row.tools { gap: 0; grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin: 0; }
 .actions .btn-row + .btn-row, .actions .btn-row.tools { margin-top: 0; }
-.actions { padding: 0; }
-.actions .status { margin: 8px 14px; }
-.actions .btn.tile { --tile: var(--accent-deep); --tile-on: var(--accent-soft); --tile-line: rgba(255, 255, 255, 0.28); display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 2px; border: 0; border-right: 1px solid var(--tile-line); border-bottom: 1px solid var(--tile-line); border-radius: 0; background: var(--tile); color: var(--accent-ink); font-size: 12px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.15s var(--ease), color 0.15s var(--ease); }
+.actions .btn.tile { display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 3px; border: 0; border-right: 1px solid var(--line-strong); border-top: 1px solid var(--line-strong); border-radius: 0; background: transparent; color: var(--ink); font-size: 12px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.15s var(--ease); }
 .actions .btn.tile:last-child { border-right: 0; }
-.actions .btn.tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
-.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: var(--accent-deep); border-color: var(--tile-line); }
+.actions .btn.tile span { max-width: 100%; text-align: center; line-height: 1.15; overflow-wrap: anywhere; }
+.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: rgba(120, 130, 150, 0.16); color: var(--ink); }
 .actions .btn.tile:active:not(:disabled) { transform: none; }
 .actions .btn.tile:disabled { opacity: 0.5; }
 .actions .btn.tile[hidden] { display: none; }
