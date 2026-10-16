@@ -17,7 +17,7 @@ module KitchenCabinetMaster
     response defaults attribute_manager validation_manager material_manager catalog_manager my_appliances
     cabinet_layout appliance_parts fixtures customizer toe_kick part_layout door_animation drawer_animation handle_manager
     front_design panel_generator cabinet_generator part_generator selection_manager snap_manager
-    naming_manager placement_manager tag_manager custom_door cabinet_manager part_manager worktop_manager wall_bottom_manager kitchen_planner side_exposure dimensioning dimension_manager live_parts island_hood island_back_panel kitchen_manager path_kitchen place_tool cut_list_manager preset_manager customize_manager dialog_manager
+    naming_manager placement_manager tag_manager custom_door cabinet_manager part_manager worktop_manager wall_bottom_manager kitchen_planner side_exposure dimensioning dimension_manager live_parts island_hood island_back_panel kitchen_manager path_kitchen place_tool feedback_manager cut_list_manager preset_manager customize_manager dialog_manager
   ].freeze
 
   def self.load_code

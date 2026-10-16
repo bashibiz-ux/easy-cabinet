@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.50.6';
+  const APP_VERSION = '1.51.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -288,6 +288,26 @@
 
   // Clicking an item in the model opens the section that edits it, ready to edit (the sections are an accordion).
   // Only when it is a different item than the one already open, so editing is never interrupted.
+  // The Feedback window: the message goes out from the user's own mail program (see FeedbackManager).
+  function wireFeedback() {
+    const modal = $('feedbackModal');
+    if (!modal) return;
+    const close = () => { modal.hidden = true; };
+    $('openFeedback').addEventListener('click', () => { modal.hidden = false; $('feedbackMessage').focus(); });
+    $('feedbackCancel').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+    $('feedbackSend').addEventListener('click', async () => {
+      try {
+        const res = await call('send_feedback', { kind: $('feedbackKind').value, message: $('feedbackMessage').value, reply_to: $('feedbackReply').value, include_info: $('feedbackInfo').checked });
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+        if (res.ok) { $('feedbackMessage').value = ''; close(); }
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    });
+  }
+
   function focusSection(id, key) {
     if (state.focusKey === key || Date.now() < (state.noFocusUntil || 0)) return; // (not while a switch of the Settings is working)
     state.focusKey = key;
@@ -2990,6 +3010,7 @@ $('kitchenLayout').addEventListener('change', () => {
   }
 
   async function init() {
+    wireFeedback();
     wrapCardBodies();
     try {
       if (localStorage.getItem('kcm.followSelection') === 'off') $('followSelection').checked = false;

@@ -443,6 +443,33 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .btn:disabled { opacity: 0.55; cursor: default; }
 
+/* The action bar: the two main actions big, the insert variants tinted, the rest quiet. */
+.actions .btn-row.main { grid-template-columns: 1fr 1fr; }
+.actions .btn-row.main:nth-of-type(2) { grid-template-columns: 1.35fr 1fr; }
+.actions .btn-row.tools { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.actions .btn { border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.actions .btn[hidden] { display: none; }
+.btn .ico { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn.lg { height: 40px; font-size: 14px; }
+.btn.primary { box-shadow: 0 2px 8px rgba(47, 95, 204, 0.3); }
+.btn.primary:hover:not(:disabled) { box-shadow: 0 3px 12px rgba(47, 95, 204, 0.4); }
+.btn.soft { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
+.btn.soft:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-deep); }
+.btn.tint { height: 34px; background: transparent; border-color: var(--line-strong); font-size: 12px; font-weight: 600; }
+.btn.tint .ico { color: var(--accent); }
+.btn.ghost { height: 30px; padding: 0 4px; border-color: transparent; background: transparent; color: var(--muted); font-size: 12px; font-weight: 500; letter-spacing: 0; gap: 4px; }
+.btn.ghost:hover:not(:disabled) { background: var(--accent-soft); border-color: transparent; color: var(--accent-deep); }
+.btn.ghost.danger { color: var(--danger); }
+.btn.ghost.danger:hover:not(:disabled) { background: var(--danger-soft); color: var(--danger); }
+.btn-row.two-eq { grid-template-columns: 1fr 1fr; margin-top: 12px; }
+
+/* the Feedback window */
+.modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(20, 28, 40, 0.45); }
+.modal[hidden] { display: none; }
+.modal-card { width: 100%; max-width: 420px; max-height: 100%; overflow: auto; padding: 16px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
+.modal-card h2 { margin: 0 0 6px; font-size: 16px; }
+.modal-card textarea { width: 100%; resize: vertical; font: inherit; color: inherit; background: transparent; border: 0; outline: 0; padding: 6px 0; }
+
 .status {
   margin-bottom: 8px;
   padding: 7px 10px;
