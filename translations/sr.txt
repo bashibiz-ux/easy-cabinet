@@ -37,7 +37,6 @@ Nadgradnja prati dimenzije elementa ispod (širina i dubina)
 Bočne ploče nadgradnji do vrha plafonske lajsne
 Umetni
 Ažuriraj
-Umetni u tački
 Dupliraj
 Prebaci
 Poništi
@@ -153,3 +152,5 @@ Nazivi elemenata gore
 Prikaži aparate
 Dužina ostrva
 Širina prolaza
+U tački
+Duž putanje

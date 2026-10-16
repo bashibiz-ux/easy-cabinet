@@ -10,12 +10,13 @@ module KitchenCabinetMaster
   # All of it is ONE group (Room) holding a group for the floor, one for the walls (one solid ring, the openings cut in it), one for the roof, one for the doors and
   # one for the windows, each on a tag of its own (Room Floor, Room Walls, Room Roof, Room Doors, Room Windows). Build Room draws it again, Remove Room takes it away.
   #
-  # The geometry that decides the room is plain arithmetic (RoomShell.plan, .boxes, .ring, .openings; mm) so that it can be tested without SketchUp.
+  # The geometry that decides the room is plain arithmetic (RoomShell.plan, .boxes, .roof_solid, .ring, .openings; mm) so that it can be tested without SketchUp.
   module RoomShell
     DICTIONARY = 'KitchenCabinetMaster'
     KEY = 'room_part'
     TOL = 6.0            # mm: a back this close to the side of the box stands against it
     MIN_HEIGHT = 2600.0  # mm
+    ROOF_SHAPES = %w[flat one two].freeze
     DEFAULTS = { 'wall_thickness' => 150.0, 'floor_thickness' => 100.0, 'roof_thickness' => 150.0, 'room_height' => 0.0, 'open_distance' => 1200.0 }.freeze
     TAGS = { 'Floor' => 'Room Floor', 'Walls' => 'Room Walls', 'Roof' => 'Room Roof', 'Doors' => 'Room Doors', 'Windows' => 'Room Windows' }.freeze
     COLOURS = { 'Floor' => [168, 160, 148, 1.0], 'Walls' => [236, 233, 226, 1.0], 'Roof' => [244, 244, 242, 1.0],
@@ -45,8 +46,9 @@ module KitchenCabinetMaster
           backs[side] = true if (oy - box[side]).abs <= TOL
         end
       end
-      open = opts['open_distance'].to_f
-      grow = ->(side, sign) { box[side] + (backs[side] ? 0.0 : sign * open) }
+      open_x = (opts['open_x'] || opts['open_distance']).to_f # (an open side across the red axis: the distance in x; across the green axis: the distance in y)
+      open_y = (opts['open_y'] || opts['open_distance']).to_f
+      grow = ->(side, sign) { box[side] + (backs[side] ? 0.0 : sign * (%i[min_x max_x].include?(side) ? open_x : open_y)) }
       height = opts['room_height'].to_f.positive? ? opts['room_height'].to_f : [MIN_HEIGHT, items.map { |i| i[:top] }.max].max
       { x0: grow.call(:min_x, -1), x1: grow.call(:max_x, 1), y0: grow.call(:min_y, -1), y1: grow.call(:max_y, 1), height: height, backs: backs }
     end
@@ -63,8 +65,41 @@ module KitchenCabinetMaster
       y1 = plan[:y1] + wall
       list = []
       list << { name: 'Floor', from: [x0, y0, -floor], to: [x1, y1, 0.0] } if opts['floor'] != false && floor.positive?
-      list << { name: 'Roof', from: [x0, y0, plan[:height]], to: [x1, y1, plan[:height] + roof] } if opts['roof'] != false && roof.positive?
+      list << { name: 'Roof', from: [x0, y0, plan[:height]], to: [x1, y1, plan[:height] + roof] } if opts['roof'] != false && roof.positive? && roof_solid(plan, options).nil?
       list
+    end
+
+    # A sloping roof: its profile in a vertical plane, to be pushed along the other direction. nil for a flat roof (a box, see boxes).
+    # 'roof_shape' 'one': one slope falling to 'roof_low' (west, east, south or north); 'two': two slopes with the ridge along the longer side. 'roof_angle' in
+    # degrees. The roof is `roof_thickness` thick at its lowest edge and sits flat on the walls. => { axis: :x or :y (the way the slope runs), profile: [[along, z], ...],
+    # outer: [x0, y0, x1, y1] } in mm.
+    def self.roof_solid(plan, options = {})
+      opts = DEFAULTS.merge(options.compact)
+      angle = opts['roof_angle'].to_f
+      shape = opts['roof_shape'].to_s
+      return nil if opts['roof'] == false || !%w[one two].include?(shape) || !angle.positive?
+
+      wall = opts['wall_thickness'].to_f
+      roof = opts['roof_thickness'].to_f
+      return nil unless roof.positive?
+
+      outer = [plan[:x0] - wall, plan[:y0] - wall, plan[:x1] + wall, plan[:y1] + wall]
+      h = plan[:height]
+      tangent = Math.tan(angle * Math::PI / 180.0)
+      if shape == 'one'
+        low = opts['roof_low'].to_s
+        low = 'south' unless SIDES.key?(low)
+        axis = %w[west east].include?(low) ? :x : :y
+        run = axis == :x ? outer[2] - outer[0] : outer[3] - outer[1]
+        high = h + roof + (run * tangent)
+        low_first = %w[west south].include?(low) # the low edge is at the start of the run
+        profile = [[0.0, h], [run, h], [run, low_first ? high : h + roof], [0.0, low_first ? h + roof : high]]
+      else
+        axis = outer[2] - outer[0] <= outer[3] - outer[1] ? :x : :y # the slopes fall across the shorter way: the ridge runs along the longer
+        run = axis == :x ? outer[2] - outer[0] : outer[3] - outer[1]
+        profile = [[0.0, h], [run, h], [run, h + roof], [run / 2.0, h + roof + ((run / 2.0) * tangent)], [0.0, h + roof]]
+      end
+      { axis: axis, profile: profile, outer: outer }
     end
 
     # The walls as one ring: the outside and the inside rectangle ([x0, y0, x1, y1] each) and the height. nil when the walls are not wanted.
@@ -201,6 +236,8 @@ module KitchenCabinetMaster
                  'roof_thickness' => ['The roof thickness', 20.0, 1000.0], 'room_height' => ['The room height', 1500.0, 10_000.0],
                  'open_distance' => ['The distance to an open side', 0.0, 10_000.0] }
       options = {}
+      limits['open_x'] = ['The distance to an open side in x', 0.0, 10_000.0]
+      limits['open_y'] = ['The distance to an open side in y', 0.0, 10_000.0]
       limits.each do |key, (label, min, max)|
         value, problem = number(raw, key, label, min, max)
         return Response.fail(problem, [{ 'field' => key, 'message' => problem }]) if problem
@@ -208,6 +245,14 @@ module KitchenCabinetMaster
         options[key] = value
       end
       %w[floor walls roof].each { |key| options[key] = ValidationManager.truthy_value?(raw[key]) if raw.key?(key) }
+      options['roof_shape'] = ROOF_SHAPES.include?(raw['roof_shape'].to_s) ? raw['roof_shape'].to_s : 'flat'
+      options['roof_low'] = raw['roof_low'].to_s if SIDES.key?(raw['roof_low'].to_s)
+      if options['roof_shape'] != 'flat'
+        angle = ValidationManager.to_float(raw['roof_angle'])
+        return Response.fail('The roof slope must be between 1 and 60 degrees.', [{ 'field' => 'roof_angle', 'message' => 'Slope must be between 1 and 60 degrees.' }]) unless angle && angle.between?(1.0, 60.0)
+
+        options['roof_angle'] = angle
+      end
       return Response.fail('Choose at least one of the floor, the walls and the roof.') if %w[floor walls roof].none? { |key| options[key] != false }
 
       specs, problem = specs_of(raw)
@@ -248,6 +293,9 @@ module KitchenCabinetMaster
         cuts.each { |cut| cut_wall(walls.entities, cut) }
       end
       boxes(plan, options).select { |b| b[:name] == 'Roof' }.each { |box| solid(model, inside, box) }
+      if (sloped = roof_solid(plan, options))
+        slope_roof(part(model, inside, 'Roof').entities, sloped)
+      end
       group_of = {}
       cuts.each do |cut|
         name = cut[:kind] == 'Door' ? 'Doors' : 'Windows'
@@ -302,6 +350,23 @@ module KitchenCabinetMaster
       face.pushpull(ring[:height].mm)
     end
     private_class_method :wall_ring
+
+    # A sloping roof: its profile drawn in a vertical plane and pushed along the other direction.
+    def self.slope_roof(entities, solid)
+      x0, y0, x1, y1 = solid[:outer]
+      if solid[:axis] == :x
+        points = solid[:profile].map { |u, z| Geom::Point3d.new((x0 + u).mm, y0.mm, z.mm) }
+        direction = Geom::Vector3d.new(0, 1, 0)
+        length = y1 - y0
+      else
+        points = solid[:profile].map { |u, z| Geom::Point3d.new(x0.mm, (y0 + u).mm, z.mm) }
+        direction = Geom::Vector3d.new(1, 0, 0)
+        length = x1 - x0
+      end
+      face = entities.add_face(points)
+      face.pushpull(face.normal.dot(direction).positive? ? length.mm : -length.mm)
+    end
+    private_class_method :slope_roof
 
     # An opening cut through the wall: a rectangle drawn on the inside face of the wall, pushed through it.
     def self.cut_wall(entities, cut)

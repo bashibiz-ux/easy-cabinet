@@ -37,7 +37,6 @@ Nadstawka dopasowuje się do szafki pod nią (szerokość i głębokość)
 Panele boczne nadstawek do górnej krawędzi zabudowy sufitowej
 Wstaw
 Aktualizuj
-Wstaw w punkcie
 Duplikuj
 Przełącz
 Cofnij
@@ -153,3 +152,5 @@ Nazwy szafek na górze
 Pokaż urządzenia
 Długość wyspy
 Szerokość przejścia
+W punkcie
+Wzdłuż ścieżki

@@ -37,7 +37,6 @@ A felsőrakat követi az alatta lévő szekrény méretét (szélesség és mél
 A felsőrakat oldalpanelei a mennyezeti takaró tetejéig
 Beszúrás
 Frissítés
-Beszúrás pontba
 Kettőzés
 Váltás
 Visszavonás
@@ -153,3 +152,5 @@ Szekrénynevek felül
 Készülékek megjelenítése
 A sziget hossza
 Folyosó szélessége
+Pontba
+Útvonalra

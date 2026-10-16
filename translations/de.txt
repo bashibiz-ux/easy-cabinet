@@ -37,7 +37,6 @@ Aufsatzschrank folgt der Größe des Schranks darunter (Breite und Tiefe)
 Seitenblenden der Aufsatzschränke bis zur Oberkante der Deckenblende
 Einfügen
 Aktualisieren
-An Punkt einfügen
 Duplizieren
 Umschalten
 Rückgängig
@@ -153,3 +152,5 @@ Schranknamen oben
 Geräte anzeigen
 Länge der Insel
 Gangbreite
+An Punkt
+Auf Pfad

@@ -37,7 +37,6 @@ Tủ nóc theo kích thước tủ bên dưới (rộng và sâu)
 Tấm hông tủ nóc lên đến mép trên phào trần
 Chèn
 Cập nhật
-Chèn tại điểm
 Nhân đôi
 Chuyển đổi
 Hoàn tác
@@ -153,3 +152,5 @@ Tên tủ ở trên
 Hiện thiết bị
 Chiều dài đảo bếp
 Chiều rộng lối đi
+Tại điểm
+Theo đường dẫn

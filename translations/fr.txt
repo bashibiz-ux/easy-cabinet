@@ -37,7 +37,6 @@ La rehausse suit la taille du meuble en dessous (largeur et profondeur)
 Panneaux latéraux des rehausses jusqu'au haut du bandeau de plafond
 Insérer
 Mettre à jour
-Insérer au point
 Dupliquer
 Basculer
 Annuler
@@ -153,3 +152,5 @@ Noms des meubles dessus
 Afficher les appareils
 Longueur de l'îlot
 Largeur de passage
+Au point
+Sur le tracé

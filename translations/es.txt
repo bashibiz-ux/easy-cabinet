@@ -37,7 +37,6 @@ El altillo sigue el tamaño del mueble de abajo (ancho y fondo)
 Paneles laterales de altillos hasta el borde superior del remate de techo
 Insertar
 Actualizar
-Insertar en punto
 Duplicar
 Alternar
 Deshacer
@@ -153,3 +152,5 @@ Nombres de muebles arriba
 Mostrar electrodomésticos
 Longitud de la isla
 Ancho del pasillo
+En punto
+En trayectoria

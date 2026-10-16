@@ -936,7 +936,7 @@
     <section class="card" id="sec-room">
       <button class="card-head" type="button" aria-expanded="true">Room</button>
       <div class="card-body">
-        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model, as one group (the floor, walls, roof, doors and windows each on a tag of their own: Room Floor, Room Walls, Room Roof, Room Doors, Room Windows), with the door and windows you ask for cut through the walls. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the distance below away. A wall is measured along its inside from its start: the south and north walls from the west end, the west and east walls from the south end. Build Room draws it again; Remove Room takes it away.</p>
+        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model, as one group (the floor, walls, roof, doors and windows each on a tag of their own: Room Floor, Room Walls, Room Roof, Room Doors, Room Windows), with the door and windows you ask for cut through the walls. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the open-side distance below away, one for the x (red) and one for the y (green) direction. The roof is flat, has one slope (the low side you choose) or two slopes (the ridge along the longer side). A wall is measured along its inside from its start: the south and north walls from the west end, the west and east walls from the south end. Build Room draws it again; Remove Room takes it away.</p>
         <div class="checks">
           <label class="check"><input type="checkbox" id="roomFloorOn" checked><span>Floor</span></label>
           <label class="check"><input type="checkbox" id="roomWallsOn" checked><span>Walls</span></label>
@@ -948,7 +948,16 @@
           <label class="field"><span class="label">Roof Thickness</span><div class="input"><input id="roomRoof" type="text" inputmode="decimal" autocomplete="off" value="150"><em>mm</em></div></label>
           <label class="field"><span class="label">Room Height</span><div class="input"><input id="roomHeight" type="text" inputmode="decimal" autocomplete="off" placeholder="automatic"><em>mm</em></div></label>
         </div>
-        <label class="field narrow"><span class="label">Distance to an Open Side</span><div class="input"><input id="roomOpen" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
+        <div class="grid-2">
+          <label class="field"><span class="label">Open Side in X (red axis)</span><div class="input"><input id="roomOpenX" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
+          <label class="field"><span class="label">Open Side in Y (green axis)</span><div class="input"><input id="roomOpenY" type="text" inputmode="decimal" autocomplete="off" value="1200"><em>mm</em></div></label>
+        </div>
+        <p class="group-title">Roof</p>
+        <div class="grid-2">
+          <label class="field"><span class="label">Roof Shape</span><div class="input"><select id="roomRoofShape"><option value="flat">Flat</option><option value="one">One slope</option><option value="two">Two slopes</option></select></div></label>
+          <label class="field"><span class="label">Slope</span><div class="input"><input id="roomRoofAngle" type="text" inputmode="decimal" autocomplete="off" value="15"><em>deg</em></div></label>
+          <label class="field"><span class="label">Low Side (one slope)</span><div class="input"><select id="roomRoofLow"><option value="south">South (-Y)</option><option value="north">North (+Y)</option><option value="west">West (-X)</option><option value="east">East (+X)</option></select></div></label>
+        </div>
         <p class="group-title">Door</p>
         <label class="check"><input type="checkbox" id="roomDoorOn" checked><span>Door</span></label>
         <div class="grid-2">
@@ -1007,8 +1016,8 @@
     <div class="btn-row quad">
       <button class="btn tile" type="button" data-action="insert"><span>Insert</span></button>
       <button class="btn tile" type="button" data-action="update"><span>Update</span></button>
-      <button class="btn tile" type="button" data-action="insert_at_point" title="Click in the model where the cabinet goes: on an edge its back stands against it and its front faces you. The Left and Right arrow keys turn it a quarter; Esc cancels."><span>Insert at Point</span></button>
-      <button class="btn tile" type="button" data-action="insert_on_path" title="Select the edges that are the walls and press this: the cabinet of the panel is inserted again and again along them, its back against the wall, as many as fit on each wall. The units stand on the side you are looking from (the tick Units on the other side of the path turns them round). One Undo step."><span>Insert on Path</span></button>
+      <button class="btn tile" type="button" data-action="insert_at_point" title="Click in the model where the cabinet goes: on an edge its back stands against it and its front faces you. The Left and Right arrow keys turn it a quarter; Esc cancels."><span>At Point</span></button>
+      <button class="btn tile" type="button" data-action="insert_on_path" title="Select the edges that are the walls and press this: the cabinet of the panel is inserted again and again along them, its back against the wall, as many as fit on each wall. The units stand on the side you are looking from (the tick Units on the other side of the path turns them round). One Undo step."><span>On Path</span></button>
       <button class="btn tile" type="button" data-action="duplicate" title="Make a copy of the selected cabinet (or cabinets)"><span>Duplicate</span></button>
     </div>
     <div class="btn-row tools">

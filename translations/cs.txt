@@ -37,7 +37,6 @@ Nástavec sleduje rozměr skříňky pod ním (šířka a hloubka)
 Boční panely nástavců až k hornímu okraji stropní lišty
 Vložit
 Aktualizovat
-Vložit do bodu
 Duplikovat
 Přepnout
 Zpět
@@ -153,3 +152,5 @@ Názvy skříněk nahoře
 Zobrazit spotřebiče
 Délka ostrůvku
 Šířka uličky
+Do bodu
+Podél cesty

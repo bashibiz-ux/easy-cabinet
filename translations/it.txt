@@ -37,7 +37,6 @@ Il soprastante segue le dimensioni del mobile sotto (larghezza e profondità)
 Pannelli laterali dei soprastanti fino al bordo superiore del coprifilo
 Inserisci
 Aggiorna
-Inserisci nel punto
 Duplica
 Apri/chiudi
 Annulla
@@ -153,3 +152,5 @@ Nomi dei mobili in alto
 Mostra elettrodomestici
 Lunghezza dell'isola
 Larghezza del passaggio
+Nel punto
+Sul percorso

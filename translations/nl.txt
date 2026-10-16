@@ -37,7 +37,6 @@ Opzetkast volgt de afmetingen van de kast eronder (breedte en diepte)
 Zijpanelen van opzetkasten tot de bovenkant van de plafondstrook
 Invoegen
 Bijwerken
-Invoegen op punt
 Dupliceren
 Schakelen
 Ongedaan maken
@@ -153,3 +152,5 @@ Kastnamen bovenop
 Apparaten tonen
 Lengte van het eiland
 Breedte van de gang
+Op punt
+Op pad
