@@ -466,10 +466,10 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .actions .btn-row + .btn-row, .actions .btn-row.tools { margin-top: 0; }
 .actions { padding: 0; }
 .actions .status { margin: 8px 14px; }
-.actions .btn.tile { --tile: #3f3b33; --tile-on: #e6e2d8; display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 2px; border: 0; border-right: 1px solid #2c2923; border-bottom: 1px solid #2c2923; border-radius: 0; background: var(--tile); color: #fff; font-size: 12px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.15s var(--ease), color 0.15s var(--ease); }
+.actions .btn.tile { --tile: var(--accent-deep); --tile-on: var(--accent-soft); --tile-line: rgba(255, 255, 255, 0.28); display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 2px; border: 0; border-right: 1px solid var(--tile-line); border-bottom: 1px solid var(--tile-line); border-radius: 0; background: var(--tile); color: var(--accent-ink); font-size: 12px; font-weight: 500; letter-spacing: 0; box-shadow: none; transition: background 0.15s var(--ease), color 0.15s var(--ease); }
 .actions .btn.tile:last-child { border-right: 0; }
 .actions .btn.tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
-.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: #3f3b33; border-color: #2c2923; }
+.actions .btn.tile:hover:not(:disabled), .actions .btn.tile.active { background: var(--tile-on); color: var(--accent-deep); border-color: var(--tile-line); }
 .actions .btn.tile:active:not(:disabled) { transform: none; }
 .actions .btn.tile:disabled { opacity: 0.5; }
 .actions .btn.tile[hidden] { display: none; }
