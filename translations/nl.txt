@@ -1,0 +1,155 @@
+Instellingen
+Eenheden
+Taal
+Automatisch
+Kastafmetingen
+Zichtbaarheid
+Modellen
+Kasten en extra's
+Automatische keuken
+Greep
+Materiaal
+Onderdelenlijst
+Kast
+Niets geselecteerd
+Algemeen
+Zijpanelen
+Onderkasten
+Bovenkasten
+Opzetkasten
+Invoegen op pad
+Maatvoering
+Zijpanelen aan zichtzijde
+Plint
+Werkblad en achterwand
+Bodem onder de bovenkast
+Ook bodem onder de opzetkasten
+Opzetkast (boven elke bovenkast en hoge kast)
+Plafondstrook
+Klevende functie
+Aanpassing van de buurkast bij formaatwijziging
+Bovenkasten ook boven de onderkasten
+Geselecteerde kast direct bijwerken als ik de afmetingen wijzig
+Kasten en extra's inklappen als een object is geselecteerd
+Keuken bijwerken als ik deze opties wijzig
+Kasten aan de andere kant van het pad
+Opzetkast volgt de afmetingen van de kast eronder (breedte en diepte)
+Zijpanelen van opzetkasten tot de bovenkant van de plafondstrook
+Invoegen
+Bijwerken
+Invoegen op punt
+Dupliceren
+Schakelen
+Ongedaan maken
+Verwijderen
+Feedback
+Doneren
+Annuleren
+Bericht kopiëren
+Mail-app
+Feedback versturen
+Versturen met
+Soort
+Opmerking
+Suggestie
+Probleem
+Compliment
+Uw bericht
+Keuken ontwerpen
+Ontwerpen op geselecteerd pad
+Kastafmetingen herstellen
+CSV exporteren
+Onderdelenlijst tonen
+Draaien
+Aanpassen...
+Verwijderen uit lijst
+Werkblad toepassen
+Breedte
+Diepte
+Hoogte
+Categorie
+Dikte
+Lengte
+Naam
+Positie
+Stijl
+Indeling
+Variant
+Standaardbreedte
+Deurspleet
+Deurterugsprong
+Deurafstand
+Radius van de voorkant
+Legplanken
+Aantal laden
+Laden
+Deuren
+Deur
+Oriëntatie
+Zijde
+Vlak
+Afwerking
+Stuklengte
+Terugsprong voorzijde
+Terugsprong voorzijde opzetkast
+Terugsprong vanaf de korpus
+Plinthoogte
+Korpus
+Korpusmateriaal
+Onderkast
+Bovenkast
+Hoge kast
+Opzetkast
+Werkblad
+Kookplaat
+Spoelbak
+Oven
+Magnetron
+Koelkast
+Afzuigkap
+Eiland
+Apparaten
+Kranen
+Fronten
+Grepen
+Labels
+Onderdelen
+Koken
+Koelen
+Geen
+Beide deuren
+Horizontaal
+Verticaal
+Plat
+Glas
+Glazen deur
+Gewone deur
+Bovenste deur
+Onderste deur
+Wand A
+Wand B
+Wand C
+Lengte wand A
+Lengte wand B
+Lengte wand C
+Materiaal van het model
+Grepenset
+Grepenmateriaal
+Ladegreep
+Achterwand
+Hoogte achterwand
+Materiaal achterwand
+Materiaal werkblad
+Overstek zijkant
+Overstek voorkant
+Paneeldikte
+Dikte achterpaneel
+Bovenpaneel
+Deurhoogte
+Ladehoogte
+Apparaat
+Grepen van opzetkasten
+Kastnamen bovenop
+Apparaten tonen
+Lengte van het eiland
+Breedte van de gang

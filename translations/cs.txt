@@ -1,0 +1,155 @@
+Nastavení
+Jednotky
+Jazyk
+Automaticky
+Rozměry skříněk
+Viditelnost
+Modely
+Skříňky a doplňky
+Automatická kuchyně
+Úchytka
+Materiál
+Seznam dílů
+Skříňka
+Nic není vybráno
+Obecné
+Boční panely
+Spodní skříňky
+Horní skříňky
+Nástavce
+Vložit podél cesty
+Kóty
+Boční panely na viditelné straně
+Sokl
+Pracovní deska a zástěna
+Dno pod horní skříňkou
+Dno i pod nástavci
+Nástavec (nad každou horní skříňkou a vysokou skříní)
+Stropní lišta
+Funkce přichycení
+Přizpůsobení sousední skříňky při změně rozměru
+Horní skříňky i nad spodními skříňkami
+Aktualizovat vybranou skříňku okamžitě při změně jejích rozměrů
+Sbalit skříňky a doplňky, když je vybrán objekt
+Aktualizovat kuchyni při změně těchto voleb
+Skříňky na druhé straně cesty
+Nástavec sleduje rozměr skříňky pod ním (šířka a hloubka)
+Boční panely nástavců až k hornímu okraji stropní lišty
+Vložit
+Aktualizovat
+Vložit do bodu
+Duplikovat
+Přepnout
+Zpět
+Smazat
+Zpětná vazba
+Přispět
+Zrušit
+Kopírovat zprávu
+Poštovní aplikace
+Odeslat zpětnou vazbu
+Odeslat pomocí
+Druh
+Komentář
+Návrh
+Problém
+Pochvala
+Vaše zpráva
+Navrhnout kuchyň
+Navrhnout na vybrané cestě
+Obnovit rozměry skříněk
+Exportovat CSV
+Zobrazit seznam dílů
+Otočit
+Přizpůsobit...
+Odebrat
+Použít pracovní desku
+Šířka
+Hloubka
+Výška
+Kategorie
+Tloušťka
+Délka
+Název
+Poloha
+Styl
+Rozvržení
+Varianta
+Standardní šířka
+Spára dveří
+Předsazení dveří
+Vzdálenost dveří
+Poloměr přední hrany
+Police
+Počet zásuvek
+Zásuvky
+Dveře
+Dveře
+Orientace
+Strana
+Plocha
+Povrch
+Délka dílu
+Odsazení vpředu
+Odsazení vpředu u nástavce
+Odsazení od korpusu
+Výška soklu
+Korpus
+Materiál korpusu
+Spodní skříňka
+Horní skříňka
+Vysoká skříň
+Nástavec
+Pracovní deska
+Varná deska
+Dřez
+Trouba
+Mikrovlnka
+Lednice
+Odsavač
+Ostrůvek
+Spotřebiče
+Baterie
+Čela
+Úchytky
+Štítky
+Díly
+Vaření
+Chlazení
+Žádný
+Obě dvířka
+Vodorovně
+Svisle
+Plochý
+Sklo
+Skleněné dveře
+Běžné dveře
+Horní dveře
+Dolní dveře
+Stěna A
+Stěna B
+Stěna C
+Délka stěny A
+Délka stěny B
+Délka stěny C
+Materiál modelu
+Sada úchytek
+Materiál úchytky
+Úchytka zásuvky
+Zástěna
+Výška zástěny
+Materiál zástěny
+Materiál pracovní desky
+Přesah do boku
+Přesah vpředu
+Tloušťka panelu
+Tloušťka zadního panelu
+Horní panel
+Výška dveří
+Výška zásuvky
+Spotřebič
+Úchytky nástavců
+Názvy skříněk nahoře
+Zobrazit spotřebiče
+Délka ostrůvku
+Šířka uličky

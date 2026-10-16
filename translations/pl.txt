@@ -1,0 +1,155 @@
+Ustawienia
+Jednostki
+Język
+Automatycznie
+Rozmiary szafek
+Widoczność
+Modele
+Szafki i dodatki
+Kuchnia automatyczna
+Uchwyt
+Materiał
+Lista elementów
+Szafka
+Nic nie zaznaczono
+Ogólne
+Panele boczne
+Szafki dolne
+Szafki wiszące
+Nadstawki
+Wstaw wzdłuż ścieżki
+Wymiary
+Panele boczne po widocznej stronie
+Cokół
+Blat i panel ścienny
+Dno pod szafką wiszącą
+Dno także pod nadstawkami
+Nadstawka (nad każdą szafką wiszącą i słupkiem)
+Zabudowa sufitowa
+Funkcja przyciągania
+Dopasowanie sąsiedniej szafki przy zmianie rozmiaru
+Szafki wiszące także nad szafkami dolnymi
+Aktualizuj zaznaczoną szafkę na żywo przy zmianie jej rozmiarów
+Zwiń szafki i dodatki, gdy zaznaczono obiekt
+Aktualizuj kuchnię przy zmianie tych opcji
+Szafki po drugiej stronie ścieżki
+Nadstawka dopasowuje się do szafki pod nią (szerokość i głębokość)
+Panele boczne nadstawek do górnej krawędzi zabudowy sufitowej
+Wstaw
+Aktualizuj
+Wstaw w punkcie
+Duplikuj
+Przełącz
+Cofnij
+Usuń
+Opinia
+Wesprzyj
+Anuluj
+Kopiuj wiadomość
+Aplikacja poczty
+Wyślij opinię
+Wyślij przez
+Rodzaj
+Komentarz
+Sugestia
+Problem
+Pochwała
+Twoja wiadomość
+Zaprojektuj kuchnię
+Projektuj na zaznaczonej ścieżce
+Przywróć rozmiary szafek
+Eksportuj CSV
+Pokaż listę elementów
+Obróć
+Dostosuj...
+Usuń z listy
+Zastosuj blat
+Szerokość
+Głębokość
+Wysokość
+Kategoria
+Grubość
+Długość
+Nazwa
+Pozycja
+Styl
+Układ
+Wariant
+Szerokość standardowa
+Szczelina drzwi
+Cofnięcie drzwi
+Odległość drzwi
+Promień krawędzi frontu
+Półki
+Liczba szuflad
+Szuflady
+Drzwi
+Drzwi
+Orientacja
+Strona
+Powierzchnia
+Wykończenie
+Długość elementu
+Cofnięcie frontu
+Cofnięcie frontu nadstawki
+Cofnięcie od korpusu
+Wysokość cokołu
+Korpus
+Materiał korpusu
+Szafka dolna
+Szafka wisząca
+Słupek
+Nadstawka
+Blat
+Płyta grzewcza
+Zlew
+Piekarnik
+Mikrofalówka
+Lodówka
+Okap
+Wyspa
+Urządzenia
+Baterie
+Fronty
+Uchwyty
+Etykiety
+Części
+Gotowanie
+Chłodzenie
+Brak
+Oba skrzydła
+Poziomo
+Pionowo
+Płaski
+Szkło
+Drzwi szklane
+Drzwi zwykłe
+Drzwi górne
+Drzwi dolne
+Ściana A
+Ściana B
+Ściana C
+Długość ściany A
+Długość ściany B
+Długość ściany C
+Materiał modelu
+Zestaw uchwytów
+Materiał uchwytu
+Uchwyt szuflady
+Panel ścienny
+Wysokość panelu ściennego
+Materiał panelu ściennego
+Materiał blatu
+Wysunięcie boczne
+Wysunięcie z przodu
+Grubość płyty
+Grubość tylnej płyty
+Płyta górna
+Wysokość drzwi
+Wysokość szuflady
+Urządzenie
+Uchwyty nadstawek
+Nazwy szafek na górze
+Pokaż urządzenia
+Długość wyspy
+Szerokość przejścia

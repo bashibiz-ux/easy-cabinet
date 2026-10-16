@@ -1,0 +1,155 @@
+Settings
+Units
+Language
+Automatic
+Unit Sizes
+Visibility
+Models
+Cabinets and Extras
+Auto Kitchen
+Handle
+Material
+Cut List
+Cabinet
+Nothing selected
+General
+Side panels
+Base units
+Wall units
+Lofts
+Insert on Path
+Dimension
+Side panels on exposed side
+Toe kick
+Worktop and back splash
+Wall unit bottom panel
+Bottom panel under the lofts too
+Loft (over every wall and tall unit)
+Ceiling filler
+Sticking function
+Resizing cabinet sticking option
+Wall units over the base units too
+Update the selected cabinet live when I change its sizes
+collapse cabinets and extras when an object selected
+Update the kitchen when I change these options
+Units on the other side of the path
+Loft follows the size of the unit below (width and depth)
+Loft side panels up to the top of the ceiling filler
+Insert
+Update
+Insert at Point
+Duplicate
+Toggle
+Undo
+Delete
+Feedback
+Donate
+Cancel
+Copy message
+Mail app
+Send feedback
+Send it with
+Kind
+Comment
+Suggestion
+Problem
+Praise
+Your message
+Design Kitchen
+Design on Selected Path
+Reset Unit Sizes
+Export CSV
+Show Cut List
+Rotate
+Customize...
+Remove
+Apply Worktop
+Width
+Depth
+Height
+Category
+Thickness
+Length
+Name
+Position
+Style
+Layout
+Variation
+Standard Width
+Door Gap
+Door Reveal
+Door Distance
+Front Edge Radius
+Shelves
+Number of Drawers
+Drawers
+Doors
+Door
+Orientation
+Side
+Face
+Finish
+Piece Length
+Front Setback
+Loft Front Setback
+Recess from Carcass
+Toe-kick Height
+Carcass
+Carcass Material
+Base Unit
+Wall Unit
+Tall Unit
+Loft Unit
+Worktop
+Hob
+Sink
+Oven
+Microwave
+Fridge
+Hood
+Island
+Appliances
+Fixtures
+Fronts
+Handles
+Labels
+Parts
+Cooking
+Cooling
+None
+Both doors
+Horizontal
+Vertical
+Flat
+Glass
+Glass Door
+Normal Door
+Upper door
+Lower door
+Wall A
+Wall B
+Wall C
+Wall A Length
+Wall B Length
+Wall C Length
+Material of the model
+Handle Bundle
+Handle Material
+Drawer Handle
+Back splash
+Back Splash Height
+Back Splash Material
+Worktop Material
+End Overhang
+Front Overhang
+Panel Thickness
+Back Panel Thickness
+Top Panel
+Door Height
+Drawer Height
+Appliance
+Loft handles
+Cabinet names on top
+Show appliances
+Island Length
+Aisle Width

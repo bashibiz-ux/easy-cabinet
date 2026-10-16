@@ -1,0 +1,155 @@
+Podešavanja
+Jedinice
+Jezik
+Automatski
+Dimenzije elemenata
+Vidljivost
+Modeli
+Elementi i dodaci
+Automatska kuhinja
+Ručka
+Materijal
+Lista delova
+Element
+Ništa nije izabrano
+Opšte
+Bočne ploče
+Donji elementi
+Gornji elementi
+Nadgradnje
+Umetni duž putanje
+Kote
+Bočne ploče na vidljivoj strani
+Sokla
+Radna ploča i zidna obloga
+Dno ispod gornjeg elementa
+Dno i ispod nadgradnji
+Nadgradnja (iznad svakog gornjeg i visokog elementa)
+Plafonska lajsna
+Funkcija lepljenja
+Prilagođavanje susednog elementa pri promeni veličine
+Gornji elementi i iznad donjih elemenata
+Ažuriraj izabrani element odmah kad menjam njegove dimenzije
+Skupi elemente i dodatke kad je izabran objekat
+Ažuriraj kuhinju kad menjam ove opcije
+Elementi sa druge strane putanje
+Nadgradnja prati dimenzije elementa ispod (širina i dubina)
+Bočne ploče nadgradnji do vrha plafonske lajsne
+Umetni
+Ažuriraj
+Umetni u tački
+Dupliraj
+Prebaci
+Poništi
+Obriši
+Povratne informacije
+Doniraj
+Otkaži
+Kopiraj poruku
+Aplikacija za poštu
+Pošalji povratne informacije
+Pošalji preko
+Vrsta
+Komentar
+Predlog
+Problem
+Pohvala
+Vaša poruka
+Projektuj kuhinju
+Projektuj na izabranoj putanji
+Vrati dimenzije elemenata
+Izvezi CSV
+Prikaži listu delova
+Rotiraj
+Prilagodi...
+Ukloni
+Primeni radnu ploču
+Širina
+Dubina
+Visina
+Kategorija
+Debljina
+Dužina
+Naziv
+Položaj
+Stil
+Raspored
+Varijanta
+Standardna širina
+Zazor vrata
+Uvlačenje vrata
+Rastojanje vrata
+Poluprečnik prednje ivice
+Police
+Broj fioka
+Fioke
+Vrata
+Vrata
+Orijentacija
+Strana
+Površina
+Obrada
+Dužina dela
+Uvlačenje napred
+Uvlačenje napred nadgradnje
+Uvlačenje od korpusa
+Visina sokle
+Korpus
+Materijal korpusa
+Donji element
+Gornji element
+Visoki element
+Nadgradnja
+Radna ploča
+Ploča za kuvanje
+Sudopera
+Rerna
+Mikrotalasna
+Frižider
+Aspirator
+Ostrvo
+Aparati
+Slavine
+Frontovi
+Ručke
+Oznake
+Delovi
+Kuvanje
+Hlađenje
+Nijedan
+Oba krila
+Horizontalno
+Vertikalno
+Ravan
+Staklo
+Stakleno krilo
+Obična vrata
+Gornja vrata
+Donja vrata
+Zid A
+Zid B
+Zid C
+Dužina zida A
+Dužina zida B
+Dužina zida C
+Materijal modela
+Komplet ručki
+Materijal ručke
+Ručka fioke
+Zidna obloga
+Visina zidne obloge
+Materijal zidne obloge
+Materijal radne ploče
+Bočni prepust
+Prednji prepust
+Debljina ploče
+Debljina zadnje ploče
+Gornja ploča
+Visina vrata
+Visina fioke
+Aparat
+Ručke nadgradnji
+Nazivi elemenata gore
+Prikaži aparate
+Dužina ostrva
+Širina prolaza

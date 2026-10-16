@@ -1,0 +1,155 @@
+Cài đặt
+Đơn vị
+Ngôn ngữ
+Tự động
+Kích thước tủ
+Hiển thị
+Mẫu
+Tủ và phụ kiện
+Bếp tự động
+Tay nắm
+Vật liệu
+Danh sách chi tiết
+Tủ
+Chưa chọn gì
+Chung
+Tấm hông
+Tủ dưới
+Tủ trên
+Tủ nóc
+Chèn theo đường dẫn
+Kích thước đo
+Tấm hông ở mặt lộ
+Chân tủ
+Mặt bàn và ốp tường
+Đáy dưới tủ trên
+Cả đáy dưới tủ nóc
+Tủ nóc (trên mỗi tủ trên và tủ cao)
+Phào trần
+Chức năng bám dính
+Tùy chọn điều chỉnh tủ bên cạnh khi đổi kích thước
+Tủ trên cũng nằm trên tủ dưới
+Cập nhật ngay tủ đang chọn khi tôi đổi kích thước
+Thu gọn tủ và phụ kiện khi chọn một đối tượng
+Cập nhật bếp khi tôi đổi các tùy chọn này
+Tủ ở phía bên kia của đường dẫn
+Tủ nóc theo kích thước tủ bên dưới (rộng và sâu)
+Tấm hông tủ nóc lên đến mép trên phào trần
+Chèn
+Cập nhật
+Chèn tại điểm
+Nhân đôi
+Chuyển đổi
+Hoàn tác
+Xóa
+Phản hồi
+Ủng hộ
+Hủy
+Sao chép tin nhắn
+Ứng dụng thư
+Gửi phản hồi
+Gửi bằng
+Loại
+Nhận xét
+Đề xuất
+Sự cố
+Khen ngợi
+Tin nhắn của bạn
+Thiết kế bếp
+Thiết kế theo đường dẫn đã chọn
+Đặt lại kích thước tủ
+Xuất CSV
+Hiện danh sách chi tiết
+Xoay
+Tùy chỉnh...
+Gỡ bỏ
+Áp dụng mặt bàn
+Chiều rộng
+Chiều sâu
+Chiều cao
+Danh mục
+Độ dày
+Chiều dài
+Tên
+Vị trí
+Kiểu
+Bố cục
+Biến thể
+Chiều rộng chuẩn
+Khe cửa
+Độ lùi cửa
+Khoảng cách cửa
+Bán kính cạnh trước
+Kệ
+Số ngăn kéo
+Ngăn kéo
+Cửa
+Cửa
+Hướng
+Cạnh
+Mặt
+Hoàn thiện
+Chiều dài mỗi đoạn
+Độ lùi phía trước
+Độ lùi phía trước của tủ nóc
+Độ lùi so với thân tủ
+Chiều cao chân tủ
+Thân tủ
+Vật liệu thân tủ
+Tủ dưới
+Tủ trên
+Tủ cao
+Tủ nóc
+Mặt bàn
+Bếp nấu
+Chậu rửa
+Lò nướng
+Lò vi sóng
+Tủ lạnh
+Máy hút mùi
+Đảo bếp
+Thiết bị
+Vòi
+Mặt tủ
+Tay nắm
+Nhãn
+Chi tiết
+Nấu
+Làm lạnh
+Không
+Cả hai cửa
+Ngang
+Dọc
+Phẳng
+Kính
+Cửa kính
+Cửa thường
+Cửa trên
+Cửa dưới
+Tường A
+Tường B
+Tường C
+Chiều dài tường A
+Chiều dài tường B
+Chiều dài tường C
+Vật liệu của mẫu
+Bộ tay nắm
+Vật liệu tay nắm
+Tay nắm ngăn kéo
+Ốp tường
+Chiều cao ốp tường
+Vật liệu ốp tường
+Vật liệu mặt bàn
+Phần nhô hai bên
+Phần nhô phía trước
+Độ dày tấm
+Độ dày tấm hậu
+Tấm trên
+Chiều cao cửa
+Chiều cao ngăn kéo
+Thiết bị
+Tay nắm tủ nóc
+Tên tủ ở trên
+Hiện thiết bị
+Chiều dài đảo bếp
+Chiều rộng lối đi

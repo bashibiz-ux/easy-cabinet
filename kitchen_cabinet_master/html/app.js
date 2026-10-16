@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.53.0';
+  const APP_VERSION = '1.54.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2266,7 +2266,7 @@ if (details.length) {
   const LIVE_PICK_DELAY_MS = 60; // a list or tick box is a finished choice
   // These have their own live behaviour (Visibility ticks) or need the cabinet
   // list reloaded first (catalog / category / cabinet, see wireEvents).
-  const NO_LIVE_IDS = new Set(['liveLoft', 'pathWallUnits', 'liveLoftFollow', 'liveLoftBottom', 'liveSideCeiling', 'liveLoftSideFiller', 'epLoftToFiller', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
+  const NO_LIVE_IDS = new Set(['language', 'liveLoft', 'pathWallUnits', 'liveLoftFollow', 'liveLoftBottom', 'liveSideCeiling', 'liveLoftSideFiller', 'epLoftToFiller', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'liveDimensions', 'liveSidePanels', 'liveToeKicks', 'liveWallBottom', 'liveWorktop', 'snapEnabled', 'followSelection', 'frontDesign', 'glassDoor', 'myFrom', 'myName', 'myCat', 'myRemove', 'units', 'rotateDegrees', 'visCarcass', 'visDoor', 'visToe', 'showAppliances', 'showOven', 'showMicro', 'showSink', 'showHob', 'showHood', 'showFreeFridge', 'visWorktop', 'visSplash', 'showDirection', 'showWallDirection', 'hideWallHandles', 'showNames', 'hideBaseHandles', 'hideTallHandles', 'hideLoftHandles', 'showDoorSymbol', 'cutGroup', 'catalog', 'category', 'cabinet']);
 
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
@@ -2812,6 +2812,16 @@ function liveEdit(el) {
     const m = state.meta;
     $('appVersion').textContent = 'v' + (m.version || APP_VERSION);
     fillSelect($('units'), Object.entries(UNITS).map(([id, unit]) => ({ id, name: unit.name })));
+    // The language of the panel (see i18n.js): Automatic is the language of the computer when there is a file for it.
+    fillSelect($('language'), [{ id: 'auto', name: 'Automatic' }, ...window.KCM_I18N.LANGUAGES.map(([id, name]) => ({ id, name }))]);
+    let savedLanguage = 'auto';
+    try { savedLanguage = localStorage.getItem('kcm.lang') || 'auto'; } catch (_) { /* not remembered */ }
+    $('language').value = savedLanguage;
+    window.KCM_I18N.use(savedLanguage);
+    $('language').addEventListener('change', () => {
+      try { localStorage.setItem('kcm.lang', $('language').value); } catch (_) { /* a private window: not remembered */ }
+      window.KCM_I18N.use($('language').value);
+    });
     $('units').value = state.unit;
     refreshUnitLabels();
     fillSelect($('topPanel'), [

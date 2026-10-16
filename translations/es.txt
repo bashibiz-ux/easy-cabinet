@@ -1,0 +1,155 @@
+Ajustes
+Unidades
+Idioma
+Automático
+Tamaños de módulos
+Visibilidad
+Modelos
+Muebles y extras
+Cocina automática
+Tirador
+Material
+Lista de piezas
+Mueble
+Nada seleccionado
+General
+Paneles laterales
+Muebles bajos
+Muebles altos de pared
+Altillos
+Insertar en trayectoria
+Cotas
+Paneles laterales en lado visto
+Zócalo
+Encimera y salpicadero
+Fondo bajo el mueble de pared
+Fondo bajo los altillos también
+Altillo (sobre cada mueble de pared y columna)
+Remate de techo
+Función de unión
+Opción de ajuste del mueble vecino al cambiar tamaño
+Muebles de pared también sobre los muebles bajos
+Actualizar en vivo el mueble seleccionado al cambiar sus tamaños
+Contraer muebles y extras cuando hay un objeto seleccionado
+Actualizar la cocina al cambiar estas opciones
+Muebles al otro lado de la trayectoria
+El altillo sigue el tamaño del mueble de abajo (ancho y fondo)
+Paneles laterales de altillos hasta el borde superior del remate de techo
+Insertar
+Actualizar
+Insertar en punto
+Duplicar
+Alternar
+Deshacer
+Eliminar
+Opinión
+Donar
+Cancelar
+Copiar mensaje
+App de correo
+Enviar opinión
+Enviar con
+Tipo
+Comentario
+Sugerencia
+Problema
+Elogio
+Su mensaje
+Diseñar cocina
+Diseñar en trayectoria seleccionada
+Restablecer tamaños de módulos
+Exportar CSV
+Mostrar lista de piezas
+Girar
+Personalizar...
+Quitar
+Aplicar encimera
+Ancho
+Fondo
+Alto
+Categoría
+Grosor
+Longitud
+Nombre
+Posición
+Estilo
+Distribución
+Variación
+Ancho estándar
+Holgura de puerta
+Separación de puerta
+Distancia de puerta
+Radio del borde frontal
+Estantes
+Número de cajones
+Cajones
+Puertas
+Puerta
+Orientación
+Lado
+Cara
+Acabado
+Longitud de pieza
+Retranqueo frontal
+Retranqueo frontal del altillo
+Retranqueo del casco
+Altura del zócalo
+Casco
+Material del casco
+Mueble bajo
+Mueble de pared
+Columna
+Altillo
+Encimera
+Placa
+Fregadero
+Horno
+Microondas
+Frigorífico
+Campana
+Isla
+Electrodomésticos
+Grifería
+Frentes
+Tiradores
+Etiquetas
+Piezas
+Cocción
+Refrigeración
+Ninguno
+Ambas puertas
+Horizontal
+Vertical
+Plano
+Vidrio
+Puerta de vidrio
+Puerta normal
+Puerta superior
+Puerta inferior
+Pared A
+Pared B
+Pared C
+Longitud pared A
+Longitud pared B
+Longitud pared C
+Material del modelo
+Juego de tiradores
+Material del tirador
+Tirador de cajón
+Salpicadero
+Altura del salpicadero
+Material del salpicadero
+Material de la encimera
+Saliente lateral
+Saliente frontal
+Grosor del panel
+Grosor del panel trasero
+Panel superior
+Altura de puerta
+Altura de cajón
+Electrodoméstico
+Tiradores de altillos
+Nombres de muebles arriba
+Mostrar electrodomésticos
+Longitud de la isla
+Ancho del pasillo

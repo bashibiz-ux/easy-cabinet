@@ -1,0 +1,155 @@
+Réglages
+Unités
+Langue
+Automatique
+Dimensions des meubles
+Visibilité
+Modèles
+Meubles et extras
+Cuisine automatique
+Poignée
+Matériau
+Liste de débit
+Meuble
+Rien de sélectionné
+Général
+Panneaux latéraux
+Meubles bas
+Meubles hauts
+Rehausses
+Insérer sur le tracé
+Cotation
+Panneaux latéraux sur le côté visible
+Plinthe
+Plan de travail et crédence
+Fond sous le meuble haut
+Fond sous les rehausses aussi
+Rehausse (au-dessus de chaque meuble haut et colonne)
+Bandeau de plafond
+Fonction d'accrochage
+Option d'ajustement du meuble voisin au redimensionnement
+Meubles hauts aussi au-dessus des meubles bas
+Mettre à jour en direct le meuble sélectionné quand je change ses dimensions
+Replier meubles et extras quand un objet est sélectionné
+Mettre à jour la cuisine quand je change ces options
+Meubles de l'autre côté du tracé
+La rehausse suit la taille du meuble en dessous (largeur et profondeur)
+Panneaux latéraux des rehausses jusqu'au haut du bandeau de plafond
+Insérer
+Mettre à jour
+Insérer au point
+Dupliquer
+Basculer
+Annuler
+Supprimer
+Avis
+Faire un don
+Annuler
+Copier le message
+App de messagerie
+Envoyer l'avis
+Envoyer avec
+Type
+Commentaire
+Suggestion
+Problème
+Éloge
+Votre message
+Concevoir la cuisine
+Concevoir sur le tracé sélectionné
+Réinitialiser les dimensions
+Exporter en CSV
+Afficher la liste de débit
+Pivoter
+Personnaliser...
+Retirer
+Appliquer le plan de travail
+Largeur
+Profondeur
+Hauteur
+Catégorie
+Épaisseur
+Longueur
+Nom
+Position
+Style
+Disposition
+Variante
+Largeur standard
+Jeu de porte
+Retrait de porte
+Distance de porte
+Rayon du bord avant
+Étagères
+Nombre de tiroirs
+Tiroirs
+Portes
+Porte
+Orientation
+Côté
+Face
+Finition
+Longueur des pièces
+Retrait avant
+Retrait avant de la rehausse
+Retrait par rapport au caisson
+Hauteur de plinthe
+Caisson
+Matériau du caisson
+Meuble bas
+Meuble haut
+Colonne
+Rehausse
+Plan de travail
+Plaque de cuisson
+Évier
+Four
+Micro-ondes
+Réfrigérateur
+Hotte
+Îlot
+Appareils
+Robinetterie
+Façades
+Poignées
+Étiquettes
+Pièces
+Cuisson
+Réfrigération
+Aucun
+Les deux portes
+Horizontal
+Vertical
+Plat
+Verre
+Porte vitrée
+Porte normale
+Porte du haut
+Porte du bas
+Mur A
+Mur B
+Mur C
+Longueur du mur A
+Longueur du mur B
+Longueur du mur C
+Matériau du modèle
+Jeu de poignées
+Matériau de la poignée
+Poignée de tiroir
+Crédence
+Hauteur de la crédence
+Matériau de la crédence
+Matériau du plan de travail
+Débord latéral
+Débord avant
+Épaisseur du panneau
+Épaisseur du fond
+Panneau supérieur
+Hauteur de porte
+Hauteur de tiroir
+Appareil
+Poignées des rehausses
+Noms des meubles dessus
+Afficher les appareils
+Longueur de l'îlot
+Largeur de passage

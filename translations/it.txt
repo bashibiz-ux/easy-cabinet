@@ -1,0 +1,155 @@
+Impostazioni
+Unità
+Lingua
+Automatico
+Dimensioni dei mobili
+Visibilità
+Modelli
+Mobili ed extra
+Cucina automatica
+Maniglia
+Materiale
+Distinta dei pezzi
+Mobile
+Nessuna selezione
+Generale
+Pannelli laterali
+Basi
+Pensili
+Soprastanti
+Inserisci sul percorso
+Quote
+Pannelli laterali sul lato a vista
+Zoccolo
+Piano di lavoro e alzatina
+Fondo sotto il pensile
+Fondo anche sotto i soprastanti
+Soprastante (sopra ogni pensile e colonna)
+Coprifilo a soffitto
+Funzione di aggancio
+Opzione di adattamento del mobile vicino al ridimensionamento
+Pensili anche sopra le basi
+Aggiorna subito il mobile selezionato quando cambio le sue dimensioni
+Comprimi mobili ed extra quando è selezionato un oggetto
+Aggiorna la cucina quando cambio queste opzioni
+Mobili sull'altro lato del percorso
+Il soprastante segue le dimensioni del mobile sotto (larghezza e profondità)
+Pannelli laterali dei soprastanti fino al bordo superiore del coprifilo
+Inserisci
+Aggiorna
+Inserisci nel punto
+Duplica
+Apri/chiudi
+Annulla
+Elimina
+Feedback
+Dona
+Annulla
+Copia messaggio
+App di posta
+Invia feedback
+Invia con
+Tipo
+Commento
+Suggerimento
+Problema
+Complimento
+Il tuo messaggio
+Progetta cucina
+Progetta sul percorso selezionato
+Ripristina dimensioni
+Esporta CSV
+Mostra distinta dei pezzi
+Ruota
+Personalizza...
+Rimuovi
+Applica piano di lavoro
+Larghezza
+Profondità
+Altezza
+Categoria
+Spessore
+Lunghezza
+Nome
+Posizione
+Stile
+Schema
+Variante
+Larghezza standard
+Gioco anta
+Sporgenza anta
+Distanza anta
+Raggio del bordo frontale
+Ripiani
+Numero di cassetti
+Cassetti
+Ante
+Anta
+Orientamento
+Lato
+Faccia
+Finitura
+Lunghezza del pezzo
+Rientranza frontale
+Rientranza frontale del soprastante
+Rientranza dal corpo
+Altezza zoccolo
+Corpo
+Materiale del corpo
+Base
+Pensile
+Colonna
+Soprastante
+Piano di lavoro
+Piano cottura
+Lavello
+Forno
+Microonde
+Frigorifero
+Cappa
+Isola
+Elettrodomestici
+Rubinetteria
+Frontali
+Maniglie
+Etichette
+Parti
+Cottura
+Raffreddamento
+Nessuno
+Entrambe le ante
+Orizzontale
+Verticale
+Piatto
+Vetro
+Anta in vetro
+Anta normale
+Anta superiore
+Anta inferiore
+Parete A
+Parete B
+Parete C
+Lunghezza parete A
+Lunghezza parete B
+Lunghezza parete C
+Materiale del modello
+Set di maniglie
+Materiale della maniglia
+Maniglia del cassetto
+Alzatina
+Altezza dell'alzatina
+Materiale dell'alzatina
+Materiale del piano di lavoro
+Sporgenza laterale
+Sporgenza frontale
+Spessore del pannello
+Spessore del pannello posteriore
+Pannello superiore
+Altezza anta
+Altezza cassetto
+Elettrodomestico
+Maniglie dei soprastanti
+Nomi dei mobili in alto
+Mostra elettrodomestici
+Lunghezza dell'isola
+Larghezza del passaggio

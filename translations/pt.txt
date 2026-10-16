@@ -1,0 +1,155 @@
+Definições
+Unidades
+Idioma
+Automático
+Tamanhos dos módulos
+Visibilidade
+Modelos
+Móveis e extras
+Cozinha automática
+Puxador
+Material
+Lista de peças
+Móvel
+Nada selecionado
+Geral
+Painéis laterais
+Móveis baixos
+Móveis altos de parede
+Bagageiras
+Inserir no percurso
+Cotas
+Painéis laterais no lado visível
+Rodapé
+Bancada e frontal
+Fundo sob o móvel de parede
+Fundo sob as bagageiras também
+Bagageira (sobre cada móvel de parede e coluna)
+Remate de teto
+Função de encaixe
+Opção de ajuste do móvel vizinho ao redimensionar
+Móveis de parede também sobre os móveis baixos
+Atualizar ao vivo o móvel selecionado quando altero os seus tamanhos
+Recolher móveis e extras quando um objeto está selecionado
+Atualizar a cozinha quando altero estas opções
+Móveis do outro lado do percurso
+A bagageira acompanha o tamanho do móvel de baixo (largura e profundidade)
+Painéis laterais das bagageiras até ao topo do remate de teto
+Inserir
+Atualizar
+Inserir no ponto
+Duplicar
+Alternar
+Anular
+Eliminar
+Comentários
+Doar
+Cancelar
+Copiar mensagem
+App de correio
+Enviar comentários
+Enviar com
+Tipo
+Comentário
+Sugestão
+Problema
+Elogio
+A sua mensagem
+Projetar cozinha
+Projetar no percurso selecionado
+Repor tamanhos dos módulos
+Exportar CSV
+Mostrar lista de peças
+Rodar
+Personalizar...
+Remover
+Aplicar bancada
+Largura
+Profundidade
+Altura
+Categoria
+Espessura
+Comprimento
+Nome
+Posição
+Estilo
+Disposição
+Variação
+Largura padrão
+Folga da porta
+Recuo da porta
+Distância da porta
+Raio da aresta frontal
+Prateleiras
+Número de gavetas
+Gavetas
+Portas
+Porta
+Orientação
+Lado
+Face
+Acabamento
+Comprimento da peça
+Recuo frontal
+Recuo frontal da bagageira
+Recuo do corpo
+Altura do rodapé
+Corpo
+Material do corpo
+Móvel baixo
+Móvel de parede
+Coluna
+Bagageira
+Bancada
+Placa
+Lava-loiça
+Forno
+Micro-ondas
+Frigorífico
+Exaustor
+Ilha
+Eletrodomésticos
+Torneiras
+Frentes
+Puxadores
+Etiquetas
+Peças
+Cozinhar
+Refrigeração
+Nenhum
+Ambas as portas
+Horizontal
+Vertical
+Plano
+Vidro
+Porta de vidro
+Porta normal
+Porta superior
+Porta inferior
+Parede A
+Parede B
+Parede C
+Comprimento da parede A
+Comprimento da parede B
+Comprimento da parede C
+Material do modelo
+Conjunto de puxadores
+Material do puxador
+Puxador de gaveta
+Frontal da bancada
+Altura do frontal
+Material do frontal
+Material da bancada
+Saliência lateral
+Saliência frontal
+Espessura do painel
+Espessura do painel traseiro
+Painel superior
+Altura da porta
+Altura da gaveta
+Eletrodoméstico
+Puxadores das bagageiras
+Nomes dos móveis em cima
+Mostrar eletrodomésticos
+Comprimento da ilha
+Largura da passagem

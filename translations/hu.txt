@@ -1,0 +1,155 @@
+Beállítások
+Mértékegységek
+Nyelv
+Automatikus
+Szekrényméretek
+Láthatóság
+Modellek
+Szekrények és kiegészítők
+Automatikus konyha
+Fogantyú
+Anyag
+Darabjegyzék
+Szekrény
+Nincs kijelölve semmi
+Általános
+Oldalpanelek
+Alsó szekrények
+Felső szekrények
+Felsőrakat szekrények
+Beszúrás az útvonal mentén
+Méretezés
+Oldalpanelek a szabad oldalon
+Lábazat
+Munkalap és hátfal
+Alj a felső szekrény alatt
+Alj a felsőrakat szekrények alatt is
+Felsőrakat (minden felső és magas szekrény fölött)
+Mennyezeti takaró
+Illesztés funkció
+Szomszédos szekrény igazítása átméretezéskor
+Felső szekrények az alsók fölött is
+A kijelölt szekrény élő frissítése, ha módosítom a méreteit
+Szekrények és kiegészítők összecsukása kijelölt objektumnál
+A konyha frissítése, ha módosítom ezeket a beállításokat
+Szekrények az útvonal másik oldalán
+A felsőrakat követi az alatta lévő szekrény méretét (szélesség és mélység)
+A felsőrakat oldalpanelei a mennyezeti takaró tetejéig
+Beszúrás
+Frissítés
+Beszúrás pontba
+Kettőzés
+Váltás
+Visszavonás
+Törlés
+Visszajelzés
+Adomány
+Mégse
+Üzenet másolása
+Levelezőalkalmazás
+Visszajelzés küldése
+Küldés ezzel
+Fajta
+Megjegyzés
+Javaslat
+Probléma
+Dicséret
+Az Ön üzenete
+Konyha tervezése
+Tervezés a kijelölt útvonalon
+Szekrényméretek visszaállítása
+CSV exportálása
+Darabjegyzék megjelenítése
+Forgatás
+Testreszabás...
+Eltávolítás
+Munkalap alkalmazása
+Szélesség
+Mélység
+Magasság
+Kategória
+Vastagság
+Hosszúság
+Név
+Pozíció
+Stílus
+Elrendezés
+Változat
+Szabványos szélesség
+Ajtórés
+Ajtóbehúzás
+Ajtótávolság
+Frontél sugara
+Polcok
+Fiókok száma
+Fiókok
+Ajtók
+Ajtó
+Tájolás
+Oldal
+Lap
+Felület
+Darabhossz
+Elöl visszahúzás
+Elöl visszahúzás (felsőrakat)
+Visszahúzás a korpusztól
+Lábazat magassága
+Korpusz
+Korpuszanyag
+Alsó szekrény
+Felső szekrény
+Magas szekrény
+Felsőrakat
+Munkalap
+Főzőlap
+Mosogató
+Sütő
+Mikrohullámú sütő
+Hűtőszekrény
+Páraelszívó
+Sziget
+Készülékek
+Csaptelepek
+Frontok
+Fogantyúk
+Címkék
+Alkatrészek
+Főzés
+Hűtés
+Nincs
+Mindkét ajtó
+Vízszintes
+Függőleges
+Sík
+Üveg
+Üvegajtó
+Normál ajtó
+Felső ajtó
+Alsó ajtó
+A fal
+B fal
+C fal
+A fal hossza
+B fal hossza
+C fal hossza
+A modell anyaga
+Fogantyúkészlet
+Fogantyú anyaga
+Fiókfogantyú
+Hátfal
+Hátfal magassága
+Hátfal anyaga
+Munkalap anyaga
+Oldalsó túllógás
+Elülső túllógás
+Panelvastagság
+Hátlap vastagsága
+Felső panel
+Ajtómagasság
+Fiókmagasság
+Készülék
+Felsőrakat fogantyúi
+Szekrénynevek felül
+Készülékek megjelenítése
+A sziget hossza
+Folyosó szélessége

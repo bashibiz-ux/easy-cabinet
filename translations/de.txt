@@ -1,0 +1,155 @@
+Einstellungen
+Einheiten
+Sprache
+Automatisch
+Schrankgrößen
+Sichtbarkeit
+Modelle
+Schränke und Extras
+Auto-Küche
+Griff
+Material
+Stückliste
+Schrank
+Nichts ausgewählt
+Allgemein
+Seitenblenden
+Unterschränke
+Oberschränke
+Aufsatzschränke
+Auf Pfad einfügen
+Bemaßung
+Seitenblenden an freien Seiten
+Sockelblende
+Arbeitsplatte und Spritzschutz
+Boden unter dem Oberschrank
+Boden unter den Aufsatzschränken ebenfalls
+Aufsatzschrank (über jedem Ober- und Hochschrank)
+Deckenblende
+Haftfunktion
+Größenänderung mit Nachbarschrank
+Oberschränke auch über den Unterschränken
+Ausgewählten Schrank live aktualisieren, wenn ich seine Größe ändere
+Schränke und Extras einklappen, wenn ein Objekt ausgewählt ist
+Küche aktualisieren, wenn ich diese Optionen ändere
+Schränke auf der anderen Seite des Pfads
+Aufsatzschrank folgt der Größe des Schranks darunter (Breite und Tiefe)
+Seitenblenden der Aufsatzschränke bis zur Oberkante der Deckenblende
+Einfügen
+Aktualisieren
+An Punkt einfügen
+Duplizieren
+Umschalten
+Rückgängig
+Löschen
+Feedback
+Spenden
+Abbrechen
+Nachricht kopieren
+Mail-App
+Feedback senden
+Senden mit
+Art
+Kommentar
+Vorschlag
+Problem
+Lob
+Ihre Nachricht
+Küche entwerfen
+Auf gewähltem Pfad entwerfen
+Schrankgrößen zurücksetzen
+CSV exportieren
+Stückliste anzeigen
+Drehen
+Anpassen...
+Entfernen
+Arbeitsplatte anwenden
+Breite
+Tiefe
+Höhe
+Kategorie
+Dicke
+Länge
+Name
+Position
+Stil
+Aufbau
+Variante
+Standardbreite
+Türspalt
+Türversatz
+Türabstand
+Radius der Frontkante
+Einlegeböden
+Anzahl der Schubladen
+Schubladen
+Türen
+Tür
+Ausrichtung
+Seite
+Fläche
+Oberfläche
+Stücklänge
+Rücksprung vorne
+Rücksprung vorne (Aufsatzschrank)
+Rücksprung vom Korpus
+Sockelhöhe
+Korpus
+Korpusmaterial
+Unterschrank
+Oberschrank
+Hochschrank
+Aufsatzschrank
+Arbeitsplatte
+Kochfeld
+Spüle
+Backofen
+Mikrowelle
+Kühlschrank
+Dunstabzug
+Insel
+Geräte
+Armaturen
+Fronten
+Griffe
+Beschriftungen
+Teile
+Kochen
+Kühlen
+Keine
+Beide Türen
+Horizontal
+Vertikal
+Flach
+Glas
+Glastür
+Normale Tür
+Obere Tür
+Untere Tür
+Wand A
+Wand B
+Wand C
+Länge Wand A
+Länge Wand B
+Länge Wand C
+Material des Modells
+Griffauswahl
+Griffmaterial
+Schubladengriff
+Spritzschutz
+Höhe des Spritzschutzes
+Material des Spritzschutzes
+Material der Arbeitsplatte
+Überstand seitlich
+Überstand vorne
+Plattenstärke
+Rückwandstärke
+Deckplatte
+Türhöhe
+Schubladenhöhe
+Gerät
+Griffe der Aufsatzschränke
+Schranknamen oben
+Geräte anzeigen
+Länge der Insel
+Gangbreite
