@@ -106,4 +106,64 @@ class WallSnapTest < Minitest::Test
     wall = Snap.wall_delta(moved, [wall_along_y(0.0)], 200.0)
     assert_shift [0.0, 0.0], wall
   end
+  # ---- a cabinet moved to another wall is turned to it ------------------------------------------
+
+  # A cabinet 600 wide and 560 deep whose back is at `back` on the line through `origin`, looking along `f`.
+  def cabinet(f, center, width: 600.0, depth: 560.0, z: [100.0, 880.0])
+    t = [-f[1], f[0]]
+    middle = (center[0] * t[0]) + (center[1] * t[1])
+    { f: f, origin: [center[0] - (f[0] * depth / 2.0), center[1] - (f[1] * depth / 2.0)], t: [middle - (width / 2.0), middle + (width / 2.0)], z: z, center: center, depth: depth }
+  end
+
+  def degrees(radians) = radians * 180.0 / Math::PI
+
+  def test_a_cabinet_that_looks_at_the_wall_turns_half_a_turn_to_put_its_back_on_it
+    wall = wall_along_y(0.0) # the room is on the +X side
+    mover = cabinet([-1.0, 0.0], [330.0, 1300.0]) # its front towards the wall (its front is at x = 50), its back away from it
+    angle = Snap.wall_turn(mover, [wall], THRESHOLD)
+    refute_nil angle
+    assert_in_delta 180.0, degrees(angle).abs, 0.01
+  end
+
+  def test_a_cabinet_standing_across_a_wall_turns_a_quarter_to_face_the_room
+    wall = wall_along_y(0.0)
+    mover = cabinet([0.0, 1.0], [250.0, 1300.0], depth: 400.0) # its front looks along +Y, its side is by the wall
+    angle = Snap.wall_turn(mover, [wall], 100.0)
+    assert_in_delta(-90.0, degrees(angle), 0.01, 'turned clockwise from +Y to +X')
+  end
+
+  def test_a_cabinet_already_with_its_back_to_the_wall_is_left_as_it_is
+    wall = wall_along_y(0.0)
+    assert_nil Snap.wall_turn(cabinet([1.0, 0.0], [330.0, 1300.0]), [wall], THRESHOLD)
+  end
+
+  def test_a_wall_beside_a_cabinet_with_its_back_to_a_wall_does_not_turn_it
+    wall = wall_along_y(0.0)
+    assert_nil Snap.wall_turn(cabinet([1.0, 0.0], [330.0, 1300.0]), [wall, wall_along_x(1000.0)], THRESHOLD), 'it has its back to the wall: the wall beside it is left alone'
+  end
+
+  def test_a_cabinet_a_little_short_of_the_wall_with_its_back_to_it_is_snapped_not_turned
+    assert_nil Snap.wall_turn(cabinet([1.0, 0.0], [380.0, 1300.0]), [wall_along_y(0.0)], THRESHOLD)
+  end
+
+  def test_the_room_is_on_the_side_of_the_cabinet_whichever_way_the_wall_faces
+    wall = wall_along_y(2000.0) # the surface faces +X but the cabinet is on the -X side of it
+    angle = Snap.wall_turn(cabinet([1.0, 0.0], [1700.0, 1300.0]), [wall], THRESHOLD)
+    assert_in_delta 180.0, degrees(angle).abs, 0.01, 'its back must be on the wall: the front looks along -X'
+  end
+
+  def test_a_cabinet_far_from_every_wall_is_not_turned
+    wall = wall_along_y(0.0)
+    assert_nil Snap.wall_turn(cabinet([0.0, 1.0], [2500.0, 1300.0]), [wall], THRESHOLD)
+  end
+
+  def test_a_wall_it_is_not_beside_does_not_turn_it
+    wall = wall_along_y(0.0, from: 0.0, to: 500.0)
+    assert_nil Snap.wall_turn(cabinet([0.0, 1.0], [250.0, 3000.0]), [wall], THRESHOLD), 'the wall ends well before the cabinet'
+  end
+
+  def test_a_wall_of_another_height_does_not_turn_it
+    wall = wall_along_y(0.0, height: 50.0)
+    assert_nil Snap.wall_turn(cabinet([0.0, 1.0], [250.0, 1300.0]), [wall], THRESHOLD)
+  end
 end

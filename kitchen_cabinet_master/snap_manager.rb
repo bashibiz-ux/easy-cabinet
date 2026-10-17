@@ -140,6 +140,42 @@ module KitchenCabinetMaster
       best && [fx * best, fy * best]
     end
 
+    # How far (radians, about Z, counter-clockwise positive) a cabinet that was moved up to a wall has to turn so that its BACK is on that wall and its front looks
+    # into the room; nil when it is already so against a wall within reach (wall_delta then does the snapping), or when no wall is close. A cabinet dropped by
+    # another wall, or with its front towards a wall, is turned to the nearest one.
+    #
+    #   mover  as for wall_delta, and `center` ([x, y] of the middle of the cabinet) and `depth` (how far its front is from its back)
+    def self.wall_turn(mover, walls, threshold)
+      fx, fy = mover[:f]
+      cx, cy = mover[:center]
+      half_width = (mover[:t][1] - mover[:t][0]) / 2.0
+      reach = (mover[:depth].to_f / 2.0) + threshold # (its back within the threshold of the wall)
+      best = nil
+      walls.each do |wall|
+        nx, ny = wall[:normal]
+        next unless [mover[:z][1], wall[:z][1]].min - [mover[:z][0], wall[:z][0]].max > 0
+
+        tx = -ny
+        ty = nx
+        spans = wall[:points].map { |x, y| (x * tx) + (y * ty) }
+        along = (cx * tx) + (cy * ty)
+        next unless along >= spans.min - half_width && along <= spans.max + half_width
+
+        px, py = wall[:points].first
+        distance = ((cx - px) * nx) + ((cy - py) * ny)
+        next if distance.abs > reach
+
+        sign = distance >= 0 ? 1.0 : -1.0 # the front must look away from the wall, into the room
+        gx = nx * sign
+        gy = ny * sign
+        angle = Math.atan2((fx * gy) - (fy * gx), (fx * gx) + (fy * gy))
+        return nil if angle.abs <= 1e-3 && ((nx * fx) + (ny * fy)).abs > WALL_FACING # a wall it already has its back to: snapped, not turned
+
+        best = [distance.abs, angle] if best.nil? || distance.abs < best[0]
+      end
+      best && best[1].abs > 1e-3 ? best[1] : nil
+    end
+
     # ---- switching it on and off -----------------------------------------------
 
     def self.enabled?
@@ -392,7 +428,8 @@ module KitchenCabinetMaster
     private_class_method :notify
 
     def self.snap(entity)
-      return unless right_angled?(entity.transformation)
+      turned = turn_to_wall(entity) # (moved to another wall: its back is turned to that wall first)
+      return unless turned || right_angled?(entity.transformation)
 
       threshold = SNAP_DISTANCE_MM.mm
       others = PlacementManager.existing_boxes(entity.parent.entities, exclude: entity).map { |other| extent(other) }
@@ -421,6 +458,36 @@ module KitchenCabinetMaster
       notify("#{entity.name} snapped to #{what}.")
     end
     private_class_method :snap
+
+    # A cabinet that was moved up to a wall (not parallel to it) is turned about its middle so that its back looks at that wall. One transparent step with the move.
+    # => true when it was turned.
+    def self.turn_to_wall(entity)
+      model = entity.model
+      angle = wall_turn(mover_for_turn(entity), collect_walls(model, entity), SNAP_DISTANCE_MM.mm)
+      return false unless angle
+
+      center = mover_for_turn(entity)[:center]
+      @busy = true
+      model.start_operation('Turn Cabinet', true, false, true)
+      begin
+        entity.transform!(Geom::Transformation.rotation(Geom::Point3d.new(center[0], center[1], 0), Geom::Vector3d.new(0, 0, 1), angle))
+        model.commit_operation
+      rescue StandardError
+        model.abort_operation
+        raise
+      ensure
+        @busy = false
+      end
+      remember(entity)
+      notify("#{entity.name} turned to the wall it was moved to.")
+      true
+    end
+    private_class_method :turn_to_wall
+
+    def self.mover_for_turn(entity)
+      mover_info(entity, own_box(entity), [0.0, 0.0, 0.0])
+    end
+    private_class_method :mover_for_turn
 
     # The cabinets that were moved together, snapped as one body: the box round all of them goes to the nearest
     # cabinet that was not moved (and to the wall behind, and the floor), and every one of them moves by the same
@@ -530,7 +597,11 @@ module KitchenCabinetMaster
       across = box[:corners].map { |c| (c.x * t[0]) + (c.y * t[1]) }
       moved_t = (shift[0] * t[0]) + (shift[1] * t[1])
       origin = entity.transformation.origin
+      corners = box[:corners]
+      lengthwise = corners.map { |c| (c.x * f[0]) + (c.y * f[1]) }
       {
+        center: [corners.sum(&:x) / corners.length, corners.sum(&:y) / corners.length],
+        depth: lengthwise.max - lengthwise.min,
         f: f,
         origin: [origin.x + shift[0], origin.y + shift[1]],
         t: [across.min + moved_t, across.max + moved_t],
