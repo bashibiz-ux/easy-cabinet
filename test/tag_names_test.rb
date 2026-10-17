@@ -10,7 +10,7 @@ class TagNamesTest < Minitest::Test
   TM = KitchenCabinetMaster::TagManager
 
   def test_the_tags_are_numbered
-    assert_equal ['01 - Base Unit', '02 - Wall Unit', '03 - Loft Unit', '04 - Tall Unit', '05 - Toe Kick', '05 - Side Panels', '06 - Ceiling Filler', 'Worktop'], TM::ALL
+    assert_equal ['01 - Base Unit', '02 - Wall Unit', '03 - Loft Unit', '04 - Tall Unit', '05 - Toe Kick', '06 - Side Panels', '07 - Ceiling Filler', 'Worktop'], TM::ALL
   end
 
   def test_a_cabinet_is_on_the_tag_of_its_kind_and_a_loft_has_its_own
@@ -23,8 +23,8 @@ class TagNamesTest < Minitest::Test
 
   def test_parts_are_on_their_tags
     assert_equal '05 - Toe Kick', TM.for_stored('part_kind' => 'toe_kick')
-    assert_equal '05 - Side Panels', TM.for_stored('part_kind' => 'end_panel')
-    assert_equal '06 - Ceiling Filler', TM.for_stored('part_kind' => 'filler', 'ceiling_filler' => 'CABINET_0001:0')
+    assert_equal '06 - Side Panels', TM.for_stored('part_kind' => 'end_panel')
+    assert_equal '07 - Ceiling Filler', TM.for_stored('part_kind' => 'filler', 'ceiling_filler' => 'CABINET_0001:0')
     assert_nil TM.for_stored('part_kind' => 'filler'), 'a plain filler stays untagged'
     assert_equal 'Worktop', TM.for_stored('part_kind' => 'worktop')
     assert_equal 'Worktop', TM.for_stored('part_kind' => 'backsplash')
@@ -49,7 +49,7 @@ class TagNamesTest < Minitest::Test
   Model = Struct.new(:layers)
 
   def test_a_model_with_the_old_names_gets_them_renamed_and_the_rest_added
-    tags = Tags.new('Base Unit', 'Wall Unit', 'Tall Unit', 'Toe Kick', 'Worktop', 'My Own Tag')
+    tags = Tags.new('Base Unit', 'Wall Unit', 'Tall Unit', 'Toe Kick', '05 - Side Panels', '06 - Ceiling Filler', 'Worktop', 'My Own Tag')
     old_base = tags['Base Unit']
     TM.create_all(Model.new(tags))
     assert_equal '01 - Base Unit', old_base.name, 'the same tag: what is on it stays on it'
@@ -59,6 +59,6 @@ class TagNamesTest < Minitest::Test
   end
 
   def test_the_old_names_are_noticed_as_work_to_do
-    assert_equal({ 'Base Unit' => '01 - Base Unit', 'Wall Unit' => '02 - Wall Unit', 'Tall Unit' => '04 - Tall Unit', 'Toe Kick' => '05 - Toe Kick' }, TM::OLD_NAMES)
+    assert_equal({ 'Base Unit' => '01 - Base Unit', 'Wall Unit' => '02 - Wall Unit', 'Tall Unit' => '04 - Tall Unit', 'Toe Kick' => '05 - Toe Kick', '05 - Side Panels' => '06 - Side Panels', '06 - Ceiling Filler' => '07 - Ceiling Filler' }, TM::OLD_NAMES)
   end
 end

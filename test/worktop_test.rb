@@ -264,7 +264,7 @@ class WorktopTest < Minitest::Test
   end
 
   def test_the_tags_are_the_ones_asked_for
-    assert_equal ['01 - Base Unit', '02 - Wall Unit', '03 - Loft Unit', '04 - Tall Unit', '05 - Toe Kick', '05 - Side Panels', '06 - Ceiling Filler', 'Worktop'], TagManager::ALL
+    assert_equal ['01 - Base Unit', '02 - Wall Unit', '03 - Loft Unit', '04 - Tall Unit', '05 - Toe Kick', '06 - Side Panels', '07 - Ceiling Filler', 'Worktop'], TagManager::ALL
   end
 
   def test_the_new_actions_are_routed

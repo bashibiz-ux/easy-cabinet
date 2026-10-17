@@ -2,19 +2,19 @@
 
 module KitchenCabinetMaster
   # SketchUp "tags" (layers in older versions) for the parts of a kitchen, so each can be shown, hidden or coloured on its own from SketchUp's Tags panel:
-  # 01 - Base Unit, 02 - Wall Unit, 03 - Loft Unit, 04 - Tall Unit, 05 - Toe Kick, 05 - Side Panels, 06 - Ceiling Filler, and Worktop.
+  # 01 - Base Unit, 02 - Wall Unit, 03 - Loft Unit, 04 - Tall Unit, 05 - Toe Kick, 06 - Side Panels, 07 - Ceiling Filler, and Worktop.
   module TagManager
     BASE = '01 - Base Unit'
     WALL = '02 - Wall Unit'
     LOFT = '03 - Loft Unit'
     TALL = '04 - Tall Unit'
     TOE_KICK = '05 - Toe Kick'
-    SIDE_PANELS = '05 - Side Panels'
-    CEILING_FILLER = '06 - Ceiling Filler'
+    SIDE_PANELS = '06 - Side Panels'
+    CEILING_FILLER = '07 - Ceiling Filler'
     WORKTOP = 'Worktop'
     ALL = [BASE, WALL, LOFT, TALL, TOE_KICK, SIDE_PANELS, CEILING_FILLER, WORKTOP].freeze
     # The names the tags had before they were numbered: a model that has them gets them renamed (what is on them stays on them).
-    OLD_NAMES = { 'Base Unit' => BASE, 'Wall Unit' => WALL, 'Tall Unit' => TALL, 'Toe Kick' => TOE_KICK }.freeze
+    OLD_NAMES = { 'Base Unit' => BASE, 'Wall Unit' => WALL, 'Tall Unit' => TALL, 'Toe Kick' => TOE_KICK, '05 - Side Panels' => SIDE_PANELS, '06 - Ceiling Filler' => CEILING_FILLER }.freeze
 
     # The tag a cabinet belongs on: corner units count as base units.
     def self.for_category(category)
