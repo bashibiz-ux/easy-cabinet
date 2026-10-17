@@ -1266,7 +1266,7 @@ module KitchenCabinetMaster
         made = entities.add_instance(source.definition, transformation)
         made.name = source.name
         AttributeManager.write(made, stored.merge('cabinet_id' => params['cabinet_id'], 'sequence' => params['sequence']))
-        TagManager.assign(model, made, TagManager.for_category(params['cabinet_category']))
+        TagManager.assign(model, made, TagManager.for_cabinet(params))
         return made
       end
 

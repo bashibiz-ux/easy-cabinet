@@ -553,4 +553,4 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn-row, .btn-row.fb-send { gap: 0; }
 .btn-row > .btn:not(:last-child) { border-right-width: 0; }
 .sub-btn { width: 100%; }
-
+.btn-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }

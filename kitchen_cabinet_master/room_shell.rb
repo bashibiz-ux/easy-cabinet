@@ -9,8 +9,9 @@ module KitchenCabinetMaster
   # is under the room and the walls, the roof over them. The doors and windows are openings cut through the walls, a door with its leaf in it and a window with its
   # glass.
   #
-  # All of it is ONE group (Room) holding a group for the floor, one for the walls (one solid ring, the openings cut in it), one for the roof, one for the doors and
-  # one for the windows, each on a tag of its own (Room Floor, Room Walls, Room Roof, Room Doors, Room Windows). Build Room draws it again, Remove Room takes it away.
+  # It is drawn as groups of their own, not one: the floor, the walls (one solid ring, the openings cut in it), the roof, and a group for each door and each window, each
+  # on a tag of its own (Room Floor, Room Walls, Room Roof, Room Doors, Room Windows). A door or window can be moved like any group: the opening in the wall moves with
+  # it (see after_move). Build Room draws it again, Update Room does so after a move, Remove Room takes it away.
   #
   # The geometry that decides the room is plain arithmetic (RoomShell.plan, .boxes, .ring, .openings; mm) so that it can be tested without SketchUp.
   module RoomShell
@@ -291,6 +292,7 @@ module KitchenCabinetMaster
       case action
       when 'build_room' then build(raw)
       when 'remove_room' then remove
+      when 'update_room' then update
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -384,17 +386,15 @@ module KitchenCabinetMaster
         raise
       end
       sides = plan[:backs].count { |_, back| back }
-      Response.ok("Room drawn as one group: #{format('%g', (plan[:x1] - plan[:x0]).round)} x #{format('%g', (plan[:y1] - plan[:y0]).round)} mm inside, #{format('%g', plan[:height].round)} mm high" \
+      Response.ok("Room drawn: #{format('%g', (plan[:x1] - plan[:x0]).round)} x #{format('%g', (plan[:y1] - plan[:y0]).round)} mm inside, #{format('%g', plan[:height].round)} mm high" \
                   "#{", walls right behind the cabinets on #{sides} side#{'s' unless sides == 1}" if sides.positive?}" \
                   "#{", #{cuts.count { |c| c[:kind] == 'Door' }} door(s) and #{cuts.count { |c| c[:kind] == 'Window' }} window(s)" unless cuts.empty?}.")
     end
 
-    # The room: one group with a group inside it for the floor, the walls, the roof, the doors and the windows, each on its own tag.
+    # The room: a group for the floor, one for the walls, one for the roof and one for each door and window, in the model, each on its own tag. What it was made from is
+    # kept on the model, so that it can be drawn again when a door or window is moved.
     def self.draw_room(model, plan, options, cuts)
-      room = model.entities.add_group
-      room.name = 'Room'
-      room.set_attribute(DICTIONARY, KEY, 'Room')
-      inside = room.entities
+      inside = model.entities
       boxes(plan, options).select { |b| b[:name] == 'Floor' }.each { |box| solid(model, inside, box) }
       if (ring = ring(plan, options))
         walls = part(model, inside, 'Walls')
@@ -407,10 +407,9 @@ module KitchenCabinetMaster
         counts[cut[:kind]] += 1
         draw_opening(model, inside, cut, index, "#{cut[:kind]} #{counts[cut[:kind]]}")
       end
-      room.set_attribute(DICTIONARY, 'room_plan', JSON.generate(plan))
-      room.set_attribute(DICTIONARY, 'room_options', JSON.generate(options))
-      room.set_attribute(DICTIONARY, 'room_specs', JSON.generate(cuts.map { |c| c[:spec] }))
-      room
+      model.set_attribute(DICTIONARY, 'room_plan', JSON.generate(plan))
+      model.set_attribute(DICTIONARY, 'room_options', JSON.generate(options))
+      model.set_attribute(DICTIONARY, 'room_specs', JSON.generate(cuts.map { |c| c[:spec] }))
     end
     private_class_method :draw_room
 
@@ -418,6 +417,7 @@ module KitchenCabinetMaster
     def self.part(model, entities, name)
       group = entities.add_group
       group.name = name
+      group.set_attribute(DICTIONARY, KEY, name)
       group.layer = model.layers[TAGS[name]] || model.layers.add(TAGS[name])
       colour = COLOURS.fetch(name, [230, 230, 230, 1.0])
       material = model.materials["Room #{name}"] || model.materials.add("Room #{name}")
@@ -487,6 +487,7 @@ module KitchenCabinetMaster
       kind = cut[:kind]
       group = entities.add_group
       group.name = name
+      group.set_attribute(DICTIONARY, KEY, name)
       group.layer = model.layers[TAGS[kind == 'Door' ? 'Doors' : 'Windows']] || model.layers.add(TAGS[kind == 'Door' ? 'Doors' : 'Windows'])
       (kind == 'Door' ? door_parts(cut) : window_parts(cut)).each do |part_name, boxes|
         sub = group.entities.add_group
@@ -497,6 +498,7 @@ module KitchenCabinetMaster
       bounds = group.bounds
       group.set_attribute(DICTIONARY, 'room_opening', index)
       group.set_attribute(DICTIONARY, 'home', [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm])
+      watch(group)
       group
     end
     private_class_method :draw_opening
@@ -517,8 +519,8 @@ module KitchenCabinetMaster
 
     # ---- moving a door or a window -------------------------------------------------------
 
-    def self.load_plan(room)
-      raw = JSON.parse(room.get_attribute(DICTIONARY, 'room_plan', '{}'))
+    def self.load_plan(model)
+      raw = JSON.parse(model.get_attribute(DICTIONARY, 'room_plan', '{}'))
       return nil unless raw['x0']
 
       { x0: raw['x0'], y0: raw['y0'], x1: raw['x1'], y1: raw['y1'], height: raw['height'], backs: (raw['backs'] || {}).transform_keys(&:to_sym) }
@@ -527,35 +529,43 @@ module KitchenCabinetMaster
     end
     private_class_method :load_plan
 
-    # A move is over: a door or window that is not where it was drawn takes the opening of the wall with it, and the room is drawn again.
-    def self.after_move(model)
-      return if @busy || model.nil?
+    # The doors and windows of the room that are not where they were drawn: { index => [x, y, z] } (the middle and the bottom now, mm).
+    def self.moved_openings(model, specs)
+      moved = {}
+      model.entities.grep(Sketchup::Group).each do |group|
+        index = group.get_attribute(DICTIONARY, 'room_opening')
+        home = group.get_attribute(DICTIONARY, 'home')
+        next unless index && home && specs[index]
 
-      parts_in(model).each do |room|
-        plan = load_plan(room)
-        next unless plan
-
-        specs = JSON.parse(room.get_attribute(DICTIONARY, 'room_specs', '[]'))
-        options = JSON.parse(room.get_attribute(DICTIONARY, 'room_options', '{}'))
-        moved = {}
-        room.entities.grep(Sketchup::Group).each do |group|
-          index = group.get_attribute(DICTIONARY, 'room_opening')
-          home = group.get_attribute(DICTIONARY, 'home')
-          next unless index && home && specs[index]
-
-          bounds = group.bounds
-          now = [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm]
-          moved[index] = now if now.zip(home).any? { |a, b| (a - b).abs > MOVED }
-        end
-        next if moved.empty?
-
-        redo_room(model, room, plan, options, specs, moved)
+        bounds = group.bounds
+        now = [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm]
+        moved[index] = now if now.zip(home).any? { |a, b| (a - b).abs > MOVED }
       end
+      moved
+    end
+    private_class_method :moved_openings
+
+    # A move is over (or Update Room): a door or window that is not where it was drawn takes the opening of the wall with it, and the room is drawn again.
+    # => how many were moved.
+    def self.after_move(model)
+      return 0 if @busy || model.nil?
+
+      plan = load_plan(model)
+      return 0 unless plan
+
+      specs = JSON.parse(model.get_attribute(DICTIONARY, 'room_specs', '[]'))
+      options = JSON.parse(model.get_attribute(DICTIONARY, 'room_options', '{}'))
+      moved = moved_openings(model, specs)
+      return 0 if moved.empty?
+
+      redo_room(model, plan, options, specs, moved)
+      moved.length
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
+      0
     end
 
-    def self.redo_room(model, room, plan, options, specs, moved)
+    def self.redo_room(model, plan, options, specs, moved)
       changed = specs.map(&:dup)
       moved.each { |index, (x, y, z)| changed[index] = relocate(plan, changed[index], x, y, z) }
       cuts, problem = openings(plan, changed, options)
@@ -567,7 +577,7 @@ module KitchenCabinetMaster
       @busy = true
       model.start_operation('Move Door or Window', true)
       begin
-        room.erase!
+        parts_in(model).each(&:erase!)
         draw_room(model, plan, options, cuts)
         model.commit_operation
       rescue StandardError
@@ -596,6 +606,15 @@ module KitchenCabinetMaster
         end
       end
 
+      # A door or window that changes (it is moved, rotated ...): the room is looked at after a moment.
+      class OpeningWatcher < Sketchup::EntityObserver
+        def onChangeEntity(_entity)
+          RoomShell.request
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+        end
+      end
+
       class AppWatcher < Sketchup::AppObserver
         def expectsStartupModelNotifications = true
         def onNewModel(model) = RoomShell.attach(model)
@@ -603,6 +622,12 @@ module KitchenCabinetMaster
         def onActivateModel(model) = RoomShell.attach(model)
       end
     end
+
+    # A door or window tells when it changes.
+    def self.watch(group)
+      group.add_observer(OpeningWatcher.new) if defined?(OpeningWatcher)
+    end
+    private_class_method :watch
 
     # Call once when the extension loads.
     def self.install
@@ -619,16 +644,26 @@ module KitchenCabinetMaster
       return if @attached[key]
 
       model.tools.add_observer(@tool_watcher)
+      model.entities.grep(Sketchup::Group).each { |group| watch(group) if group.get_attribute(DICTIONARY, 'room_opening') } # (the doors and windows of a model that was opened)
       @attached[key] = true
     end
 
     def self.request
       return if @timer || @busy
 
-      @timer = UI.start_timer(0.4, false) do
+      @timer = UI.start_timer(0.5, false) do
         @timer = nil
         after_move(Sketchup.active_model)
       end
+    end
+
+    # Update Room: the doors and windows that were moved take their openings along (this is also done by itself when a move is over).
+    def self.update
+      model = Sketchup.active_model
+      return Response.fail('There is no room in the model yet: press Build Room.') if parts_in(model).empty?
+
+      count = after_move(model)
+      Response.ok(count.zero? ? 'The doors and windows are where they were drawn: nothing to move.' : "#{count} door#{'s' if count != 1} or window#{'s' if count != 1} moved: the openings in the walls went with them.")
     end
 
     def self.remove
@@ -644,6 +679,7 @@ module KitchenCabinetMaster
         model.abort_operation
         raise
       end
+      %w[room_plan room_options room_specs].each { |key| model.delete_attribute(DICTIONARY, key) }
       Response.ok('The room (floor, walls, roof, doors and windows) was removed.')
     end
   end

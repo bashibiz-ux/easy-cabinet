@@ -49,7 +49,7 @@ module KitchenCabinetMaster
 
       layout = sync(model, root, params)
       AttributeManager.write(root, attributes_for(params, layout))
-      TagManager.assign(model, root, TagManager.for_category(params['cabinet_category']))
+      TagManager.assign(model, root, TagManager.for_cabinet(params))
       root
     end
 
@@ -63,7 +63,7 @@ module KitchenCabinetMaster
 
       layout = sync(model, root, params)
       AttributeManager.write(root, attributes_for(params, layout))
-      TagManager.assign(model, root, TagManager.for_category(params['cabinet_category']))
+      TagManager.assign(model, root, TagManager.for_cabinet(params))
       root
     end
 
