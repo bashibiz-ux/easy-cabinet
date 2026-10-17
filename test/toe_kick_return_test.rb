@@ -73,4 +73,31 @@ class ToeKickReturnTest < Minitest::Test
     pieces = TK.pieces(params('toe_kick_return_start' => true))
     assert_equal ['Toe Kick 1', 'Toe Kick Return 1'], pieces.map(&:name)
   end
+  # ---- the row before the first unit inserted ----------------------------------------------------------
+
+  def unit(y, width, extra = {}) = { x: 0.0, y: y, angle: 0.0, width: width, corner: false }.merge(extra)
+
+  def test_a_unit_inserted_later_that_stands_before_the_first_is_part_of_the_row
+    anchor = unit(0.0, 600.0)
+    assert_equal 600.0, TK.run_before(anchor, [unit(-600.0, 600.0), unit(600.0, 600.0)]), 'one unit before it; the one after it does not count'
+  end
+
+  def test_several_units_before_it_all_count_and_a_side_panel_gap_is_bridged
+    anchor = unit(0.0, 600.0)
+    before = [unit(-1218.0, 600.0), unit(-618.0, 600.0)] # 18 mm of side panel between each
+    assert_equal 1218.0, TK.run_before(anchor, before)
+  end
+
+  def test_nothing_before_it_means_no_extension
+    assert_equal 0.0, TK.run_before(unit(0.0, 600.0), [unit(600.0, 600.0)])
+    assert_equal 0.0, TK.run_before(unit(0.0, 600.0), [])
+  end
+
+  def test_a_unit_that_is_not_in_line_does_not_count
+    anchor = unit(0.0, 600.0)
+    assert_equal 0.0, TK.run_before(anchor, [unit(-600.0, 600.0, angle: -90.0)]), 'another way round'
+    assert_equal 0.0, TK.run_before(anchor, [unit(-600.0, 600.0, x: 700.0)]), 'on another back line'
+    assert_equal 0.0, TK.run_before(anchor, [unit(-600.0, 600.0, corner: true)]), 'a corner turns the row'
+    assert_equal 0.0, TK.run_before(anchor, [unit(-1200.0, 600.0)]), 'a unit that is not next to it (a gap of 600 mm)'
+  end
 end

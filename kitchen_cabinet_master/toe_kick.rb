@@ -82,6 +82,27 @@ module KitchenCabinetMaster
       [lead, trail]
     end
 
+    # How far before `anchor` the row it stands in begins, in mm (0 when nothing comes before it): units that stand in line before it, on the same back line, each
+    # ending where the next one starts (or up to 150 mm before it: the room of a side panel). A unit inserted later than the anchor can stand before it, and
+    # the toe kick (which starts at the first unit inserted) has to reach it. `anchor` and `items` as in run_length, in the anchor's frame (y along the row).
+    def self.run_before(anchor, items)
+      start = 0.0
+      used = []
+      loop do
+        found = items.find do |item|
+          next false if used.include?(item) || item[:corner] || item[:angle].to_f.abs > 1.0 || item[:x].to_f.abs > 5.0
+
+          finish = item[:y].to_f + item[:width].to_f
+          finish <= start + 5.0 && start - finish <= 150.0
+        end
+        break unless found
+
+        used << found
+        start = found[:y].to_f
+      end
+      round2(-start)
+    end
+
     # Which ends of a straight row have a side panel that stands only on the cabinet (it leaves the floor under it free, where the plinth goes under it): [start, end]. A
     # return of the toe kick closes the side there, under the panel. Same input as panel_reach.
     def self.panel_returns(panels, length)

@@ -281,7 +281,7 @@ module KitchenCabinetMaster
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
-      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner # (an end panel only, never one between two units: over the loft above the unit, up to the ceiling)
+      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner && target_params['cabinet_category'].to_s == 'tall' # (a tall unit's end panel only, never one between two units: over the loft above the unit, up to the ceiling)
       top += ceiling_filler_height(model) if raw['auto'] == true && truthy?(raw['to_floor']) && PlacementManager.loft_item?(target) && beside.none? { |other| PlacementManager.loft_item?(other) } # (with Continue to the floor on, the side panel of a loft at the END of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes; one with another loft beside it, even a panel's thickness away (the side panel of the unit under them stands between), is between two lofts and stays at the loft: whatever stands near it lower down, such as the side panel of the unit under it)
       model.selection.clear
       model.selection.add(target)
@@ -874,23 +874,38 @@ module KitchenCabinetMaster
 
       params['toe_kick_from'] = AttributeManager.cabinet_id(anchor) || AttributeManager.part_id(anchor)
       row = toe_kick_row(anchor)
+      before = params['toe_kick_cover_row'] == true ? ToeKick.run_before(row.first, toe_kick_units(anchor)) : 0.0 # (units that stand in line before it, inserted after it: the toe kick starts at the first of them)
       params['toe_kick_turns'] = ToeKick.turns_from(*row, params['toe_kick_recess'].to_f)
+      params['toe_kick_turns'][0] = [params['toe_kick_turns'][0][0] + before, params['toe_kick_turns'][0][1]] if before.positive? && !params['toe_kick_turns'].empty?
       # The toe kick covers the whole row from there: pieces of the chosen length, one after another.
       if params['toe_kick_cover_row'] == true
         total = ToeKick.run_length(*row)
         straight = params['toe_kick_turns'].to_s.length <= 2
-        lead, trail = straight ? toe_kick_reach(anchor, total) : [0.0, 0.0] # (a straight row: it runs on to the side panels at its ends)
-        params['toe_kick_lead'] = lead
-        params['toe_kick_total'] = ToeKick.run_length(*row) + lead + trail
-        params['toe_kick_return_start'], params['toe_kick_return_end'] = straight ? toe_kick_returns(anchor, total) : [false, false] # (and turns round the end under a side panel that stands only on the cabinet)
+        lead, trail = straight ? toe_kick_reach(anchor, total + before, before) : [0.0, 0.0] # (a straight row: it runs on to the side panels at its ends)
+        params['toe_kick_lead'] = lead + before
+        params['toe_kick_total'] = before + ToeKick.run_length(*row) + lead + trail
+        params['toe_kick_return_start'], params['toe_kick_return_end'] = straight ? toe_kick_returns(anchor, total + before, before) : [false, false] # (and turns round the end under a side panel that stands only on the cabinet)
       end
     end
     private_class_method :record_toe_kick_path
 
     # The anchor and the cabinets / fillers inserted after it, as plain numbers in
     # the anchor's own frame (see ToeKick.turns_from).
-    def self.toe_kick_row(anchor)
+    # Every cabinet and filler that stands on the floor, but the anchor, described in the anchor's frame (see ToeKick.run_before).
+    def self.toe_kick_units(anchor)
       to_frame = anchor.transformation.inverse
+      anchor.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |item|
+        next if item.equal?(anchor) || !(AttributeManager.cabinet?(item) || AttributeManager.part_kind(item) == 'filler') || wall_item?(item)
+
+        relative = to_frame * item.transformation
+        heading = relative.yaxis
+        stored = AttributeManager.read(item) || {}
+        { x: relative.origin.x.to_mm, y: relative.origin.y.to_mm, angle: Math.atan2(-heading.x, heading.y) * 180.0 / Math::PI, width: stored['width'].to_f, corner: CabinetLayout.corner?(stored) }
+      end
+    end
+    private_class_method :toe_kick_units
+
+    def self.toe_kick_row(anchor)      to_frame = anchor.transformation.inverse
       dictionary = AttributeManager::DICTIONARY
       order = ->(item) { item.get_attribute(dictionary, 'sequence').to_i }
       following = anchor.parent.entities.grep(Sketchup::ComponentInstance).select do |item|
@@ -916,19 +931,19 @@ module KitchenCabinetMaster
     private_class_method :toe_kick_row
 
     # How far a toe kick from `anchor` over a straight row `length` mm long reaches to touch the side panels at the ends of the row (see ToeKick.panel_reach).
-    def self.toe_kick_reach(anchor, length)
-      ToeKick.panel_reach(toe_kick_panels(anchor), length)
+    def self.toe_kick_reach(anchor, length, before = 0.0)
+      ToeKick.panel_reach(toe_kick_panels(anchor, before), length)
     end
     private_class_method :toe_kick_reach
 
     # Which ends of that row have a side panel standing only on the cabinet, where the plinth turns round under the panel (see ToeKick.panel_returns).
-    def self.toe_kick_returns(anchor, length)
-      ToeKick.panel_returns(toe_kick_panels(anchor), length)
+    def self.toe_kick_returns(anchor, length, before = 0.0)
+      ToeKick.panel_returns(toe_kick_panels(anchor, before), length)
     end
     private_class_method :toe_kick_returns
 
     # The side panels against the line of units of `anchor`, in its frame (see ToeKick.panel_reach).
-    def self.toe_kick_panels(anchor)
+    def self.toe_kick_panels(anchor, before = 0.0)
       to_frame = anchor.transformation.inverse
       anchor.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
         next unless AttributeManager.part_kind(part) == 'end_panel'
@@ -937,7 +952,7 @@ module KitchenCabinetMaster
         relative = to_frame * part.transformation
         next unless relative.origin.x.to_mm.abs < 5.0 && relative.yaxis.y > 0.98 # (against the same line of units, the same way round)
 
-        { y: relative.origin.y.to_mm, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f, category: stored['target_category'].to_s }
+        { y: relative.origin.y.to_mm + before, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f, category: stored['target_category'].to_s } # (y from the start of the row, which is `before` mm before the anchor)
       end
     end
     private_class_method :toe_kick_panels
