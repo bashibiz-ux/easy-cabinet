@@ -373,8 +373,8 @@ module KitchenCabinetMaster
 
     private_class_method :place_exposed_panels
 
-    # How high (in the unit's own frame, mm) a side panel on `target` reaches when it continues to the ceiling: over the loft that stands above the unit, with the
-    # ceiling filler over that (never past the ceiling); nil when no loft is above it.
+    # How high (in the unit's own frame, mm) a side panel on `target` reaches when it continues to the ceiling: over the loft that stands above the unit, to the
+    # top of its carcass (not over the ceiling filler); nil when no loft is above it.
     def self.ceiling_top_for(model, target)
       t = target.transformation
       from = ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm
@@ -391,7 +391,7 @@ module KitchenCabinetMaster
       end
       return nil unless loft
 
-      top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f + ceiling_filler_height(model)
+      top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f # (to the top of the carcass of the loft: the ceiling filler is a strip along the front, the panel does not stand over it)
       top - t.origin.z.to_mm
     end
     private_class_method :ceiling_top_for
