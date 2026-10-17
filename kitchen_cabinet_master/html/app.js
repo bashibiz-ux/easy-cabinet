@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.62.3';
+  const APP_VERSION = '1.62.4';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -3002,7 +3002,7 @@ $('kitchenLayout').addEventListener('change', () => {
         if (el.matches('[data-material]')) updateChips();
         drawPreview();
         liveEdit(el); // update the selected item with what was just entered
-        if (el.closest('#sub-end-panel')) scheduleSidePanels(); // the panels placed by the Presets tick take the new Side Panel settings
+        if (el.closest('#sub-end-panel') && el.id !== 'liveSidePanels') scheduleSidePanels(); // the panels placed by the Presets tick take the new Side Panel settings
         if (PRESET_IDS.includes(el.id)) schedulePresetSave();
         if (FOLLOWS_CABINET.includes(el.id)) state.touched.add(el.id); // the user's own value now
       };

@@ -609,7 +609,6 @@
         </div>
         <label class="check cabinet-only" id="liveSizesField"><input type="checkbox" id="liveSizes" checked><span>Update the selected cabinet live when I change its sizes</span></label>
         <label class="check cabinet-only"><input type="checkbox" id="resizeNeighbours" checked><span>Resizing cabinet sticking option</span></label>
-        <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
         <!-- Not shown for a unit of drawers: it has no shelves. -->
         <label class="field narrow cabinet-only" id="shelvesField">
           <span class="label">Shelves</span>
@@ -655,6 +654,8 @@
             <span class="label">Side</span>
             <div class="input"><select id="epSide"></select></div>
           </label>
+          <!-- The switch of the side panels: one on every exposed side of every cabinet, kept up by the extension. Only here. -->
+          <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
           <!-- On: the panel on the end of a row goes down to the floor. Off: it stands only on the cabinet and the toe kick runs under it. Goes with the side panel switch of the Settings. -->
           <label class="check"><input type="checkbox" id="epToFloor" checked><span>Continue to the floor (off: only on the cabinet, with the toe kick below it)</span></label>
           <!-- On: the panel beside a unit with a loft over it goes on up past the loft to the ceiling. Off: it stops at the top of the unit. -->
