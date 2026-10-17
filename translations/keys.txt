@@ -13,7 +13,6 @@ Cut List
 Cabinet
 Nothing selected
 General
-Side panels
 Base units
 Wall units
 Lofts

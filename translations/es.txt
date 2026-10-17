@@ -13,7 +13,6 @@ Lista de piezas
 Mueble
 Nada seleccionado
 General
-Paneles laterales
 Muebles bajos
 Muebles altos de pared
 Altillos

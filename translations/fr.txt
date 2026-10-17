@@ -13,7 +13,6 @@ Liste de débit
 Meuble
 Rien de sélectionné
 Général
-Panneaux latéraux
 Meubles bas
 Meubles hauts
 Rehausses
