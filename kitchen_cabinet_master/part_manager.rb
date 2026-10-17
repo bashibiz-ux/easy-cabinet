@@ -281,7 +281,7 @@ module KitchenCabinetMaster
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
-      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner && target_params['cabinet_category'].to_s == 'tall' # (a tall unit's end panel only, never one between two units: over the loft above the unit, up to the ceiling)
+      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && target_params['cabinet_category'].to_s == 'tall' # (Continue top to bottom, a tall unit's panel, at the end of a row or between two units: one piece over the loft above the unit up to the top of the ceiling filler; the panel of that loft on that side is then covered by it, and not made)
       top += ceiling_filler_height(model) if raw['auto'] == true && truthy?(raw['to_floor']) && PlacementManager.loft_item?(target) && beside.none? { |other| PlacementManager.loft_item?(other) } # (with Continue to the floor on, the side panel of a loft at the END of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes; one with another loft beside it, even a panel's thickness away (the side panel of the unit under them stands between), is between two lofts and stays at the loft: whatever stands near it lower down, such as the side panel of the unit under it)
       model.selection.clear
       model.selection.add(target)
@@ -600,7 +600,7 @@ module KitchenCabinetMaster
 
     # The highest units first, so that the panel of a tall unit is the one that stands in the room between it and a lower unit.
     def self.tallest_first(targets)
-      targets.sort_by { |target| -top_of(AttributeManager.read(target)).to_f }
+      targets.sort_by { |target| [PlacementManager.loft_item?(target) ? 1 : 0, -top_of(AttributeManager.read(target)).to_f] } # (the lofts last: a tall unit's panel that goes on over its loft is there first, and covers the side of the loft)
     end
     private_class_method :tallest_first
 

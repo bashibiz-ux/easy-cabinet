@@ -53,7 +53,7 @@ module KitchenCabinetMaster
 end
 
 plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-%w[response defaults attribute_manager placement_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager placement_manager cabinet_layout].each { |f| require File.join(plugin, f) }
 
 module KitchenCabinetMaster
   module AttributeManager
@@ -218,5 +218,12 @@ class AutoLoftTest < Minitest::Test
     assert_equal 6.0, radius.call({ 'auto' => true, 'front_radius' => '3' }, { 'front_radius' => 6.0 }), 'the cabinet decides when the panels are placed again'
     assert_equal '3', radius.call({ 'front_radius' => '3' }, { 'front_radius' => 6.0 }), 'a panel inserted by hand has its own value'
     assert_equal '3', radius.call({ 'auto' => true, 'front_radius' => '3' }, {}), 'a filler has none: the panel values stay'
+  end
+  def test_the_lofts_are_given_their_side_panels_after_the_other_units
+    loft = Unit.new(@tall.transformation, @model.entities_list, 'wall_loft_2door')
+    loft.attrs.merge!('cabinet_id' => 'CABINET_0050', 'cabinet_category' => 'wall', 'top_z' => 2550.0, 'loft_over' => 'CABINET_0001', 'sequence' => 50)
+    @model.entities_list << loft
+    order = PartManager.send(:tallest_first, [loft, @wall, @tall])
+    assert_equal loft, order.last, 'the loft (the highest) comes last, so that the panel of the tall unit under it, that goes on over it, is there first'
   end
 end
