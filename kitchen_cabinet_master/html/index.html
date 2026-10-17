@@ -53,7 +53,6 @@
         </label>
 
         <p class="group-title">Unit Sizes</p>
-        <p class="hint">Type a size and it changes every unit of that kind in the model, or only the units you have selected (corner units keep their own sizes).</p>
         <p class="hint"><b>Base Unit</b></p>
         <div class="grid-3">
           <label class="field"><span class="label">Width</span><div class="input"><input id="sizeBaseW" type="text" inputmode="decimal" autocomplete="off" placeholder="600"><em>mm</em></div></label>
@@ -72,19 +71,17 @@
           <label class="field"><span class="label">Depth</span><div class="input"><input id="sizeTallD" type="text" inputmode="decimal" autocomplete="off" placeholder="560"><em>mm</em></div></label>
           <label class="field"><span class="label">Height</span><div class="input"><input id="sizeTallH" type="text" inputmode="decimal" autocomplete="off" placeholder="2160"><em>mm</em></div></label>
         </div>
-        <p class="hint">The toe kick under the units (the same values as the Toe Kick fields of Cabinets and Extras).</p>
         <div class="grid-3">
           <label class="field"><span class="label">Toe-kick Height</span><div class="input"><input id="pToeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Thickness</span><div class="input"><input id="pToeThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Recess from Carcass</span><div class="input"><input id="pToeRecess" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
         </div>
-        <p class="hint"><b>Loft Unit</b> (its height grows upwards and stops at the Ceiling Height less the ceiling filler)</p>
+        <p class="hint"><b>Loft Unit</b></p>
         <div class="grid-3">
           <label class="field"><span class="label">Width</span><div class="input"><input id="sizeLoftW" type="text" inputmode="decimal" autocomplete="off" placeholder="600"><em>mm</em></div></label>
           <label class="field"><span class="label">Depth</span><div class="input"><input id="sizeLoftD" type="text" inputmode="decimal" autocomplete="off" placeholder="560"><em>mm</em></div></label>
           <label class="field"><span class="label">Height</span><div class="input"><input id="sizeLoftH" type="text" inputmode="decimal" autocomplete="off" placeholder="290"><em>mm</em></div></label>
         </div>
-        <p class="hint">The ceiling filler over the lofts (the same values as the Ceiling Filler fields of Cabinets and Extras).</p>
         <div class="grid-3">
           <label class="field"><span class="label">Ceiling Filler Height</span><div class="input"><input id="pCfHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
           <label class="field"><span class="label">Thickness</span><div class="input"><input id="pCfThickness" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div></label>
@@ -163,7 +160,6 @@
           <span class="label">Wall Unit Carcass Bottom Raise Upward</span>
           <div class="input"><input id="carcassRaise" type="text" value="0" inputmode="decimal" autocomplete="off" aria-label="Wall unit carcass bottom raise upward, for every wall unit or the selected one"><em>mm</em></div>
         </label>
-        <p class="hint">The panel remembers the settings you use (units, door gap, thickness, materials, handle, toe kick, worktop and bottom panel) and starts with them next time.</p>
         <div class="btn-row one">
           <button class="btn" type="button" data-action="reset_presets">Reset Saved Settings</button>
         </div>
@@ -375,7 +371,6 @@
               <div class="input"><input id="handleCustomZ" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
-          <p class="hint" id="handleHint">By unit type: a base unit's handle sits near the top of its door, a wall unit's near the bottom, a tall unit's at hand height. Offsets are the clear distance from the door edge to the handle.</p>
         </div>
       </div>
     </section>
@@ -384,7 +379,6 @@
     <section class="card" id="sec-appliances">
       <button class="card-head" type="button" aria-expanded="true">My Appliances</button>
       <div class="card-body">
-        <p class="hint">Draw (or place) your own oven, microwave, fridge, sink, hob or hood in the model, select it (a group or component), choose which appliance it is and press Save. It is kept, and every cabinet that has one then shows your model in that place, scaled to the space of the drawn one, with its own materials.</p>
         <label class="field">
           <span class="label">Appliance</span>
           <div class="input"><select id="applianceKind"></select></div>
@@ -421,7 +415,6 @@
           <span class="label">Carcass Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="carcassMaterial"></i><select id="carcassMaterial" data-material></select></div>
         </label>
-        <p class="hint">The Base Unit door material also applies to the corner unit. Fillers follow the door material; side panels and toe kicks do too unless you pick their own.</p>
         <!-- Your own materials, in categories of your own: a material of the model (its colour and picture are copied). -->
         <div class="mine">
           <h3 class="vis-title">My materials</h3>
@@ -620,7 +613,6 @@
           <span class="label">Toe-kick Height</span>
           <div class="input"><input id="toeHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
-        <p class="hint" id="toeNote" hidden>A wall unit hangs at height 0, so the toe-kick height does not raise it.</p>
 
         <div hidden><input id="gap" type="text" autocomplete="off"></div>
         <!-- Opens a window for the selected cabinet, filler, side panel or toe kick: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
@@ -630,7 +622,6 @@
 
         <!-- Filler: shown when Cabinet Category = Filler. A single board beside a cabinet. -->
         <div class="subblock filler-only" id="sub-filler" hidden>
-          <p class="hint">Enter the size, select the cabinet, then Insert. The filler goes on the cabinet's wall side with its front flush with the door, at the same height off the floor as the cabinet. The height starts as the selected cabinet's, and the filler takes that cabinet's door material (see Material).</p>
           <div class="grid-3">
             <label class="field">
               <span class="label">Width</span>
@@ -690,7 +681,6 @@
 
         <!-- Ceiling Filler: shown when Category = Ceiling Filler. The strip over each loft, like the toe kick under the units. -->
         <div class="subblock" id="sub-ceiling-filler" data-feature="wall" hidden>
-          <p class="hint">The strip along the top of the lofts, up to the ceiling, in pieces of the Piece Length laid one after another over each row of lofts (the last one shorter), its front Recess behind the doors of the lofts. It is placed by the Ceiling filler switch in the Settings; what is entered here is the size and material of all of them, live. Delete takes one away; it stays away until the switch is turned off and on.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Height</span>
@@ -717,7 +707,6 @@
 
         <!-- Panel: shown when Category = Panel. A plain board of its own, standing or lying. -->
         <div class="subblock" id="sub-panel" data-feature="panel" hidden>
-          <p class="hint">A plain panel. Vertical it stands upright (width x height); horizontal it lies flat (width x depth). Insert puts it after the last unit (or the one selected); move it where it goes. Select it to change its size.</p>
           <label class="field">
             <span class="label">Orientation</span>
             <div class="input"><select id="panelOrientation"><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option></select></div>
@@ -744,7 +733,6 @@
 
         <!-- Wall Bottom Panel: shown when Category = Wall Bottom Panel. The panel under a run of wall units whose carcass has been lifted. -->
         <div class="subblock" id="sub-wall-bottom" data-feature="wall" hidden>
-          <p class="hint">Panels under the wall units that have a Carcass bottom raise upward, laid one after another along the whole run, like the toe kick. Each panel is as deep as the carcass less the front setback (20 mm to start); length 0 = one panel for the whole run.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Length</span>
@@ -769,12 +757,10 @@
             <span class="label">Bottom Panel Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="wbMaterial"></i><select id="wbMaterial" data-material></select></div>
           </label>
-          <p class="hint">Insert puts the panels under the wall units (the carcass rises by the panel thickness); Delete takes the selected ones away, or all of them when nothing is selected.</p>
         </div>
 
         <!-- Toe Kick: shown when Category = Toe Kick. Its own entity, a run of pieces laid end to end. -->
         <div class="subblock toe-only" id="sub-toe-kick" hidden>
-          <p class="hint">The pieces are laid end to end. Select a cabinet first and the run starts under its front; select a toe kick and the new one carries on from its end. Its height is the Toe-kick Height above, which also sets how far new cabinets stand off the floor.</p>
           <div class="grid-2">
             <label class="field">
               <span class="label">Thickness</span>
@@ -802,7 +788,6 @@
     <section class="card" id="sec-worktop" data-feature="worktop">
       <button class="card-head" type="button" aria-expanded="true">Worktop</button>
       <div class="card-body">
-        <p class="hint">Lays a worktop over the base units: one slab over each row of units standing together, and one in the shape of the corner on a corner unit. The front edge of a row's slab is rounded. Change a value and the worktop follows.</p>
         <div class="grid-2">
           <label class="field">
             <span class="label">Thickness</span>
@@ -838,7 +823,6 @@
           </label>
         </div>
         </div>
-        <p class="hint">Back splash height 0 = no back splash.</p>
         <label class="field">
           <span class="label">Worktop Material</span>
           <div class="input has-chip"><i class="chip" data-chip-for="wtMaterial"></i><select id="wtMaterial" data-material></select></div>
@@ -921,7 +905,6 @@
     <section class="card" id="sec-rotate" data-feature="rotate">
       <button class="card-head" type="button" aria-expanded="true">Rotate</button>
       <div class="card-body">
-        <p class="hint">Select a cabinet in the model, enter the angle and press Rotate. It turns about the middle of its footprint; positive is clockwise seen from above.</p>
         <div class="rotate-row">
           <label class="field">
             <span class="label">Rotation angle</span>
@@ -936,7 +919,6 @@
     <section class="card" id="sec-room">
       <button class="card-head" type="button" aria-expanded="true">Room</button>
       <div class="card-body">
-        <p class="hint">Draws a floor, walls and a roof round the kitchen in the model, as groups of their own (the floor, walls, roof, doors and windows each on a tag of their own: Room Floor, Room Walls, Room Roof, Room Doors, Room Windows), with the door and windows you ask for cut through the walls, each in a white frame (a panel door with its handle, a casement window with its glass, handle and sills). Move a door or window with the Move tool: it goes to the nearest wall, turns parallel to it, and the opening in the wall moves with it. Copy and paste one (or move a copy with Ctrl) and the copy gets an opening of the same size where it lands. Delete one and the wall is closed there. Update Room does it if it did not happen by itself. A wall stands right behind the cabinets on every side their backs are against; on a side without backs (the open side of a straight kitchen) the wall is the open-side distance below away, one for the x (red) and one for the y (green) direction. A wall is measured along its inside from its start: the south and north walls from the west end, the west and east walls from the south end. Build Room draws it again; Remove Room takes it away.</p>
         <div class="checks">
           <label class="check"><input type="checkbox" id="roomFloorOn" checked><span>Floor</span></label>
           <label class="check"><input type="checkbox" id="roomWallsOn" checked><span>Walls</span></label>
@@ -990,7 +972,6 @@
     <section class="card" id="sec-cutlist">
       <button class="card-head" type="button" aria-expanded="true">Cut List</button>
       <div class="card-body">
-        <p class="hint">Every board of every cabinet and part in the model, with the cabinet it belongs to. Sizes are shown in the chosen unit; the CSV file is always in millimetres.</p>
         <label class="check"><input type="checkbox" id="cutGroup"><span>Add identical boards of different cabinets together</span></label>
         <div class="btn-row two">
           <button class="btn primary" type="button" data-action="get_cut_list">Show Cut List</button>
@@ -1028,7 +1009,6 @@
   <div class="modal" id="feedbackModal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="feedbackTitle">
       <h2 id="feedbackTitle">Send feedback</h2>
-      <p class="hint">Tell us what you think about Kitchen Cabinet Master: what works, what does not, what you would like to see.</p>
       <label class="field">
         <span class="label">Kind</span>
         <div class="input"><select id="feedbackKind">
@@ -1054,7 +1034,6 @@
         <button class="btn tint" type="button" data-via="outlook" title="Opens Outlook.com in your browser, with the message written">Outlook</button>
         <button class="btn tint" type="button" data-via="yahoo" title="Opens Yahoo Mail in your browser, with the message written">Yahoo</button>
       </div>
-      <p class="hint">No mail program, or another web mail? Copy the message and the address, and send it from wherever you read your mail.</p>
       <div class="btn-row two-eq">
         <button class="btn ghost" type="button" id="feedbackCancel">Cancel</button>
         <button class="btn soft" type="button" id="feedbackCopy" title="Copies the address and the message, to send from any mail">Copy message</button>
