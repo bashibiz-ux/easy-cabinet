@@ -281,7 +281,7 @@ module KitchenCabinetMaster
       inner = raw.key?('inner') ? raw['inner'] == true : (touching.any? || near) # (the Auto Kitchen says which sides are inner: it knows the rows)
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
-      top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && target_params['cabinet_category'].to_s == 'tall' # (Continue top to bottom, a tall unit's panel, at the end of a row or between two units: one piece over the loft above the unit up to the top of the ceiling filler; the panel of that loft on that side is then covered by it, and not made)
+      top = [top, ceiling_top_for(model, target, filler: !inner) || top].max if truthy?(raw['to_ceiling']) && target_params['cabinet_category'].to_s == 'tall' # (Continue top to bottom, a tall unit's panel, at the end of a row or between two units: one piece over the loft above the unit up to the top of the ceiling filler; the panel of that loft on that side is then covered by it, and not made)
       top += ceiling_filler_height(model) if raw['auto'] == true && truthy?(raw['to_floor']) && PlacementManager.loft_item?(target) && beside.none? { |other| PlacementManager.loft_item?(other) } # (with Continue to the floor on, the side panel of a loft at the END of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes; one with another loft beside it, even a panel's thickness away (the side panel of the unit under them stands between), is between two lofts and stays at the loft: whatever stands near it lower down, such as the side panel of the unit under it)
       model.selection.clear
       model.selection.add(target)
@@ -374,8 +374,8 @@ module KitchenCabinetMaster
     private_class_method :place_exposed_panels
 
     # How high (in the unit's own frame, mm) a side panel on `target` reaches when it continues to the ceiling: over the loft that stands above the unit, to the
-    # top of its carcass (not over the ceiling filler); nil when no loft is above it.
-    def self.ceiling_top_for(model, target)
+    # top of its carcass, and with `filler` over the ceiling filler too (never past the ceiling); nil when no loft is above it.
+    def self.ceiling_top_for(model, target, filler: false)
       t = target.transformation
       from = ((t.origin.x * t.yaxis.x) + (t.origin.y * t.yaxis.y)).to_mm
       to = from + AttributeManager.read(target)['width'].to_f
@@ -391,7 +391,8 @@ module KitchenCabinetMaster
       end
       return nil unless loft
 
-      top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f # (to the top of the carcass of the loft: the ceiling filler is a strip along the front, the panel does not stand over it)
+      top = loft.transformation.origin.z.to_mm + AttributeManager.read(loft)['top_z'].to_f
+      top += ceiling_filler_height(model) if filler # (the panel at the end of a row goes up to the top of the ceiling filler, and grows with it; one between two units stops at the carcass of the loft)
       top - t.origin.z.to_mm
     end
     private_class_method :ceiling_top_for
