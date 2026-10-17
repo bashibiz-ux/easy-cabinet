@@ -36,7 +36,9 @@ module KitchenCabinetMaster
         model.set_attribute(DICTIONARY, KEY_SIDE_VALUES, JSON.generate(raw['values'])) if raw['values'].is_a?(Hash)
         apply(model, "#{on ? 'Place' : 'Remove'} Side Panels") { sync_side_panels(model) }
         cover_with_worktop(model) # (the worktop reaches over the side panels at its ends)
-        Response.ok(on ? 'Side panels on every exposed side are on: they follow the cabinets.' : 'The side panels placed by the tick are taken away.')
+        why = on ? PartManager.last_skipped : []
+        note = why.empty? ? '' : " No panel: #{why.first(8).join('; ')}#{" (and #{why.length - 8} more)" if why.length > 8}."
+        Response.ok(on ? "Side panels on every exposed side are on: they follow the cabinets.#{note}" : 'The side panels placed by the tick are taken away.')
       when 'set_live_toe_kicks'
         keep(model, KEY_TOE_KICKS, on, raw)
         apply(model, "#{on ? 'Place' : 'Remove'} Toe Kicks") { sync_toe_kicks(model) }

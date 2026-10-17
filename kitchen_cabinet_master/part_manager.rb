@@ -255,20 +255,20 @@ module KitchenCabinetMaster
     # The panel's own values (thickness, material, face, ...) are `raw`. => [panels made, sides left alone because covered, problems]
     def self.place_exposed_panels(model, target, side, raw)
       target_params = AttributeManager.read(target)
-      return [0, 1, []] if side == 'front' && !arm_corner?(target_params)
-      return [0, 1, []] if CabinetLayout.corner?(target_params) && !arm_corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
-      return [0, 1, []] if side == 'left' && arm_corner?(target_params) # (the wall side of a tall L corner: its carcass stands against the wall)
+      return skipped(target, side, 'it has no front side') if side == 'front' && !arm_corner?(target_params)
+      return skipped(target, side, 'a corner unit meets the units of both rows') if CabinetLayout.corner?(target_params) && !arm_corner?(target_params) # (a corner unit is L shaped: its sides meet the units of both rows, and the notch of the L is not a side)
+      return skipped(target, side, 'its carcass stands against the wall') if side == 'left' && arm_corner?(target_params) # (the wall side of a tall L corner: its carcass stands against the wall)
       return place_corner_front_panel(model, target, target_params, raw) if side == 'front'
 
-      return [0, 1, []] if target_params['free_housing'] == true # (a housing for a freestanding fridge has its own two side panels, full height: another one on each would double them)
+      return skipped(target, side, 'a housing for a freestanding fridge has its own panels') if target_params['free_housing'] == true # (a housing for a freestanding fridge has its own two side panels, full height: another one on each would double them)
 
       thickness = stringify(raw)['thickness'].to_f
       rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
-      return [0, 1, []] if rectangles.empty?
+      return skipped(target, side, 'nothing of this side shows (covered by what stands against it)') if rectangles.empty?
 
       # The end of a row at a wall: touching it, nothing shows; a little way from it, a filler fills the gap instead of a side panel.
       if raw['auto'] == true && touching.empty? && !arm_corner?(target_params) && (gap = wall_gap(model, target, side))
-        return [0, 1, []] if gap < 1.0
+        return skipped(target, side, 'it stands against a wall') if gap < 1.0
 
         return fill_to_wall(model, target, target_params, side, gap)
       end
@@ -294,11 +294,21 @@ module KitchenCabinetMaster
         mark_auto(model) if raw['auto'] == true # (this panel was placed by the tick in the Presets)
         [1, 0, []]
       elsif answer['message'].to_s.include?('already has something against it')
-        [0, 1, []]
+        skipped(target, side, 'something is already against it')
       else
         [0, 0, [answer['message']]]
       end
     end
+
+    # A side that got no panel, and why (kept for the message of the switch). => [0, 1, []]
+    def self.skipped(target, side, why)
+      (@skipped ||= []) << "#{target.name} #{side}: #{why}"
+      [0, 1, []]
+    end
+    private_class_method :skipped
+
+    # Which sides the last placing left without a panel, and why (one text for each).
+    def self.last_skipped = (@skipped || []).dup
 
     # The front edge radius of a side panel placed by the switch: the one of the cabinet it is on (its doors), so that it follows the Front Edge Radius
     # whenever the panels are placed again; a panel you insert yourself, or one on a filler, has the radius of the panel's own values. nil: no radius known.
@@ -519,6 +529,7 @@ module KitchenCabinetMaster
 
       made = 0
       problems = []
+      @skipped = []
       @batch = true
       begin
         panel_values = stringify(values).merge('auto' => true)
