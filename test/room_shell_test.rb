@@ -361,4 +361,25 @@ class RoomShellTest < Minitest::Test
     assert_nil problem
     assert_equal [[0.0, -1.0], [1.0, 0.0]], cuts.map { |c| c[:out] }, 'each is cut square to its own wall: the first through the south, the copy through the east'
   end
+  # ---- a door or window that is deleted ---------------------------------------------------------------
+
+  def test_an_opening_whose_group_is_gone_is_found
+    entries = [[0, [1.0, 1.0, 0.0], [1.0, 1.0, 0.0]], [2, [9.0, 9.0, 900.0], [9.0, 9.0, 900.0]]]
+    assert_equal [1], RS.missing_openings(3, entries), 'three were drawn, the second is gone'
+    assert_empty RS.missing_openings(2, [[0, [0, 0, 0], [0, 0, 0]], [1, [0, 0, 0], [0, 0, 0]]])
+    assert_equal [0, 1], RS.missing_openings(2, []), 'all gone: the walls are closed'
+  end
+
+  def test_a_copy_does_not_hide_that_the_original_is_gone
+    home = [100.0, 200.0, 0.0]
+    entries = [[1, [500.0, 300.0, 0.0], home]]
+    assert_equal [0], RS.missing_openings(2, entries)
+  end
+
+  def test_without_the_closed_opening_the_wall_has_no_cut
+    plan = RS.plan(straight)
+    spec = { 'kind' => 'Door', 'wall' => 'north', 'from' => 1000.0, 'width' => 900.0, 'sill' => 0.0, 'height' => 2100.0 }
+    assert_equal 1, RS.openings(plan, [spec]).first.length
+    assert_empty RS.openings(plan, []).first, 'no door: nothing is cut'
+  end
 end

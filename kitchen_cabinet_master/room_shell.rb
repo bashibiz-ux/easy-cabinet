@@ -543,6 +543,11 @@ module KitchenCabinetMaster
       [moved, copies]
     end
 
+    # The openings whose door or window group is gone (it was deleted): the wall is closed there. `count` openings were drawn, `entries` as in classify_openings.
+    def self.missing_openings(count, entries)
+      (0...count).to_a - entries.map(&:first).uniq
+    end
+
     def self.opening_entries(model, specs)
       model.entities.grep(Sketchup::Group).filter_map do |group|
         index = group.get_attribute(DICTIONARY, 'room_opening')
@@ -565,24 +570,28 @@ module KitchenCabinetMaster
 
       specs = JSON.parse(model.get_attribute(DICTIONARY, 'room_specs', '[]'))
       options = JSON.parse(model.get_attribute(DICTIONARY, 'room_options', '{}'))
-      moved, copies = classify_openings(opening_entries(model, specs))
-      return 0 if moved.empty? && copies.empty?
+      entries = opening_entries(model, specs)
+      moved, copies = classify_openings(entries)
+      gone = missing_openings(specs.length, entries)
+      return 0 if moved.empty? && copies.empty? && gone.empty?
 
-      redo_room(model, plan, options, specs, moved, copies)
-      moved.length + copies.length
+      redo_room(model, plan, options, specs, moved, copies, gone)
+      moved.length + copies.length + gone.length
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
       0
     end
 
-    def self.redo_room(model, plan, options, specs, moved, copies = [])
+    def self.redo_room(model, plan, options, specs, moved, copies = [], gone = [])
       changed = specs.map(&:dup)
       moved.each { |index, (x, y, z)| changed[index] = relocate(plan, changed[index], x, y, z) }
       copies.each { |index, (x, y, z)| changed << relocate(plan, specs[index].dup, x, y, z) } # (a copy: one more opening of the same size)
+      gone.each { |index| changed[index] = nil } # (a door or window that was deleted: its opening is closed)
+      changed.compact!
       cuts, problem = openings(plan, changed, options)
       unless cuts # it does not fit there: it goes back where it was
         DialogManager.push('notice', { 'message' => "#{problem} The door or window went back (a copy was taken away)." }) if defined?(DialogManager)
-        cuts, problem = openings(plan, specs, options)
+        cuts, problem = openings(plan, specs.each_with_index.reject { |_, i| gone.include?(i) }.map(&:first), options)
         return if problem
       end
       @busy = true
@@ -597,7 +606,7 @@ module KitchenCabinetMaster
       ensure
         @busy = false
       end
-      DialogManager.push('info', { 'message' => copies.empty? ? 'The opening in the wall moved with the door or window.' : 'The pasted door or window has an opening in the wall of its own.' }) if defined?(DialogManager) && !problem
+      DialogManager.push('info', { 'message' => gone.any? && copies.empty? && moved.empty? ? 'The wall is closed where the door or window was deleted.' : (copies.empty? ? 'The opening in the wall moved with the door or window.' : 'The pasted door or window has an opening in the wall of its own.') }) if defined?(DialogManager) && !problem
     end
     private_class_method :redo_room
 
@@ -620,6 +629,16 @@ module KitchenCabinetMaster
       # A door or window that changes (it is moved, rotated ...): the room is looked at after a moment.
       class OpeningWatcher < Sketchup::EntityObserver
         def onChangeEntity(_entity)
+          RoomShell.request
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+        end
+      end
+
+      # Anything that is done in the model (a paste, a move, an erase ...) has been committed: the room is looked at after a moment. This is the sure way to
+      # know of a copy or a deleted door.
+      class ModelWatcher < Sketchup::ModelObserver
+        def onTransactionCommit(_model)
           RoomShell.request
         rescue StandardError => e
           warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
@@ -654,6 +673,7 @@ module KitchenCabinetMaster
       @attached = {}
       @tool_watcher = ToolWatcher.new
       @added_watcher = AddedWatcher.new
+      @model_watcher = ModelWatcher.new
       Sketchup.add_observer(AppWatcher.new)
       attach(Sketchup.active_model)
     end
@@ -666,6 +686,7 @@ module KitchenCabinetMaster
 
       model.tools.add_observer(@tool_watcher)
       model.entities.add_observer(@added_watcher)
+      model.add_observer(@model_watcher)
       model.entities.grep(Sketchup::Group).each { |group| watch(group) if group.get_attribute(DICTIONARY, 'room_opening') } # (the doors and windows of a model that was opened)
       @attached[key] = true
     end
