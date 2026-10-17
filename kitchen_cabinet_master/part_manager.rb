@@ -874,9 +874,11 @@ module KitchenCabinetMaster
       # The toe kick covers the whole row from there: pieces of the chosen length, one after another.
       if params['toe_kick_cover_row'] == true
         total = ToeKick.run_length(*row)
-        lead, trail = params['toe_kick_turns'].to_s.length > 2 ? [0.0, 0.0] : toe_kick_reach(anchor, total) # (a straight row: it runs on to the side panels at its ends)
+        straight = params['toe_kick_turns'].to_s.length <= 2
+        lead, trail = straight ? toe_kick_reach(anchor, total) : [0.0, 0.0] # (a straight row: it runs on to the side panels at its ends)
         params['toe_kick_lead'] = lead
         params['toe_kick_total'] = ToeKick.run_length(*row) + lead + trail
+        params['toe_kick_return_start'], params['toe_kick_return_end'] = straight ? toe_kick_returns(anchor, total) : [false, false] # (and turns round the end under a side panel that stands only on the cabinet)
       end
     end
     private_class_method :record_toe_kick_path
@@ -911,8 +913,20 @@ module KitchenCabinetMaster
 
     # How far a toe kick from `anchor` over a straight row `length` mm long reaches to touch the side panels at the ends of the row (see ToeKick.panel_reach).
     def self.toe_kick_reach(anchor, length)
+      ToeKick.panel_reach(toe_kick_panels(anchor), length)
+    end
+    private_class_method :toe_kick_reach
+
+    # Which ends of that row have a side panel standing only on the cabinet, where the plinth turns round under the panel (see ToeKick.panel_returns).
+    def self.toe_kick_returns(anchor, length)
+      ToeKick.panel_returns(toe_kick_panels(anchor), length)
+    end
+    private_class_method :toe_kick_returns
+
+    # The side panels against the line of units of `anchor`, in its frame (see ToeKick.panel_reach).
+    def self.toe_kick_panels(anchor)
       to_frame = anchor.transformation.inverse
-      panels = anchor.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
+      anchor.parent.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
         next unless AttributeManager.part_kind(part) == 'end_panel'
 
         stored = AttributeManager.read(part) || {}
@@ -921,9 +935,8 @@ module KitchenCabinetMaster
 
         { y: relative.origin.y.to_mm, thickness: stored['thickness'].to_f, base: stored['target_base_z'].to_f, category: stored['target_category'].to_s }
       end
-      ToeKick.panel_reach(panels, length)
     end
-    private_class_method :toe_kick_reach
+    private_class_method :toe_kick_panels
 
     def self.find_toe_kick_anchor(model, id)
       return nil if id.to_s.empty?

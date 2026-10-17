@@ -46,7 +46,7 @@ module KitchenCabinetMaster
       turns = turns_of(params)
       # Over a whole row: pieces of length laid one after another to cover 	otal, the last one shorter.
       lengths = total.positive? ? piece_lengths(total, length) : Array.new(count, length)
-      return straight_pieces(lengths, thick, height, front) if turns.empty?
+      return straight_pieces(lengths, thick, height, front) + returns(params, thick, height, front) if turns.empty?
 
       path_pieces(lengths, thick, height, front + thick, turns, total.positive? ? total : nil) # the path runs along the FRONT face
     end
@@ -81,6 +81,43 @@ module KitchenCabinetMaster
       end
       [lead, trail]
     end
+
+    # Which ends of a straight row have a side panel that stands only on the cabinet (it leaves the floor under it free, where the plinth goes under it): [start, end]. A
+    # return of the toe kick closes the side there, under the panel. Same input as panel_reach.
+    def self.panel_returns(panels, length)
+      start = false
+      finish = false
+      panels.each do |panel|
+        next unless panel[:base].to_f > 1.0 && panel[:category].to_s != 'wall'
+
+        before = -panel[:y].to_f
+        after = panel[:y].to_f + panel[:thickness].to_f - length
+        start = true if before > 0.5 && before <= REACH_LIMIT
+        finish = true if after > 0.5 && after <= REACH_LIMIT
+      end
+      [start, finish]
+    end
+
+    # The pieces that turn the plinth round the end of a straight row under a side panel that stands only on the cabinet: from the front piece back to the carcass,
+    # one thickness wide, flush with the outer face of the panel (the row of pieces reaches that face, see panel_reach). `toe_kick_return_start` and
+    # `toe_kick_return_end` say which ends have one.
+    def self.returns(params, thick, height, front)
+      return [] unless front.positive?
+
+      total = total_length(params)
+      list = []
+      if truthy?(params['toe_kick_return_start'])
+        list << CabinetLayout::Panel.new(role: "#{ROLE_PREFIX}return_start", name: 'Toe Kick Return 1', extent: [round2(front), round2(thick), round2(height)], offset: [0.0, 0.0, 0.0])
+      end
+      if truthy?(params['toe_kick_return_end'])
+        list << CabinetLayout::Panel.new(role: "#{ROLE_PREFIX}return_end", name: "Toe Kick Return #{list.length + 1}", extent: [round2(front), round2(thick), round2(height)], offset: [0.0, round2(total - thick), 0.0])
+      end
+      list
+    end
+    private_class_method :returns
+
+    def self.truthy?(value) = [true, 'true', 1, '1'].include?(value)
+    private_class_method :truthy?
 
     # How long the row of cabinets and fillers from nchor runs (see turns_from), in mm:
     # their widths added up, for as long as they join on.
