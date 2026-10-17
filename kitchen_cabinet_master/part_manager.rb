@@ -263,7 +263,7 @@ module KitchenCabinetMaster
       return skipped(target, side, 'a housing for a freestanding fridge has its own panels') if target_params['free_housing'] == true # (a housing for a freestanding fridge has its own two side panels, full height: another one on each would double them)
 
       thickness = stringify(raw)['thickness'].to_f
-      rectangles, touching, near = side_rectangles(target, target_params, side, thickness + 3.0)
+      rectangles, touching, near, beside = side_rectangles(target, target_params, side, thickness + 3.0)
       return skipped(target, side, 'nothing of this side shows (covered by what stands against it)') if rectangles.empty?
 
       # The end of a row at a wall: touching it, nothing shows; a little way from it, a filler fills the gap instead of a side panel.
@@ -282,7 +282,7 @@ module KitchenCabinetMaster
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
       top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner # (an end panel only, never one between two units: over the loft above the unit, up to the ceiling)
-      top += ceiling_filler_height(model) if raw['auto'] == true && truthy?(raw['to_floor']) && PlacementManager.loft_item?(target) && touching.none? { |other| PlacementManager.loft_item?(other) } # (with Continue to the floor on, the side panel of a loft at the end of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes: whatever stands near it lower down, such as the side panel of the unit under it)
+      top += ceiling_filler_height(model) if raw['auto'] == true && truthy?(raw['to_floor']) && PlacementManager.loft_item?(target) && beside.none? { |other| PlacementManager.loft_item?(other) } # (with Continue to the floor on, the side panel of a loft at the END of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes; one with another loft beside it, even a panel's thickness away (the side panel of the unit under them stands between), is between two lofts and stays at the loft: whatever stands near it lower down, such as the side panel of the unit under it)
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)
@@ -615,6 +615,7 @@ module KitchenCabinetMaster
       tolerance = 3.0
       neighbours = []
       near = false # a unit within reach of the side (touching it, or a panel's thickness away), whatever its height
+      beside = [] # and which units they are
       target.parent.entities.grep(Sketchup::ComponentInstance).each do |other|
         next if other.equal?(target) || !AttributeManager.occupant?(other)
 
@@ -626,7 +627,10 @@ module KitchenCabinetMaster
         zs = points.map { |p| p.z.to_mm }
         touches = side == 'left' ? (ys.max >= -tolerance && ys.max <= 1.0 && ys.min < -1.0) : (ys.min <= width + tolerance && ys.min >= width - 1.0 && ys.max > width + 1.0)
         close = side == 'left' ? (ys.max >= -reach && ys.max <= 1.0 && ys.min < -1.0) : (ys.min <= width + reach && ys.min >= width - 1.0 && ys.max > width + 1.0)
-        near ||= close && xs.max > 1.0 && xs.min < depth - 1.0
+        if close && xs.max > 1.0 && xs.min < depth - 1.0
+          near = true
+          beside << other
+        end
         next unless touches
 
         floor = stored['cabinet_category'].to_s == 'wall' || stored['target_category'].to_s == 'wall' ? (stored['base_z'] || stored['target_base_z']).to_f : stored['target_base_z'].to_f
@@ -636,7 +640,7 @@ module KitchenCabinetMaster
 
         neighbours << { x0: xs.min, x1: xs.max, z0: low, z1: high, ref: other }
       end
-      [SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours), neighbours.map { |n| n[:ref] }, near]
+      [SideExposure.uncovered({ depth: depth, base: base, top: top }, neighbours), neighbours.map { |n| n[:ref] }, near, beside]
     end
     private_class_method :side_rectangles
 
