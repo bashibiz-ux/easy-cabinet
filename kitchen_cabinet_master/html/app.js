@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.62.4';
+  const APP_VERSION = '1.62.5';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1628,6 +1628,7 @@ function currentCabinet() {
     const kind = categoryKind();
     document.querySelectorAll('.cabinet-only').forEach((el) => { setSoft(el, kind !== 'cabinet'); });
     document.querySelectorAll('.cabinet-only-btn').forEach((el) => { el.hidden = kind !== 'cabinet'; });
+    document.querySelectorAll('.not-end-panel').forEach((el) => { el.hidden = kind === 'end_panel'; }); // (the side panel has its Customize below its Face)
     // The toe-kick height is shared: it raises cabinets and is a toe kick's height.
     document.querySelectorAll('.cabinet-or-toe').forEach((el) => { setSoft(el, kind !== 'toe_kick'); });
     setSoft($('sub-filler'), kind !== 'filler');

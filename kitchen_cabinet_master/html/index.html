@@ -624,7 +624,7 @@
 
         <div hidden><input id="gap" type="text" autocomplete="off"></div>
         <!-- Opens a window for the selected cabinet, filler, side panel or toe kick: a picture of it to orbit, its boards one by one, their sizes, and moving them. -->
-        <div class="btn-row one">
+        <div class="btn-row one not-end-panel">
           <button class="btn" type="button" data-action="customize" title="A window to change the size of any board of the selected item and to move it">Customize...</button>
         </div>
 
@@ -649,18 +649,10 @@
 
         <!-- Side Panel: shown when Cabinet Category = Side Panel. Covers the exposed side of the selected cabinet or filler. -->
         <div class="subblock end-panel-only" id="sub-end-panel" hidden>
-          <p class="hint" id="epTargetHint">Select a cabinet or filler first: the side panel attaches to its exposed side. Depth starts flush with the door front and height at the top of what you selected; both can be changed.</p>
           <label class="field">
             <span class="label">Side</span>
             <div class="input"><select id="epSide"></select></div>
           </label>
-          <!-- The switch of the side panels: one on every exposed side of every cabinet, kept up by the extension. Only here. -->
-          <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
-          <!-- On: the panel on the end of a row goes down to the floor. Off: it stands only on the cabinet and the toe kick runs under it. Goes with the side panel switch of the Settings. -->
-          <label class="check"><input type="checkbox" id="epToFloor" checked><span>Continue to the floor (off: only on the cabinet, with the toe kick below it)</span></label>
-          <!-- On: the panel beside a unit with a loft over it goes on up past the loft to the ceiling. Off: it stops at the top of the unit. -->
-          <label class="check"><input type="checkbox" id="epToCeiling"><span>Continue to the ceiling (the panels at the ends of a row, over the lofts)</span></label>
-          <label class="check"><input type="checkbox" id="epLoftToFiller"><span>Loft side panels up to the top of the ceiling filler</span></label>
           <div class="grid-3">
             <label class="field">
               <span class="label">Depth</span>
@@ -675,6 +667,13 @@
               <div class="input"><input id="epHeight" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
             </label>
           </div>
+          <!-- The switch of the side panels: one on every exposed side of every cabinet, kept up by the extension. Only here. -->
+          <label class="check"><input type="checkbox" id="liveSidePanels"><span>Side panels on exposed side</span></label>
+          <!-- On: the panel on the end of a row goes down to the floor. Off: it stands only on the cabinet and the toe kick runs under it. Goes with the side panel switch of the Settings. -->
+          <label class="check"><input type="checkbox" id="epToFloor" checked><span>Continue to the floor (off: only on the cabinet, with the toe kick below it)</span></label>
+          <!-- On: the panel beside a unit with a loft over it goes on up past the loft to the ceiling. Off: it stops at the top of the unit. -->
+          <label class="check"><input type="checkbox" id="epToCeiling"><span>Continue to the ceiling (the panels at the ends of a row, over the lofts)</span></label>
+          <label class="check"><input type="checkbox" id="epLoftToFiller"><span>Loft side panels up to the top of the ceiling filler</span></label>
           <label class="field">
             <span class="label">Material</span>
             <div class="input has-chip"><i class="chip" data-chip-for="epMaterial"></i><select id="epMaterial" data-material></select></div>
@@ -684,6 +683,10 @@
             <span class="label">Face</span>
             <div class="input"><select id="epFace"><option value="flat">Flat</option><option value="design">As the selected normal door</option></select></div>
           </label>
+          <!-- Opens the window to change the boards of the selected side panel and to move them. -->
+          <div class="btn-row one">
+            <button class="btn" type="button" data-action="customize" title="A window to change the size of any board of the selected item and to move it">Customize...</button>
+          </div>
         </div>
 
         <!-- Ceiling Filler: shown when Category = Ceiling Filler. The strip over each loft, like the toe kick under the units. -->
