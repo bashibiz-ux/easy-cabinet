@@ -33,7 +33,6 @@ Sbalit skříňky a doplňky, když je vybrán objekt
 Aktualizovat kuchyni při změně těchto voleb
 Skříňky na druhé straně cesty
 Nástavec sleduje rozměr skříňky pod ním (šířka a hloubka)
-Boční panely nástavců až k hornímu okraji stropní lišty
 Vložit
 Aktualizovat
 Duplikovat

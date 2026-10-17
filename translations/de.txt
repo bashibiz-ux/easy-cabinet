@@ -33,7 +33,6 @@ Schränke und Extras einklappen, wenn ein Objekt ausgewählt ist
 Küche aktualisieren, wenn ich diese Optionen ändere
 Schränke auf der anderen Seite des Pfads
 Aufsatzschrank folgt der Größe des Schranks darunter (Breite und Tiefe)
-Seitenblenden der Aufsatzschränke bis zur Oberkante der Deckenblende
 Einfügen
 Aktualisieren
 Duplizieren

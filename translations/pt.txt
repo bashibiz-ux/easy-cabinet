@@ -33,7 +33,6 @@ Recolher móveis e extras quando um objeto está selecionado
 Atualizar a cozinha quando altero estas opções
 Móveis do outro lado do percurso
 A bagageira acompanha o tamanho do móvel de baixo (largura e profundidade)
-Painéis laterais das bagageiras até ao topo do remate de teto
 Inserir
 Atualizar
 Duplicar

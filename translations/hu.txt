@@ -33,7 +33,6 @@ Szekrények és kiegészítők összecsukása kijelölt objektumnál
 A konyha frissítése, ha módosítom ezeket a beállításokat
 Szekrények az útvonal másik oldalán
 A felsőrakat követi az alatta lévő szekrény méretét (szélesség és mélység)
-A felsőrakat oldalpanelei a mennyezeti takaró tetejéig
 Beszúrás
 Frissítés
 Kettőzés

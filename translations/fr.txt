@@ -33,7 +33,6 @@ Replier meubles et extras quand un objet est sélectionné
 Mettre à jour la cuisine quand je change ces options
 Meubles de l'autre côté du tracé
 La rehausse suit la taille du meuble en dessous (largeur et profondeur)
-Panneaux latéraux des rehausses jusqu'au haut du bandeau de plafond
 Insérer
 Mettre à jour
 Dupliquer

@@ -282,7 +282,7 @@ module KitchenCabinetMaster
       inner = true unless !raw.key?('to_floor') || truthy?(raw['to_floor']) # (the Side Panel card: only on the cabinet, the toe kick runs under it)
       from, top = SideExposure.panel_span(inner: inner, hangs: hangs, carcass: carcass, top: top_of(target_params))
       top = [top, ceiling_top_for(model, target) || top].max if truthy?(raw['to_ceiling']) && !inner # (an end panel only, never one between two units: over the loft above the unit, up to the ceiling)
-      top += ceiling_filler_height(model) if truthy?(raw['loft_to_filler']) && PlacementManager.loft_item?(target) && touching.none? { |other| PlacementManager.loft_item?(other) } # (the side panel of a loft at the end of the lofts goes up to the top of the ceiling filler: whatever stands near it lower down, such as the side panel of the unit under it)
+      top += ceiling_filler_height(model) if (raw['auto'] == true || truthy?(raw['loft_to_filler'])) && PlacementManager.loft_item?(target) && touching.none? { |other| PlacementManager.loft_item?(other) } # (with the switch on, the side panel of a loft at the end of the lofts goes up to the top of the ceiling filler, and is placed again when its height changes: whatever stands near it lower down, such as the side panel of the unit under it)
       model.selection.clear
       model.selection.add(target)
       values = stringify(raw).merge('side' => side, 'depth' => door_front_of(target, target_params), 'height' => top - from, 'x_start' => 0.0, 'raise' => from)

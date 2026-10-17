@@ -33,7 +33,6 @@ Thu gọn tủ và phụ kiện khi chọn một đối tượng
 Cập nhật bếp khi tôi đổi các tùy chọn này
 Tủ ở phía bên kia của đường dẫn
 Tủ nóc theo kích thước tủ bên dưới (rộng và sâu)
-Tấm hông tủ nóc lên đến mép trên phào trần
 Chèn
 Cập nhật
 Nhân đôi

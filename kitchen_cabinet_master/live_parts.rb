@@ -58,7 +58,7 @@ module KitchenCabinetMaster
         Response.ok(on ? 'The wall unit bottom panels go under the lofts too.' : 'No bottom panels under the lofts.')
       when 'set_live_ceiling_filler'
         keep(model, KEY_CEILING, on, raw)
-        apply(model, "#{on ? 'Place' : 'Remove'} Ceiling Fillers") { sync_ceiling(model) }
+        refresh # (the ceiling fillers are placed or taken away, and the side panels of the lofts at the ends of the rows go up to the top of them, or stop at the loft)
         Response.ok(on ? 'Ceiling fillers are on: every loft has one.' : 'The ceiling fillers placed by the tick are taken away.')
       when 'set_live_wall_bottom'
         keep(model, KEY_WALL_BOTTOM, on, raw)

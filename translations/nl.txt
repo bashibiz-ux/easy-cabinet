@@ -33,7 +33,6 @@ Kasten en extra's inklappen als een object is geselecteerd
 Keuken bijwerken als ik deze opties wijzig
 Kasten aan de andere kant van het pad
 Opzetkast volgt de afmetingen van de kast eronder (breedte en diepte)
-Zijpanelen van opzetkasten tot de bovenkant van de plafondstrook
 Invoegen
 Bijwerken
 Dupliceren

@@ -33,7 +33,6 @@ Contraer muebles y extras cuando hay un objeto seleccionado
 Actualizar la cocina al cambiar estas opciones
 Muebles al otro lado de la trayectoria
 El altillo sigue el tamaño del mueble de abajo (ancho y fondo)
-Paneles laterales de altillos hasta el borde superior del remate de techo
 Insertar
 Actualizar
 Duplicar

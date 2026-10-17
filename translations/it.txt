@@ -33,7 +33,6 @@ Comprimi mobili ed extra quando è selezionato un oggetto
 Aggiorna la cucina quando cambio queste opzioni
 Mobili sull'altro lato del percorso
 Il soprastante segue le dimensioni del mobile sotto (larghezza e profondità)
-Pannelli laterali dei soprastanti fino al bordo superiore del coprifilo
 Inserisci
 Aggiorna
 Duplica

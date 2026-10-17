@@ -33,7 +33,6 @@ Zwiń szafki i dodatki, gdy zaznaczono obiekt
 Aktualizuj kuchnię przy zmianie tych opcji
 Szafki po drugiej stronie ścieżki
 Nadstawka dopasowuje się do szafki pod nią (szerokość i głębokość)
-Panele boczne nadstawek do górnej krawędzi zabudowy sufitowej
 Wstaw
 Aktualizuj
 Duplikuj

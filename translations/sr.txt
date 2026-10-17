@@ -33,7 +33,6 @@ Skupi elemente i dodatke kad je izabran objekat
 Ažuriraj kuhinju kad menjam ove opcije
 Elementi sa druge strane putanje
 Nadgradnja prati dimenzije elementa ispod (širina i dubina)
-Bočne ploče nadgradnji do vrha plafonske lajsne
 Umetni
 Ažuriraj
 Dupliraj
