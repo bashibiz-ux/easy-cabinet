@@ -252,19 +252,19 @@ class WorktopTest < Minitest::Test
   # ---- tags ---------------------------------------------------------------------
 
   def test_each_kind_of_item_has_its_own_tag
-    assert_equal '01 - Base Unit', TagManager.for_category('base')
-    assert_equal '01 - Base Unit', TagManager.for_category('corner')
-    assert_equal '02 - Wall Unit', TagManager.for_category('wall')
-    assert_equal '04 - Tall Unit', TagManager.for_category('tall')
-    assert_equal '05 - Toe Kick', TagManager.for_stored('part_kind' => 'toe_kick')
-    assert_equal 'Worktop', TagManager.for_stored('part_kind' => 'worktop')
-    assert_equal '04 - Tall Unit', TagManager.for_stored('cabinet_id' => 'C1', 'cabinet_category' => 'tall')
+    assert_equal '01 Base Unit', TagManager.for_category('base')
+    assert_equal '01 Base Unit', TagManager.for_category('corner')
+    assert_equal '02 Wall Unit', TagManager.for_category('wall')
+    assert_equal '04 Tall Unit', TagManager.for_category('tall')
+    assert_equal '05 Toe Kick', TagManager.for_stored('part_kind' => 'toe_kick')
+    assert_equal '08 Worktop', TagManager.for_stored('part_kind' => 'worktop')
+    assert_equal '04 Tall Unit', TagManager.for_stored('cabinet_id' => 'C1', 'cabinet_category' => 'tall')
     assert_nil TagManager.for_stored('part_kind' => 'filler'), 'a filler is not tagged'
     assert_nil TagManager.for_stored(nil)
   end
 
   def test_the_tags_are_the_ones_asked_for
-    assert_equal ['01 - Base Unit', '02 - Wall Unit', '03 - Loft Unit', '04 - Tall Unit', '05 - Toe Kick', '06 - Side Panels', '07 - Ceiling Filler', 'Worktop'], TagManager::ALL
+    assert_equal ['01 Base Unit', '02 Wall Unit', '03 Loft Unit', '04 Tall Unit', '05 Toe Kick', '06 Side Panels', '07 Ceiling Filler', '08 Worktop'], TagManager::ALL
   end
 
   def test_the_new_actions_are_routed
@@ -371,7 +371,7 @@ class WorktopTest < Minitest::Test
   end
 
   def test_a_back_splash_is_on_the_worktop_tag
-    assert_equal 'Worktop', TagManager.for_stored('part_kind' => 'backsplash')
+    assert_equal '08 Worktop', TagManager.for_stored('part_kind' => 'backsplash')
   end
 
   # ---- the rounded front edge -----------------------------------------------------------
