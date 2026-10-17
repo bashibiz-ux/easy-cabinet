@@ -529,24 +529,34 @@ module KitchenCabinetMaster
     end
     private_class_method :load_plan
 
-    # The doors and windows of the room that are not where they were drawn: { index => [x, y, z] } (the middle and the bottom now, mm).
-    def self.moved_openings(model, specs)
+    # What became of the doors and windows, from [[index, [x, y, z] now, [x, y, z] drawn at]] (one entry for each door or window group in the model): a group that is
+    # not where it was drawn has been MOVED; a second group with the same index is a COPY (a door or window copied and pasted: it is a new opening of its own, as
+    # big as the first). Of the groups with one index the one still where it was drawn is the original, else the first. => [{ index => now }, [[index, now], ...]].
+    def self.classify_openings(entries)
       moved = {}
-      model.entities.grep(Sketchup::Group).each do |group|
+      copies = []
+      entries.group_by(&:first).each do |index, group|
+        original = group.find { |_, now, home| now.zip(home).none? { |a, b| (a - b).abs > MOVED } } || group.first
+        group.each { |entry| copies << [index, entry[1]] unless entry.equal?(original) }
+        moved[index] = original[1] if original[1].zip(original[2]).any? { |a, b| (a - b).abs > MOVED }
+      end
+      [moved, copies]
+    end
+
+    def self.opening_entries(model, specs)
+      model.entities.grep(Sketchup::Group).filter_map do |group|
         index = group.get_attribute(DICTIONARY, 'room_opening')
         home = group.get_attribute(DICTIONARY, 'home')
         next unless index && home && specs[index]
 
         bounds = group.bounds
-        now = [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm]
-        moved[index] = now if now.zip(home).any? { |a, b| (a - b).abs > MOVED }
+        [index, [bounds.center.x.to_mm, bounds.center.y.to_mm, bounds.min.z.to_mm], home]
       end
-      moved
     end
-    private_class_method :moved_openings
+    private_class_method :opening_entries
 
-    # A move is over (or Update Room): a door or window that is not where it was drawn takes the opening of the wall with it, and the room is drawn again.
-    # => how many were moved.
+    # A move is over (or Update Room): a door or window that is not where it was drawn takes the opening of the wall with it, one that was copied and pasted gets an
+    # opening of its own where it is, and the room is drawn again (every opening drawn square to its wall). => how many were moved or added.
     def self.after_move(model)
       return 0 if @busy || model.nil?
 
@@ -555,22 +565,23 @@ module KitchenCabinetMaster
 
       specs = JSON.parse(model.get_attribute(DICTIONARY, 'room_specs', '[]'))
       options = JSON.parse(model.get_attribute(DICTIONARY, 'room_options', '{}'))
-      moved = moved_openings(model, specs)
-      return 0 if moved.empty?
+      moved, copies = classify_openings(opening_entries(model, specs))
+      return 0 if moved.empty? && copies.empty?
 
-      redo_room(model, plan, options, specs, moved)
-      moved.length
+      redo_room(model, plan, options, specs, moved, copies)
+      moved.length + copies.length
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
       0
     end
 
-    def self.redo_room(model, plan, options, specs, moved)
+    def self.redo_room(model, plan, options, specs, moved, copies = [])
       changed = specs.map(&:dup)
       moved.each { |index, (x, y, z)| changed[index] = relocate(plan, changed[index], x, y, z) }
+      copies.each { |index, (x, y, z)| changed << relocate(plan, specs[index].dup, x, y, z) } # (a copy: one more opening of the same size)
       cuts, problem = openings(plan, changed, options)
       unless cuts # it does not fit there: it goes back where it was
-        DialogManager.push('notice', { 'message' => "#{problem} The door or window went back." }) if defined?(DialogManager)
+        DialogManager.push('notice', { 'message' => "#{problem} The door or window went back (a copy was taken away)." }) if defined?(DialogManager)
         cuts, problem = openings(plan, specs, options)
         return if problem
       end
@@ -586,7 +597,7 @@ module KitchenCabinetMaster
       ensure
         @busy = false
       end
-      DialogManager.push('info', { 'message' => 'The opening in the wall moved with the door or window.' }) if defined?(DialogManager) && !problem
+      DialogManager.push('info', { 'message' => copies.empty? ? 'The opening in the wall moved with the door or window.' : 'The pasted door or window has an opening in the wall of its own.' }) if defined?(DialogManager) && !problem
     end
     private_class_method :redo_room
 
@@ -615,6 +626,15 @@ module KitchenCabinetMaster
         end
       end
 
+      # A group is added (a door or window pasted, say): the room is looked at after a moment.
+      class AddedWatcher < Sketchup::EntitiesObserver
+        def onElementAdded(_entities, entity)
+          RoomShell.request if entity.is_a?(Sketchup::Group)
+        rescue StandardError => e
+          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+        end
+      end
+
       class AppWatcher < Sketchup::AppObserver
         def expectsStartupModelNotifications = true
         def onNewModel(model) = RoomShell.attach(model)
@@ -633,6 +653,7 @@ module KitchenCabinetMaster
     def self.install
       @attached = {}
       @tool_watcher = ToolWatcher.new
+      @added_watcher = AddedWatcher.new
       Sketchup.add_observer(AppWatcher.new)
       attach(Sketchup.active_model)
     end
@@ -644,6 +665,7 @@ module KitchenCabinetMaster
       return if @attached[key]
 
       model.tools.add_observer(@tool_watcher)
+      model.entities.add_observer(@added_watcher)
       model.entities.grep(Sketchup::Group).each { |group| watch(group) if group.get_attribute(DICTIONARY, 'room_opening') } # (the doors and windows of a model that was opened)
       @attached[key] = true
     end
@@ -663,7 +685,7 @@ module KitchenCabinetMaster
       return Response.fail('There is no room in the model yet: press Build Room.') if parts_in(model).empty?
 
       count = after_move(model)
-      Response.ok(count.zero? ? 'The doors and windows are where they were drawn: nothing to move.' : "#{count} door#{'s' if count != 1} or window#{'s' if count != 1} moved: the openings in the walls went with them.")
+      Response.ok(count.zero? ? 'The doors and windows are where they were drawn: nothing to move.' : "#{count} door or window moved or copied: the openings in the walls follow them.")
     end
 
     def self.remove

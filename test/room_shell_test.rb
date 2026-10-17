@@ -308,4 +308,57 @@ class RoomShellTest < Minitest::Test
     assert_equal [plan[:y0] + 550.0, plan[:y0] + 1450.0], [cut[:from][1], cut[:to][1]]
     assert_equal [1.0, 0.0], cut[:out], 'the opening is parallel to the east wall: it runs along y'
   end
+  # ---- copies of a door or window ------------------------------------------------------------------
+
+  def test_a_door_that_is_where_it_was_drawn_is_left_alone
+    moved, copies = RS.classify_openings([[0, [100.0, 200.0, 0.0], [100.0, 200.0, 0.0]], [1, [900.0, 5.0, 900.0], [900.0, 5.0, 900.0]]])
+    assert_empty moved
+    assert_empty copies
+  end
+
+  def test_a_door_that_was_moved_is_moved
+    moved, copies = RS.classify_openings([[0, [500.0, 200.0, 0.0], [100.0, 200.0, 0.0]]])
+    assert_equal({ 0 => [500.0, 200.0, 0.0] }, moved)
+    assert_empty copies
+  end
+
+  def test_a_pasted_copy_is_a_new_opening_and_the_original_stays
+    home = [100.0, 200.0, 0.0]
+    moved, copies = RS.classify_openings([[0, home, home], [0, [2000.0, 300.0, 0.0], home]])
+    assert_empty moved, 'the original is where it was drawn'
+    assert_equal [[0, [2000.0, 300.0, 0.0]]], copies
+    moved, copies = RS.classify_openings([[0, [2000.0, 300.0, 0.0], home], [0, home, home]]) # the order in the model does not matter
+    assert_empty moved
+    assert_equal [[0, [2000.0, 300.0, 0.0]]], copies
+  end
+
+  def test_several_copies_are_several_openings
+    home = [100.0, 200.0, 0.0]
+    _, copies = RS.classify_openings([[0, home, home], [0, [800.0, 300.0, 0.0], home], [0, [1600.0, 300.0, 0.0], home]])
+    assert_equal 2, copies.length
+  end
+
+  def test_when_none_is_at_home_the_first_is_the_original_that_was_moved_and_the_rest_are_copies
+    home = [100.0, 200.0, 0.0]
+    moved, copies = RS.classify_openings([[0, [800.0, 300.0, 0.0], home], [0, [1600.0, 300.0, 0.0], home]])
+    assert_equal({ 0 => [800.0, 300.0, 0.0] }, moved)
+    assert_equal [[0, [1600.0, 300.0, 0.0]]], copies
+  end
+
+  def test_a_window_and_a_door_are_told_apart_by_their_index
+    moved, copies = RS.classify_openings([[0, [1.0, 1.0, 0.0], [1.0, 1.0, 0.0]], [1, [9.0, 9.0, 900.0], [5.0, 5.0, 900.0]], [1, [5.0, 5.0, 900.0], [5.0, 5.0, 900.0]]])
+    assert_empty moved
+    assert_equal [[1, [9.0, 9.0, 900.0]]], copies
+  end
+
+  def test_a_copy_of_a_window_on_another_wall_is_a_window_of_the_same_size_square_to_that_wall
+    plan = RS.plan(straight)
+    spec = { 'kind' => 'Window', 'wall' => 'south', 'from' => 300.0, 'width' => 1200.0, 'sill' => 900.0, 'height' => 1200.0 }
+    copy = RS.relocate(plan, spec.dup, 2995.0, 900.0, 900.0) # pasted by the east wall
+    assert_equal 'east', copy['wall']
+    assert_equal [1200.0, 1200.0, 900.0], [copy['width'], copy['height'], copy['sill']], 'as big as the first'
+    cuts, problem = RS.openings(plan, [spec, copy])
+    assert_nil problem
+    assert_equal [[0.0, -1.0], [1.0, 0.0]], cuts.map { |c| c[:out] }, 'each is cut square to its own wall: the first through the south, the copy through the east'
+  end
 end
