@@ -85,6 +85,13 @@ module KitchenCabinetMaster
         data[:handles][id.to_s]
       end
 
+      # The Gola systems a cabinet's settings give it: { 'gola_system' => (the doors' handle), 'gola_system_drawer' => (the drawers': their own handle, else the doors') },
+      # each b c d e, or blank for a handle that is not a Gola profile. Worked out again whenever the handle changes, so that a cabinet follows the Handle section live.
+      def gola_systems(settings)
+        drawer = settings['drawer_handle_id'].to_s.strip
+        { 'gola_system' => gola_system(settings['handle_id']), 'gola_system_drawer' => gola_system(drawer.empty? ? settings['handle_id'] : drawer) }
+      end
+
       # The Gola system (b c d e) of a handle package, blank for one that is not a Gola profile.
       def gola_system(id)
         bundle = handle_bundle(id)

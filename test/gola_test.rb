@@ -260,6 +260,14 @@ class GolaTest < Minitest::Test
     layout_of('base', 'base_2door', 900, 'b', 'b', 'handle_length' => '4100')
   end
 
+  def test_a_cabinet_follows_the_handle_chosen_so_the_handle_section_updates_it_live
+    assert_equal({ 'gola_system' => 'b', 'gola_system_drawer' => 'b' }, CatalogManager.gola_systems('handle_id' => 'gola_b_plus'))
+    assert_equal({ 'gola_system' => 'd', 'gola_system_drawer' => 'c' }, CatalogManager.gola_systems('handle_id' => 'gola_d', 'drawer_handle_id' => 'gola_c_plus'))
+    assert_equal({ 'gola_system' => '', 'gola_system_drawer' => 'e' }, CatalogManager.gola_systems('handle_id' => 'd_handles', 'drawer_handle_id' => 'gola_e'))
+    assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems('handle_id' => 'd_handles'), 'a handle that is not a Gola profile takes the profiles away again')
+    assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems({}))
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

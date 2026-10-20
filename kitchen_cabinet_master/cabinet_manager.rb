@@ -1103,8 +1103,10 @@ module KitchenCabinetMaster
     # A stored cabinet's parameters with `overrides` put in, checked by the same rules
     # as an Update. Returns [params, []] or [nil, errors].
     def self.restyle_params(model, stored, overrides)
-      result = ValidationManager.validate(stored.merge(overrides), door_count: stored['door_count'].to_i,
-                                                                    drawer_count: stored['drawer_count'].to_i)
+      merged = stored.merge(overrides)
+      merged = merged.merge(CatalogManager.gola_systems(merged)) # (a new handle from the Handle section can be a Gola profile, or no longer one)
+      result = ValidationManager.validate(merged, door_count: stored['door_count'].to_i,
+                                                  drawer_count: stored['drawer_count'].to_i)
       params = result.params
       params['door_count'] = stored['door_count'].to_i
       params['drawer_count'] = stored['drawer_count'].to_i
@@ -1453,11 +1455,10 @@ module KitchenCabinetMaster
                       'bifold' => !!(cabinet && cabinet['bifold']),
                       'lift_door' => !!(cabinet && (cabinet['lift_door'] || (cabinet['glass'] && ValidationManager.truthy_value?(raw['lift_door'])))), # (a glass door unit can be a lift-up one too)
                       'finger_pull' => !!(CatalogManager.catalog(raw['catalog_id']) || {})['finger_pull'],
-                      'gola_system' => CatalogManager.gola_system(raw['handle_id']),
-                      'gola_system_drawer' => CatalogManager.gola_system(raw['drawer_handle_id'].to_s.empty? ? raw['handle_id'] : raw['drawer_handle_id']),
                       'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
+      raw = raw.merge(CatalogManager.gola_systems(raw)) # (the Gola profiles follow the handle chosen)
       raw = raw.merge('sink_bowls' => 1, 'sink_rotation' => 0) if cabinet && cabinet['sink_single'] # a narrow sink: one bowl, not turned
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
