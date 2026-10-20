@@ -407,4 +407,36 @@ class RoomShellTest < Minitest::Test
     assert_equal 1, RS.openings(plan, [spec]).first.length
     assert_empty RS.openings(plan, []).first, 'no door: nothing is cut'
   end
+  # ---- boxes put together as one solid -------------------------------------------------------
+
+  def box(x0, x1, y0, y1, z0, z1) = { from: [x0, y0, z0], to: [x1, y1, z1] }
+
+  def area(square)
+    xs, ys, zs = square.transpose.map { |v| v.max - v.min }
+    [xs, ys, zs].reject(&:zero?).inject(:*)
+  end
+
+  def edge_uses(squares)
+    uses = Hash.new(0)
+    squares.each { |s| s.each_with_index { |p, i| uses[[p, s[(i + 1) % 4]].sort] += 1 } }
+    uses
+  end
+
+  def test_two_boxes_that_touch_have_no_face_where_they_touch
+    squares = RS.shell_squares([box(0, 10, 0, 10, 0, 10), box(10, 20, 0, 10, 0, 10)])
+    assert_in_delta 2 * 6 * 100.0 - 2 * 100.0, squares.sum { |s| area(s) }, 1e-6, 'the two outsides less the faces that meet'
+    assert(squares.none? { |s| s.all? { |p| p[0] == 10 } }, 'nothing left at x = 10')
+  end
+
+  def test_a_box_inside_another_adds_nothing
+    squares = RS.shell_squares([box(0, 10, 0, 10, 0, 10), box(2, 4, 2, 4, 2, 4)])
+    assert_in_delta 600.0, squares.sum { |s| area(s) }, 1e-6
+  end
+
+  def test_the_frame_of_a_door_and_of_a_window_and_the_leaf_are_closed_solids
+    [RS.door_parts(door_cut)['Frame'], RS.door_parts(door_cut)['Leaf'], RS.window_parts(window_cut)['Frame'], RS.window_sashes(window_cut).first[:sash]].each do |boxes|
+      uses = edge_uses(RS.shell_squares(boxes))
+      assert_equal [2], uses.values.uniq, ('every edge belongs to two faces ' + uses.select { |_, n| n == 4 }.keys.first(3).inspect)
+    end
+  end
 end

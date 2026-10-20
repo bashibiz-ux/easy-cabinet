@@ -34,7 +34,6 @@ module KitchenCabinetMaster
     SILL_IN = 35.0          # mm: how far the sill board of a window comes into the room
     SILL_OUT = 45.0         # mm: and how far the one outside comes out of the wall
     DOOR_CLEARANCE = 10.0   # mm: the threshold, and how far the leaf stands off the floor
-    FUSE_BOXES = false      # joining the boards with the solid tools made SketchUp say "reference to deleted Entities" while the room was drawn: off
     WINDOW_OPEN = 70.0      # degrees a window sash opens
     BEAD_WIDTH = 30.0       # mm: the second, narrower step of the casing round a door or window
     BEAD_THICKNESS = 6.0
@@ -180,6 +179,16 @@ module KitchenCabinetMaster
         mid: (cut[:from][across] + cut[:to][across]) / 2.0, sign: cut[:out][across].positive? ? 1 : -1 }
     end
 
+    # The casing round a door or window on one face of the wall: the boards over the wall and over the jambs (the casing covers the jambs, so that the frame is one
+    # piece with them), a narrow bead at the inner edge on top of them. `a`..`b` is where the board is across the wall, `ba`..`bb` the bead; `width` how far the board
+    # reaches out from the opening. A window has none under it (`sill`: its frame is the sill).
+    def self.casing(mk, u0, u1, z0, z1, fw, width, a, b, ba, bb, sill: false)
+      inner = [u0 + fw, u1 - fw]
+      [mk.call(u0 - width, inner[0], a, b, z0, z1 - fw), mk.call(inner[1], u1 + width, a, b, z0, z1 - fw), mk.call(u0 - width, u1 + width, a, b, z1 - fw, z1 + width),
+       mk.call(inner[0] - BEAD_WIDTH, inner[0], ba, bb, z0, z1 - fw), mk.call(inner[1], inner[1] + BEAD_WIDTH, ba, bb, z0, z1 - fw),
+       mk.call(inner[0] - BEAD_WIDTH, inner[1] + BEAD_WIDTH, ba, bb, z1 - fw, z1 - fw + BEAD_WIDTH)]
+    end
+
     # A panel door: the frame (jambs, head, and boards on both faces of the wall), the leaf (stiles, rails and two raised panels on each face) and the lever
     # handle. => { 'Frame' => [boxes], 'Leaf' => [boxes], 'Handle' => [boxes], 'Hinge' => [boxes] } in mm; the boxes of one group never overlap.
     def self.door_parts(cut)
@@ -187,10 +196,9 @@ module KitchenCabinetMaster
       mk = s[:mk]
       u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
       fw = [FRAME_WIDTH, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
-      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
+      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0 - TRIM_THICKNESS - BEAD_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
       [[c0 - TRIM_THICKNESS, c0, c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS], [c1, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]].each do |a, b, ba, bb|
-        frame << mk.call(u0 - TRIM_WIDTH, u0, a, b, z0, z1) << mk.call(u1, u1 + TRIM_WIDTH, a, b, z0, z1) << mk.call(u0 - TRIM_WIDTH, u1 + TRIM_WIDTH, a, b, z1, z1 + TRIM_WIDTH)
-        frame << mk.call(u0 - BEAD_WIDTH, u0, ba, bb, z0, z1) << mk.call(u1, u1 + BEAD_WIDTH, ba, bb, z0, z1) << mk.call(u0 - BEAD_WIDTH, u1 + BEAD_WIDTH, ba, bb, z1, z1 + BEAD_WIDTH) # (the casing is stepped)
+        frame.concat(casing(mk, u0, u1, z0, z1, fw, TRIM_WIDTH, a, b, ba, bb))
       end
       stop = s[:sign].positive? ? [mid + (LEAF_THICKNESS / 2.0), mid + (LEAF_THICKNESS / 2.0) + 20.0] : [mid - (LEAF_THICKNESS / 2.0) - 20.0, mid - (LEAF_THICKNESS / 2.0)] # (the leaf shuts against these, on the side away from the room)
       frame << mk.call(u0 + fw, u0 + fw + STOP, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u1 - fw - STOP, u1 - fw, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u0 + fw + STOP, u1 - fw - STOP, *stop, z1 - fw - STOP, z1 - fw)
@@ -279,8 +287,7 @@ module KitchenCabinetMaster
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + fw)]
       room_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS, c0] : [c1, c1 + TRIM_THICKNESS]
       bead_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS] : [c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]
-      frame << mk.call(u0 - 60.0, u0, *room_face, z0, z1) << mk.call(u1, u1 + 60.0, *room_face, z0, z1) << mk.call(u0 - 60.0, u1 + 60.0, *room_face, z1, z1 + 60.0)
-      frame << mk.call(u0 - BEAD_WIDTH, u0, *bead_face, z0, z1) << mk.call(u1, u1 + BEAD_WIDTH, *bead_face, z0, z1) << mk.call(u0 - BEAD_WIDTH, u1 + BEAD_WIDTH, *bead_face, z1, z1 + BEAD_WIDTH)
+      frame.concat(casing(mk, u0, u1, z0, z1, fw, 60.0, *room_face, *bead_face, sill: true))
       sashes = window_sashes(cut)
       { 'Frame' => frame, 'Sash' => sashes.flat_map { |x| x[:sash] }, 'Bar' => sashes.flat_map { |x| x[:bars] }, 'Glass' => sashes.flat_map { |x| x[:glass] },
         'Handle' => sashes.flat_map { |x| x[:handle] } }
@@ -304,6 +311,53 @@ module KitchenCabinetMaster
       hinge[along] = s[:u0] + fw + 3.0
       hinge[across] = s[:mid]
       { hinge: hinge, angle: swing_angle(cut) }
+    end
+
+    # The outside of boxes put together as one solid: every face of the boxes that is not inside another box, as small squares of the grid the boxes make
+    # (so that neighbouring squares share their edges), each as four corners [[x, y, z] ...] in mm. Boxes may touch or run into one another; there is no joint
+    # left between them. Squares in one plane are made one face afterwards (see flatten).
+    def self.shell_squares(boxes)
+      return [] if boxes.empty?
+
+      coords = (0..2).map { |axis| boxes.flat_map { |b| [b[:from][axis], b[:to][axis]] }.map { |v| v.round(6) }.uniq.sort }
+      size = coords.map { |c| c.length - 1 }
+      grid = Array.new(size[0]) { Array.new(size[1]) { Array.new(size[2], false) } }
+      boxes.each do |b|
+        lo, hi = (0..2).map do |axis|
+          [coords[axis].index(b[:from][axis].round(6)), coords[axis].index(b[:to][axis].round(6))]
+        end.transpose
+        (lo[0]...hi[0]).each { |i| (lo[1]...hi[1]).each { |j| (lo[2]...hi[2]).each { |k| grid[i][j][k] = true } } }
+      end
+      full = ->(i, j, k) { i >= 0 && j >= 0 && k >= 0 && i < size[0] && j < size[1] && k < size[2] && grid[i][j][k] }
+      squares = []
+      size[0].times do |i|
+        size[1].times do |j|
+          size[2].times do |k|
+            next unless grid[i][j][k]
+
+            cell = [i, j, k]
+            (0..2).each do |axis|
+              [-1, 1].each do |dir|
+                near = cell.dup
+                near[axis] += dir
+                next if full.call(*near)
+
+                plane = coords[axis][cell[axis] + (dir.positive? ? 1 : 0)]
+                a, b = (0..2).to_a - [axis]
+                corners = [[0, 0], [1, 0], [1, 1], [0, 1]].map do |da, db|
+                  point = [0.0, 0.0, 0.0]
+                  point[axis] = plane
+                  point[a] = coords[a][cell[a] + da]
+                  point[b] = coords[b][cell[b] + db]
+                  point
+                end
+                squares << corners
+              end
+            end
+          end
+        end
+      end
+      squares
     end
 
     # A door or window that was moved: it goes to the wall nearest to where it now is, parallel to it, and its place along the wall (and, for a window, its sill
@@ -578,45 +632,22 @@ module KitchenCabinetMaster
     end
     private_class_method :draw_opening
 
-    # A part of a door or window: boxes in one material, in a group of their own. With `fuse` the boxes are made one piece (the solid tools of SketchUp, when it has them:
-    # the frame is then one solid without the joints between its boards, else the lines between boards that lie in one plane are only taken away). => the groups made.
+    # A part of a door or window: boxes in one material, in a group of their own. With `fuse` the boxes are made one piece, a solid without the joints between its
+    # boards (see shell_squares). => the groups made.
     def self.part_group(model, entities, part_name, boxes, fuse: false)
       material = opening_material(model, PART_MATERIALS.fetch(part_name))
-      before = entities.grep(Sketchup::Group)
-      if FUSE_BOXES && fuse && boxes.length > 1
-        pieces = boxes.map do |box|
-          piece = entities.add_group
-          slab(piece.entities, box[:from], box[:to])
-          piece
-        end
-        fuse_groups(pieces)
+      sub = entities.add_group
+      sub.name = part_name
+      sub.material = material
+      if fuse && boxes.length > 1
+        shell_squares(boxes).each { |corners| sub.entities.add_face(corners.map { |x, y, z| Geom::Point3d.new(x.mm, y.mm, z.mm) }) }
       else
-        sub = entities.add_group
         boxes.each { |box| slab(sub.entities, box[:from], box[:to]) }
       end
-      made = entities.grep(Sketchup::Group) - before # (looked up again: the groups that were fused are gone)
-      made.each do |sub|
-        sub.name = part_name
-        sub.material = material
-        flatten(sub.entities)
-      end
-      made
+      flatten(sub.entities)
+      [sub]
     end
     private_class_method :part_group
-
-    # The groups made one: each is joined to the one before (what cannot be joined, or all of it when SketchUp has no solid tools, stays as it is).
-    def self.fuse_groups(pieces)
-      return unless pieces.first.respond_to?(:union)
-
-      whole = pieces.first
-      pieces.drop(1).each do |piece|
-        joined = whole.union(piece)
-        whole = joined if joined
-      end
-    rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not fuse the boards of a door or window: #{e.message}"
-    end
-    private_class_method :fuse_groups
 
     # The lines between faces that lie in one plane are taken away.
     def self.flatten(entities)
