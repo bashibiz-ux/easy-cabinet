@@ -581,19 +581,19 @@ module KitchenCabinetMaster
     # the frame is then one solid without the joints between its boards, else the lines between boards that lie in one plane are only taken away). => the groups made.
     def self.part_group(model, entities, part_name, boxes, fuse: false)
       material = opening_material(model, PART_MATERIALS.fetch(part_name))
-      made =
-        if fuse && boxes.length > 1 && entities.add_group.then { |probe| ok = probe.respond_to?(:union); probe.erase!; ok }
-          pieces = boxes.map do |box|
-            piece = entities.add_group
-            slab(piece.entities, box[:from], box[:to])
-            piece
-          end
-          whole = pieces.first
-          pieces.drop(1).each { |piece| whole = whole.union(piece) || whole }
-          ([whole] + pieces).select(&:valid?).uniq
-        else
-          [entities.add_group.tap { |sub| boxes.each { |box| slab(sub.entities, box[:from], box[:to]) } }]
+      before = entities.grep(Sketchup::Group)
+      if fuse && boxes.length > 1
+        pieces = boxes.map do |box|
+          piece = entities.add_group
+          slab(piece.entities, box[:from], box[:to])
+          piece
         end
+        fuse_groups(pieces)
+      else
+        sub = entities.add_group
+        boxes.each { |box| slab(sub.entities, box[:from], box[:to]) }
+      end
+      made = entities.grep(Sketchup::Group) - before # (looked up again: the groups that were fused are gone)
       made.each do |sub|
         sub.name = part_name
         sub.material = material
@@ -602,6 +602,20 @@ module KitchenCabinetMaster
       made
     end
     private_class_method :part_group
+
+    # The groups made one: each is joined to the one before (what cannot be joined, or all of it when SketchUp has no solid tools, stays as it is).
+    def self.fuse_groups(pieces)
+      return unless pieces.first.respond_to?(:union)
+
+      whole = pieces.first
+      pieces.drop(1).each do |piece|
+        joined = whole.union(piece)
+        whole = joined if joined
+      end
+    rescue StandardError => e
+      warn "[Kitchen Cabinet Master] Could not fuse the boards of a door or window: #{e.message}"
+    end
+    private_class_method :fuse_groups
 
     # The lines between faces that lie in one plane are taken away.
     def self.flatten(entities)
