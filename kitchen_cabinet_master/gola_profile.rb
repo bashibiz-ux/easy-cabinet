@@ -10,6 +10,7 @@ module KitchenCabinetMaster
   #   D, E    vertical, between two doors side by side (30 and 35 mm apart); the doors are screwed to it. An end profile takes the place of the second door
   #           at the end of a run. D is 66.5 wide and 12 deep behind the doors, E 72 wide and 20 deep.
   module GolaProfile
+    DEFAULT_GAP = 30.0 # mm: the finger gap between a front and the Gola profile over it, to start with
     PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this
@@ -103,6 +104,8 @@ module KitchenCabinetMaster
       return if systems.values.all?(&:empty?)
 
       reveal = params['door_reveal'].to_f
+      gap = params['gola_gap'].to_f.negative? ? 0.0 : (params['gola_gap'].nil? ? DEFAULT_GAP : params['gola_gap'].to_f) # (the finger gap: between the top of a front and the profile over it)
+      carcass_top = limit + reveal
       everything = doors + drawers
       fronts = doors.map { |item| [item, systems[:doors]] } + drawers.map { |item| [item, systems[:drawers]] }
       fronts.reject! { |item, system| system.empty? || %w[top fold].include?(item.hinge) }
@@ -125,22 +128,23 @@ module KitchenCabinetMaster
       along.each do |item, system|
         spec = SYSTEMS[system]
         if system == 'b'
-          cut = spec[:size] - reveal # (always the same: a front that was made taller or shorter keeps its size and the profile goes on its top edge)
+          profile_bottom = carcass_top - spec[:size] # (the profile hangs under the worktop, and stays there)
+          cut = (limit - (profile_bottom - gap)) # (the front stops the finger gap under it)
         else
           above = uppers[item]
           next unless above
 
-          cut = spec[:size] - (above.offset[2] - top_of(item))
+          profile_bottom = above.offset[2] - spec[:size] # (the profile hangs under the front over it)
+          cut = top_of(item) - (profile_bottom - gap)
         end
-        cut = 0.0 if cut.negative?
-        next if item.extent[2] - cut < MIN_FRONT
+        next if cut.negative? || item.extent[2] - cut < MIN_FRONT
 
         left, right = sides[item]
         left = left ? left / 2.0 : reveal # (the ends reach the outside of the carcass: the profiles of two units side by side meet)
         right = right ? right / 2.0 : reveal
         item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - cut)]
         item.gola = { 'system' => system, 'kind' => system == 'b' ? 'top' : 'between', 'back' => round2(-item.extent[0]), 'horizontal' => true,
-                      'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => item.extent[2] }
+                      'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => item.extent[2], 'z' => round2(profile_bottom) }
       end
 
       verticals = fronts.select { |item, system| !SYSTEMS[system][:horizontal] && doors.include?(item) }.sort_by { |item, _| [item.offset[1], item.offset[2]] }
@@ -156,6 +160,17 @@ module KitchenCabinetMaster
     end
 
     def self.top_of(item) = round2(item.offset[2] + item.extent[2])
+
+    # The fronts have been made taller or shorter (or moved) after the profiles were worked out: each profile stays where it was (`z`, the height of its bottom or
+    # of the middle of a vertical one, above the floor) and its place on its front is worked out again.
+    def self.settle!(fronts)
+      fronts.each do |item|
+        spot = item.gola
+        next unless spot
+
+        spot['v'] = round2(spot['z'] - item.offset[2]) if spot['z']
+      end
+    end
 
     # How far two fronts overlap across the unit (0 when they do not stand over one another).
     def self.overlap_across(a, b)
@@ -194,7 +209,7 @@ module KitchenCabinetMaster
         next unless spot && spot['horizontal']
 
         spec = SYSTEMS[spot['system']]
-        from = top_of(item) - base_z
+        from = (spot['z'] || top_of(item)) - base_z
         depth = round2(spec[:depth] - distance)
         next unless depth.positive?
 
@@ -222,7 +237,7 @@ module KitchenCabinetMaster
       right.pivot = [right.pivot[0], round2(right.pivot[1] + delta), right.pivot[2]] if right.pivot && right.hinge == 'left'
       height = [left.extent[2], right.extent[2]].min
       left.gola = { 'system' => system, 'kind' => 'pair', 'back' => round2(-left.extent[0]), 'horizontal' => false, 'length' => round2(height),
-                    'u' => round2(left.extent[1] + (spec[:gap] / 2.0)), 'v' => round2((left.extent[2] / 2.0)) }
+                    'u' => round2(left.extent[1] + (spec[:gap] / 2.0)), 'v' => round2(left.extent[2] / 2.0), 'z' => round2(left.offset[2] + (height / 2.0)) }
     end
 
     # A door with no neighbour: an end profile where the door is not hinged (between it and the cabinet).
@@ -235,7 +250,7 @@ module KitchenCabinetMaster
       door.extent = [door.extent[0], round2(door.extent[1] - reduce), door.extent[2]]
       door.offset = [door.offset[0], round2(door.offset[1] + reduce), door.offset[2]] unless free_right
       door.gola = { 'system' => system, 'kind' => free_right ? 'end_right' : 'end_left', 'back' => round2(-door.extent[0]), 'horizontal' => false,
-                    'length' => round2(door.extent[2]), 'u' => free_right ? door.extent[1] : 0.0, 'v' => round2(door.extent[2] / 2.0) }
+                    'length' => round2(door.extent[2]), 'u' => free_right ? door.extent[1] : 0.0, 'v' => round2(door.extent[2] / 2.0), 'z' => round2(door.offset[2] + (door.extent[2] / 2.0)) }
     end
   end
 end

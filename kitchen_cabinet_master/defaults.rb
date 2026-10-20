@@ -183,6 +183,8 @@ module KitchenCabinetMaster
       'fridge_lift' => true,        # a built-in fridge: a lift-up door over the fridge doors (off: the top door carries on to the top)
       'glass_design' => '',         # the doors are frames with panes of glass in this design (see FrontDesign::GLASS_DESIGNS); blank = no glass
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
+      'drawer_height_adjust' => 0.0, # the top drawer front of every unit is this much taller (shorter when negative)
+      'gola_gap' => 30.0,           # the Gola handle model: the gap to put the fingers in, between the top of a front and the profile over it
       'door_height_adjust' => 0.0,  # every door is this much taller (shorter when negative): wall units hang from the top, the others grow upward
       'gola_system' => '',          # the Gola handle model: which profile the doors have (b c d e), blank for none
       'gola_system_drawer' => '',   # and the drawers

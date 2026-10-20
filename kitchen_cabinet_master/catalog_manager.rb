@@ -39,7 +39,7 @@ module KitchenCabinetMaster
       # [{ 'id', 'name', 'aliases', 'features', 'handle_bundles' }]
       def catalogs
         data[:catalogs].values.map do |c|
-          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']), 'custom' => c['custom'] == true, 'finger_pull' => c['finger_pull'] == true,
+          { 'id' => c['id'], 'name' => c['name'], 'aliases' => Array(c['aliases']), 'custom' => c['custom'] == true, 'finger_pull' => c['finger_pull'] == true, 'gola' => c['gola'] == true,
             'features' => features_of(c), 'handle_bundles' => c['handle_bundles'].is_a?(Array) ? c['handle_bundles'] : nil }
         end
       end

@@ -135,13 +135,10 @@ module KitchenCabinetMaster
       panels.concat(fridge_panels(dims, fridge)) if fridge
       panels << top_front_panel(params, dims) if params['top_front'].to_f.positive?
       doors = door_panels(params, dims, base_z)
-      adjust_door_heights(doors, params, category)
       drawers = drawer_panels(params, dims, base_z)
-      # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
-      panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
-      if style.nil? # (the Gola handle model: the fronts are cut back for the profiles)
-        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f,
-                                                   base: category == 'base' && !params['top_front'].to_f.positive?)
+      gola = style.nil? && (!GolaProfile.clean(params['gola_system']).empty? || !GolaProfile.clean(params['gola_system_drawer']).empty?)
+      if gola # (the Gola handle model: the fronts are cut back for the profiles first; the profiles stay where they are when the fronts are adjusted after)
+        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, base: category == 'base' && !params['top_front'].to_f.positive?)
         if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' } # (B Plus: the top front rail stands back for the profile)
           shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
           rail = panels.find { |item| item.role == 'top_front_rail' }
@@ -149,6 +146,13 @@ module KitchenCabinetMaster
           full = panels.find { |item| item.role == 'top' }
           full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
         end
+      end
+      adjust_door_heights(doors, params, category)
+      adjust_drawer_heights(drawers, params, category)
+      GolaProfile.settle!(doors + drawers) if gola
+      # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
+      panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
+      if gola # (the profiles run through the side panels: notches)
         notches = GolaProfile.notches(doors, drawers, distance: door_distance(params), base_z: base_z, height: dims.height) # (the profiles run through the sides)
         unless notches.empty?
           panels.each do |item|
@@ -231,6 +235,29 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :adjust_door_heights
+
+    # The drawer fronts can be made taller or shorter too (the Drawer Front Height Adjustment field): the top front of a unit grows upward (the bottom one of a wall
+    # unit downward), the others stay as they are. A front never gets lower than 60 mm.
+    def self.adjust_drawer_heights(drawers, params, category)
+      adjust = params['drawer_height_adjust'].to_f
+      return if adjust.zero? || drawers.empty?
+
+      drawers.each do |drawer|
+        next if drawer.parent || drawer.hinge == 'fold'
+
+        others = drawers.select { |other| !other.equal?(drawer) && GolaProfile.overlap_across(drawer, other).positive? } # (the fronts over or under this one)
+        edge = category == 'wall' ? others.none? { |other| other.offset[2] + other.extent[2] <= drawer.offset[2] + 0.6 } : others.none? { |other| other.offset[2] >= drawer.offset[2] + drawer.extent[2] - 0.6 }
+        next unless edge
+
+        height = drawer.extent[2].to_f
+        delta = [adjust, 60.0 - height].max
+        next if delta.zero?
+
+        drawer.extent = [drawer.extent[0], drawer.extent[1], round2(height + delta)]
+        drawer.offset = [drawer.offset[0], drawer.offset[1], round2(drawer.offset[2] - delta)] if category == 'wall'
+      end
+    end
+    private_class_method :adjust_drawer_heights
 
     # The model without handles: the top fronts of a base unit are shorter by `finger_gap` (35 mm to start with; a drawer front by
     # `finger_gap_drawer`), and the gap that leaves over them is how the fingers take hold. It is closed by a panel in the door

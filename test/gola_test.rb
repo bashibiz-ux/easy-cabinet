@@ -88,10 +88,11 @@ class GolaTest < Minitest::Test
     layout, params = layout_of('base', 'base_2door', 900, 'b')
     reveal = params['door_reveal'].to_f
     layout.doors.each_with_index do |door, i|
-      assert_in_delta plain.doors[i].extent[2] - (56.5 - reveal), door.extent[2], 0.02, 'the door is cut back to make room for the profile'
-      assert_in_delta top(plain.doors[i]) - 56.5 + reveal, top(door), 0.02
+      assert_in_delta plain.doors[i].extent[2] - (56.5 + 30.0 - reveal), door.extent[2], 0.02, 'the door is cut back for the profile (56.5) and the finger gap under it (30)'
+      assert_in_delta top(plain.doors[i]) - 56.5 - 30.0 + reveal, top(door), 0.02
       assert_equal 'top', door.gola['kind']
-      assert_equal door.extent[2], door.gola['v'], 'the profile stands on the top edge of the door'
+      assert_in_delta door.extent[2] + 30.0, door.gola['v'], 0.02, 'the profile hangs 30 mm over the top edge of the door, under the worktop'
+      assert_in_delta top(plain.doors[i]) + reveal, door.offset[2] + door.gola['v'] + 56.5, 0.02, 'its top is the top of the carcass'
     end
     assert_equal ['b'], layout.doors.map { |d| d.gola['system'] }.uniq
   end
@@ -135,8 +136,8 @@ class GolaTest < Minitest::Test
       above = ordered[i + 1]
       gap = above.offset[2] - top(drawer)
       before = plain.drawers.sort_by { |d| d.offset[2] }
-      assert_in_delta 73.0 - (before[i + 1].offset[2] - top(before[i])), before[i].extent[2] - drawer.extent[2], 0.05, 'the lower front gives up what the profile needs'
-      assert_in_delta 73.0, gap, 0.05, 'and the profile (73 high) fills the space between them'
+      assert_in_delta 73.0 + 30.0 - (before[i + 1].offset[2] - top(before[i])), before[i].extent[2] - drawer.extent[2], 0.05, 'the lower front gives up what the profile and the finger gap need'
+      assert_in_delta 73.0 + 30.0, gap, 0.05, 'the profile (73 high) hangs under the front over it, with 30 mm between it and the front under it'
       assert_equal 'between', drawer.gola['kind']
     end
   end
@@ -250,7 +251,7 @@ class GolaTest < Minitest::Test
     shorter, = layout_of('base', 'base_2door', 900, 'b', 'b', 'door_height_adjust' => '-20')
     [taller, shorter].each do |layout|
       door = layout.doors.first
-      assert_equal door.extent[2], door.gola['v'], 'the profile stands on the top edge of the door'
+      assert_in_delta plain.doors.first.offset[2] + plain.doors.first.gola['v'], door.offset[2] + door.gola['v'], 0.02, 'only the door moves: the profile stays where it is'
     end
     assert_in_delta plain.doors.first.extent[2] + 20.0, taller.doors.first.extent[2], 0.05, 'the Door Height Adjustment still changes the doors'
     assert_in_delta plain.doors.first.extent[2] - 20.0, shorter.doors.first.extent[2], 0.05
@@ -266,6 +267,33 @@ class GolaTest < Minitest::Test
     assert_equal({ 'gola_system' => '', 'gola_system_drawer' => 'e' }, CatalogManager.gola_systems('handle_id' => 'd_handles', 'drawer_handle_id' => 'gola_e'))
     assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems('handle_id' => 'd_handles'), 'a handle that is not a Gola profile takes the profiles away again')
     assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems({}))
+  end
+
+  def test_the_finger_gap_starts_at_30_mm_and_can_be_changed
+    assert_equal 30.0, Defaults.params['gola_gap']
+    plain, = layout_of('base', 'base_2door', 900, '')
+    tight, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_gap' => '20')
+    wide, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_gap' => '45')
+    assert_in_delta plain.doors.first.extent[2] - 56.5 - 20.0 + 2.0, tight.doors.first.extent[2], 0.05
+    assert_in_delta tight.doors.first.extent[2] - 25.0, wide.doors.first.extent[2], 0.05, 'a bigger gap: shorter doors, the profile is where it was'
+    assert_in_delta tight.doors.first.offset[2] + tight.doors.first.gola['v'], wide.doors.first.offset[2] + wide.doors.first.gola['v'], 0.05
+  end
+
+  def test_the_top_drawer_front_has_its_own_height_adjustment
+    plain, = layout_of('base', 'base_3drawer', 600, 'b')
+    taller, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '15')
+    shorter, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '-15')
+    order = ->(layout) { layout.drawers.sort_by { |d| d.offset[2] } }
+    order.call(plain).zip(order.call(taller), order.call(shorter)).each_with_index do |(p, up, down), i|
+      change = i == 2 ? 15.0 : 0.0
+      assert_in_delta p.extent[2] + change, up.extent[2], 0.05, "front #{i + 1}: only the top front grows"
+      assert_in_delta p.extent[2] - change, down.extent[2], 0.05
+    end
+    top_front = order.call(taller).last
+    assert_in_delta order.call(plain).last.offset[2] + order.call(plain).last.gola['v'], top_front.offset[2] + top_front.gola['v'], 0.05, 'the profile does not move'
+    plain_none, = layout_of('base', 'base_3drawer', 600, '')
+    adjusted, = layout_of('base', 'base_3drawer', 600, '', '', 'drawer_height_adjust' => '15')
+    assert_in_delta plain_none.drawers.sum { |d| d.extent[2] } + 15.0, adjusted.drawers.sum { |d| d.extent[2] }, 0.05, 'the adjustment works in every model'
   end
 
   def test_a_catalog_without_gola_profiles_is_not_touched
@@ -284,7 +312,7 @@ class GolaTest < Minitest::Test
     spot = HandleManager.placement(door, HandleManager.settings(HandleManager.apply_defaults!(params.dup, bundle), bundle), bundle)
     assert_equal door.gola['length'], spot['length']
     assert_equal true, spot['horizontal']
-    assert_equal door.extent[2], spot['v']
+    assert_equal door.gola['v'], spot['v']
     refute_nil HandleManager.handle_faces(bundle, spot['length'], false, spot)
     assert_empty HandleManager.errors(HandleManager.apply_defaults!(params.dup, bundle), layout, bundle), 'it never "does not fit"'
   end
