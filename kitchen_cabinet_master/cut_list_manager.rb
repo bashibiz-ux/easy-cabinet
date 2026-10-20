@@ -113,7 +113,7 @@ module KitchenCabinetMaster
       (layout.doors.map { |item| [item, id] } + layout.drawers.map { |item| [item, drawer_id] }).each do |item, bundle_id|
         next unless item.gola
 
-        out << { part: "Handle #{handle_name.call(bundle_id) || bundle_id}", size: [item.gola['length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: 1 }
+        out << { part: "Handle #{GolaProfile::SYSTEMS.dig(item.gola['system'], :name) || handle_name.call(bundle_id) || bundle_id}", size: [item.gola['length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: 1 }
       end
       out
     end

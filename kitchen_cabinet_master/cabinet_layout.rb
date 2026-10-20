@@ -140,7 +140,7 @@ module KitchenCabinetMaster
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
       if style.nil? # (the Gola handle model: the fronts are cut back for the profiles)
-        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, thick: dims.thick,
+        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f,
                                                    base: category == 'base' && !params['top_front'].to_f.positive?)
         if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' } # (B Plus: the top front rail stands back for the profile)
           shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
@@ -148,6 +148,15 @@ module KitchenCabinetMaster
           rail.offset = [round2(rail.offset[0] - shift), rail.offset[1], rail.offset[2]] if rail
           full = panels.find { |item| item.role == 'top' }
           full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
+        end
+        notches = GolaProfile.notches(doors, drawers, distance: door_distance(params), base_z: base_z, height: dims.height) # (the profiles run through the sides)
+        unless notches.empty?
+          panels.each do |item|
+            next unless %w[left_side right_side].include?(item.role) && item.shape.nil?
+
+            item.shape = 'notch'
+            item.path = notches
+          end
         end
       end
       custom = params['custom_overrides']

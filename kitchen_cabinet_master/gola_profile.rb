@@ -96,37 +96,48 @@ module KitchenCabinetMaster
     #   'system', 'kind' (top, between, pair, end_left, end_right), 'back' (the back of the door, from its face), 'u' and 'v' (where the
     #   outline's origin is, from the low-Y edge and the bottom of the front), 'length', 'horizontal'
     # params   gola_system (the doors' profile) and gola_system_drawer (the drawers'): b c d e, or blank
-    # limit    the height of the top of the fronts of a unit (above the floor); thick  the thickness of its side panels (a horizontal profile runs between them)
+    # limit    the height of the top of the fronts of a unit (above the floor)
     # base     the unit is a base unit
-    def self.apply!(params, doors, drawers, limit:, thick:, base:)
+    def self.apply!(params, doors, drawers, limit:, base:)
       systems = { doors: clean(params['gola_system']), drawers: clean(params['gola_system_drawer']) }
       return if systems.values.all?(&:empty?)
 
       reveal = params['door_reveal'].to_f
+      everything = doors + drawers
       fronts = doors.map { |item| [item, systems[:doors]] } + drawers.map { |item| [item, systems[:drawers]] }
       fronts.reject! { |item, system| system.empty? || %w[top fold].include?(item.hinge) }
       all = fronts.map(&:first)
-      horizontal = fronts.select { |_, system| SYSTEMS[system][:horizontal] }
-      sides = horizontal.to_h { |item, _| [item, neighbours(item, all)] } # (worked out before any front is cut back)
-      uppers = horizontal.select { |_, system| system == 'c' }.to_h { |item, _| [item, upper_of(item, all)] }
+      # Which profile each front has along its top edge: the top front of a base unit has B Plus under the worktop (with C Plus, and for a drawer with D or E, too:
+      # they are for between fronts), a front with another over it has C Plus when that is its system; B Plus is on base units only.
+      along = {}
+      fronts.each do |item, system|
+        topmost = everything.none? { |other| other != item && other.offset[2] >= top_of(item) - 0.6 && overlap_across(item, other) > 0.0 }
+        vertical_door = !SYSTEMS[system][:horizontal] && doors.include?(item)
+        if topmost
+          along[item] = 'b' if base && !vertical_door
+        elsif system == 'c'
+          along[item] = 'c'
+        end
+      end
+      sides = along.keys.to_h { |item| [item, neighbours(item, all)] } # (worked out before any front is cut back)
+      uppers = along.select { |_, system| system == 'c' }.to_h { |item, _| [item, upper_of(item, all)] }
 
-      horizontal.each do |item, system|
+      along.each do |item, system|
         spec = SYSTEMS[system]
         if system == 'b'
-          next unless base && (top_of(item) - limit).abs < 0.6
-
-          cut = spec[:size] - reveal
+          cut = spec[:size] - reveal # (always the same: a front that was made taller or shorter keeps its size and the profile goes on its top edge)
         else
           above = uppers[item]
           next unless above
 
           cut = spec[:size] - (above.offset[2] - top_of(item))
         end
-        next if cut.negative? || item.extent[2] - cut < MIN_FRONT
+        cut = 0.0 if cut.negative?
+        next if item.extent[2] - cut < MIN_FRONT
 
         left, right = sides[item]
-        left = left ? left / 2.0 : reveal - thick # (it runs to the inside of the side panels)
-        right = right ? right / 2.0 : reveal - thick
+        left = left ? left / 2.0 : reveal # (the ends reach the outside of the carcass: the profiles of two units side by side meet)
+        right = right ? right / 2.0 : reveal
         item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - cut)]
         item.gola = { 'system' => system, 'kind' => system == 'b' ? 'top' : 'between', 'back' => round2(-item.extent[0]), 'horizontal' => true,
                       'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => item.extent[2] }
@@ -145,6 +156,11 @@ module KitchenCabinetMaster
     end
 
     def self.top_of(item) = round2(item.offset[2] + item.extent[2])
+
+    # How far two fronts overlap across the unit (0 when they do not stand over one another).
+    def self.overlap_across(a, b)
+      [[a.offset[1] + a.extent[1], b.offset[1] + b.extent[1]].min - [a.offset[1], b.offset[1]].max, 0.0].max
+    end
 
     # `other` stands to the right of `item`, close to it and at the same height (it covers half of the lower one at least).
     def self.beside?(item, other)
@@ -168,6 +184,23 @@ module KitchenCabinetMaster
         other != item && !%w[top fold].include?(other.hinge) && other.offset[2] - top_of(item) >= -0.6 && other.offset[2] - top_of(item) <= NEIGHBOUR &&
           [other.offset[1] + other.extent[1], item.offset[1] + item.extent[1]].min - [other.offset[1], item.offset[1]].max > 0.5 * [other.extent[1], item.extent[1]].min
       end.min_by { |other| other.offset[2] }
+    end
+
+    # The notches the horizontal profiles need in the front edge of the side panels, where they run through them: [[depth, from, to], ...] (mm, from the bottom of
+    # the carcass), bottom to top. `distance` is how far the doors stand off the carcass.
+    def self.notches(doors, drawers, distance:, base_z:, height:)
+      list = (doors + drawers).filter_map do |item|
+        spot = item.gola
+        next unless spot && spot['horizontal']
+
+        spec = SYSTEMS[spot['system']]
+        from = top_of(item) - base_z
+        depth = round2(spec[:depth] - distance)
+        next unless depth.positive?
+
+        [depth, round2(from), round2([from + spec[:size], height].min)]
+      end
+      list.uniq.sort_by { |_, from, _| from }
     end
 
     # How much of the shorter of two fronts the other one covers, up and down (0..1).

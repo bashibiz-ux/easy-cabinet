@@ -101,11 +101,10 @@ class GolaTest < Minitest::Test
     first, second = layout.doors
     reveal = params['door_reveal'].to_f
     gap = params['door_gap'].to_f
-    thick = layout.panels.find { |p| p.role == 'left_side' }.extent[1]
     from = first.offset[1] + first.gola['u'] - (first.gola['length'] / 2.0)
     to = second.offset[1] + second.gola['u'] + (second.gola['length'] / 2.0)
-    assert_in_delta thick, from, 0.05, 'it runs between the side panels'
-    assert_in_delta second.offset[1] + second.extent[1] + reveal - thick, to, 0.05
+    assert_in_delta 0.0, from, 0.05, 'it runs to the outside of the carcass, so the profiles of units side by side meet'
+    assert_in_delta 900.0, to, 0.05
     meet = first.offset[1] + first.gola['u'] + (first.gola['length'] / 2.0)
     assert_in_delta second.offset[1] + second.gola['u'] - (second.gola['length'] / 2.0), meet, 0.05, "the two profiles meet in the gap of #{gap} mm"
   end
@@ -131,7 +130,7 @@ class GolaTest < Minitest::Test
     plain, = layout_of('base', 'base_3drawer', 600, '')
     layout, = layout_of('base', 'base_3drawer', 600, 'c')
     ordered = layout.drawers.sort_by { |d| d.offset[2] }
-    assert_nil ordered.last.gola, 'the top front has nothing above it'
+    assert_equal %w[b top], ordered.last.gola.values_at('system', 'kind'), 'the top front has B Plus under the worktop (nothing is over it for C Plus)'
     ordered[0..-2].each_with_index do |drawer, i|
       above = ordered[i + 1]
       gap = above.offset[2] - top(drawer)
@@ -222,9 +221,39 @@ class GolaTest < Minitest::Test
     return skip('this unit has no top front rail') unless before && after
 
     assert_in_delta 27.0 - params['door_distance'].to_f, before.offset[0] - after.offset[0], 0.05
-    c, = layout_of('base', 'base_3drawer', 600, 'c')
-    p3, = layout_of('base', 'base_3drawer', 600, '')
-    assert_equal p3.panels.map(&:offset), c.panels.map(&:offset), 'C Plus leaves the carcass as it is'
+  end
+
+  def test_the_side_panels_are_notched_where_the_profiles_run_through_them
+    layout, params = layout_of('base', 'base_3drawer', 600, 'c')
+    sides = layout.panels.select { |p| %w[left_side right_side].include?(p.role) }
+    assert_equal 2, sides.length
+    sides.each do |side|
+      assert_equal 'notch', side.shape
+      assert_equal 3, side.path.length, 'B Plus under the worktop and two C Plus between the drawers'
+      assert_in_delta 27.0 - params['door_distance'].to_f, side.path.last[0], 0.05, 'as deep as the profile stands behind the doors'
+    end
+    plain, = layout_of('base', 'base_3drawer', 600, '')
+    assert(plain.panels.select { |p| %w[left_side right_side].include?(p.role) }.all? { |p| p.shape.nil? })
+  end
+
+  def test_the_drawers_of_a_unit_have_the_profile_under_the_worktop_whatever_their_system
+    %w[b c d e].each do |drawer_system|
+      layout, = layout_of('base', 'base_3drawer', 600, 'b', drawer_system)
+      top_drawer = layout.drawers.max_by { |d| top(d) }
+      assert_equal %w[b top], top_drawer.gola.values_at('system', 'kind'), "drawers with system #{drawer_system}"
+    end
+  end
+
+  def test_the_height_of_the_doors_can_still_be_adjusted_and_the_profile_follows
+    plain, = layout_of('base', 'base_2door', 900, 'b')
+    taller, = layout_of('base', 'base_2door', 900, 'b', 'b', 'door_height_adjust' => '20')
+    shorter, = layout_of('base', 'base_2door', 900, 'b', 'b', 'door_height_adjust' => '-20')
+    [taller, shorter].each do |layout|
+      door = layout.doors.first
+      assert_equal door.extent[2], door.gola['v'], 'the profile stands on the top edge of the door'
+    end
+    assert_in_delta plain.doors.first.extent[2] + 20.0, taller.doors.first.extent[2], 0.05, 'the Door Height Adjustment still changes the doors'
+    assert_in_delta plain.doors.first.extent[2] - 20.0, shorter.doors.first.extent[2], 0.05
   end
 
   def test_the_length_a_gola_profile_is_sold_in_passes_the_checks
