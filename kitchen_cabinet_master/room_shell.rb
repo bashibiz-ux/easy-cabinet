@@ -34,6 +34,7 @@ module KitchenCabinetMaster
     SILL_IN = 35.0          # mm: how far the sill board of a window comes into the room
     SILL_OUT = 45.0         # mm: and how far the one outside comes out of the wall
     DOOR_CLEARANCE = 10.0   # mm: the threshold, and how far the leaf stands off the floor
+    FUSE_BOXES = false      # joining the boards with the solid tools made SketchUp say "reference to deleted Entities" while the room was drawn: off
     WINDOW_OPEN = 70.0      # degrees a window sash opens
     BEAD_WIDTH = 30.0       # mm: the second, narrower step of the casing round a door or window
     BEAD_THICKNESS = 6.0
@@ -582,7 +583,7 @@ module KitchenCabinetMaster
     def self.part_group(model, entities, part_name, boxes, fuse: false)
       material = opening_material(model, PART_MATERIALS.fetch(part_name))
       before = entities.grep(Sketchup::Group)
-      if fuse && boxes.length > 1
+      if FUSE_BOXES && fuse && boxes.length > 1
         pieces = boxes.map do |box|
           piece = entities.add_group
           slab(piece.entities, box[:from], box[:to])
@@ -620,7 +621,7 @@ module KitchenCabinetMaster
     # The lines between faces that lie in one plane are taken away.
     def self.flatten(entities)
       flat = entities.grep(Sketchup::Edge).select { |edge| (faces = edge.faces).length == 2 && faces[0].normal.samedirection?(faces[1].normal) }
-      entities.erase_entities(flat) unless flat.empty?
+      flat.each { |edge| edge.erase! if edge.valid? }
     end
     private_class_method :flatten
 
