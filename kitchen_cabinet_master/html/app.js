@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.65.2';
+  const APP_VERSION = '1.66.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1349,8 +1349,11 @@ function currentCabinet() {
       setText('handleCustomX', d.custom_x);
       setText('handleCustomZ', d.custom_z);
     }
-    ['handleSide', 'handleVert', 'handleHPlace'].forEach((id) => { $(id).disabled = EDGE_PROFILES.includes(bundle.profile); }); // an edge pull or a cup sits on the edge as its package says
-    $('handleOrientation').disabled = bundle.profile === 'knob' || EDGE_PROFILES.includes(bundle.profile); // a round knob has no orientation, an edge pull or a cup always runs along the edge
+    ['handleSide', 'handleVert', 'handleHPlace'].forEach((id) => { $(id).disabled = EDGE_PROFILES.includes(bundle.profile) || bundle.profile === 'gola'; }); // an edge pull or a cup sits on the edge as its package says
+    $('handleOrientation').disabled = bundle.profile === 'knob' || EDGE_PROFILES.includes(bundle.profile) || bundle.profile === 'gola'; // (a Gola profile is cut to the front and put where its system goes)
+    $('handlePosition').disabled = bundle.profile === 'gola';
+    $('handleLength').disabled = bundle.profile === 'gola';
+    // a round knob has no orientation, an edge pull or a cup always runs along the edge
     syncHandlePosition();
     updateChips();
     drawPreview();

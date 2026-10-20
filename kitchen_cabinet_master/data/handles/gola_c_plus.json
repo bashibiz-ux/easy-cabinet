@@ -1,0 +1,66 @@
+{
+  "id": "gola_c_plus",
+  "name": "Gola System C Plus - between doors and drawers",
+  "group": "Gola profiles (Häfele)",
+  "version": 1,
+  "profile": "gola",
+  "system": "c",
+  "supplier": "Häfele",
+  "material": "Aluminium",
+  "section": 73,
+  "projection": 26,
+  "lengths": [
+    4100
+  ],
+  "default_length": 4100,
+  "installation": "Horizontal fixing between doors and drawers; order connectors and trim caps separately",
+  "source": "https://www.hafele.co.uk/en/product/profile-handle-for-horizontal-fixing-between-doors-and-drawers-gola-system-c-plus/P-00854702/",
+  "finishes": [
+    {
+      "name": "Silver anodised",
+      "material": "Gola Silver anodised",
+      "color": "#C4C8CC",
+      "roughness": 0.35,
+      "metalness": 0.9,
+      "article": "126.36.950"
+    },
+    {
+      "name": "Brushed brass anodised",
+      "material": "Gola Brushed brass anodised",
+      "color": "#B89A58",
+      "roughness": 0.4,
+      "metalness": 0.9,
+      "article": "126.36.515"
+    },
+    {
+      "name": "Bronze anodised",
+      "material": "Gola Bronze anodised",
+      "color": "#6B5A48",
+      "roughness": 0.45,
+      "metalness": 0.8,
+      "article": "126.36.114"
+    },
+    {
+      "name": "Brushed copper anodised",
+      "material": "Gola Brushed copper anodised",
+      "color": "#B16E4B",
+      "roughness": 0.4,
+      "metalness": 0.9,
+      "article": "126.36.814"
+    },
+    {
+      "name": "Graphite powder coated",
+      "material": "Gola Graphite powder coated",
+      "color": "#3A3C3F",
+      "roughness": 0.55,
+      "metalness": 0.3,
+      "article": "126.36.714"
+    }
+  ],
+  "defaults": {
+    "vertical_offset": 0,
+    "side_offset": 0,
+    "horizontal_place": "middle",
+    "position": "auto"
+  }
+}

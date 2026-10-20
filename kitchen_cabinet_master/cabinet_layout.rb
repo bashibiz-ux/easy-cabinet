@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'gola_profile'
+
 module KitchenCabinetMaster
   # Works out every carcass panel: its role, size and position. All numbers are
   # millimetres and use NO SketchUp API, so the rules live in one readable place.
@@ -38,7 +40,7 @@ module KitchenCabinetMaster
     # enough to see inside); nil = just the Opening Angle of the panel.
     # `handle` false = this door gets no handle (an L corner has one handle, on its narrower door); `grip` 'top' or
     # 'bottom' puts the handle next to that edge (the two doors of a fridge have theirs next to the gap between them).
-    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, :parent, :bifold, keyword_init: true)
+    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, :parent, :bifold, :gola, keyword_init: true)
     Layout = Struct.new(:base_z, :top_z, :panels, :doors, :drawers, :toe_kick, :drawer_boxes, :appliances, keyword_init: true)
     # `return_depth` is only meaningful for a corner unit: how far its shortened
     # right-side panel and front-return panel extend (see corner geometry
@@ -137,6 +139,10 @@ module KitchenCabinetMaster
       drawers = drawer_panels(params, dims, base_z)
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
+      if style.nil? # (the Gola handle model: the fronts are cut back for the profiles)
+        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, distance: door_distance(params),
+                                                   base: category == 'base' && !params['top_front'].to_f.positive?)
+      end
       custom = params['custom_overrides']
       drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,

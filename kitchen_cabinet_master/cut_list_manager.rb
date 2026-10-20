@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'gola_profile'
+
 module KitchenCabinetMaster
   # The cut list: every board of every cabinet and part in the model, grouped by name, size and
   # material with a quantity, and a CSV export of it. Sizes are millimetres, written
@@ -98,10 +100,20 @@ module KitchenCabinetMaster
       (layout.drawer_boxes || {}).each_value { |panels| panels.each { |p| out << board(p.name, p.extent, carcass, owner) } }
 
       id = stored['handle_id'].to_s
-      handled = fronts.count { |item| item.handle != false }
+      drawer_id = stored['drawer_handle_id'].to_s.empty? ? id : stored['drawer_handle_id'].to_s
+      door_gola = !GolaProfile.clean(stored['gola_system']).empty?
+      drawer_gola = !GolaProfile.clean(stored['gola_system_drawer']).empty?
+      plain = (door_gola ? [] : layout.doors) + (drawer_gola ? [] : layout.drawers)
+      handled = plain.count { |item| item.handle != false }
       if !id.empty? && handled.positive?
         name = handle_name.call(id) || id
         out << { part: "Handle #{name}", size: [stored['handle_length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: handled }
+      end
+      # (the Gola profiles: each is cut to its front)
+      (layout.doors.map { |item| [item, id] } + layout.drawers.map { |item| [item, drawer_id] }).each do |item, bundle_id|
+        next unless item.gola
+
+        out << { part: "Handle #{handle_name.call(bundle_id) || bundle_id}", size: [item.gola['length'].to_f, 0.0, 0.0], material: '', owner: owner, quantity: 1 }
       end
       out
     end

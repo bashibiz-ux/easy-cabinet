@@ -55,7 +55,7 @@ module KitchenCabinetMaster
     # ---- handles ----------------------------------------------------------------
     # A bundle file (data/handles/*.json) names a profile and lists the lengths and
     # finishes it offers. "length" is the bar length, or the diameter of a knob.
-    HANDLE_PROFILES = %w[bar knob dbar edge_pull cup model].freeze # (model: a handle you drew yourself)
+    HANDLE_PROFILES = %w[bar knob dbar edge_pull cup gola model].freeze # (model: a handle you drew yourself)
 
     HANDLE_ORIENTATIONS = [
       { 'id' => 'vertical',   'name' => 'Vertical' },
@@ -184,6 +184,8 @@ module KitchenCabinetMaster
       'glass_design' => '',         # the doors are frames with panes of glass in this design (see FrontDesign::GLASS_DESIGNS); blank = no glass
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
       'door_height_adjust' => 0.0,  # every door is this much taller (shorter when negative): wall units hang from the top, the others grow upward
+      'gola_system' => '',          # the Gola handle model: which profile the doors have (b c d e), blank for none
+      'gola_system_drawer' => '',   # and the drawers
       'finger_pull' => false,       # the model without handles: a finger gap over the doors of a base unit, closed by a panel
       'finger_gap' => 35.0,         # how much shorter the doors are (the gap over them)
       'finger_gap_drawer' => 35.0,  # and how much shorter the top drawer front is

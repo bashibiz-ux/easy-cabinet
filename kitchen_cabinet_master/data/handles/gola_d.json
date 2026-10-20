@@ -1,0 +1,71 @@
+{
+  "id": "gola_d",
+  "name": "Gola System D - vertical, between doors",
+  "group": "Gola profiles (Häfele)",
+  "version": 1,
+  "profile": "gola",
+  "system": "d",
+  "supplier": "Häfele",
+  "material": "Aluminium",
+  "section": 66.5,
+  "projection": 12,
+  "lengths": [
+    2670
+  ],
+  "default_length": 2670,
+  "installation": "Vertical fixing between doors, screw fixing (Hospa 4.5 mm countersunk screws separately); an end profile goes between the cabinet and a door",
+  "source": "https://www.hafele.co.uk/en/product/profile-handle-for-vertical-fixing-between-doors-gola-system-d/P-00854703/",
+  "finishes": [
+    {
+      "name": "Silver anodised",
+      "material": "Gola Silver anodised",
+      "color": "#C4C8CC",
+      "roughness": 0.35,
+      "metalness": 0.9,
+      "article": "126.36.962",
+      "end_article": "126.36.972"
+    },
+    {
+      "name": "Brushed brass anodised",
+      "material": "Gola Brushed brass anodised",
+      "color": "#B89A58",
+      "roughness": 0.4,
+      "metalness": 0.9,
+      "article": "126.36.563",
+      "end_article": "126.36.573"
+    },
+    {
+      "name": "Bronze anodised",
+      "material": "Gola Bronze anodised",
+      "color": "#6B5A48",
+      "roughness": 0.45,
+      "metalness": 0.8,
+      "article": "126.36.862",
+      "end_article": "126.36.872"
+    },
+    {
+      "name": "Brushed copper anodised",
+      "material": "Gola Brushed copper anodised",
+      "color": "#B16E4B",
+      "roughness": 0.4,
+      "metalness": 0.9,
+      "article": "126.36.162",
+      "end_article": "126.36.172"
+    },
+    {
+      "name": "Graphite powder coated",
+      "material": "Gola Graphite powder coated",
+      "color": "#3A3C3F",
+      "roughness": 0.55,
+      "metalness": 0.3,
+      "article": "126.36.762",
+      "end_article": "126.36.772"
+    }
+  ],
+  "defaults": {
+    "vertical_offset": 0,
+    "side_offset": 0,
+    "horizontal_place": "middle",
+    "position": "auto"
+  }
+}

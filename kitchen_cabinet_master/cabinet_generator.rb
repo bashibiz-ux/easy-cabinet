@@ -428,9 +428,14 @@ module KitchenCabinetMaster
         return
       end
 
+      if bundle['profile'] == 'gola' && !door.gola # (a front the Gola profiles do not reach has no handle)
+        discard_instance(model, existing) if existing
+        return
+      end
+
       settings = HandleManager.settings(params, bundle)
       spot = HandleManager.placement(door, settings, bundle, frame)
-      definition = HandleManager.definition(model, bundle, settings['length'], spot['flip'] == true)
+      definition = HandleManager.definition(model, bundle, spot['length'] || settings['length'], spot['flip'] == true, spot)
       handle = place_instance(model, entities, existing, HANDLE_ROLE, definition,
                               HandleManager.transformation(spot, door.extent[0]))
       handle.name = 'Handle'

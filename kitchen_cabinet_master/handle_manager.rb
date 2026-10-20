@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'gola_profile'
+
 module KitchenCabinetMaster
   # Handles are separate components that live INSIDE their door's container, so a
   # door's rotation carries the handle with it during Open / Close / Toggle.
@@ -98,6 +100,7 @@ module KitchenCabinetMaster
     # Returns { 'u', 'v', 'half_u', 'half_v', 'horizontal' }.
     # rame is how wide the frame of a glass door is: the handle then sits on the frame, not over the glass.
     def self.placement(door, settings, bundle, frame = nil)
+      return gola_placement(door, bundle) if bundle['profile'] == 'gola'
       return edge_placement(door, settings, bundle) if EDGE_PROFILES.include?(bundle['profile'])
 
       on_frame(plain_placement(door, settings, bundle), door, frame)
@@ -200,6 +203,19 @@ module KitchenCabinetMaster
     end
     private_class_method :edge_placement
 
+    # A Gola profile is where the layout put it (see GolaProfile.apply!): its length, and where on the front it starts, are in `door.gola`. A front that has
+    # none (a model of your own, say) gets a profile along its top. Pure maths.
+    def self.gola_placement(door, bundle)
+      spot = door.respond_to?(:gola) && door.gola
+      spot ||= if GolaProfile::SYSTEMS.dig(bundle['system'].to_s, :horizontal) == false # (a vertical one: up the middle of the front)
+                 { 'system' => bundle['system'].to_s, 'kind' => 'pair', 'back' => -21.0, 'horizontal' => false, 'length' => door.extent[2], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] / 2.0 }
+               else
+                 { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -21.0, 'horizontal' => true, 'length' => door.extent[1], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] }
+               end
+      spot.merge('half_u' => spot['length'] / 2.0, 'half_v' => 0.0, 'flip' => false, 'gola' => true)
+    end
+    private_class_method :gola_placement
+
     # Hand height on a tall unit's door, kept a handle-offset clear of the door's edges, so on a door that
     # lies wholly above or below it (the lower door of a fridge) the handle sits near its edge, not on the gap.
     def self.hand_height(door, door_h, half_v, margin)
@@ -232,6 +248,8 @@ module KitchenCabinetMaster
 
     # nil if the handle sits fully inside the door, otherwise an error Hash.
     def self.fit_problem(door, settings, bundle)
+      return nil if bundle['profile'] == 'gola' # (the profile is cut to the front)
+
       spot = placement(door, settings, bundle)
       door_w = door.extent[1]
       door_h = door.extent[2]
@@ -259,8 +277,9 @@ module KitchenCabinetMaster
     end
 
     # Finds or builds the shared handle definition for this geometry.
-    def self.definition(model, bundle, length, flip = false)
+    def self.definition(model, bundle, length, flip = false, spot = nil)
       name = format('Handle %<id>s %<length>g x %<section>g x %<projection>g v2', id: bundle['id'], length: length, section: section(bundle), projection: projection(bundle))
+      name += " #{GolaProfile.key(spot)}" if bundle['profile'] == 'gola' && spot
       name += ' up' if flip && EDGE_PROFILES.include?(bundle['profile'])
 
       existing = model.definitions[name]
@@ -271,7 +290,7 @@ module KitchenCabinetMaster
       if bundle['profile'] == 'model' # a handle you drew: its model file, set in the handle's frame (a plain bar if the file is gone)
         return definition if place_model(model, definition, bundle)
       end
-      handle_faces(bundle, length, flip).each { |points| definition.entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      handle_faces(bundle, length, flip, spot).each { |points| definition.entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
       PanelGenerator.soften(definition.entities)
       definition
     end
@@ -305,10 +324,13 @@ module KitchenCabinetMaster
 
     # The faces (arrays of [x, y, z] in mm, each facing outwards) of a handle, in its own frame: X out of the door, Y across it,
     # Z along the grip, the origin in the middle of the back. `flip` hangs an edge pull or a cup from the bottom edge. Pure maths.
-    def self.handle_faces(bundle, length, flip = false)
+    def self.handle_faces(bundle, length, flip = false, spot = nil)
       section = section(bundle)
       projection = projection(bundle)
       case bundle['profile']
+      when 'gola'
+        outline = GolaProfile.outline_for(spot || { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -21.0 })
+        loft_faces([[-length / 2.0, outline], [length / 2.0, outline]])
       when 'knob' then knob_faces(length, projection, KNOB_SEGMENTS, bundle['style'].to_s)
       when 'dbar' then dbar_faces(length, projection, bundle)
       when 'edge_pull'

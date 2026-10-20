@@ -15,7 +15,7 @@ module KitchenCabinetMaster
     USER_DIR_NAME = 'KitchenCabinetMaster_Data'
     REQUIRED_DEFAULTS = %w[width depth height].freeze
     # Files of earlier versions (an install cannot delete them, so they are removed when the catalogs load). The other models were
-    # taken out: Kitchen Cabinet - with handle and Kitchen Cabinet - Gola handle are the two models.
+    # taken out (the earlier Gola catalog had the id the model without handle took over).
     LEGACY_FILES = %w[catalogs/sample_catalog.json catalogs/door_with_pull_handle.json catalogs/drawer_units.json catalogs/handleless_doors.json catalogs/kitchen_cabinets_gola.json].freeze
     DEFAULT_CUSTOM_NAME = 'My cabinets'
     # The measurements a catalog entry lets the panel adjust: entry key => [the key that switches it on, stored parameter].
@@ -83,6 +83,12 @@ module KitchenCabinetMaster
 
       def handle_bundle(id)
         data[:handles][id.to_s]
+      end
+
+      # The Gola system (b c d e) of a handle package, blank for one that is not a Gola profile.
+      def gola_system(id)
+        bundle = handle_bundle(id)
+        bundle && bundle['profile'] == 'gola' ? bundle['system'].to_s : ''
       end
 
       # Human-readable problems found while loading (shown in the panel).
@@ -348,6 +354,7 @@ module KitchenCabinetMaster
           'id' => bundle['id'],
           'name' => bundle['name'],
           'profile' => bundle['profile'],
+          'system' => bundle['system'],
           'group' => bundle['group'].to_s.empty? ? nil : bundle['group'],
           'custom' => bundle['custom'] == true,
           'lengths' => lengths,

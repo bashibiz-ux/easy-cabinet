@@ -14,7 +14,7 @@ module KitchenCabinetMaster
   # the new code up without restarting SketchUp (see reload_if_updated).
   remove_const(:CODE_FILES) if const_defined?(:CODE_FILES)
   CODE_FILES = %w[
-    response defaults attribute_manager validation_manager material_manager catalog_manager my_appliances
+    response defaults gola_profile attribute_manager validation_manager material_manager catalog_manager my_appliances
     cabinet_layout appliance_parts fixtures customizer toe_kick part_layout door_animation drawer_animation handle_manager
     front_design panel_generator cabinet_generator part_generator selection_manager snap_manager
     naming_manager placement_manager tag_manager custom_door cabinet_manager part_manager worktop_manager wall_bottom_manager kitchen_planner side_exposure dimensioning dimension_manager live_parts island_hood island_back_panel kitchen_manager path_kitchen place_tool feedback_manager room_shell cut_list_manager preset_manager customize_manager dialog_manager

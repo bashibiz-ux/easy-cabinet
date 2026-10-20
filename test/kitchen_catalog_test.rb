@@ -1153,7 +1153,7 @@ class KitchenCatalogTest < Minitest::Test
   def all_bundles = CatalogManager.handle_bundles.map { |b| CatalogManager.handle_bundle(b['id']) }
 
   def test_every_handle_of_every_package_is_drawn_without_faces_sketchup_would_refuse
-    assert_equal 10, all_bundles.length
+    assert_equal 14, all_bundles.length
     refute all_bundles.any? { |b| b['id'] == 'long_bar_handles' }, 'the long bar handles are gone'
     all_bundles.each do |bundle|
       bundle['lengths'].each do |length|
@@ -1192,7 +1192,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Cups & shells', groups['shell_handles']
     assert_equal 'Knobs', groups['ball_knobs']
     assert(groups.values.none?(&:nil?))
-    offered = CatalogManager.catalog('kitchen_cabinets')['handle_bundles']
+    offered = CatalogManager.catalog('kitchen_cabinets')['handle_bundles'] + CatalogManager.catalog('kitchen_cabinets_gola_profile')['handle_bundles']
     assert_equal groups.keys.sort, offered.sort
   end
 

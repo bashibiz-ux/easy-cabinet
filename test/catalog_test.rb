@@ -17,9 +17,9 @@ class CatalogTest < Minitest::Test
   include KitchenCabinetMaster
   DATA_DIR_FOR_TEST = KitchenCabinetMaster::DATA_DIR
 
-  def test_the_models_are_kitchen_cabinet_with_handle_and_without_handle
+  def test_the_models_are_kitchen_cabinet_with_handle_gola_handle_and_without_handle
     catalogs = CatalogManager.catalogs
-    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - without handle'], catalogs.map { |c| c['name'] }
+    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - Gola handle', 'Kitchen Cabinet - without handle'], catalogs.map { |c| c['name'] }
     assert_empty CatalogManager.warnings
   end
 
@@ -45,7 +45,9 @@ class CatalogTest < Minitest::Test
   def test_the_catalog_lists_its_handle_bundles
     bundles = CatalogManager.catalogs.first['handle_bundles']
     assert_equal %w[ball_knobs cup_handles cylinder_knobs d_handles edge_pull_handles sample_bar_handles sample_knobs shell_handles slim_edge_pull_handles t_bar_handles], bundles.sort
-    assert_equal bundles.sort, CatalogManager.handle_bundles.map { |b| b['id'] }.sort
+    gola = CatalogManager.catalog('kitchen_cabinets_gola_profile')['handle_bundles']
+    assert_equal %w[gola_b_plus gola_c_plus gola_d gola_e], gola
+    assert_equal (bundles + gola).sort, CatalogManager.handle_bundles.map { |b| b['id'] }.sort
   end
   def test_a_catalog_without_a_features_list_offers_everything
     assert_equal CatalogManager::FEATURES, CatalogManager.features_of({})
@@ -71,7 +73,7 @@ class CatalogTest < Minitest::Test
       refute File.exist?(File.join(DATA_DIR_FOR_TEST, 'catalogs', "#{id}.json")), id
       assert_includes CatalogManager::LEGACY_FILES, "catalogs/#{id}.json"
     end
-    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_no_handle.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
+    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_gola_profile.json kitchen_cabinets_no_handle.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
   end
   def test_the_loft_cabinets_are_wall_units_that_start_400_tall
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|

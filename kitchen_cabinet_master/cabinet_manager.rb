@@ -599,7 +599,7 @@ module KitchenCabinetMaster
       params['handle_length'] = fitting_handle_length(bundle, params['handle_length'], width)
       handle_settings = HandleManager.settings(params, bundle)
       spot = HandleManager.placement(HandleManager.model_door(width, height, params['door_opening_direction']), handle_settings, bundle)
-      definition = HandleManager.definition(model, bundle, handle_settings['length'], spot['flip'] == true)
+      definition = HandleManager.definition(model, bundle, spot['length'] || handle_settings['length'], spot['flip'] == true, spot)
       transformation = Geom::Transformation.translation(Geom::Vector3d.new(depth.mm, across.mm, lift.mm)) * HandleManager.transformation(spot, 0.0)
       handle = existing || instance.definition.entities.add_instance(definition, transformation)
       handle.definition = definition unless handle.definition == definition
@@ -1453,6 +1453,8 @@ module KitchenCabinetMaster
                       'bifold' => !!(cabinet && cabinet['bifold']),
                       'lift_door' => !!(cabinet && (cabinet['lift_door'] || (cabinet['glass'] && ValidationManager.truthy_value?(raw['lift_door'])))), # (a glass door unit can be a lift-up one too)
                       'finger_pull' => !!(CatalogManager.catalog(raw['catalog_id']) || {})['finger_pull'],
+                      'gola_system' => CatalogManager.gola_system(raw['handle_id']),
+                      'gola_system_drawer' => CatalogManager.gola_system(raw['drawer_handle_id'].to_s.empty? ? raw['handle_id'] : raw['drawer_handle_id']),
                       'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
