@@ -227,6 +227,10 @@ class GolaTest < Minitest::Test
     assert_equal p3.panels.map(&:offset), c.panels.map(&:offset), 'C Plus leaves the carcass as it is'
   end
 
+  def test_the_length_a_gola_profile_is_sold_in_passes_the_checks
+    layout_of('base', 'base_2door', 900, 'b', 'b', 'handle_length' => '4100')
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })
