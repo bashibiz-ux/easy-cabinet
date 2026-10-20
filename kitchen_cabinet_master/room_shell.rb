@@ -27,7 +27,7 @@ module KitchenCabinetMaster
     FRAME_WIDTH = 50.0      # mm: how wide the frame round a door or window is
     LEAF_THICKNESS = 40.0   # mm
     GLASS_THICKNESS = 10.0  # mm
-    TRIM_WIDTH = 80.0       # mm: the boards (the frame plate) round a door or window on the face of the wall: how far they reach out from the opening
+    TRIM_WIDTH = 80.0       # mm: the boards (the frame plate) round a door or window on the face of the wall: how wide they are, from the opening out
     TRIM_THICKNESS = 14.0
     PANEL_RAISE = 8.0       # mm: how far the panels of a door stand out of its leaf
     WINDOW_FRAME = 60.0     # mm: the frame of a window
@@ -193,7 +193,7 @@ module KitchenCabinetMaster
       fw = [FRAME_WIDTH, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0 - TRIM_THICKNESS, c1 + TRIM_THICKNESS, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
       [[c0 - TRIM_THICKNESS, c0], [c1, c1 + TRIM_THICKNESS]].each do |a, b|
-        frame.concat(casing(mk, u0, u1, z0, z1, fw, TRIM_WIDTH, a, b))
+        frame.concat(casing(mk, u0, u1, z0, z1, fw, [TRIM_WIDTH - fw, 10.0].max, a, b))
       end
       stop = s[:sign].positive? ? [mid + (LEAF_THICKNESS / 2.0), mid + (LEAF_THICKNESS / 2.0) + 20.0] : [mid - (LEAF_THICKNESS / 2.0) - 20.0, mid - (LEAF_THICKNESS / 2.0)] # (the leaf shuts against these, on the side away from the room)
       frame << mk.call(u0 + fw, u0 + fw + STOP, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u1 - fw - STOP, u1 - fw, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u0 + fw + STOP, u1 - fw - STOP, *stop, z1 - fw - STOP, z1 - fw)
@@ -281,7 +281,7 @@ module KitchenCabinetMaster
       fw = [WINDOW_FRAME, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + fw)]
       room_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS, c0] : [c1, c1 + TRIM_THICKNESS]
-      frame.concat(casing(mk, u0, u1, z0, z1, fw, TRIM_WIDTH, *room_face))
+      frame.concat(casing(mk, u0, u1, z0, z1, fw, [TRIM_WIDTH - fw, 10.0].max, *room_face))
       sashes = window_sashes(cut)
       { 'Frame' => frame, 'Sash' => sashes.flat_map { |x| x[:sash] }, 'Bar' => sashes.flat_map { |x| x[:bars] }, 'Glass' => sashes.flat_map { |x| x[:glass] },
         'Handle' => sashes.flat_map { |x| x[:handle] } }
