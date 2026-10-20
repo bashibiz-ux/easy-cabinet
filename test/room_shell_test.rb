@@ -228,7 +228,7 @@ class RoomShellTest < Minitest::Test
   def test_a_door_is_a_frame_with_trim_a_panelled_leaf_and_a_handle_and_nothing_overlaps
     parts = RS.door_parts(door_cut)
     assert_equal %w[Frame Handle Hinge Leaf], parts.keys.sort
-    assert_equal 4 + 12 + 3, parts['Frame'].length, 'two jambs, a head and a threshold; casing and bead (three boards each) on both faces; three stop strips'
+    assert_equal 4 + 6 + 3, parts['Frame'].length, 'two jambs, a head and a threshold; the casing (three boards) on both faces; three stop strips'
     assert_equal 3, parts['Hinge'].length
     leaf = parts['Leaf']
     assert_equal 1 + 8, leaf.length, 'the leaf, and four raised panels (two by two) on each face'
@@ -251,7 +251,7 @@ class RoomShellTest < Minitest::Test
   def test_a_window_has_a_frame_sashes_glass_a_handle_and_two_sills_and_nothing_overlaps
     parts = RS.window_parts(window_cut)
     assert_equal %w[Bar Frame Glass Handle Sash], parts.keys.sort
-    assert_equal 4 + 6, parts['Frame'].length, 'the frame, and casing and bead on the room face'
+    assert_equal 4 + 3, parts['Frame'].length, 'the frame, and the casing on the room face'
     assert_equal 2 * 4, parts['Sash'].length, 'a wide window has two sashes, four sticks each'
     assert_equal 2 * 2, parts['Glass'].length, 'each sash has two panes, side by side'
     assert_equal 2, parts['Bar'].length, 'and a bar between them'

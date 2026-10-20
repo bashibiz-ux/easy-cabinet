@@ -35,8 +35,6 @@ module KitchenCabinetMaster
     SILL_OUT = 45.0         # mm: and how far the one outside comes out of the wall
     DOOR_CLEARANCE = 10.0   # mm: the threshold, and how far the leaf stands off the floor
     WINDOW_OPEN = 70.0      # degrees a window sash opens
-    BEAD_WIDTH = 30.0       # mm: the second, narrower step of the casing round a door or window
-    BEAD_THICKNESS = 6.0
     STOP = 12.0             # mm: how far the stop strip of a door frame stands out of the jamb
     MOVED = 1.0             # mm: a door or window that is this far from where it was drawn has been moved
 
@@ -180,13 +178,10 @@ module KitchenCabinetMaster
     end
 
     # The casing round a door or window on one face of the wall: the boards over the wall and over the jambs (the casing covers the jambs, so that the frame is one
-    # piece with them), a narrow bead at the inner edge on top of them. `a`..`b` is where the board is across the wall, `ba`..`bb` the bead; `width` how far the board
-    # reaches out from the opening. A window has none under it (`sill`: its frame is the sill).
-    def self.casing(mk, u0, u1, z0, z1, fw, width, a, b, ba, bb, sill: false)
+    # piece with them). `a`..`b` is where the board is across the wall; `width` how far it reaches out from the opening. A window has none under it (its frame is the sill).
+    def self.casing(mk, u0, u1, z0, z1, fw, width, a, b)
       inner = [u0 + fw, u1 - fw]
-      [mk.call(u0 - width, inner[0], a, b, z0, z1 - fw), mk.call(inner[1], u1 + width, a, b, z0, z1 - fw), mk.call(u0 - width, u1 + width, a, b, z1 - fw, z1 + width),
-       mk.call(inner[0] - BEAD_WIDTH, inner[0], ba, bb, z0, z1 - fw), mk.call(inner[1], inner[1] + BEAD_WIDTH, ba, bb, z0, z1 - fw),
-       mk.call(inner[0] - BEAD_WIDTH, inner[1] + BEAD_WIDTH, ba, bb, z1 - fw, z1 - fw + BEAD_WIDTH)]
+      [mk.call(u0 - width, inner[0], a, b, z0, z1 - fw), mk.call(inner[1], u1 + width, a, b, z0, z1 - fw), mk.call(u0 - width, u1 + width, a, b, z1 - fw, z1 + width)]
     end
 
     # A panel door: the frame (jambs, head, and boards on both faces of the wall), the leaf (stiles, rails and two raised panels on each face) and the lever
@@ -196,9 +191,9 @@ module KitchenCabinetMaster
       mk = s[:mk]
       u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
       fw = [FRAME_WIDTH, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
-      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0 - TRIM_THICKNESS - BEAD_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
-      [[c0 - TRIM_THICKNESS, c0, c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS], [c1, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]].each do |a, b, ba, bb|
-        frame.concat(casing(mk, u0, u1, z0, z1, fw, TRIM_WIDTH, a, b, ba, bb))
+      frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0 - TRIM_THICKNESS, c1 + TRIM_THICKNESS, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
+      [[c0 - TRIM_THICKNESS, c0], [c1, c1 + TRIM_THICKNESS]].each do |a, b|
+        frame.concat(casing(mk, u0, u1, z0, z1, fw, TRIM_WIDTH, a, b))
       end
       stop = s[:sign].positive? ? [mid + (LEAF_THICKNESS / 2.0), mid + (LEAF_THICKNESS / 2.0) + 20.0] : [mid - (LEAF_THICKNESS / 2.0) - 20.0, mid - (LEAF_THICKNESS / 2.0)] # (the leaf shuts against these, on the side away from the room)
       frame << mk.call(u0 + fw, u0 + fw + STOP, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u1 - fw - STOP, u1 - fw, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u0 + fw + STOP, u1 - fw - STOP, *stop, z1 - fw - STOP, z1 - fw)
@@ -286,8 +281,7 @@ module KitchenCabinetMaster
       fw = [WINDOW_FRAME, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + fw)]
       room_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS, c0] : [c1, c1 + TRIM_THICKNESS]
-      bead_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS] : [c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]
-      frame.concat(casing(mk, u0, u1, z0, z1, fw, 60.0, *room_face, *bead_face, sill: true))
+      frame.concat(casing(mk, u0, u1, z0, z1, fw, 60.0, *room_face))
       sashes = window_sashes(cut)
       { 'Frame' => frame, 'Sash' => sashes.flat_map { |x| x[:sash] }, 'Bar' => sashes.flat_map { |x| x[:bars] }, 'Glass' => sashes.flat_map { |x| x[:glass] },
         'Handle' => sashes.flat_map { |x| x[:handle] } }
@@ -649,9 +643,10 @@ module KitchenCabinetMaster
     end
     private_class_method :part_group
 
-    # The lines between faces that lie in one plane are taken away.
+    # The lines between faces that lie in one plane are taken away (two faces that meet along an edge and are parallel lie in one plane, whichever way each faces:
+    # the squares of a fused part are not all turned the same way).
     def self.flatten(entities)
-      flat = entities.grep(Sketchup::Edge).select { |edge| (faces = edge.faces).length == 2 && faces[0].normal.samedirection?(faces[1].normal) }
+      flat = entities.grep(Sketchup::Edge).select { |edge| (faces = edge.faces).length == 2 && faces[0].normal.parallel?(faces[1].normal) }
       flat.each { |edge| edge.erase! if edge.valid? }
     end
     private_class_method :flatten
