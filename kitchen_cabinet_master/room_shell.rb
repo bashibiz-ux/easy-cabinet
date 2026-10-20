@@ -761,16 +761,31 @@ module KitchenCabinetMaster
 
     # What became of the doors and windows, from [[index, [x, y, z] now, [x, y, z] drawn at]] (one entry for each door or window group in the model): a group that is
     # not where it was drawn has been MOVED; a second group with the same index is a COPY (a door or window copied and pasted: it is a new opening of its own, as
-    # big as the first). Of the groups with one index the one still where it was drawn is the original, else the first. => [{ index => now }, [[index, now], ...]].
+    # big as the first). Of the groups with one index the one still where it was drawn is the original, else the first. An entry can have a fourth element, how far
+    # the group was scaled ([x, y, z] factors): it is kept for the copies (as a third element) and for the originals (the third result).
+    # => [{ index => now }, [[index, now, scale], ...], { index => scale }].
     def self.classify_openings(entries)
       moved = {}
       copies = []
+      scales = {}
       entries.group_by(&:first).each do |index, group|
         original = group.find { |_, now, home| now.zip(home).none? { |a, b| (a - b).abs > MOVED } } || group.first
-        group.each { |entry| copies << [index, entry[1]] unless entry.equal?(original) }
+        group.each { |entry| copies << (entry[3] ? [index, entry[1], entry[3]] : [index, entry[1]]) unless entry.equal?(original) }
         moved[index] = original[1] if original[1].zip(original[2]).any? { |a, b| (a - b).abs > MOVED }
+        scales[index] = original[3] if original[3]
       end
-      [moved, copies]
+      [moved, copies, scales]
+    end
+
+    # The new size of an opening that was scaled (the Scale tool, in any direction): { 'width' =>, 'height' => } in mm, or nil when it is as it was. The frame is drawn
+    # again at the new size, so its boards keep their shape (a scaled group would stretch them). The thickness of the wall is not changed by scaling.
+    def self.resize(spec, scale)
+      return nil unless scale
+
+      across = %w[south north].include?(spec['wall']) ? scale[0] : scale[1]
+      return nil if (across - 1.0).abs < 0.002 && (scale[2] - 1.0).abs < 0.002
+
+      { 'width' => (spec['width'].to_f * across).round(1), 'height' => (spec['height'].to_f * scale[2]).round(1) }
     end
 
     # The openings whose door or window group is gone (it was deleted): the wall is closed there. `count` openings were drawn, `entries` as in classify_openings.
@@ -784,7 +799,8 @@ module KitchenCabinetMaster
         home = group.get_attribute(DICTIONARY, 'home')
         next unless index && home && specs[index]
 
-        [index, frame_position(group), home]
+        t = group.transformation
+        [index, frame_position(group), home, [t.xscale, t.yscale, t.zscale].map { |v| v.abs.round(4) }]
       end
     end
     private_class_method :opening_entries
@@ -800,21 +816,28 @@ module KitchenCabinetMaster
       specs = JSON.parse(model.get_attribute(DICTIONARY, 'room_specs', '[]'))
       options = JSON.parse(model.get_attribute(DICTIONARY, 'room_options', '{}'))
       entries = opening_entries(model, specs)
-      moved, copies = classify_openings(entries)
+      moved, copies, scales = classify_openings(entries)
+      sized = scales.to_h { |index, scale| [index, resize(specs[index], scale)] }.compact
+      sized.each_key { |index| moved[index] ||= entries.find { |entry| entry[0] == index && entry[3] == scales[index] }[1] } # (a scaled one is drawn again where it is)
       gone = missing_openings(specs.length, entries)
-      return 0 if moved.empty? && copies.empty? && gone.empty?
+      return 0 if moved.empty? && copies.empty? && gone.empty? && sized.empty?
 
-      redo_room(model, plan, options, specs, moved, copies, gone)
-      moved.length + copies.length + gone.length
+      redo_room(model, plan, options, specs, moved, copies, gone, sized)
+      (moved.keys | sized.keys).length + copies.length + gone.length
     rescue StandardError => e
       warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
       0
     end
 
-    def self.redo_room(model, plan, options, specs, moved, copies = [], gone = [])
+    def self.redo_room(model, plan, options, specs, moved, copies = [], gone = [], sized = {})
       changed = specs.map(&:dup)
+      sized.each { |index, size| changed[index] = changed[index].merge(size) } # (scaled: the new size, before it is put where it is)
       moved.each { |index, (x, y, z)| changed[index] = relocate(plan, changed[index], x, y, z) }
-      copies.each { |index, (x, y, z)| changed << relocate(plan, specs[index].dup, x, y, z) } # (a copy: one more opening of the same size)
+      copies.each do |index, (x, y, z), scale| # (a copy: one more opening, as big as it was scaled to)
+        spec = specs[index].dup
+        spec = spec.merge(resize(spec, scale) || {})
+        changed << relocate(plan, spec, x, y, z)
+      end
       gone.each { |index| changed[index] = nil } # (a door or window that was deleted: its opening is closed)
       changed.compact!
       cuts, problem = openings(plan, changed, options)
@@ -835,7 +858,12 @@ module KitchenCabinetMaster
       ensure
         @busy = false
       end
-      DialogManager.push('info', { 'message' => gone.any? && copies.empty? && moved.empty? ? 'The wall is closed where the door or window was deleted.' : (copies.empty? ? 'The opening in the wall moved with the door or window.' : 'The pasted door or window has an opening in the wall of its own.') }) if defined?(DialogManager) && !problem
+      message = if gone.any? && copies.empty? && moved.empty? then 'The wall is closed where the door or window was deleted.'
+                elsif sized.any? && copies.empty? then 'The door or window was resized: the opening in the wall changed with it, the frame kept its shape.'
+                elsif copies.empty? then 'The opening in the wall moved with the door or window.'
+                else 'The pasted door or window has an opening in the wall of its own.'
+                end
+      DialogManager.push('info', { 'message' => message }) if defined?(DialogManager) && !problem
     end
     private_class_method :redo_room
 

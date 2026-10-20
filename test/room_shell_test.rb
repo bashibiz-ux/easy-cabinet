@@ -439,4 +439,22 @@ class RoomShellTest < Minitest::Test
       assert_equal [2], uses.values.uniq, ('every edge belongs to two faces ' + uses.select { |_, n| n == 4 }.keys.first(3).inspect)
     end
   end
+  # ---- scaling a door or window ---------------------------------------------------------------
+
+  def test_a_scaled_door_gets_a_new_width_and_height_and_nothing_else
+    spec = { 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0, 'from' => 1000.0 }
+    assert_nil RS.resize(spec, [1.0, 1.0, 1.0])
+    assert_nil RS.resize(spec, nil)
+    assert_equal({ 'width' => 1170.0, 'height' => 2100.0 }, RS.resize(spec, [1.3, 7.0, 1.0]), 'along the wall: x for a north wall, whatever the depth was scaled to')
+    assert_equal({ 'width' => 900.0, 'height' => 1890.0 }, RS.resize(spec, [1.0, 1.0, 0.9]))
+    assert_equal({ 'width' => 450.0, 'height' => 2100.0 }, RS.resize(spec.merge('wall' => 'west'), [3.0, 0.5, 1.0]), 'along the wall: y for a west wall')
+  end
+
+  def test_the_scale_of_a_group_is_kept_for_the_original_and_for_a_copy
+    home = [100.0, 200.0, 0.0]
+    moved, copies, scales = RS.classify_openings([[0, home, home, [1.2, 1.0, 1.0]], [0, [900.0, 200.0, 0.0], home, [1.0, 1.0, 1.5]]])
+    assert_empty moved
+    assert_equal [[0, [900.0, 200.0, 0.0], [1.0, 1.0, 1.5]]], copies
+    assert_equal({ 0 => [1.2, 1.0, 1.0] }, scales)
+  end
 end
