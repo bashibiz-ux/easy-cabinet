@@ -35,6 +35,9 @@ module KitchenCabinetMaster
     SILL_OUT = 45.0         # mm: and how far the one outside comes out of the wall
     DOOR_CLEARANCE = 10.0   # mm: the threshold, and how far the leaf stands off the floor
     WINDOW_OPEN = 70.0      # degrees a window sash opens
+    BEAD_WIDTH = 30.0       # mm: the second, narrower step of the casing round a door or window
+    BEAD_THICKNESS = 6.0
+    STOP = 12.0             # mm: how far the stop strip of a door frame stands out of the jamb
     MOVED = 1.0             # mm: a door or window that is this far from where it was drawn has been moved
 
     # items: [{ min: [x, y], max: [x, y], top: z, origin: [x, y], front: [x, y] }] in mm (the box of each cabinet or part, where its origin is,
@@ -184,9 +187,12 @@ module KitchenCabinetMaster
       u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
       fw = [FRAME_WIDTH, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + DOOR_CLEARANCE)] # (the last one is the threshold)
-      [[c0 - TRIM_THICKNESS, c0], [c1, c1 + TRIM_THICKNESS]].each do |a, b|
+      [[c0 - TRIM_THICKNESS, c0, c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS], [c1, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]].each do |a, b, ba, bb|
         frame << mk.call(u0 - TRIM_WIDTH, u0, a, b, z0, z1) << mk.call(u1, u1 + TRIM_WIDTH, a, b, z0, z1) << mk.call(u0 - TRIM_WIDTH, u1 + TRIM_WIDTH, a, b, z1, z1 + TRIM_WIDTH)
+        frame << mk.call(u0 - BEAD_WIDTH, u0, ba, bb, z0, z1) << mk.call(u1, u1 + BEAD_WIDTH, ba, bb, z0, z1) << mk.call(u0 - BEAD_WIDTH, u1 + BEAD_WIDTH, ba, bb, z1, z1 + BEAD_WIDTH) # (the casing is stepped)
       end
+      stop = s[:sign].positive? ? [mid + (LEAF_THICKNESS / 2.0), mid + (LEAF_THICKNESS / 2.0) + 20.0] : [mid - (LEAF_THICKNESS / 2.0) - 20.0, mid - (LEAF_THICKNESS / 2.0)] # (the leaf shuts against these, on the side away from the room)
+      frame << mk.call(u0 + fw, u0 + fw + STOP, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u1 - fw - STOP, u1 - fw, *stop, z0 + DOOR_CLEARANCE, z1 - fw) << mk.call(u0 + fw + STOP, u1 - fw - STOP, *stop, z1 - fw - STOP, z1 - fw)
       lu0 = u0 + fw + 3.0
       lu1 = u1 - fw - 3.0
       lz0 = z0 + DOOR_CLEARANCE
@@ -196,10 +202,14 @@ module KitchenCabinetMaster
       stile = 110.0
       if (lu1 - lu0) > (2 * stile) + 150.0 && (lz1 - lz0) > 700.0
         zm = lz0 + ((lz1 - lz0) * 0.55)
+        centre = (lu0 + lu1) / 2.0
+        columns = (lu1 - lu0) > (3 * stile) + 300.0 ? [[lu0 + stile, centre - (stile / 2.0)], [centre + (stile / 2.0), lu1 - stile]] : [[lu0 + stile, lu1 - stile]]
         [[zm + 65.0, lz1 - 110.0], [lz0 + 180.0, zm - 65.0]].each do |za, zb|
           next unless zb - za > 100.0
 
-          [[mid + half, mid + half + PANEL_RAISE], [mid - half - PANEL_RAISE, mid - half]].each { |a, b| leaf << mk.call(lu0 + stile, lu1 - stile, a, b, za, zb) }
+          columns.each do |cu0, cu1|
+            [[mid + half, mid + half + PANEL_RAISE], [mid - half - PANEL_RAISE, mid - half]].each { |a, b| leaf << mk.call(cu0, cu1, a, b, za, zb) }
+          end
         end
       end
       hx = lu1 - 70.0
@@ -258,8 +268,8 @@ module KitchenCabinetMaster
       end
     end
 
-    # A casement window: the frame (and boards on the room face), its sashes with their glass, bars and handles, and a sill board inside and one outside.
-    # => { 'Frame' =>, 'Sash' =>, 'Bar' =>, 'Glass' =>, 'Handle' =>, 'Sill' => } (boxes, mm; the sashes together). See window_sashes for each sash on its own.
+    # A casement window: the frame (and the stepped casing on the room face, down to the bottom of the frame, which is the sill), its sashes with their glass, bars and handles.
+    # => { 'Frame' =>, 'Sash' =>, 'Bar' =>, 'Glass' =>, 'Handle' => } (boxes, mm; the sashes together). See window_sashes for each sash on its own.
     def self.window_parts(cut)
       s = opening_space(cut)
       mk = s[:mk]
@@ -267,13 +277,12 @@ module KitchenCabinetMaster
       fw = [WINDOW_FRAME, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       frame = [mk.call(u0, u0 + fw, c0, c1, z0, z1), mk.call(u1 - fw, u1, c0, c1, z0, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z1 - fw, z1), mk.call(u0 + fw, u1 - fw, c0, c1, z0, z0 + fw)]
       room_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS, c0] : [c1, c1 + TRIM_THICKNESS]
-      frame << mk.call(u0 - 60.0, u0, *room_face, z0 + fw, z1) << mk.call(u1, u1 + 60.0, *room_face, z0 + fw, z1) << mk.call(u0 - 60.0, u1 + 60.0, *room_face, z1, z1 + 60.0)
+      bead_face = s[:sign].positive? ? [c0 - TRIM_THICKNESS - BEAD_THICKNESS, c0 - TRIM_THICKNESS] : [c1 + TRIM_THICKNESS, c1 + TRIM_THICKNESS + BEAD_THICKNESS]
+      frame << mk.call(u0 - 60.0, u0, *room_face, z0, z1) << mk.call(u1, u1 + 60.0, *room_face, z0, z1) << mk.call(u0 - 60.0, u1 + 60.0, *room_face, z1, z1 + 60.0)
+      frame << mk.call(u0 - BEAD_WIDTH, u0, *bead_face, z0, z1) << mk.call(u1, u1 + BEAD_WIDTH, *bead_face, z0, z1) << mk.call(u0 - BEAD_WIDTH, u1 + BEAD_WIDTH, *bead_face, z1, z1 + BEAD_WIDTH)
       sashes = window_sashes(cut)
-      inner = s[:sign].positive? ? [c0 - SILL_IN, c0] : [c1, c1 + SILL_IN]
-      outer = s[:sign].positive? ? [c1, c1 + SILL_OUT] : [c0 - SILL_OUT, c0]
-      sill = [mk.call(u0 - 40.0, u1 + 40.0, *inner, z0 + fw - 28.0, z0 + fw), mk.call(u0 - 30.0, u1 + 30.0, *outer, z0 + fw - 28.0, z0 + fw)]
       { 'Frame' => frame, 'Sash' => sashes.flat_map { |x| x[:sash] }, 'Bar' => sashes.flat_map { |x| x[:bars] }, 'Glass' => sashes.flat_map { |x| x[:glass] },
-        'Handle' => sashes.flat_map { |x| x[:handle] }, 'Sill' => sill }
+        'Handle' => sashes.flat_map { |x| x[:handle] } }
     end
 
     # Which way (degrees about Z, counter-clockwise positive) something that sticks out along the wall from its hinge turns to open into the room (the opposite
@@ -541,18 +550,18 @@ module KitchenCabinetMaster
       if kind == 'Door'
         turning = door_swing(cut)
         door_parts(cut).each do |part_name, boxes|
-          sub = part_group(model, group.entities, part_name, boxes)
-          swing << sub if %w[Leaf Handle Hinge].include?(part_name)
+          swing.concat(part_group(model, group.entities, part_name, boxes, fuse: %w[Frame Leaf].include?(part_name))) if %w[Leaf Handle Hinge].include?(part_name)
+          part_group(model, group.entities, part_name, boxes, fuse: part_name == 'Frame') unless %w[Leaf Handle Hinge].include?(part_name)
         end
         swing.each { |sub| sub.set_attribute(DICTIONARY, 'swing', JSON.generate('hinge' => turning[:hinge], 'angle' => turning[:angle])) }
       else
         parts = window_parts(cut)
-        %w[Frame Sill].each { |part_name| part_group(model, group.entities, part_name, parts[part_name]) }
+        part_group(model, group.entities, 'Frame', parts['Frame'], fuse: true)
         window_sashes(cut).each_with_index do |sash, k|
           holder = group.entities.add_group
           holder.name = "Sash #{k + 1}"
           { 'Sash' => sash[:sash], 'Bar' => sash[:bars], 'Glass' => sash[:glass], 'Handle' => sash[:handle] }.each do |part_name, boxes|
-            part_group(model, holder.entities, part_name, boxes) unless boxes.empty?
+            part_group(model, holder.entities, part_name, boxes, fuse: part_name == 'Sash') unless boxes.empty?
           end
           holder.set_attribute(DICTIONARY, 'swing', JSON.generate('hinge' => sash[:hinge], 'angle' => swing_angle(cut, WINDOW_OPEN) * sash[:turn]))
           swing << holder
@@ -568,15 +577,38 @@ module KitchenCabinetMaster
     end
     private_class_method :draw_opening
 
-    # A group of boxes in one material, inside a door or window.
-    def self.part_group(model, entities, part_name, boxes)
-      sub = entities.add_group
-      sub.name = part_name
-      sub.material = opening_material(model, PART_MATERIALS.fetch(part_name))
-      boxes.each { |box| slab(sub.entities, box[:from], box[:to]) }
-      sub
+    # A part of a door or window: boxes in one material, in a group of their own. With `fuse` the boxes are made one piece (the solid tools of SketchUp, when it has them:
+    # the frame is then one solid without the joints between its boards, else the lines between boards that lie in one plane are only taken away). => the groups made.
+    def self.part_group(model, entities, part_name, boxes, fuse: false)
+      material = opening_material(model, PART_MATERIALS.fetch(part_name))
+      made =
+        if fuse && boxes.length > 1 && entities.add_group.then { |probe| ok = probe.respond_to?(:union); probe.erase!; ok }
+          pieces = boxes.map do |box|
+            piece = entities.add_group
+            slab(piece.entities, box[:from], box[:to])
+            piece
+          end
+          whole = pieces.first
+          pieces.drop(1).each { |piece| whole = whole.union(piece) || whole }
+          ([whole] + pieces).select(&:valid?).uniq
+        else
+          [entities.add_group.tap { |sub| boxes.each { |box| slab(sub.entities, box[:from], box[:to]) } }]
+        end
+      made.each do |sub|
+        sub.name = part_name
+        sub.material = material
+        flatten(sub.entities)
+      end
+      made
     end
     private_class_method :part_group
+
+    # The lines between faces that lie in one plane are taken away.
+    def self.flatten(entities)
+      flat = entities.grep(Sketchup::Edge).select { |edge| (faces = edge.faces).length == 2 && faces[0].normal.samedirection?(faces[1].normal) }
+      entities.erase_entities(flat) unless flat.empty?
+    end
+    private_class_method :flatten
 
     # ---- opening and closing -------------------------------------------------------------------
 
@@ -644,12 +676,21 @@ module KitchenCabinetMaster
 
     # Where a door or window is: the middle of its frame ([x, y] and the bottom, mm). The leaf or sash turns when it opens, the frame does not.
     def self.frame_position(group)
-      frame = group.entities.grep(Sketchup::Group).find { |sub| sub.name == 'Frame' } || group
-      box = frame.bounds
-      corners = [box.min, box.max].map { |p| (frame.equal?(group) ? p : group.transformation * p) }
+      frames = group.entities.grep(Sketchup::Group).select { |sub| sub.name == 'Frame' }
+      box = Geom::BoundingBox.new
+      frames.each { |frame| box.add(frame.bounds) }
+      return frame_position_of(group) if frames.empty?
+
+      corners = [box.min, box.max].map { |p| group.transformation * p }
       [(corners[0].x + corners[1].x) / 2.0, (corners[0].y + corners[1].y) / 2.0, [corners[0].z, corners[1].z].min].map(&:to_mm)
     end
     private_class_method :frame_position
+
+    def self.frame_position_of(group)
+      box = group.bounds
+      [box.center.x.to_mm, box.center.y.to_mm, box.min.z.to_mm]
+    end
+    private_class_method :frame_position_of
 
     def self.opening_material(model, name)
       material = model.materials[name] || model.materials.add(name)

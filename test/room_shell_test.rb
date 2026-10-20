@@ -228,10 +228,10 @@ class RoomShellTest < Minitest::Test
   def test_a_door_is_a_frame_with_trim_a_panelled_leaf_and_a_handle_and_nothing_overlaps
     parts = RS.door_parts(door_cut)
     assert_equal %w[Frame Handle Hinge Leaf], parts.keys.sort
-    assert_equal 4 + 6, parts['Frame'].length, 'two jambs, a head and a threshold, and three boards on each face of the wall'
+    assert_equal 4 + 12 + 3, parts['Frame'].length, 'two jambs, a head and a threshold; casing and bead (three boards each) on both faces; three stop strips'
     assert_equal 3, parts['Hinge'].length
     leaf = parts['Leaf']
-    assert_equal 1 + 4, leaf.length, 'the leaf and two raised panels on each face'
+    assert_equal 1 + 8, leaf.length, 'the leaf, and four raised panels (two by two) on each face'
     assert_equal 4, parts['Handle'].length, 'a rose and a lever on each face'
     no_overlaps_in(parts)
   end
@@ -250,12 +250,11 @@ class RoomShellTest < Minitest::Test
 
   def test_a_window_has_a_frame_sashes_glass_a_handle_and_two_sills_and_nothing_overlaps
     parts = RS.window_parts(window_cut)
-    assert_equal %w[Bar Frame Glass Handle Sash Sill], parts.keys.sort
-    assert_equal 4 + 3, parts['Frame'].length
+    assert_equal %w[Bar Frame Glass Handle Sash], parts.keys.sort
+    assert_equal 4 + 6, parts['Frame'].length, 'the frame, and casing and bead on the room face'
     assert_equal 2 * 4, parts['Sash'].length, 'a wide window has two sashes, four sticks each'
     assert_equal 2 * 2, parts['Glass'].length, 'each sash has two panes, side by side'
     assert_equal 2, parts['Bar'].length, 'and a bar between them'
-    assert_equal 2, parts['Sill'].length, 'one inside, one outside'
     no_overlaps_in(parts)
     assert_equal 1 * 4, RS.window_parts(window_cut('south', 700.0))['Sash'].length, 'a narrow one has one sash'
   end
@@ -287,13 +286,10 @@ class RoomShellTest < Minitest::Test
     assert_equal false, door_cut[:spec]['open']
   end
 
-  def test_the_sills_stand_out_of_the_wall_on_both_sides
-    cut = window_cut # the south wall: it fills y from plan y0 - 150 to plan y0, the way out is -y
-    inner, outer = RS.window_parts(cut)['Sill']
-    assert_in_delta cut[:to][1], inner[:from][1], 0.01, 'the inside board starts at the inside face of the wall and comes into the room'
-    assert_in_delta cut[:to][1] + 35.0, inner[:to][1], 0.01
-    assert_in_delta cut[:from][1], outer[:to][1], 0.01
-    assert_in_delta cut[:from][1] - 45.0, outer[:from][1], 0.01, 'and the outside one comes out of the wall'
+  def test_a_window_has_no_sill_boards_below_its_frame
+    cut = window_cut
+    lowest = RS.window_parts(cut).values.flatten.map { |b| b[:from][2] }.min
+    assert_in_delta cut[:from][2], lowest, 0.01, 'nothing hangs below the frame'
   end
 
   def test_the_parts_of_a_window_on_a_west_or_east_wall_run_along_y
