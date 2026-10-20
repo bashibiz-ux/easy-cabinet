@@ -95,6 +95,7 @@ module KitchenCabinetMaster
     RoomShell.install
     menu = UI.menu('Extensions').add_submenu(EXTENSION_NAME)
     menu.add_item('Open Control Panel') { KitchenCabinetMaster.open_panel }
+    menu.add_item('Open or Close Room Doors and Windows') { RoomShell.open_or_close }
     snap_item = menu.add_item('Snap Moved Cabinets to Neighbours and Walls') { SnapManager.enabled = !SnapManager.enabled? }
     menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
 

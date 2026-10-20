@@ -227,8 +227,9 @@ class RoomShellTest < Minitest::Test
 
   def test_a_door_is_a_frame_with_trim_a_panelled_leaf_and_a_handle_and_nothing_overlaps
     parts = RS.door_parts(door_cut)
-    assert_equal %w[Frame Handle Leaf], parts.keys.sort
-    assert_equal 3 + 6, parts['Frame'].length, 'two jambs and a head, and three boards on each face of the wall'
+    assert_equal %w[Frame Handle Hinge Leaf], parts.keys.sort
+    assert_equal 4 + 6, parts['Frame'].length, 'two jambs, a head and a threshold, and three boards on each face of the wall'
+    assert_equal 3, parts['Hinge'].length
     leaf = parts['Leaf']
     assert_equal 1 + 4, leaf.length, 'the leaf and two raised panels on each face'
     assert_equal 4, parts['Handle'].length, 'a rose and a lever on each face'
@@ -249,13 +250,41 @@ class RoomShellTest < Minitest::Test
 
   def test_a_window_has_a_frame_sashes_glass_a_handle_and_two_sills_and_nothing_overlaps
     parts = RS.window_parts(window_cut)
-    assert_equal %w[Frame Glass Handle Sash Sill], parts.keys.sort
+    assert_equal %w[Bar Frame Glass Handle Sash Sill], parts.keys.sort
     assert_equal 4 + 3, parts['Frame'].length
     assert_equal 2 * 4, parts['Sash'].length, 'a wide window has two sashes, four sticks each'
-    assert_equal 2, parts['Glass'].length
+    assert_equal 2 * 2, parts['Glass'].length, 'each sash has two panes, side by side'
+    assert_equal 2, parts['Bar'].length, 'and a bar between them'
     assert_equal 2, parts['Sill'].length, 'one inside, one outside'
     no_overlaps_in(parts)
     assert_equal 1 * 4, RS.window_parts(window_cut('south', 700.0))['Sash'].length, 'a narrow one has one sash'
+  end
+
+  def test_each_sash_is_hinged_at_its_outer_edge_and_turns_into_the_room
+    cut = window_cut
+    first, second = RS.window_sashes(cut)
+    assert_operator first[:hinge][0], :<, second[:hinge][0]
+    assert_equal(-first[:turn], second[:turn], 'they turn opposite ways')
+    assert_in_delta cut[:from][0] + 60.0 + 2.0, first[:hinge][0], 0.01
+    assert_equal 1, RS.window_sashes(window_cut('south', 700.0)).length
+  end
+
+  def test_a_leaf_opening_swings_into_the_room_whichever_wall_it_is_in
+    plan = RS.plan(straight)
+    %w[south north west east].each do |wall|
+      cut = RS.openings(plan, [{ 'kind' => 'Door', 'wall' => wall, 'width' => 900.0, 'height' => 2100.0, 'from' => 200.0 }]).first.first
+      swing = RS.door_swing(cut)
+      along = cut[:out][0].zero? ? [1.0, 0.0] : [0.0, 1.0]
+      a = swing[:angle] * Math::PI / 180.0
+      turned = [(along[0] * Math.cos(a)) - (along[1] * Math.sin(a)), (along[0] * Math.sin(a)) + (along[1] * Math.cos(a))]
+      assert_operator((turned[0] * cut[:out][0]) + (turned[1] * cut[:out][1]), :<, -0.99, "on the #{wall} wall the open leaf points into the room")
+    end
+  end
+
+  def test_whether_a_door_is_open_is_kept_in_its_spec
+    cut = RS.openings(RS.plan(straight), [{ 'kind' => 'Door', 'wall' => 'north', 'width' => 900.0, 'height' => 2100.0, 'from' => 1000.0, 'open' => true }]).first.first
+    assert_equal true, cut[:spec]['open']
+    assert_equal false, door_cut[:spec]['open']
   end
 
   def test_the_sills_stand_out_of_the_wall_on_both_sides
