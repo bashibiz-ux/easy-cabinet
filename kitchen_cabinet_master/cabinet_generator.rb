@@ -349,7 +349,7 @@ module KitchenCabinetMaster
         framed = index_by_role(entities)[DOOR_PANEL_ROLE]
         MaterialManager.apply(framed, frame_material, model, look && look[:color], look && look[:props]) if framed
       end
-      sync_door_glass(model, entities, door, params, openings)
+      sync_door_glass(model, entities, door, params, openings, openings.empty? ? nil : FrontDesign.glass_edge(glass_design))
       sync_drawer_box(model, entities, door, boxes) if drawer
       sync_handle(model, entities, door, params, bundle, openings.empty? ? nil : openings.first[0]) # (on the frame of a glass door)
       sync_door_symbol(model, container, door, params)
@@ -358,14 +358,15 @@ module KitchenCabinetMaster
 
     # The panes of a glass door: a thin sheet of glass in each opening of the frame, in the middle of its thickness. Without
     # `openings` (not a glass door, or too small for a frame) any pane there was is taken away.
-    def self.sync_door_glass(model, entities, door, params, openings)
+    def self.sync_door_glass(model, entities, door, params, openings, edge = nil)
       thickness = FrontDesign::GLASS_THICKNESS
+      x = edge ? door.extent[0] - edge - thickness : (door.extent[0] - thickness) / 2.0 # (a slim frame has the glass set back from its front by the edge)
       fluted = params['glass_material'].to_s == FrontDesign::FLUTED_GLASS # (real flutes up the pane)
       panes = openings.each_with_index.map do |(y0, y1, z0, z1), index|
         CabinetLayout::Panel.new(role: index.zero? ? DOOR_GLASS_ROLE : "#{DOOR_GLASS_ROLE}_#{index + 1}", name: "#{door.name} Glass #{index + 1}",
                                  shape: fluted ? 'fluted' : nil,
                                  extent: [thickness, y1 - y0 - 0.4, z1 - z0 - 0.4].map { |v| v.round(2) },
-                                 offset: [(door.extent[0] - thickness) / 2.0, y0 + 0.2, z0 + 0.2].map { |v| v.round(2) })
+                                 offset: [x, y0 + 0.2, z0 + 0.2].map { |v| v.round(2) })
       end
       reconcile(model, entities, panes, params['glass_material'].to_s, scope: ->(role) { role.start_with?(DOOR_GLASS_ROLE) }) do |pane, _existing|
         Geom::Transformation.new(pane.offset.map(&:mm))

@@ -37,6 +37,16 @@ class KitchenCatalogTest < Minitest::Test
     end
   end
 
+  def test_a_slim_glass_door_has_a_narrow_frame_and_the_glass_set_back_from_its_front
+    opening = FrontDesign.glass_openings('glass_slim_black', 596.0, 716.0).first
+    assert_equal [12.0, 584.0, 12.0, 704.0], opening
+    assert_equal 'Black frame', FrontDesign.frame_material('glass_slim_black')
+    assert_equal 'Aluminium frame', FrontDesign.frame_material('glass_slim_aluminium')
+    assert_equal 3.0, FrontDesign.glass_edge('glass_slim_black')
+    assert_nil FrontDesign.glass_edge('glass_black')
+    assert_equal 'glass_slim_black', FrontDesign.clean_glass('glass_slim_black')
+  end
+
   def test_the_catalog_is_listed
     assert_includes CatalogManager.catalogs.map { |c| c['name'] }, 'Kitchen Cabinet - with handle'
     assert_empty CatalogManager.warnings
@@ -1009,7 +1019,7 @@ class KitchenCatalogTest < Minitest::Test
 
   def test_the_glass_doors_are_a_field_of_their_own_and_not_front_designs
     names = FrontDesign::GLASS_DESIGNS.to_h { |d| [d['id'], d['name']] }
-    assert_equal %w[glass_aluminium glass_black glass_wide glass_wide_grid glass_two glass_grid], names.keys
+    assert_equal %w[glass_aluminium glass_black glass_wide glass_wide_grid glass_two glass_grid glass_slim_black glass_slim_aluminium], names.keys
     assert_match(/aluminium frame/i, names['glass_aluminium'])
     assert_match(/black frame/i, names['glass_black'])
     assert(FrontDesign.ids.none? { |id| id.start_with?('glass') }, 'not in the Front Design list')

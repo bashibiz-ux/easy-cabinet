@@ -9,6 +9,7 @@ module KitchenCabinetMaster
     GLASS_FRAME = 'glass_frame' # not one to choose: the front of a glass door cabinet (a frame round an opening right through it)
     GLASS_FRAME_WIDTH = 50.0
     GLASS_THICKNESS = 4.0
+    SLIM_EDGE = 3.0 # mm: a slim frame stands this far proud of the glass (the small edge all round it)
     THIRD_ROW_HEIGHT = 700.0 # a door this high or higher has three rows of panes in a grid (two below that)
     FLUTED_GLASS = 'Glass - Fluted' # the glass material whose panes get real flutes
     # The glass designs: a frame rame mm wide round openings right through the door, ar mm bars between several panes, made of the door
@@ -20,7 +21,9 @@ module KitchenCabinetMaster
       'glass_aluminium' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Aluminium frame' },
       'glass_black' => { frame: 15.0, bar: 0.0, split: nil, frame_material: 'Black frame' },
       'glass_two' => { frame: 15.0, bar: 15.0, split: :long, frame_material: 'Aluminium frame' },
-      'glass_grid' => { frame: 15.0, bar: 15.0, split: :grid, frame_material: 'Aluminium frame' }
+      'glass_grid' => { frame: 15.0, bar: 15.0, split: :grid, frame_material: 'Aluminium frame' },
+      'glass_slim_black' => { frame: 12.0, bar: 0.0, split: nil, frame_material: 'Black frame', edge: SLIM_EDGE },
+      'glass_slim_aluminium' => { frame: 12.0, bar: 0.0, split: nil, frame_material: 'Aluminium frame', edge: SLIM_EDGE }
     }.freeze
     DESIGNS = [
       { 'id' => 'flat', 'name' => 'Flat (slab)' },
@@ -43,7 +46,9 @@ module KitchenCabinetMaster
       { 'id' => 'glass_wide', 'name' => 'Wide door frame' },
       { 'id' => 'glass_wide_grid', 'name' => 'Wide door frame with grid of panes' },
       { 'id' => 'glass_two', 'name' => 'Two panes, aluminium' },
-      { 'id' => 'glass_grid', 'name' => 'Grid of panes, aluminium' }
+      { 'id' => 'glass_grid', 'name' => 'Grid of panes, aluminium' },
+      { 'id' => 'glass_slim_black', 'name' => 'Slim black aluminium frame with edge' },
+      { 'id' => 'glass_slim_aluminium', 'name' => 'Slim aluminium frame with edge' }
     ].freeze
 
     def self.ids
@@ -202,6 +207,11 @@ module KitchenCabinetMaster
     # The material of the frame of a glass design: its own (an aluminium or black frame), or nil for the door material.
     def self.frame_material(id)
       GLASS_LOOKS.dig(id.to_s, :frame_material)
+    end
+
+    # How far the glass of a design is set back from the front of its frame (the small edge of a slim frame), or nil when it is in the middle of the door.
+    def self.glass_edge(id)
+      GLASS_LOOKS.dig(id.to_s, :edge)
     end
 
     # The openings right through a glass door `width` x `height`, as [[y0, y1, z0, z1], ...]: the frame is `frame` wide round them and
