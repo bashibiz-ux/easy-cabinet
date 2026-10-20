@@ -1104,7 +1104,7 @@ module KitchenCabinetMaster
     # as an Update. Returns [params, []] or [nil, errors].
     def self.restyle_params(model, stored, overrides)
       merged = stored.merge(overrides)
-      merged = merged.merge(CatalogManager.gola_systems(merged)) # (a new handle from the Handle section can be a Gola profile, or no longer one)
+      merged = merged.merge(CatalogManager.gola_systems(merged) || {}) # (a new handle from the Handle section can be a Gola profile, or no longer one)
       result = ValidationManager.validate(merged, door_count: stored['door_count'].to_i,
                                                   drawer_count: stored['drawer_count'].to_i)
       params = result.params
@@ -1458,7 +1458,7 @@ module KitchenCabinetMaster
                       'housing_lift' => adjustable(raw, cabinet, 'housing_lift', 'lift_label', 'lift'),
                       'fridge_height' => adjustable(raw, cabinet, 'fridge_height', 'fridge_label', 'fridge'),
                       'drawer_pattern' => cabinet && cabinet['pattern'].to_s)
-      raw = raw.merge(CatalogManager.gola_systems(raw)) # (the Gola profiles follow the handle chosen)
+      raw = raw.merge(CatalogManager.gola_systems(raw) || {}) # (the Gola profiles follow the handle chosen)
       raw = raw.merge('sink_bowls' => 1, 'sink_rotation' => 0) if cabinet && cabinet['sink_single'] # a narrow sink: one bowl, not turned
       door_count = cabinet ? cabinet['doors'].to_i : nil
       drawer_count = cabinet ? cabinet['drawers'].to_i : nil
