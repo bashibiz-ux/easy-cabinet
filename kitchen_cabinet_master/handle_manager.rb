@@ -208,9 +208,9 @@ module KitchenCabinetMaster
     def self.gola_placement(door, bundle)
       spot = door.respond_to?(:gola) && door.gola
       spot ||= if GolaProfile::SYSTEMS.dig(bundle['system'].to_s, :horizontal) == false # (a vertical one: up the middle of the front)
-                 { 'system' => bundle['system'].to_s, 'kind' => 'pair', 'back' => -21.0, 'horizontal' => false, 'length' => door.extent[2], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] / 2.0 }
+                 { 'system' => bundle['system'].to_s, 'kind' => 'pair', 'back' => -18.0, 'horizontal' => false, 'length' => door.extent[2], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] / 2.0 }
                else
-                 { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -21.0, 'horizontal' => true, 'length' => door.extent[1], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] }
+                 { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -18.0, 'horizontal' => true, 'length' => door.extent[1], 'u' => door.extent[1] / 2.0, 'v' => door.extent[2] }
                end
       spot.merge('half_u' => spot['length'] / 2.0, 'half_v' => 0.0, 'flip' => false, 'gola' => true)
     end
@@ -329,7 +329,7 @@ module KitchenCabinetMaster
       projection = projection(bundle)
       case bundle['profile']
       when 'gola'
-        outline = GolaProfile.outline_for(spot || { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -21.0 })
+        outline = GolaProfile.outline_for(spot || { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -18.0 })
         loft_faces([[-length / 2.0, outline], [length / 2.0, outline]])
       when 'knob' then knob_faces(length, projection, KNOB_SEGMENTS, bundle['style'].to_s)
       when 'dbar' then dbar_faces(length, projection, bundle)

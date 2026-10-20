@@ -140,8 +140,15 @@ module KitchenCabinetMaster
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
       if style.nil? # (the Gola handle model: the fronts are cut back for the profiles)
-        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, distance: door_distance(params),
+        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, thick: dims.thick,
                                                    base: category == 'base' && !params['top_front'].to_f.positive?)
+        if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' } # (B Plus: the top front rail stands back for the profile)
+          shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
+          rail = panels.find { |item| item.role == 'top_front_rail' }
+          rail.offset = [round2(rail.offset[0] - shift), rail.offset[1], rail.offset[2]] if rail
+          full = panels.find { |item| item.role == 'top' }
+          full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
+        end
       end
       custom = params['custom_overrides']
       drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?

@@ -19,7 +19,7 @@
     {
       "name": "Silver anodised",
       "material": "Gola Silver anodised",
-      "color": "#C4C8CC",
+      "color": "#9A9893",
       "roughness": 0.35,
       "metalness": 0.9,
       "article": "126.36.962",
@@ -28,7 +28,7 @@
     {
       "name": "Brushed brass anodised",
       "material": "Gola Brushed brass anodised",
-      "color": "#B89A58",
+      "color": "#D0BA8A",
       "roughness": 0.4,
       "metalness": 0.9,
       "article": "126.36.563",
@@ -37,7 +37,7 @@
     {
       "name": "Bronze anodised",
       "material": "Gola Bronze anodised",
-      "color": "#6B5A48",
+      "color": "#4F4037",
       "roughness": 0.45,
       "metalness": 0.8,
       "article": "126.36.862",
@@ -46,7 +46,7 @@
     {
       "name": "Brushed copper anodised",
       "material": "Gola Brushed copper anodised",
-      "color": "#B16E4B",
+      "color": "#B59080",
       "roughness": 0.4,
       "metalness": 0.9,
       "article": "126.36.162",
@@ -55,11 +55,25 @@
     {
       "name": "Graphite powder coated",
       "material": "Gola Graphite powder coated",
-      "color": "#3A3C3F",
+      "color": "#4D4A48",
       "roughness": 0.55,
       "metalness": 0.3,
       "article": "126.36.762",
       "end_article": "126.36.772"
+    },
+    {
+      "name": "Matt white powder coated",
+      "material": "Gola Matt white powder coated",
+      "color": "#E4E4EA",
+      "roughness": 0.8,
+      "metalness": 0.0
+    },
+    {
+      "name": "Matt black powder coated",
+      "material": "Gola Matt black powder coated",
+      "color": "#2A2829",
+      "roughness": 0.8,
+      "metalness": 0.0
     }
   ],
   "defaults": {

@@ -49,8 +49,9 @@ class GolaTest < Minitest::Test
       assert_equal width, bundle['section'], id
       assert_equal depth, bundle['projection'], id
       assert_equal [length], bundle['lengths'], id
-      assert_equal ['Silver anodised', 'Brushed brass anodised', 'Bronze anodised', 'Brushed copper anodised', 'Graphite powder coated'].sort, bundle['finishes'].map { |f| f['name'] }.sort, id
-      assert(bundle['finishes'].all? { |f| f['article'] =~ /\A126\.\d\d\.\d{3}\z/ }, "#{id}: every finish has its article number")
+      assert_equal ['Silver anodised', 'Brushed brass anodised', 'Bronze anodised', 'Brushed copper anodised', 'Graphite powder coated', 'Matt white powder coated', 'Matt black powder coated'].sort, bundle['finishes'].map { |f| f['name'] }.sort, id
+      assert_equal 5, bundle['finishes'].count { |f| f['article'] }, 'the five finishes on the Haefele page have their article numbers'
+      assert(bundle['finishes'].select { |f| f['article'] }.all? { |f| f['article'] =~ /\A126\.\d\d\.\d{3}\z/ }, id)
     end
     assert_equal '126.36.940', CatalogManager.handle_bundle('gola_b_plus')['finishes'].find { |f| f['name'] == 'Silver anodised' }['article']
     assert_equal '126.36.972', CatalogManager.handle_bundle('gola_d')['finishes'].find { |f| f['name'] == 'Silver anodised' }['end_article'], 'the end profile'
@@ -95,15 +96,16 @@ class GolaTest < Minitest::Test
     assert_equal ['b'], layout.doors.map { |d| d.gola['system'] }.uniq
   end
 
-  def test_b_plus_profiles_of_neighbouring_doors_join_and_reach_the_carcass_at_the_ends
+  def test_b_plus_profiles_of_neighbouring_doors_join_and_run_between_the_side_panels
     layout, params = layout_of('base', 'base_2door', 900, 'b')
     first, second = layout.doors
     reveal = params['door_reveal'].to_f
     gap = params['door_gap'].to_f
+    thick = layout.panels.find { |p| p.role == 'left_side' }.extent[1]
     from = first.offset[1] + first.gola['u'] - (first.gola['length'] / 2.0)
     to = second.offset[1] + second.gola['u'] + (second.gola['length'] / 2.0)
-    assert_in_delta first.offset[1] - reveal, from, 0.05
-    assert_in_delta second.offset[1] + second.extent[1] + reveal, to, 0.05
+    assert_in_delta thick, from, 0.05, 'it runs between the side panels'
+    assert_in_delta second.offset[1] + second.extent[1] + reveal - thick, to, 0.05
     meet = first.offset[1] + first.gola['u'] + (first.gola['length'] / 2.0)
     assert_in_delta second.offset[1] + second.gola['u'] - (second.gola['length'] / 2.0), meet, 0.05, "the two profiles meet in the gap of #{gap} mm"
   end
@@ -142,6 +144,10 @@ class GolaTest < Minitest::Test
 
   # ---- D and E: between doors --------------------------------------------------------------------
 
+  def test_the_gaps_between_doors_are_30_for_d_and_35_for_e_as_in_the_drawings
+    assert_equal [30.0, 35.0], %w[d e].map { |s| GolaProfile::SYSTEMS[s][:gap] }
+  end
+
   def test_d_and_e_set_the_gap_between_two_doors_and_put_a_profile_in_it
     plain, = layout_of('base', 'base_2door', 900, '')
     %w[d e].each do |system|
@@ -170,17 +176,17 @@ class GolaTest < Minitest::Test
   end
 
   def test_a_door_with_no_neighbour_has_an_end_profile_on_its_free_edge
-    plain, = layout_of('base', 'base_1door', 600, '')
+    plain, params = layout_of('base', 'base_1door', 600, '')
     layout, = layout_of('base', 'base_1door', 600, 'e')
     door = layout.doors.first
-    assert_in_delta plain.doors.first.extent[1] - GolaProfile::END_REDUCE, door.extent[1], 0.05
+    assert_in_delta plain.doors.first.extent[1] - GolaProfile.end_reduce('e', params['door_reveal'].to_f), door.extent[1], 0.05
     assert_equal 'end_right', door.gola['kind'], 'hinged on the left: the free edge is on the right'
     assert_in_delta door.extent[1], door.gola['u'], 0.05
     layout, = layout_of('base', 'base_1door', 600, 'e', 'e', 'door_opening_direction' => 'right')
     door = layout.doors.first
     assert_equal 'end_left', door.gola['kind']
     assert_in_delta 0.0, door.gola['u'], 0.05
-    assert_in_delta plain.doors.first.offset[1] + GolaProfile::END_REDUCE, door.offset[1], 0.05
+    assert_in_delta plain.doors.first.offset[1] + GolaProfile.end_reduce('e', params['door_reveal'].to_f), door.offset[1], 0.05
   end
 
   # ---- every cabinet, every width, every system -----------------------------------------------------
@@ -206,6 +212,19 @@ class GolaTest < Minitest::Test
       end
     end
     assert_operator count, :>, 300
+  end
+
+  def test_the_top_front_rail_stands_back_for_a_b_plus_profile
+    plain, params = layout_of('base', 'base_2door', 900, '')
+    layout, = layout_of('base', 'base_2door', 900, 'b')
+    before = plain.panels.find { |p| p.role == 'top_front_rail' }
+    after = layout.panels.find { |p| p.role == 'top_front_rail' }
+    return skip('this unit has no top front rail') unless before && after
+
+    assert_in_delta 27.0 - params['door_distance'].to_f, before.offset[0] - after.offset[0], 0.05
+    c, = layout_of('base', 'base_3drawer', 600, 'c')
+    p3, = layout_of('base', 'base_3drawer', 600, '')
+    assert_equal p3.panels.map(&:offset), c.panels.map(&:offset), 'C Plus leaves the carcass as it is'
   end
 
   def test_a_catalog_without_gola_profiles_is_not_touched
@@ -235,8 +254,8 @@ class GolaTest < Minitest::Test
     drawer = layout.drawers.min_by { |d| d.offset[2] }
     faces = HandleManager.handle_faces(bundle, drawer.gola['length'], false, drawer.gola)
     xs = faces.flatten(1).map { |p| p[0] }
-    assert_in_delta drawer.gola['back'], xs.min, 0.001, 'the back plate is on the front of the carcass'
-    assert_in_delta 0.0, xs.max, 0.001, 'the lips are flush with the doors'
+    assert_in_delta drawer.gola['back'] - 26.0 - 6.0, xs.min, 0.001, 'the back plate is 26 behind the doors, its clips 6 further'
+    assert_in_delta drawer.gola['back'], xs.max, 0.001, 'the hooks end at the back of the doors'
     ys = faces.flatten(1).map { |p| p[1] }
     assert_in_delta 73.0, ys.max - ys.min, 0.001
     assert closed?(faces)

@@ -2,65 +2,76 @@
 
 module KitchenCabinetMaster
   # The Gola handle model: instead of handles, aluminium profiles (the Häfele Gola systems) are fixed in the gaps between the fronts, and the fronts are cut
-  # back to make room for them. Pure maths, no SketchUp objects; all numbers are millimetres.
+  # back to make room for them. Pure maths, no SketchUp objects; all numbers are millimetres. The sections are drawn from Häfele's drawings.
   #
-  #   B Plus  horizontal, between the worktop and the top doors or drawers of a base unit   (56.5 high, 27 deep)
-  #   C Plus  horizontal, between a drawer or door and the one above it                      (73 high, 26 deep)
-  #   D, E    vertical, between two doors side by side (and an end profile between the cabinet and a door that has no neighbour)
-  #           D is 66.5 wide and 12 deep, E 72 wide and 20 deep
-  #
-  # The sizes are Häfele's. Their pages give no drawing: the section of each profile is a plain model of one (a back plate, and the lips or walls that make the
-  # grip), and how much of it shows (see `lip` and `gap`) and the width of an end profile are assumptions.
+  #   B Plus  horizontal, between the worktop and the top doors or drawers of a base unit: the gap is the 56.5 mm of the profile, it is 27 mm deep from its back
+  #           plate to the back of the doors (the top front rail of the carcass stands back for it)
+  #   C Plus  horizontal, between a drawer or door and the one above it: the gap is 73 mm, the profile 26 mm deep
+  #   D, E    vertical, between two doors side by side (30 and 35 mm apart); the doors are screwed to it. An end profile takes the place of the second door
+  #           at the end of a run. D is 66.5 wide and 12 deep behind the doors, E 72 wide and 20 deep.
   module GolaProfile
-    PLATE = 2.0        # the thickness of the sheet the section is drawn with
-    END_WIDTH = 22.0   # an end profile (cabinet to door): how wide it is across the front ...
-    END_REDUCE = 20.0  # ... and how much narrower the door is for it
+    PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this
     SYSTEMS = {
-      'b' => { name: 'Gola System B Plus', horizontal: true, size: 56.5, depth: 27.0, lip: 30.0 },
-      'c' => { name: 'Gola System C Plus', horizontal: true, size: 73.0, depth: 26.0, lip: 25.0 },
-      'd' => { name: 'Gola System D', horizontal: false, size: 66.5, depth: 12.0, gap: 26.5 },
-      'e' => { name: 'Gola System E', horizontal: false, size: 72.0, depth: 20.0, gap: 32.0 }
+      'b' => { name: 'Gola System B Plus', horizontal: true, size: 56.5, depth: 27.0 },
+      'c' => { name: 'Gola System C Plus', horizontal: true, size: 73.0, depth: 26.0 },
+      'd' => { name: 'Gola System D', horizontal: false, size: 66.5, depth: 12.0, gap: 30.0 },
+      'e' => { name: 'Gola System E', horizontal: false, size: 72.0, depth: 20.0, gap: 35.0 }
     }.freeze
 
     def self.clean(system)
       SYSTEMS.key?(system.to_s) ? system.to_s : ''
     end
 
-    # The section of a horizontal profile seen from the end: [[x, y], ...], x out of the front (0 is the face of the doors, `back` the front of the carcass,
-    # negative), y up from the top edge of the front it sits on. B Plus: a back plate, a top plate under the worktop and a lip that hangs in front with a hook
-    # at its foot. C Plus: a back plate with a lip rising in front of the lower front and one hanging in front of the upper one, a channel between them.
+    # The section of a horizontal profile seen from the end: [[x, y], ...], x out of the front (0 is the face of the doors, `back` the back of the doors, negative),
+    # y up from the top edge of the front it sits on, from the drawings. The back plate stands `depth` behind the doors, with two small clips on its back.
+    # B Plus: a plate under the worktop with a short flange at its top, curving at its foot into a tray that ends in a hook on the top of the door.
+    # C Plus: a plate with an arm and a hook at each end that rest on the two fronts, and a clip in the middle.
     def self.horizontal_outline(system, back)
       spec = SYSTEMS.fetch(system)
       h = spec[:size]
-      t = PLATE
-      lip = spec[:lip]
-      if system == 'b'
-        [[back, 0.0], [back + t, 0.0], [back + t, h - t], [-t, h - t], [-t, h - lip], [-10.0, h - lip], [-10.0, h - lip - t], [0.0, h - lip - t], [0.0, h], [back, h]]
-      else
-        [[back, 0.0], [0.0, 0.0], [0.0, lip], [-t, lip], [-t, t], [back + t, t], [back + t, h - t], [-t, h - t], [-t, h - lip], [0.0, h - lip], [0.0, h], [back, h]]
+      d = spec[:depth]
+      xb = back - d # (the back of the plate)
+      clips = lambda do |y0, y1| # a small hook on the back: from y1 down to y0
+        [[xb, y1], [xb - 6.0, y1], [xb - 6.0, y1 - PLATE], [xb, y1 - PLATE], [xb, y0 + PLATE], [xb - 6.0, y0 + PLATE], [xb - 6.0, y0], [xb, y0]]
       end
+      points =
+        if system == 'b'
+          [[xb, 0.0], [xb + d, 0.0], [xb + d, 5.0], [xb + d - PLATE, 5.0], [xb + d - PLATE, PLATE], [xb + 8.0, PLATE], [xb + 5.0, 2.6], [xb + 3.2, 4.4], [xb + PLATE, 8.0],
+           [xb + PLATE, h - PLATE], [xb + 10.0, h - PLATE], [xb + 10.0, h], [xb, h]]
+        else
+          [[xb, 0.0], [xb + d, 0.0], [xb + d, 8.0], [xb + d - PLATE, 8.0], [xb + d - PLATE, PLATE], [xb + PLATE, PLATE], [xb + PLATE, h - PLATE], [xb + d - PLATE, h - PLATE],
+           [xb + d - PLATE, h - 8.0], [xb + d, h - 8.0], [xb + d, h], [xb, h]]
+        end
+      middle = system == 'b' ? [[xb, 46.5], [xb - 6.0, 46.5], [xb - 6.0, 44.5], [xb, 44.5], [xb, 30.0], [xb - 6.0, 30.0], [xb - 6.0, 28.0], [xb, 28.0]] : clips.call(38.5, 40.5)
+      points + middle
     end
 
-    # The section of a vertical profile seen from above: [[x, y], ...], x out of the doors, y across them, centred on the gap between two doors. A back plate
-    # behind the edges of both doors and two walls that line the gap, as deep as the profile is.
+    # The section of a vertical profile seen from above: [[x, y], ...], x out of the doors, y across them, centred on the gap between two doors (30 and 35 mm
+    # wide). A back plate `depth` behind the doors, as wide as the profile is, and two walls along the edges of the doors that line the gap up to the face of
+    # the doors.
     def self.vertical_outline(system, back)
       spec = SYSTEMS.fetch(system)
       w = spec[:size] / 2.0
       g = spec[:gap] / 2.0
+      xb = back - spec[:depth]
       t = PLATE
-      front = [back + spec[:depth], -t].min
-      [[back, -w], [back + t, -w], [back + t, -g - t], [front, -g - t], [front, -g], [back + t, -g], [back + t, g], [front, g], [front, g + t], [back + t, g + t], [back + t, w], [back, w]]
+      [[xb, -w], [xb + t, -w], [xb + t, -g], [0.0, -g], [0.0, -g + t], [xb + t, -g + t], [xb + t, g - t], [0.0, g - t], [0.0, g], [xb + t, g], [xb + t, w], [xb, w]]
     end
 
-    # An end profile (between the cabinet and a door), seen from above, y from 0 outwards (mirrored for one on the left of its door): a plate behind the
-    # door and a wall at the outer end.
+    # How much narrower than it was a door is made for an end profile: the gap of the system, less the reveal it had there.
+    def self.end_reduce(system, reveal)
+      [SYSTEMS.fetch(system)[:gap] - reveal, 10.0].max
+    end
+
+    # An end profile (a door at the end of a run, the cabinet beside it), seen from above, y from the edge of the door out over the gap to the cabinet (mirrored
+    # for one on the left of its door): the plate, a small wing behind the door, and one wall along the edge of the door.
     def self.end_outline(system, back, mirror = false)
       spec = SYSTEMS.fetch(system)
       t = PLATE
-      front = [back + spec[:depth], -t].min
-      points = [[back, 0.0], [back + t, 0.0], [back + t, END_WIDTH - t], [front, END_WIDTH - t], [front, END_WIDTH], [back, END_WIDTH]]
+      xb = back - spec[:depth]
+      points = [[xb, -8.0], [xb + t, -8.0], [xb + t, 0.0], [0.0, 0.0], [0.0, t], [xb + t, t], [xb + t, spec[:gap]], [xb, spec[:gap]]]
       mirror ? points.map { |x, y| [x, -y] }.reverse : points
     end
 
@@ -82,11 +93,12 @@ module KitchenCabinetMaster
 
     # Cuts the fronts back and says where the profile of each goes. `doors` and `drawers` are CabinetLayout::Door; each gets `gola`, a Hash for the handle placement
     # (or nil: it has no profile and so no handle):
-    #   'system', 'kind' (top, between, pair, end_left, end_right), 'back' (the front of the carcass, from the face of the door), 'u' and 'v' (where the
+    #   'system', 'kind' (top, between, pair, end_left, end_right), 'back' (the back of the door, from its face), 'u' and 'v' (where the
     #   outline's origin is, from the low-Y edge and the bottom of the front), 'length', 'horizontal'
     # params   gola_system (the doors' profile) and gola_system_drawer (the drawers'): b c d e, or blank
-    # limit    the height of the top of the fronts of a unit (above the floor); distance  how far the doors stand off the carcass; base  the unit is a base unit
-    def self.apply!(params, doors, drawers, limit:, distance:, base:)
+    # limit    the height of the top of the fronts of a unit (above the floor); thick  the thickness of its side panels (a horizontal profile runs between them)
+    # base     the unit is a base unit
+    def self.apply!(params, doors, drawers, limit:, thick:, base:)
       systems = { doors: clean(params['gola_system']), drawers: clean(params['gola_system_drawer']) }
       return if systems.values.all?(&:empty?)
 
@@ -113,10 +125,10 @@ module KitchenCabinetMaster
         next if cut.negative? || item.extent[2] - cut < MIN_FRONT
 
         left, right = sides[item]
-        left = left ? left / 2.0 : reveal
-        right = right ? right / 2.0 : reveal
+        left = left ? left / 2.0 : reveal - thick # (it runs to the inside of the side panels)
+        right = right ? right / 2.0 : reveal - thick
         item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - cut)]
-        item.gola = { 'system' => system, 'kind' => system == 'b' ? 'top' : 'between', 'back' => round2(-(item.extent[0] + distance)), 'horizontal' => true,
+        item.gola = { 'system' => system, 'kind' => system == 'b' ? 'top' : 'between', 'back' => round2(-item.extent[0]), 'horizontal' => true,
                       'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => item.extent[2] }
       end
 
@@ -124,9 +136,9 @@ module KitchenCabinetMaster
       verticals.each do |item, system|
         partner = verticals.map(&:first).select { |other| other != item && beside?(item, other) }.min_by { |other| other.offset[1] }
         if partner
-          pair!(item, partner, system, distance)
+          pair!(item, partner, system)
         elsif verticals.none? { |other, _| other != item && beside?(other, item) }
-          finish!(item, system, distance) # (no neighbour on either side)
+          finish!(item, system, reveal) # (no neighbour on either side)
         end
       end
       nil
@@ -166,7 +178,7 @@ module KitchenCabinetMaster
     end
 
     # Two doors side by side: the gap between them is the one the profile leaves, each door gives up half of what that needs.
-    def self.pair!(left, right, system, distance)
+    def self.pair!(left, right, system)
       spec = SYSTEMS[system]
       gap = right.offset[1] - (left.offset[1] + left.extent[1])
       delta = (spec[:gap] - gap) / 2.0
@@ -176,19 +188,20 @@ module KitchenCabinetMaster
       right.extent = [right.extent[0], round2(right.extent[1] - delta), right.extent[2]]
       right.pivot = [right.pivot[0], round2(right.pivot[1] + delta), right.pivot[2]] if right.pivot && right.hinge == 'left'
       height = [left.extent[2], right.extent[2]].min
-      left.gola = { 'system' => system, 'kind' => 'pair', 'back' => round2(-(left.extent[0] + distance)), 'horizontal' => false, 'length' => round2(height),
+      left.gola = { 'system' => system, 'kind' => 'pair', 'back' => round2(-left.extent[0]), 'horizontal' => false, 'length' => round2(height),
                     'u' => round2(left.extent[1] + (spec[:gap] / 2.0)), 'v' => round2((left.extent[2] / 2.0)) }
     end
 
     # A door with no neighbour: an end profile where the door is not hinged (between it and the cabinet).
-    def self.finish!(door, system, distance)
+    def self.finish!(door, system, reveal)
+      reduce = end_reduce(system, reveal)
       return unless %w[left right].include?(door.hinge)
-      return if door.extent[1] - END_REDUCE < MIN_FRONT
+      return if door.extent[1] - reduce < MIN_FRONT
 
       free_right = door.hinge == 'left'
-      door.extent = [door.extent[0], round2(door.extent[1] - END_REDUCE), door.extent[2]]
-      door.offset = [door.offset[0], round2(door.offset[1] + END_REDUCE), door.offset[2]] unless free_right
-      door.gola = { 'system' => system, 'kind' => free_right ? 'end_right' : 'end_left', 'back' => round2(-(door.extent[0] + distance)), 'horizontal' => false,
+      door.extent = [door.extent[0], round2(door.extent[1] - reduce), door.extent[2]]
+      door.offset = [door.offset[0], round2(door.offset[1] + reduce), door.offset[2]] unless free_right
+      door.gola = { 'system' => system, 'kind' => free_right ? 'end_right' : 'end_left', 'back' => round2(-door.extent[0]), 'horizontal' => false,
                     'length' => round2(door.extent[2]), 'u' => free_right ? door.extent[1] : 0.0, 'v' => round2(door.extent[2] / 2.0) }
     end
   end
