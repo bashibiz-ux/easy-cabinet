@@ -10,7 +10,7 @@ module KitchenCabinetMaster
   #   D, E    vertical, between two doors side by side (30 and 35 mm apart); the doors are screwed to it. An end profile takes the place of the second door
   #           at the end of a run. D is 66.5 wide and 12 deep behind the doors, E 72 wide and 20 deep.
   module GolaProfile
-    DEFAULT_GAP = 30.0 # mm: the finger gap between a front and the Gola profile over it, to start with
+    DEFAULT_GAP = 30.0 # mm: the finger gap between a front and the Gola profile over it, to start with (the fronts can grow into it: see apply!)
     PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this
@@ -104,7 +104,7 @@ module KitchenCabinetMaster
       return if systems.values.all?(&:empty?)
 
       reveal = params['door_reveal'].to_f
-      gap = params['gola_gap'].to_f.negative? ? 0.0 : (params['gola_gap'].nil? ? DEFAULT_GAP : params['gola_gap'].to_f) # (the finger gap: between the top of a front and the profile over it)
+      gap = DEFAULT_GAP - params['gola_grow'].to_f # (the finger gap between the top of a front and the profile over it: the fronts grow upward into it)
       carcass_top = limit + reveal
       everything = doors + drawers
       fronts = doors.map { |item| [item, systems[:doors]] } + drawers.map { |item| [item, systems[:drawers]] }

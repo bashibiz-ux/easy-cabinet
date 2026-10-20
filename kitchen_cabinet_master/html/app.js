@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.69.0';
+  const APP_VERSION = '1.69.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -47,7 +47,7 @@
     carcass_raise: 'carcassRaise',
     door_height_adjust: 'doorHeightAdjust',
     drawer_height_adjust: 'drawerHeightAdjust',
-    gola_gap: 'golaGapGlobal',
+    gola_grow: 'golaGapGlobal',
     leg2_length: 'leg2Length',
     leg2_depth: 'leg2Depth',
     appliance_set: 'applianceSet',
@@ -104,7 +104,7 @@
     carcass_raise: 'carcassRaise',
     door_height_adjust: 'doorHeightAdjust',
     drawer_height_adjust: 'drawerHeightAdjust',
-    gola_gap: 'golaGapGlobal',
+    gola_grow: 'golaGapGlobal',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -1154,7 +1154,7 @@ function currentCabinet() {
       carcass_raise: mmv('carcassRaise'),
       door_height_adjust: mmv('doorHeightAdjust'),
       drawer_height_adjust: mmv('drawerHeightAdjust'),
-      gola_gap: hasGolaField() ? mmv('golaGapGlobal') : '',
+      gola_grow: hasGolaField() ? mmv('golaGapGlobal') : '',
       leg2_length: mmv('leg2Length'),
       leg2_depth: mmv('leg2Depth'),
       appliance_set: isApplianceCabinet() ? $('applianceSet').value : '',
@@ -1235,7 +1235,7 @@ function currentCabinet() {
     setText('carcassRaise', Number(p.carcass_raise) || 0); // a cabinet saved before this option has none
     setText('doorHeightAdjust', Number(p.door_height_adjust) || 0);
     setText('drawerHeightAdjust', Number(p.drawer_height_adjust) || 0);
-    if (hasGolaField()) setText('golaGapGlobal', p.gola_gap === undefined ? 30 : Number(p.gola_gap));
+    if (hasGolaField()) setText('golaGapGlobal', Number(p.gola_grow) || 0);
     // An L-shaped corner has a second leg; 0 / missing means it is the same as the first.
     setText('leg2Length', Number(p.leg2_length) > 0 ? Number(p.leg2_length) : Number(p.width));
     setText('leg2Depth', Number(p.leg2_depth) > 0 ? Number(p.leg2_depth) : Number(p.depth));
@@ -1549,7 +1549,7 @@ function currentCabinet() {
     setSoft($('liftDoorField'), !hasLiftTick()); // (a lift-up or bi-fold unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
     setSoft($('golaGapGlobalField'), !(currentCatalog() || {}).gola);
-    if ((currentCatalog() || {}).gola && !$('golaGapGlobal').value) setText('golaGapGlobal', 30);
+    if ((currentCatalog() || {}).gola && !$('golaGapGlobal').value) setText('golaGapGlobal', 0);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
     setSoft($('sinkFields'), !hasSinkField());
@@ -2352,7 +2352,7 @@ if (details.length) {
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     doorHeightAdjust: ['door_height_adjust', 'doorHeightAdjust'],
     drawerHeightAdjust: ['drawer_height_adjust', 'drawerHeightAdjust'],
-    golaGapGlobal: ['gola_gap', 'golaGapGlobal'],
+    golaGapGlobal: ['gola_grow', 'golaGapGlobal'],
     handle: ['handle_id', 'handle'],
     drawerHandle: ['drawer_handle_id', 'drawerHandle'],
     handleLength: ['handle_length', 'handleLength'],

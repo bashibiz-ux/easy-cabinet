@@ -269,33 +269,37 @@ class GolaTest < Minitest::Test
     assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems({}))
   end
 
-  def test_the_finger_gap_starts_at_30_mm_and_can_be_changed
-    assert_equal 30.0, Defaults.params['gola_gap']
-    plain, = layout_of('base', 'base_2door', 900, '')
-    tight, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_gap' => '20')
-    wide, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_gap' => '45')
-    assert_in_delta plain.doors.first.extent[2] - 56.5 - 20.0 + 2.0, tight.doors.first.extent[2], 0.05
-    assert_in_delta tight.doors.first.extent[2] - 25.0, wide.doors.first.extent[2], 0.05, 'a bigger gap: shorter doors, the profile is where it was'
-    assert_in_delta tight.doors.first.offset[2] + tight.doors.first.gola['v'], wide.doors.first.offset[2] + wide.doors.first.gola['v'], 0.05
+  def test_the_fronts_grow_upward_into_the_finger_gap_when_a_value_is_typed
+    assert_equal 0.0, Defaults.params['gola_grow']
+    start, = layout_of('base', 'base_2door', 900, 'b')
+    grown, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '10')
+    deeper, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '-10')
+    assert_in_delta start.doors.first.extent[2] + 10.0, grown.doors.first.extent[2], 0.05, 'a value typed: the doors grow upward'
+    assert_in_delta start.doors.first.extent[2] - 10.0, deeper.doors.first.extent[2], 0.05, 'a minus value: a bigger gap'
+    assert_in_delta start.doors.first.offset[2], grown.doors.first.offset[2], 0.05, 'their bottom edge stays'
+    assert_in_delta start.doors.first.offset[2] + start.doors.first.gola['v'], grown.doors.first.offset[2] + grown.doors.first.gola['v'], 0.05, 'the profile stays where it is'
+    refute_empty layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '30').first.doors
+    result = ValidationManager.validate({ 'catalog_id' => CATALOG, 'cabinet_category' => 'base', 'cabinet_type' => 'base_2door', 'width' => '900', 'depth' => '560', 'height' => '780', 'toe_kick_height' => '100', 'gola_grow' => '31' }, door_count: 2, drawer_count: 0)
+    refute_empty result.errors, 'the gap cannot be closed past the profile'
   end
 
-  def test_the_top_drawer_front_has_its_own_height_adjustment
+  def test_every_drawer_front_of_a_stack_has_the_height_adjustment_and_the_ones_over_it_move_up
     plain, = layout_of('base', 'base_3drawer', 600, 'b')
     taller, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '15')
     shorter, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '-15')
     order = ->(layout) { layout.drawers.sort_by { |d| d.offset[2] } }
     order.call(plain).zip(order.call(taller), order.call(shorter)).each_with_index do |(p, up, down), i|
-      change = i == 2 ? 15.0 : 0.0
-      assert_in_delta p.extent[2] + change, up.extent[2], 0.05, "front #{i + 1}: only the top front grows"
-      assert_in_delta p.extent[2] - change, down.extent[2], 0.05
+      assert_in_delta p.extent[2] + 15.0, up.extent[2], 0.05, "front #{i + 1} grows"
+      assert_in_delta p.extent[2] - 15.0, down.extent[2], 0.05
+      assert_in_delta p.offset[2] + (15.0 * i), up.offset[2], 0.05, "front #{i + 1} stands higher by what grew under it"
+      assert_in_delta p.offset[2] - (15.0 * i), down.offset[2], 0.05
     end
     top_front = order.call(taller).last
     assert_in_delta order.call(plain).last.offset[2] + order.call(plain).last.gola['v'], top_front.offset[2] + top_front.gola['v'], 0.05, 'the profile does not move'
     plain_none, = layout_of('base', 'base_3drawer', 600, '')
     adjusted, = layout_of('base', 'base_3drawer', 600, '', '', 'drawer_height_adjust' => '15')
-    assert_in_delta plain_none.drawers.sum { |d| d.extent[2] } + 15.0, adjusted.drawers.sum { |d| d.extent[2] }, 0.05, 'the adjustment works in every model'
+    assert_in_delta plain_none.drawers.sum { |d| d.extent[2] } + 45.0, adjusted.drawers.sum { |d| d.extent[2] }, 0.05, 'the adjustment works in every model'
   end
-
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

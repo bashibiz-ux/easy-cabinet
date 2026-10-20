@@ -236,25 +236,29 @@ module KitchenCabinetMaster
     end
     private_class_method :adjust_door_heights
 
-    # The drawer fronts can be made taller or shorter too (the Drawer Front Height Adjustment field): the top front of a unit grows upward (the bottom one of a wall
-    # unit downward), the others stay as they are. A front never gets lower than 60 mm.
+    # The drawer fronts can be made taller or shorter too (the Drawer Front Height Adjustment field): every front of a stack is, and the ones over it move up (a wall
+    # unit's hang from the top: the ones under it move down) so that the gaps stay as they are. A front never gets lower than 60 mm.
     def self.adjust_drawer_heights(drawers, params, category)
       adjust = params['drawer_height_adjust'].to_f
       return if adjust.zero? || drawers.empty?
 
-      drawers.each do |drawer|
-        next if drawer.parent || drawer.hinge == 'fold'
+      fronts = drawers.reject { |drawer| drawer.parent || drawer.hinge == 'fold' }
+      delta = fronts.to_h { |drawer| [drawer, [adjust, 60.0 - drawer.extent[2].to_f].max] }.compare_by_identity # (the fronts change: they are told apart by identity)
+      moves = fronts.to_h do |drawer|
+        stacked = fronts.select { |other| !other.equal?(drawer) && GolaProfile.overlap_across(drawer, other).positive? } # (the fronts over or under this one)
+        shift =
+          if category == 'wall'
+            delta[drawer] + stacked.select { |other| other.offset[2] >= drawer.offset[2] + drawer.extent[2] - 0.6 }.sum { |other| delta[other] } # (what grows above it pushes it down)
+          else
+            stacked.select { |other| other.offset[2] + other.extent[2] <= drawer.offset[2] + 0.6 }.sum { |other| delta[other] } # (what grows under it pushes it up)
+          end
+        [drawer, shift]
+      end.compare_by_identity
+      fronts.each do |drawer|
+        next if delta[drawer].zero? && moves[drawer].zero?
 
-        others = drawers.select { |other| !other.equal?(drawer) && GolaProfile.overlap_across(drawer, other).positive? } # (the fronts over or under this one)
-        edge = category == 'wall' ? others.none? { |other| other.offset[2] + other.extent[2] <= drawer.offset[2] + 0.6 } : others.none? { |other| other.offset[2] >= drawer.offset[2] + drawer.extent[2] - 0.6 }
-        next unless edge
-
-        height = drawer.extent[2].to_f
-        delta = [adjust, 60.0 - height].max
-        next if delta.zero?
-
-        drawer.extent = [drawer.extent[0], drawer.extent[1], round2(height + delta)]
-        drawer.offset = [drawer.offset[0], drawer.offset[1], round2(drawer.offset[2] - delta)] if category == 'wall'
+        drawer.extent = [drawer.extent[0], drawer.extent[1], round2(drawer.extent[2].to_f + delta[drawer])]
+        drawer.offset = [drawer.offset[0], drawer.offset[1], round2(drawer.offset[2] + (category == 'wall' ? -moves[drawer] : moves[drawer]))]
       end
     end
     private_class_method :adjust_drawer_heights
