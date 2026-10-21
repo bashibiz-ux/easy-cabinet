@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.70.0';
+  const APP_VERSION = '1.70.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1013,6 +1013,10 @@
     // A cabinet comes with a handle: the first one the model offers, unless one is already chosen.
     if (catalog && !$('handle').value && $('handle').options.length > 1) $('handle').selectedIndex = 1;
     if ($('handle').value !== before) onHandleChange(true);
+    // The Gola handle model: the drawers have Gola System C Plus to begin with (between the drawer fronts), the doors the first one of the list.
+    const golaNow = !!(catalog && catalog.gola);
+    if (golaNow && !state.wasGola && !$('drawerHandle').value && [...$('drawerHandle').options].some((o) => o.value === 'gola_c_plus')) setSelect('drawerHandle', 'gola_c_plus');
+    state.wasGola = golaNow;
     syncZoneField();
     lockActions();
   }
