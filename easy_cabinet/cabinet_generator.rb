@@ -567,9 +567,9 @@ module EasyCabinet
           warn "[Easy Cabinet] Could not draw #{item.name}: #{e.message}"
           PanelGenerator.definition(model, item.extent)
         end
-        unless definition.get_attribute(AttributeManager::DICTIONARY, 'edges_hidden') # (no black edge lines on steel and glass)
-          PanelGenerator.hide_edges(definition.entities)
-          definition.set_attribute(AttributeManager::DICTIONARY, 'edges_hidden', true)
+        if definition.get_attribute(AttributeManager::DICTIONARY, 'edges_hidden') # (the edges of the parts were hidden by 1.84.0: they show again)
+          PanelGenerator.show_edges(definition.entities)
+          definition.set_attribute(AttributeManager::DICTIONARY, 'edges_hidden', nil)
         end
         instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
         instance.name = item.name

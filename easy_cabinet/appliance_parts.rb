@@ -44,19 +44,20 @@ module EasyCabinet
     # graphite glass and light greys (no black), as on a Siemens iQ700 or a Teka built-in line in inox.
     APPLIANCE_FINISHES = {
       'body'   => ['Appliance - Body Grey', '#8a919b', { 'roughness' => 0.7, 'metalness' => 0.0 }],
-      'steel'  => ['Appliance - Inox', '#cfd3d8', { 'roughness' => 0.3, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
+      'steel'  => ['Appliance - Inox', '#cfd3d8', { 'roughness' => 0.3, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
       'chrome' => ['Appliance - Polished Chrome', '#eef0f2', { 'roughness' => 0.05, 'metalness' => 1.0 }],
       'glass'  => ['Appliance - Graphite Glass', '#59616b', { 'roughness' => 0.04, 'metalness' => 0.0 }],
       'window' => ['Appliance - Smoked Window', '#363d45', { 'roughness' => 0.02, 'metalness' => 0.0 }],
-      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0, 'texture' => 'stainless_steel.png', 'size' => 400 }],
+      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
       'led'    => ['Appliance - LED Glow', '#d7efff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
       'black'  => ['Appliance - Graphite Plastic', '#4a5159', { 'roughness' => 0.55, 'metalness' => 0.0 }],
       'seal'   => ['Appliance - Graphite Trim', '#3e454d', { 'roughness' => 0.8, 'metalness' => 0.0 }],
       'white'  => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }],
       'zone'   => ['Appliance - Silver Ring', '#dde1e5', { 'roughness' => 0.3, 'metalness' => 0.2 }],
       'filter' => ['Appliance - Mesh Steel', '#aab1b8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
-      'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
-      'groove' => ['Appliance - Sink Groove Inox', '#a7aeb5', { 'roughness' => 0.45, 'metalness' => 1.0 }],
+      'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'appliance_sink_steel.png', 'size' => 400 }],
+      'groove' => ['Appliance - Sink Groove Inox', '#7d848c', { 'roughness' => 0.45, 'metalness' => 1.0 }],
+      'wastesteel' => ['Appliance - Waste Steel', '#b9bfc6', { 'roughness' => 0.35, 'metalness' => 1.0, 'texture' => 'appliance_sink_steel.png', 'size' => 400 }],
       'castiron' => ['Appliance - Cast Iron', '#3a3d42', { 'roughness' => 0.8, 'metalness' => 0.4, 'texture' => 'appliance_cast_iron.png', 'size' => 300 }],
       'whiteglass' => ['Appliance - White Glass', '#f1f3f5', { 'roughness' => 0.03, 'metalness' => 0.0, 'texture' => 'appliance_white_glass.png', 'size' => 1000 }],
       'flamecore' => ['Appliance - Gas Flame Core', '#bfe0ff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
@@ -66,7 +67,7 @@ module EasyCabinet
     }.freeze
     # The first rule that matches the end of a role (its number taken off) says which finish the part gets.
     APPLIANCE_RULES = [
-      [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
+      [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'wastesteel'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
       [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Adeck/, 'whiteglass'], [/\Agrate/, 'castiron'], [/\Aflamecore/, 'flamecore'], [/\Aflame/, 'flame'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze

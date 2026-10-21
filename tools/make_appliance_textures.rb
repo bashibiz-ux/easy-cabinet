@@ -55,3 +55,32 @@ png(File.join(OUT, 'appliance_cast_iron.png'), SIZE, SIZE) do |u, v|
   blotch = Math.sin(u * 2.0 * Math::PI * 5.0) * Math.sin(v * 2.0 * Math::PI * 7.0) * 3.0
   [58 + grain + blotch, 61 + grain + blotch, 66 + grain + blotch]
 end
+
+# Stainless steel for the doors and trims of appliances: very fine vertical brushing, and soft bands of light across it (the reflection of a room) instead of
+# blotches. The columns are independent, so the picture tiles.
+srand_cols = Random.new(23)
+cols = Array.new(SIZE) { srand_cols.rand(-1.0..1.0) }
+smooth_cols = (0...SIZE).map { |i| (cols[(i - 1) % SIZE] + (2 * cols[i]) + cols[(i + 1) % SIZE]) / 4.0 }
+pix = Random.new(5)
+fine = Array.new(SIZE * SIZE) { pix.rand(-1.0..1.0) }
+png(File.join(OUT, 'appliance_steel.png'), SIZE, SIZE) do |u, v|
+  x = (u * SIZE).floor
+  y = (v * SIZE).floor
+  light = (band(u, 0.0, 0.18, 0.10) * 9.0) + (band(u, 0.0, 0.62, 0.06) * 6.0) - (band(u, 0.0, 0.85, 0.08) * 7.0)
+  sheen = -Math.cos(2.0 * Math::PI * v) * 3.0
+  grain = (smooth_cols[x] * 3.5) + (fine[(y * SIZE) + x] * 1.2)
+  base = 198.0 + light + sheen + grain
+  [base, base + 3.0, base + 7.0]
+end
+
+# Steel for sinks: a fine, even brushing along the sink with a faint cloud of light, no blotches.
+rows = Array.new(SIZE) { pix.rand(-1.0..1.0) }
+smooth_rows = (0...SIZE).map { |i| (rows[(i - 1) % SIZE] + (2 * rows[i]) + rows[(i + 1) % SIZE]) / 4.0 }
+png(File.join(OUT, 'appliance_sink_steel.png'), SIZE, SIZE) do |u, v|
+  x = (u * SIZE).floor
+  y = (v * SIZE).floor
+  cloud = (Math.sin(u * 2.0 * Math::PI * 2.0) * Math.sin(v * 2.0 * Math::PI * 3.0) * 4.0)
+  grain = (smooth_rows[y] * 3.0) + (fine[(y * SIZE) + x] * 1.5)
+  base = 208.0 + cloud + grain
+  [base, base + 3.0, base + 6.0]
+end

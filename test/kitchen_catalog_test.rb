@@ -430,6 +430,8 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Appliance - Gas Flame Core', AppliancePieces.finish('appliance_hob_1_flamecore_2')[0]
     assert_equal 'Appliance - White Glass', AppliancePieces.finish('appliance_sink_1_deck_1')[0]
     assert_equal 'Appliance - Cast Iron', AppliancePieces.finish('appliance_hob_1_grate_1_2')[0]
+    assert_equal 'Appliance - Waste Steel', AppliancePieces.finish('appliance_sink_1_bowl_1_waste')[0]
+    assert_equal 'appliance_steel.png', AppliancePieces.finish('appliance_fridge_1_free_plate_1')[2]['texture']
     assert_equal 'appliance_black_glass.png', AppliancePieces.finish('appliance_oven_1_doorglass')[2]['texture']
     %w[appliance_black_glass appliance_dark_window appliance_white_glass appliance_cast_iron].each do |name|
       assert File.file?(File.join(__dir__, '..', 'easy_cabinet', 'data', 'textures', "#{name}.png")), "the picture #{name}"

@@ -484,9 +484,9 @@ module EasyCabinet
       end
     end
 
-    # Every edge of a part is hidden: an appliance or a sink is steel or glass, which shows no joint lines (the faces still shade the shape).
-    def self.hide_edges(entities)
-      entities.grep(Sketchup::Edge).each { |edge| edge.hidden = true }
+    # Shows the edges of a part again (an earlier version hid every edge of the appliances).
+    def self.show_edges(entities)
+      entities.grep(Sketchup::Edge).each { |edge| edge.hidden = false }
     end
 
     # A flat slab (size [x, y, z] in mm, its low corner at the origin) with rounded openings cut right through it, in one piece with no joints: the deck
@@ -512,7 +512,6 @@ module EasyCabinet
         warn "[Easy Cabinet] Could not cut an opening in a sink deck: #{e.message}"
       end
       soften(entities)
-      hide_edges(entities)
       definition
     end
 
@@ -534,7 +533,6 @@ module EasyCabinet
       inner = entities.add_face(rounded_rect(wall, dx - wall, wall, dy - wall, [radius.to_f - wall, 0.5].max).map { |x, y| [x.mm, y.mm, dz.mm] })
       inner.pushpull(inner.normal.z.positive? ? -(dz - wall).mm : (dz - wall).mm)
       soften(entities)
-      hide_edges(entities)
       definition
     end
 
