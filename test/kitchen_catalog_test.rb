@@ -348,10 +348,10 @@ class KitchenCatalogTest < Minitest::Test
     result, layout = unit('base', 'base_sink', 900)
     assert_empty result.errors.map { |e| e['message'] }
     roles = layout.appliances.map(&:role)
-    %w[appliance_sink_1_bowl_1_floor appliance_sink_1_rim_1 appliance_sink_1_tap_body appliance_sink_1_tray].each { |role| assert_includes roles, role }
+    %w[appliance_sink_1_bowl_1_floor appliance_sink_1_deck_1 appliance_sink_1_tap_body appliance_sink_1_deck_4].each { |role| assert_includes roles, role }
     assert_equal 1, roles.grep(/bowl_\d_floor/).length, 'one bowl and a drainer to start'
     floor = layout.appliances.find { |a| a.role.end_with?('bowl_1_floor') }
-    rim = layout.appliances.find { |a| a.role.end_with?('rim_1') }
+    rim = layout.appliances.find { |a| a.role.end_with?('deck_1') }
     assert_in_delta 780.0 + 20.0 - 180.0, floor.offset[2], 0.01, 'the bowl hangs from the top of the worktop'
     assert_in_delta 780.0 + 20.0, rim.offset[2], 0.01, 'the rim lies on it'
     params = result.params.merge('door_count' => 2, 'drawer_count' => 0)
@@ -362,7 +362,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator x1, :<, 560.0
     assert_operator y0, :>, 18.0
     assert_operator y1, :<, 900.0 - 18.0
-    assert_in_delta 420.0, x1 - x0, 0.01, 'the opening is the size of the sink'
+    assert_in_delta 480.0, x1 - x0, 0.01, 'the opening is the size of the sink (510 with its deck)'
 
     # two bowls, no drainer; and mirrored: the drainer on the other side
     two, = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)
@@ -379,12 +379,31 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator centre.call(flat[:tray]), :>, centre.call(flat[:bowls].first), 'the drainer is on the right'
     assert_operator centre.call(flipped[:tray]), :<, centre.call(flipped[:bowls].first), 'mirrored it is on the left'
     assert_equal flat[:rect], flipped[:rect], 'the opening is the same either way'
-    assert_equal 420.0, flat[:depth], 'it is not turned: the bowls keep their depth'
+    assert_equal 480.0, flat[:depth], 'it is not turned: the bowls keep their depth'
     # a sink that does not fit is refused
     narrow, = unit('base', 'base_sink_1door', 400, 'sink_bowls' => 2)
     assert_includes narrow.errors.map { |e| e['field'] }, 'sink_bowls'
     fine, = unit('base', 'base_sink_1door', 400)
     assert_empty fine.errors.map { |e| e['message'] }
+  end
+
+  def test_the_sinks_are_the_teka_ones_with_the_uni_mixer
+    { [1, true, 1000] => [830.0, 480.0], [2, true, 1200] => [1130.0, 490.0], [2, false, 900] => [710.0, 410.0] }.each do |(bowls, tray, width), (length, depth)|
+      result, layout = unit('base', 'base_sink', width, 'sink_bowls' => bowls, 'sink_tray' => tray)
+      assert_empty result.errors.map { |e| e['message'] }, "#{bowls} bowls, drainer #{tray}"
+      plan = Fixtures.sink_plan(result.params.merge('door_count' => 2, 'drawer_count' => 0), CabinetLayout.send(:dimensions, result.params.merge('door_count' => 2, 'drawer_count' => 0)))
+      assert plan[:fits]
+      assert_in_delta length, plan[:rect][3] - plan[:rect][2], 0.01, "#{bowls} bowls, drainer #{tray}: the length of the opening"
+      assert_in_delta depth, plan[:rect][1] - plan[:rect][0], 0.01, 'and its depth'
+      roles = layout.appliances.map(&:role)
+      assert_equal bowls, roles.grep(/sink_1_bowl_\d_floor/).length
+      assert_equal bowls, roles.grep(/sink_1_bowl_\d_waste/).length, 'a square waste in each bowl'
+      assert_equal tray, roles.any? { |r| r.end_with?('_tray') || r.end_with?('deck_4') }, 'a drainer only when asked for'
+      assert_equal tray ? 5 : 0, roles.grep(/sink_1_groove_\d/).length, 'five grooves in the drainer'
+      neck = layout.appliances.find { |a| a.shape == 'tube' }
+      assert neck && neck.round == 24.0, 'the Uni 9310 has a 24 mm neck'
+      assert_includes roles, 'appliance_sink_1_tap_lever'
+    end
   end
 
   def test_the_hob_unit_has_a_hob_and_an_opening
@@ -535,7 +554,7 @@ class KitchenCatalogTest < Minitest::Test
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
     ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_doorglass' => 'microwave', 'appliance_hob_1_plate' => 'hob', 'appliance_hood_1_frame' => 'hood',
               'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
-              'appliance_sink_1_tray' => 'sink' }
+              'appliance_sink_1_deck_4' => 'sink' }
     ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
     assert_equal true, Defaults.params['visibility_settings']['free_fridge'], 'the freestanding fridge has its own tick'
     _, housing = unit('tall', 'tall_fridge_housing_free', 900)

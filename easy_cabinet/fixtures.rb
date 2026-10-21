@@ -14,6 +14,8 @@ module EasyCabinet
     SINK_RIM = 15.0        # the rim lies this far over the worktop around the opening
     SINK_STEEL = 2.0       # thickness of the steel
     SINK_CORNER = 28.0     # the radius of a bowl's corners
+    TEKA_LENGTH = 830.0    # the opening of the Teka sink (860 wide with its 15 mm deck round it)
+    TEKA_DEPTH = 480.0     # (510 deep)
     HOB_WIDTH = 860.0      # the widest hob
     HOB_DEPTH = 500.0
     ARC_STEPS = 12
@@ -36,9 +38,12 @@ module EasyCabinet
       length_room = dims.inner_w - 40.0
       depth_room = dims.depth - dims.interior_start - 60.0
 
+      # one bowl and a drainer: the Teka Diamond RS15 1B 1D 86 (860 x 510, a 400 x 400 bowl, a white glass deck); two bowls and a drainer: the Teka Zenit RS15 2B 1D R
+      # (1160 x 520, two 340 x 400 bowls, all stainless steel); two bowls and no drainer: the Teka Flexlinea RS15 2B 740 (740 x 440, two 340 x 400 bowls)
+      teka = tray ? (bowls == 1 ? :diamond : :zenit) : (bowls == 2 ? :flexlinea : nil)
       wanted = (bowls * SINK_BOWL) + ((bowls - 1) * SINK_DIVIDER) + (tray ? SINK_BOWL + SINK_DIVIDER : 0.0)
-      length = [wanted, length_room].min
-      depth = [SINK_DEPTH, depth_room].min
+      length = [{ diamond: TEKA_LENGTH, zenit: 1130.0, flexlinea: 710.0 }.fetch(teka, wanted), length_room].min
+      depth = [{ diamond: TEKA_DEPTH, zenit: 490.0, flexlinea: 410.0 }.fetch(teka, SINK_DEPTH), depth_room].min
       free = length - ((bowls - 1) * SINK_DIVIDER) - (tray ? SINK_DIVIDER : 0.0)
       tray_width = tray ? [free * 0.32, 450.0].min : 0.0
       bowl_width = (free - tray_width) / bowls
@@ -46,16 +51,38 @@ module EasyCabinet
       frame = { centre: [(dims.depth / 2.0) - 10.0, dims.width / 2.0], length: length, depth: depth, mirror: mirror }
       turn = ->(u0, u1, v0, v1) { place(frame, u0, u1, v0, v1) }
       step = bowl_width + SINK_DIVIDER
+      spans = nil # where the bowls lie along the sink: [[u0, u1], ...]
+      if teka == :diamond
+        bowl_width = [SINK_BOWL, length * 0.482].min
+        bowl_depth = [SINK_BOWL, depth - 80.0].min
+        bowl_v0 = (depth - bowl_depth) / 2.0
+        spans = [[16.0, 16.0 + bowl_width]]
+        tap = [spans.last[1] + 54.0, 37.0]
+      elsif teka == :zenit
+        bowl_width = [355.0, (length - 37.0 - 300.0) / 2.0].min
+        bowl_depth = [SINK_BOWL, depth - 55.0 - 20.0].min
+        bowl_v0 = 55.0
+        spans = [[15.0, 15.0 + bowl_width], [37.0 + bowl_width, 37.0 + (2 * bowl_width)]]
+        tap = [spans.first[1] + 11.0, 20.0]
+      elsif teka == :flexlinea
+        bowl_width = [345.0, (length - 20.0) / 2.0].min
+        bowl_depth = [SINK_BOWL, depth - 10.0].min
+        bowl_v0 = (depth - bowl_depth) / 2.0
+        spans = [[0.0, bowl_width], [bowl_width + 20.0, (2 * bowl_width) + 20.0]]
+        tap = [bowl_width + 10.0, -50.0] # (on the worktop behind the sink: this sink has no hole for it)
+      end
+      tray_width = length - spans.last[1] if spans
       whole = turn.call(0.0, length, 0.0, depth)
-      fits = length >= 200.0 && depth >= 200.0 && bowl_width >= 150.0 &&
+      fits = length >= 200.0 && depth >= 200.0 && bowl_width >= (teka ? 240.0 : 150.0) &&
              whole[0] >= dims.interior_start + 10.0 && whole[1] <= dims.depth - 30.0 &&
              whole[2] >= dims.thick + 10.0 && whole[3] <= dims.width - dims.thick - 10.0
       {
         rect: whole, fits: fits, length: length, depth: depth, tray_width: tray_width, turn: turn, mirror: mirror,
-        bowls: (0...bowls).map { |i| turn.call(i * step, (i * step) + bowl_width, 0.0, depth) },
-        dividers: (0...(bowls - 1)).map { |i| turn.call((i * step) + bowl_width, (i + 1) * step, 0.0, depth) },
-        tray: tray ? turn.call(bowls * step, length, 0.0, depth) : nil,
-        tap_u: bowls == 2 ? bowl_width + (SINK_DIVIDER / 2.0) : bowl_width / 2.0
+        bowls: teka ? spans.map { |a, b| turn.call(a, b, bowl_v0, bowl_v0 + bowl_depth) } : (0...bowls).map { |i| turn.call(i * step, (i * step) + bowl_width, 0.0, depth) },
+        dividers: teka ? [] : (0...(bowls - 1)).map { |i| turn.call((i * step) + bowl_width, (i + 1) * step, 0.0, depth) },
+        tray: if teka == :flexlinea then nil elsif teka then turn.call(spans.last[1], length, 0.0, depth) elsif tray then turn.call(bowls * step, length, 0.0, depth) end,
+        tap_u: if teka then tap[0] elsif bowls == 2 then bowl_width + (SINK_DIVIDER / 2.0) else bowl_width / 2.0 end,
+        teka: teka, spans: spans, bowl_width: bowl_width, bowl_v0: bowl_v0, bowl_depth: bowl_depth, tap_v: tap&.last
       }
     end
 
@@ -104,6 +131,8 @@ module EasyCabinet
     # ---- the sink -----------------------------------------------------------------------------
 
     def self.sink_parts(plan, top)
+      return teka_sink_parts(plan, top) if plan[:teka]
+
       key = 'appliance_sink_1'
       steel = SINK_STEEL
       out = []
@@ -140,13 +169,108 @@ module EasyCabinet
     end
     private_class_method :sink_parts
 
+    # The Teka Diamond RS15 1B 1D 86 (a white glass deck 860 x 510 lying on the worktop, a stainless bowl 400 x 400 with a square waste sunk in it on the left, the
+    # drainer on the right with five grooves and a pop-up button) or the Teka Zenit RS15 2B 1D R (a stainless steel deck 1160 x 520 with two bowls and the drainer;
+    # the pop-up button at the back, over the second bowl), each with the Teka Uni 9310 mixer standing at the back.
+    def self.teka_sink_parts(plan, top)
+      key = 'appliance_sink_1'
+      zenit = plan[:teka] == :zenit
+      flex = plan[:teka] == :flexlinea
+      turn = plan[:turn]
+      length = plan[:length]
+      depth = plan[:depth]
+      spans = plan[:spans]
+      bw = plan[:bowl_width]
+      bv0 = plan[:bowl_v0]
+      bd = plan[:bowl_depth]
+      deck = flex ? 3.0 : 6.0
+      out = []
+      piece = lambda do |name, label, ua, ub, va, vb, z, height|
+        rect = turn.call(ua, ub, va, vb)
+        out << box("#{key}_#{name}", label, [rect[0], rect[2], z], [rect[1] - rect[0], rect[3] - rect[2], height])
+      end
+      edge = spans.first[0]
+      last = spans.last[1]
+      if flex # (a steel flange 15 mm wide round the two bowls)
+        piece.call('rim_1', 'Sink Rim', -15.0, 0.0, -15.0, depth + 15.0, top, deck)
+        piece.call('rim_2', 'Sink Rim', length, length + 15.0, -15.0, depth + 15.0, top, deck)
+        piece.call('rim_3', 'Sink Rim', 0.0, length, -15.0, 0.0, top, deck)
+        piece.call('rim_4', 'Sink Rim', 0.0, length, depth, depth + 15.0, top, deck)
+        piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
+      elsif zenit # (the steel deck: the same finish as the bowls)
+        piece.call('rim_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
+        piece.call('rim_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
+        piece.call('rim_3', 'Sink Deck', edge, last, bv0 + bd, depth + 15.0, top, deck)
+        piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
+        piece.call('tray', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
+      else
+        piece.call('deck_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
+        piece.call('deck_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
+        piece.call('deck_3', 'Sink Deck', edge, last, bv0 + bd, depth + 15.0, top, deck)
+        piece.call('deck_4', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
+      end
+      spans.each_with_index do |(ua, ub), i|
+        out.concat(bowl(key, i + 1, plan[:bowls][i], top - SINK_BOWL_DEPTH, top + deck, radius: 12.0, waste: false))
+        shown = zenit ? ((ub - ua) / 2.0) + 22.0 : ((ub - ua) / 2.0) + (flex ? 0.0 : 73.0) # the square waste: a little towards the drainer, and towards the back
+        back = zenit ? bv0 + 50.0 : bv0 + (bd / 2.0) - (flex ? 107.0 : 51.0)
+        sq = turn.call(ua + shown - 35.0, ua + shown + 35.0, back, back + 70.0)
+        out << box("#{key}_bowl_#{i + 1}_waste", 'Sink Bowl Waste', [sq[0], sq[2], top - SINK_BOWL_DEPTH + SINK_STEEL], [70.0, 70.0, 2.0])
+      end
+      if flex
+        out.concat(uni_tap(key, plan, top + deck))
+        return out
+      end
+
+      from = last + (zenit ? 12.0 : 11.0)
+      to = last + ((length - last) * (zenit ? 0.8 : 0.835))
+      5.times do |k|
+        v = depth * (zenit ? 0.247 + (k * 0.1437) : 0.252 + (k * 0.128))
+        piece.call("groove_#{k + 1}", 'Drainer Groove', from, to, v - 1.5, v + 1.5, top + deck, 0.8)
+      end
+      if zenit # the pop-up button at the back, over the second bowl
+        piece.call('drain_waste', 'Pop-up Button', last - 150.0 - 18.0, last - 150.0 + 18.0, 2.0, 38.0, top + deck, 1.5)
+      else
+        piece.call('drain_waste', 'Drainer Button', last + 40.0, last + 68.0, depth - 38.0, depth - 10.0, top + deck, 1.0)
+      end
+      out.concat(uni_tap(key, plan, top + deck))
+      out
+    end
+    private_class_method :teka_sink_parts
+
+    # The Teka Uni 9310: a stainless single-lever mixer 365 mm high. A 52 mm foot, a 42 mm body, a 24 mm neck that rises and arches 200 mm over the bowl,
+    # and the lever on the other side. It stands at the back (by the first bowl; with two bowls on the join between them), the spout over the first bowl.
+    def self.uni_tap(key, plan, top)
+      cx, _, cy, = plan[:turn].call(plan[:tap_u], plan[:tap_u], plan[:tap_v], plan[:tap_v])
+      dy = plan[:mirror] ? 1.0 : -1.0 # towards the bowl
+      arc_z = top + 255.0
+      radius = 100.0
+      neck = [[cx, cy, top + 88.0], [cx, cy, arc_z]]
+      TAP_STEPS.times do |i|
+        angle = Math::PI * (i + 1) / TAP_STEPS
+        neck << [cx, cy + (dy * radius * (1.0 - Math.cos(angle))), arc_z + (radius * Math.sin(angle))]
+      end
+      neck << [cx, cy + (dy * 2.0 * radius), arc_z - 14.0]
+      housing_from = dy.negative? ? cy + 10.0 : cy - 10.0 - 34.0
+      rod_y = dy.negative? ? cy + 10.0 + 22.0 : cy - 10.0 - 22.0
+      [
+        cyl("#{key}_tap_base", 'Tap Base Plate', :z, [cx, cy, top], 52.0, 6.0),
+        cyl("#{key}_tap_body", 'Tap Body', :z, [cx, cy, top + 6.0], 42.0, 82.0),
+        cyl("#{key}_tap_collar", 'Tap Collar', :z, [cx, cy, top + 88.0], 28.0, 6.0),
+        AppliancePieces.tube("#{key}_tap_neck", 'Tap Swan Neck', neck, 24.0),
+        cyl("#{key}_tap_aerator", 'Tap Aerator', :z, [cx, cy + (dy * 2.0 * radius), arc_z - 32.0], 22.0, 18.0),
+        cyl("#{key}_tap_boss", 'Tap Lever Housing', :y, [cx, housing_from, top + 62.0], 40.0, 34.0),
+        cyl("#{key}_tap_lever", 'Tap Lever', :z, [cx, rod_y, top + 72.0], 12.0, 58.0)
+      ]
+    end
+    private_class_method :uni_tap
+
     # One bowl hanging from the worktop: a floor with rounded corners, straight walls and quarter-round corners, a
     # chrome waste with a dark hole.
-    def self.bowl(key, n, rect, floor, top)
+    def self.bowl(key, n, rect, floor, top, radius: SINK_CORNER, waste: true)
       x0, x1, y0, y1 = rect
       steel = SINK_STEEL
       depth = top - floor
-      radius = [SINK_CORNER, (x1 - x0) / 4.0, (y1 - y0) / 4.0].min
+      radius = [radius, (x1 - x0) / 4.0, (y1 - y0) / 4.0].min
       out = []
       outline = rounded_outline(x0, x1, y0, y1, radius)
       out << shaped("#{key}_bowl_#{n}_floor", "Sink Bowl #{n} Floor", outline, floor, steel)
@@ -162,9 +286,11 @@ module EasyCabinet
       end
       cx = (x0 + x1) / 2.0
       cy = (y0 + y1) / 2.0
-      out << cyl("#{key}_bowl_#{n}_waste", "Sink Bowl #{n} Waste", :z, [cx, cy, floor + steel], 62.0, 2.0)
-      out << cyl("#{key}_bowl_#{n}_hole", "Sink Bowl #{n} Waste Hole", :z, [cx, cy, floor + steel + 2.0], 40.0, 0.6)
-      out << cyl("#{key}_bowl_#{n}_plug", "Sink Bowl #{n} Plug", :z, [cx, cy, floor + steel + 2.6], 30.0, 2.0)
+      if waste
+        out << cyl("#{key}_bowl_#{n}_waste", "Sink Bowl #{n} Waste", :z, [cx, cy, floor + steel], 62.0, 2.0)
+        out << cyl("#{key}_bowl_#{n}_hole", "Sink Bowl #{n} Waste Hole", :z, [cx, cy, floor + steel + 2.0], 40.0, 0.6)
+        out << cyl("#{key}_bowl_#{n}_plug", "Sink Bowl #{n} Plug", :z, [cx, cy, floor + steel + 2.6], 30.0, 2.0)
+      end
       out << box("#{key}_bowl_#{n}_overflow", "Sink Bowl #{n} Overflow", [x0 + steel, cy - 30.0, top - 40.0], [0.8, 60.0, 8.0])
       out
     end

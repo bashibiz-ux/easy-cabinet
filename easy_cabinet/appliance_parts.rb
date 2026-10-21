@@ -66,7 +66,7 @@ module EasyCabinet
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Agrate/, 'castiron'], [/\Aflame/, 'flame'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Adeck/, 'white'], [/\Agrate/, 'castiron'], [/\Aflame/, 'flame'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
