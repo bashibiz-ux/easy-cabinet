@@ -51,16 +51,17 @@ module KitchenCabinetMaster
       points + middle
     end
 
-    # The section of a vertical profile seen from above: [[x, y], ...], x out of the doors, y across them, centred on the gap between two doors (30 and 35 mm
-    # wide). A back plate `depth` behind the doors, as wide as the profile is, and two walls along the edges of the doors that line the gap up to the face of
-    # the doors.
+    # The section of a vertical profile seen from above: [[x, y], ...], x out of the doors, y across them, centred on the gap between two doors (30 mm for D,
+    # 35 for E, the gap to put the fingers in). The profile is behind the doors: a back plate `depth` behind them, as wide as the profile is (so 18.5 of it
+    # is behind each door), a short leg at each end that reaches the back of the door, and two walls that line the gap up to the face of the doors.
     def self.vertical_outline(system, back)
       spec = SYSTEMS.fetch(system)
       w = spec[:size] / 2.0
       g = spec[:gap] / 2.0
       xb = back - spec[:depth]
       t = PLATE
-      [[xb, -w], [xb + t, -w], [xb + t, -g], [0.0, -g], [0.0, -g + t], [xb + t, -g + t], [xb + t, g - t], [0.0, g - t], [0.0, g], [xb + t, g], [xb + t, w], [xb, w]]
+      [[xb, -w], [back, -w], [back, -w + t], [xb + t, -w + t], [xb + t, -g], [0.0, -g], [0.0, -g + t], [xb + t, -g + t],
+       [xb + t, g - t], [0.0, g - t], [0.0, g], [xb + t, g], [xb + t, w - t], [back, w - t], [back, w], [xb, w]]
     end
 
     # How much narrower than it was a door is made for an end profile: the gap of the system, less the reveal it had there.
@@ -69,12 +70,16 @@ module KitchenCabinetMaster
     end
 
     # An end profile (a door at the end of a run, the cabinet beside it), seen from above, y from the edge of the door out over the gap to the cabinet (mirrored
-    # for one on the left of its door): the plate, a small wing behind the door, and one wall along the edge of the door.
+    # for one on the left of its door): half a profile between doors. Behind the door as far as the profile between doors is (18.5 mm), then the gap (35 or
+    # 30 mm) with a wall along the edge of the door and one along the cabinet.
     def self.end_outline(system, back, mirror = false)
       spec = SYSTEMS.fetch(system)
       t = PLATE
       xb = back - spec[:depth]
-      points = [[xb, -8.0], [xb + t, -8.0], [xb + t, 0.0], [0.0, 0.0], [0.0, t], [xb + t, t], [xb + t, spec[:gap]], [xb, spec[:gap]]]
+      overlap = (spec[:size] - spec[:gap]) / 2.0
+      gap = spec[:gap]
+      points = [[xb, -overlap], [back, -overlap], [back, -overlap + t], [xb + t, -overlap + t], [xb + t, 0.0], [0.0, 0.0], [0.0, t], [xb + t, t],
+                [xb + t, gap - t], [0.0, gap - t], [0.0, gap], [xb, gap]]
       mirror ? points.map { |x, y| [x, -y] }.reverse : points
     end
 

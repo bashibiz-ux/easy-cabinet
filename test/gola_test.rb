@@ -81,6 +81,19 @@ class GolaTest < Minitest::Test
     end
   end
 
+  def test_the_vertical_profiles_are_behind_the_doors_and_as_wide_as_the_hafele_details
+    { 'd' => [66.5, 30.0, 12.0], 'e' => [72.0, 35.0, 20.0] }.each do |system, (width, gap, depth)|
+      outline = GolaProfile.vertical_outline(system, -18.5)
+      ys = outline.map { |p| p[1] }
+      xs = outline.map { |p| p[0] }
+      assert_in_delta width, ys.max - ys.min, 0.001, "#{system}: as wide as the profile, so (#{width} - #{gap}) / 2 of it is behind each door"
+      assert_in_delta(-18.5 - depth, xs.min, 0.001, "#{system}: the back plate is behind the doors")
+      assert_in_delta 0.0, xs.max, 0.001, 'the walls of the gap reach the face of the doors'
+      stop = GolaProfile.end_outline(system, -18.5)
+      assert_in_delta ((width - gap) / 2.0) + gap, stop.map { |p| p[1] }.max - stop.map { |p| p[1] }.min, 0.001, "#{system}: an end profile is a gap and what goes behind one door"
+    end
+  end
+
   # ---- B Plus: the top fronts of a base unit ----------------------------------------------------
 
   def test_b_plus_cuts_the_top_fronts_of_a_base_unit_back_and_puts_a_profile_in_the_gap
