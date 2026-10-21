@@ -41,11 +41,12 @@ module EasyCabinet
       depth_room = [dims.depth - dims.interior_start - 60.0, 2.0 * (dims.depth - 30.0 - centre_x)].min
 
       # one bowl and a drainer: the Teka Diamond RS15 1B 1D 86 (860 x 510, a 400 x 400 bowl, a white glass deck); two bowls and a drainer: the Teka Zenit RS15 2B 1D R
-      # (1160 x 520, two 340 x 400 bowls, all stainless steel); two bowls and no drainer: the Teka Flexlinea RS15 2B 740 (740 x 440, two 340 x 400 bowls)
-      teka = tray ? (bowls == 1 ? :diamond : :zenit) : (bowls == 2 ? :flexlinea : nil)
+      # (1160 x 520, two 340 x 400 bowls, all stainless steel); two bowls and no drainer: the Teka Flexlinea RS15 2B 740 (740 x 440, two 340 x 400 bowls); one bowl and
+      # no drainer: the Teka Zenit RS15 1B (600 x 520, one 500 x 400 bowl, all stainless steel)
+      teka = tray ? (bowls == 1 ? :diamond : :zenit) : (bowls == 2 ? :flexlinea : :zenit1)
       wanted = (bowls * SINK_BOWL) + ((bowls - 1) * SINK_DIVIDER) + (tray ? SINK_BOWL + SINK_DIVIDER : 0.0)
-      length = [{ diamond: TEKA_LENGTH, zenit: 1130.0, flexlinea: 710.0 }.fetch(teka, wanted), length_room].min
-      depth = [{ diamond: TEKA_DEPTH, zenit: 490.0, flexlinea: 410.0 }.fetch(teka, SINK_DEPTH), depth_room].min
+      length = [{ diamond: TEKA_LENGTH, zenit: 1130.0, flexlinea: 710.0, zenit1: 570.0 }.fetch(teka, wanted), length_room].min
+      depth = [{ diamond: TEKA_DEPTH, zenit: 490.0, flexlinea: 410.0, zenit1: 490.0 }.fetch(teka, SINK_DEPTH), depth_room].min
       free = length - ((bowls - 1) * SINK_DIVIDER) - (tray ? SINK_DIVIDER : 0.0)
       tray_width = tray ? [free * 0.32, 450.0].min : 0.0
       bowl_width = (free - tray_width) / bowls
@@ -66,6 +67,13 @@ module EasyCabinet
         bowl_v0 = 55.0
         spans = [[15.0, 15.0 + bowl_width], [37.0 + bowl_width, 37.0 + (2 * bowl_width)]]
         tap = [spans.first[1] + 11.0, 20.0]
+      elsif teka == :zenit1
+        bowl_width = [500.0, length - 40.0].min
+        bowl_depth = [SINK_BOWL, depth - 55.0 - 20.0].min
+        bowl_v0 = 55.0
+        edge = (length - bowl_width) / 2.0
+        spans = [[edge, edge + bowl_width]]
+        tap = [edge + (bowl_width / 2.0), 20.0] # (at the back, over the middle of the bowl; the pop-up button 195 mm further along)
       elsif teka == :flexlinea
         bowl_width = [345.0, (length - 20.0) / 2.0].min
         bowl_depth = [SINK_BOWL, depth - 10.0].min
@@ -176,7 +184,8 @@ module EasyCabinet
     # the pop-up button at the back, over the second bowl), each with the Teka Uni 9310 mixer standing at the back.
     def self.teka_sink_parts(plan, top)
       key = 'appliance_sink_1'
-      zenit = plan[:teka] == :zenit
+      single = plan[:teka] == :zenit1 # (one bowl, no drainer: the steel deck of the Zenit)
+      zenit = plan[:teka] == :zenit || single
       flex = plan[:teka] == :flexlinea
       turn = plan[:turn]
       length = plan[:length]
@@ -203,8 +212,12 @@ module EasyCabinet
         piece.call('rim_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
         piece.call('rim_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
         piece.call('rim_3', 'Sink Deck', edge, last, bv0 + bd, depth + 15.0, top, deck)
-        piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
-        piece.call('tray', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
+        if single
+          piece.call('rim_4', 'Sink Deck', last, length + 15.0, -15.0, depth + 15.0, top, deck)
+        else
+          piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
+          piece.call('tray', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
+        end
       else
         piece.call('deck_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
         piece.call('deck_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
@@ -219,6 +232,12 @@ module EasyCabinet
         out << box("#{key}_bowl_#{i + 1}_waste", 'Sink Bowl Waste', [sq[0], sq[2], top - SINK_BOWL_DEPTH + SINK_STEEL], [70.0, 70.0, 2.0])
       end
       if flex
+        out.concat(uni_tap(key, plan, top + deck))
+        return out
+      end
+
+      if single # the second tap hole, 195 mm from the first, has the pop-up button
+        piece.call('drain_waste', 'Pop-up Button', plan[:tap_u] + 195.0 - 18.0, plan[:tap_u] + 195.0 + 18.0, 2.0, 38.0, top + deck, 1.5)
         out.concat(uni_tap(key, plan, top + deck))
         return out
       end
