@@ -194,7 +194,7 @@ module KitchenCabinetMaster
       item = KitchenPlanner::Item.new(category: category.to_s, type: type, width: width, kind: at['corner'] ? :corner : :straight)
       KitchenManager.send(:build_unit, model, raw, raw['catalog_id'], item, frame)
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not put in #{type}: #{e.message}"
+      warn "[Easy Cabinet] Could not put in #{type}: #{e.message}"
       nil
     end
     private_class_method :insert_unit
@@ -1130,7 +1130,7 @@ module KitchenCabinetMaster
       SelectionManager.push_selection(model)
       done
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not update the Gola profiles: #{e.message}"
+      warn "[Easy Cabinet] Could not update the Gola profiles: #{e.message}"
       0
     end
 

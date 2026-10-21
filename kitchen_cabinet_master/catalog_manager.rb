@@ -246,7 +246,7 @@ module KitchenCabinetMaster
         reload!
         true
       rescue SystemCallError => e
-        warn "[Kitchen Cabinet Master] Could not remove the handle #{id}: #{e.message}"
+        warn "[Easy Cabinet] Could not remove the handle #{id}: #{e.message}"
         false
       end
 
@@ -281,7 +281,7 @@ module KitchenCabinetMaster
           path = File.join(DATA_DIR, relative)
           File.delete(path) if File.file?(path)
         rescue SystemCallError => e
-          warn "[Kitchen Cabinet Master] Could not remove #{path}: #{e.message}"
+          warn "[Easy Cabinet] Could not remove #{path}: #{e.message}"
         end
       end
 
@@ -379,7 +379,7 @@ module KitchenCabinetMaster
         path = File.join(user_root.to_s, item['component'])
         File.delete(path) if File.file?(path)
       rescue SystemCallError => e
-        warn "[Kitchen Cabinet Master] Could not delete #{item['component']}: #{e.message}"
+        warn "[Easy Cabinet] Could not delete #{item['component']}: #{e.message}"
       end
 
       def read_json(path)

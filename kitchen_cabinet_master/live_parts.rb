@@ -182,7 +182,7 @@ module KitchenCabinetMaster
       keep_selection(model, kept)
       WorktopManager.report_splash(model) if defined?(WorktopManager)
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not refresh the live parts: #{e.message}"
+      warn "[Easy Cabinet] Could not refresh the live parts: #{e.message}"
       DialogManager.push('notice', { 'message' => "Some parts could not be drawn: #{e.message} at #{Array(e.backtrace).first.to_s[/\w+\.rb:\d+/]}" }) if defined?(DialogManager)
     end
 

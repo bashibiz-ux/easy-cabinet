@@ -166,7 +166,7 @@ module KitchenCabinetMaster
 
       push_selection
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Selection update failed: #{e.message}"
+      warn "[Easy Cabinet] Selection update failed: #{e.message}"
     end
   end
 end

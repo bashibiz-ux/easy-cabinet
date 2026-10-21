@@ -825,7 +825,7 @@ module KitchenCabinetMaster
       redo_room(model, plan, options, specs, moved, copies, gone, sized)
       (moved.keys | sized.keys).length + copies.length + gone.length
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not move a door or window of the room: #{e.message}"
+      warn "[Easy Cabinet] Could not move a door or window of the room: #{e.message}"
       0
     end
 
@@ -873,13 +873,13 @@ module KitchenCabinetMaster
         def onToolStateChanged(_tools, _name, tool_id, tool_state)
           RoomShell.request if tool_id == SnapManager::MOVE_TOOL_ID && tool_state.zero?
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+          warn "[Easy Cabinet] Room watcher failed: #{e.message}"
         end
 
         def onActiveToolChanged(_tools, _name, _tool_id)
           RoomShell.request
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+          warn "[Easy Cabinet] Room watcher failed: #{e.message}"
         end
       end
 
@@ -888,7 +888,7 @@ module KitchenCabinetMaster
         def onChangeEntity(_entity)
           RoomShell.request
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+          warn "[Easy Cabinet] Room watcher failed: #{e.message}"
         end
       end
 
@@ -898,7 +898,7 @@ module KitchenCabinetMaster
         def onTransactionCommit(_model)
           RoomShell.request
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+          warn "[Easy Cabinet] Room watcher failed: #{e.message}"
         end
       end
 
@@ -907,7 +907,7 @@ module KitchenCabinetMaster
         def onElementAdded(_entities, entity)
           RoomShell.request if entity.is_a?(Sketchup::Group)
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Room watcher failed: #{e.message}"
+          warn "[Easy Cabinet] Room watcher failed: #{e.message}"
         end
       end
 

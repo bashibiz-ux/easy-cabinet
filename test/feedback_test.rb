@@ -25,9 +25,9 @@ class FeedbackTest < Minitest::Test
     url, = mail({ 'kind' => 'suggestion', 'message' => 'A hob with 5 rings & a hood' }, extension_version: '1.51.0', sketchup_version: '24.0')
     assert url.start_with?("mailto:#{FM.email}?")
     query = URI.decode_www_form(url.split('?', 2).last.gsub('+', '%2B')).to_h
-    assert_equal 'Kitchen Cabinet Master feedback: Suggestion', query['subject']
+    assert_equal 'Easy Cabinet feedback: Suggestion', query['subject']
     assert_includes query['body'], 'A hob with 5 rings & a hood'
-    assert_includes query['body'], 'Kitchen Cabinet Master 1.51.0, SketchUp 24.0'
+    assert_includes query['body'], 'Easy Cabinet 1.51.0, SketchUp 24.0'
   end
 
   def test_the_version_lines_and_the_reply_address_are_optional
@@ -45,7 +45,7 @@ class FeedbackTest < Minitest::Test
     links, subject, body, problem = FM.compose({ 'message' => 'Nice & fast', 'kind' => 'praise' })
     assert_nil problem
     assert_equal %w[gmail mailto outlook yahoo], links.keys.sort
-    assert_equal 'Kitchen Cabinet Master feedback: Praise', subject
+    assert_equal 'Easy Cabinet feedback: Praise', subject
     assert_includes body, 'Nice & fast'
     assert links['gmail'].start_with?('https://mail.google.com/mail/?view=cm')
     assert_includes links['gmail'], 'to=bashibiz%40gmail.com'

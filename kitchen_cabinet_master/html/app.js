@@ -6,7 +6,7 @@
   // Must match EXTENSION_VERSION in kitchen_cabinet_master.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.72.0';
+  const APP_VERSION = '1.73.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -166,7 +166,7 @@
     if (/^(set_live_|visibility$|set_snap$|set_unit_sizes$|reset_unit_sizes$)/.test(action)) state.noFocusUntil = Date.now() + 4000; // (a switch of the Settings: the item it re-selects does not open Cabinets and Extras)
     return new Promise((resolve, reject) => {
       if (!window.sketchup || typeof window.sketchup.kcm_request !== 'function') {
-        reject(new Error('Not connected to SketchUp. Open this panel from Extensions > Kitchen Cabinet Master.'));
+        reject(new Error('Not connected to SketchUp. Open this panel from Extensions > Easy Cabinet.'));
         return;
       }
       const id = ++state.seq;

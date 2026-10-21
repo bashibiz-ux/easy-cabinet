@@ -76,7 +76,7 @@ module KitchenCabinetMaster
         result = dispatch(message['action'].to_s, message['data'])
         deliver(result.merge('id' => message['id']))
       rescue JSON::ParserError => e
-        warn "[Kitchen Cabinet Master] Unreadable message from panel: #{e.message}"
+        warn "[Easy Cabinet] Unreadable message from panel: #{e.message}"
       end
 
       def dispatch(action, data)
@@ -107,7 +107,7 @@ module KitchenCabinetMaster
         restore_selection(Sketchup.active_model, chosen) if chosen
         result
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
+        warn "[Easy Cabinet] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
         Response.fail("Something went wrong: #{e.message}")
       end
 
@@ -154,7 +154,7 @@ module KitchenCabinetMaster
         end
         SelectionManager.push_selection(model) # (the panel may have been told, while it was drawn again, that nothing is selected)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not keep the selection: #{e.message}"
+        warn "[Easy Cabinet] Could not keep the selection: #{e.message}"
       end
 
       # Same as Edit > Undo: steps the model back one operation (an Insert, Update,
@@ -191,7 +191,7 @@ module KitchenCabinetMaster
           raise
         end
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not show the base units: #{e.message}"
+        warn "[Easy Cabinet] Could not show the base units: #{e.message}"
       end
 
       def organise_tags
@@ -207,7 +207,7 @@ module KitchenCabinetMaster
           raise
         end
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not organise tags: #{e.message}"
+        warn "[Easy Cabinet] Could not organise tags: #{e.message}"
       end
 
       def init_payload

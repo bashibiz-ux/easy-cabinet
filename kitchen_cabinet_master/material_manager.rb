@@ -105,7 +105,7 @@ module KitchenCabinetMaster
       list = data.is_a?(Hash) ? data['materials'] : nil
       list.is_a?(Array) ? list.select { |p| p.is_a?(Hash) && !p['name'].to_s.empty? } : []
     rescue JSON::ParserError, SystemCallError => e
-      warn "[Kitchen Cabinet Master] Could not read #{File.basename(path.to_s)}: #{e.message}"
+      warn "[Easy Cabinet] Could not read #{File.basename(path.to_s)}: #{e.message}"
       []
     end
     private_class_method :read_materials
@@ -141,14 +141,14 @@ module KitchenCabinetMaster
           size = props['size'].is_a?(Numeric) ? props['size'] : DEFAULT_TEXTURE_SIZE
           material.texture.size = size.mm if material.texture
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Could not use the picture #{file}: #{e.message}"
+          warn "[Easy Cabinet] Could not use the picture #{file}: #{e.message}"
         end
       end
       pbr = props.slice('roughness', 'metalness', 'emissive').select { |_, v| v.is_a?(Numeric) }
       pbr.each { |key, value| material.send("#{key}=", value.to_f) if material.respond_to?("#{key}=") }
       material.set_attribute('KitchenCabinetMaster', 'pbr', JSON.generate(pbr)) unless pbr.empty?
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not style a material: #{e.message}"
+      warn "[Easy Cabinet] Could not style a material: #{e.message}"
     end
     private_class_method :style
 

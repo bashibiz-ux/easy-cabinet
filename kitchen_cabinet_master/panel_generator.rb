@@ -41,7 +41,7 @@ module KitchenCabinetMaster
         face = entities.add_face([x0.mm, y0.mm, z], [x1.mm, y0.mm, z], [x1.mm, y1.mm, z], [x0.mm, y1.mm, z])
         face.pushpull(face.normal.z.positive? ? -z : z)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not cut an opening: #{e.message}"
+        warn "[Easy Cabinet] Could not cut an opening: #{e.message}"
       end
     end
 
@@ -343,7 +343,7 @@ module KitchenCabinetMaster
         end
         cut_flat(entities, y0, y1, z0, z1, from, to, thickness, frame)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
+        warn "[Easy Cabinet] Could not cut a front design: #{e.message}"
       end
     end
 
@@ -359,7 +359,7 @@ module KitchenCabinetMaster
       outer.erase! # (what is left of the first face is the ring round the island: the mouth of the groove)
       rounded_loop_faces(y0, y1, z0, z1, width, from, to, thickness, s).each { |corners| add_mapped(entities, corners, frame) }
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not cut a front design: #{e.message}"
+      warn "[Easy Cabinet] Could not cut a front design: #{e.message}"
     end
 
     # The faces (each facing into the groove) of a groove width wide all the way round the rectangle y0..y1 x z0..z1 (its outside),
@@ -649,7 +649,7 @@ module KitchenCabinetMaster
       children.each { |child| discard_if_unused(model, child) }
     rescue StandardError => e
       # Clean-up is optional (Purge Unused would catch it later), so never fail an operation for it.
-      warn "[Kitchen Cabinet Master] Could not remove unused definition: #{e.message}"
+      warn "[Easy Cabinet] Could not remove unused definition: #{e.message}"
     end
 
     # A solid box with its minimum corner at the definition origin.
@@ -694,7 +694,7 @@ module KitchenCabinetMaster
         face.followme(edges)
         edges.each { |edge| edge.erase! if edge.valid? && edge.faces.empty? } # the path inside the pipe is no longer needed
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] A bent pipe could not be swept (#{e.message}); drawn in straight pieces."
+        warn "[Easy Cabinet] A bent pipe could not be swept (#{e.message}); drawn in straight pieces."
         entities.clear!
         points.each_cons(2) do |from, to|
           direction = from.vector_to(to)

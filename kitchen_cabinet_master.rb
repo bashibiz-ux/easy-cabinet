@@ -4,12 +4,12 @@ require 'sketchup.rb'
 require 'extensions.rb'
 
 module KitchenCabinetMaster
-  EXTENSION_NAME = 'Kitchen Cabinet Master' unless const_defined?(:EXTENSION_NAME)
+  EXTENSION_NAME = 'Easy Cabinet' unless const_defined?(:EXTENSION_NAME)
 
   # Set again on every load, so installing a newer version over a running one is
   # noticed (see KitchenCabinetMaster.reload_if_updated in main.rb).
   remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
-  EXTENSION_VERSION = '1.72.0'
+  EXTENSION_VERSION = '1.73.0'
 
   if file_loaded?(__FILE__)
     # Loaded again after an install or update: swap in the new code, no restart needed.

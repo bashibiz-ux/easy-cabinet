@@ -57,7 +57,7 @@ module KitchenCabinetMaster
         message = JSON.parse(json.to_s)
         deliver(dispatch(message['action'].to_s, message['data']).merge('id' => message['id']))
       rescue JSON::ParserError => e
-        warn "[Kitchen Cabinet Master] Unreadable message from the Customize window: #{e.message}"
+        warn "[Easy Cabinet] Unreadable message from the Customize window: #{e.message}"
       end
 
       def dispatch(action, data)
@@ -74,7 +74,7 @@ module KitchenCabinetMaster
         else Response.fail("Unknown action \"#{action}\".")
         end
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
+        warn "[Easy Cabinet] #{e.class}: #{e.message}\n#{Array(e.backtrace).first(8).join("\n")}"
         Response.fail("Something went wrong: #{e.message}")
       end
 

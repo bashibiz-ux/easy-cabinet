@@ -54,10 +54,10 @@ module KitchenCabinetMaster
       body = +message
       body << "\n\nReply to: #{reply}" unless reply.empty?
       details = []
-      details << "Kitchen Cabinet Master #{extension_version}" if extension_version && raw['include_info'] != false
+      details << "Easy Cabinet #{extension_version}" if extension_version && raw['include_info'] != false
       details << "SketchUp #{sketchup_version}" if sketchup_version && raw['include_info'] != false
       body << "\n\n--\n#{details.join(', ')}" unless details.empty?
-      subject = "Kitchen Cabinet Master feedback: #{kind}"
+      subject = "Easy Cabinet feedback: #{kind}"
       [links(subject, body), subject, body, nil]
     end
 
@@ -82,7 +82,7 @@ module KitchenCabinetMaster
       return Response.fail(problem) if problem
 
       UI.openURL(url)
-      Response.ok('The donation page opened in your browser. Thank you for supporting Kitchen Cabinet Master!')
+      Response.ok('The donation page opened in your browser. Thank you for supporting Easy Cabinet!')
     end
 
     # `via`: 'mailto' (the mail program), 'gmail', 'outlook' or 'yahoo' (their web pages, opened in the browser) or 'text' (nothing is opened:

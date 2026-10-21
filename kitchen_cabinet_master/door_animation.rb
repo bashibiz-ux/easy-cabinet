@@ -150,7 +150,7 @@ module KitchenCabinetMaster
       begin
         player.start
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Animation failed, applying instantly: #{e.message}"
+        warn "[Easy Cabinet] Animation failed, applying instantly: #{e.message}"
         player.finish
       end
     end
@@ -222,7 +222,7 @@ module KitchenCabinetMaster
         finish
         false
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Animation frame failed: #{e.message}"
+        warn "[Easy Cabinet] Animation frame failed: #{e.message}"
         finish
         false
       end
@@ -241,7 +241,7 @@ module KitchenCabinetMaster
         @moves.each { |move| DoorAnimation.set_open(move.door, move.to.positive?) }
         @model.commit_operation if @started
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not finish door animation: #{e.message}"
+        warn "[Easy Cabinet] Could not finish door animation: #{e.message}"
         begin
           @model.abort_operation if @started
         rescue StandardError

@@ -202,7 +202,7 @@ module KitchenCabinetMaster
 
       definition.name = name
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not rename #{name}: #{e.message}"
+      warn "[Easy Cabinet] Could not rename #{name}: #{e.message}"
     end
     private_class_method :rename_definition
 

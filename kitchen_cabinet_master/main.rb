@@ -67,8 +67,8 @@ module KitchenCabinetMaster
       DialogManager.show if reopen
       true
     rescue StandardError, ScriptError => e
-      warn "[Kitchen Cabinet Master] Could not load the new version: #{e.class}: #{e.message}"
-      UI.messagebox("Kitchen Cabinet Master #{version} is installed, but could not be loaded without restarting SketchUp. " \
+      warn "[Easy Cabinet] Could not load the new version: #{e.class}: #{e.message}"
+      UI.messagebox("Easy Cabinet #{version} is installed, but could not be loaded without restarting SketchUp. " \
                     'Please restart SketchUp.')
       false
     end
@@ -100,9 +100,9 @@ module KitchenCabinetMaster
     menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
 
     icons = File.join(PLUGIN_DIR, 'icons')
-    open_cmd = UI::Command.new('Kitchen Cabinet Master') { KitchenCabinetMaster.toggle_panel }
-    open_cmd.tooltip = 'Kitchen Cabinet Master'
-    open_cmd.status_bar_text = 'Open the Kitchen Cabinet Master control panel (click again to close it)'
+    open_cmd = UI::Command.new('Easy Cabinet') { KitchenCabinetMaster.toggle_panel }
+    open_cmd.tooltip = 'Easy Cabinet'
+    open_cmd.status_bar_text = 'Open the Easy Cabinet control panel (click again to close it)'
     open_cmd.small_icon = File.join(icons, 'icon_24.png')
     open_cmd.large_icon = File.join(icons, 'icon_32.png')
     toolbar = UI::Toolbar.new(EXTENSION_NAME)

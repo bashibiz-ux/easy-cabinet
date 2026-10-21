@@ -94,7 +94,7 @@ module KitchenCabinetMaster
       AttributeManager.mark_managed(loaded)
       loaded
     rescue StandardError => e
-      warn "[Kitchen Cabinet Master] Could not load your #{kind}: #{e.message}"
+      warn "[Easy Cabinet] Could not load your #{kind}: #{e.message}"
       nil
     end
 

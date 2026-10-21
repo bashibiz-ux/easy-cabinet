@@ -1261,7 +1261,7 @@ module KitchenCabinetMaster
         height = values['height'].to_f
         CabinetManager.update_quiet(model, loft, 'height' => height) if height.positive?
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not place a loft over #{unit.name}: #{e.message}"
+        warn "[Easy Cabinet] Could not place a loft over #{unit.name}: #{e.message}"
       end
     end
 

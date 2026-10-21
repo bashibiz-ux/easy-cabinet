@@ -192,13 +192,13 @@ module KitchenCabinetMaster
       def onElementAdded(_entities, entity)
         SnapManager.remember(entity)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Snap watcher failed: #{e.message}"
+        warn "[Easy Cabinet] Snap watcher failed: #{e.message}"
       end
 
       def onElementModified(_entities, entity)
         SnapManager.modified(entity)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Snap watcher failed: #{e.message}"
+        warn "[Easy Cabinet] Snap watcher failed: #{e.message}"
       end
     end
 
@@ -209,13 +209,13 @@ module KitchenCabinetMaster
       def onToolStateChanged(_tools, _name, tool_id, tool_state)
         SnapManager.request(SETTLE_DELAY_S) if tool_id == MOVE_TOOL_ID && tool_state.zero?
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Snap watcher failed: #{e.message}"
+        warn "[Easy Cabinet] Snap watcher failed: #{e.message}"
       end
 
       def onActiveToolChanged(_tools, _name, _tool_id)
         SnapManager.request(SETTLE_DELAY_S)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Snap watcher failed: #{e.message}"
+        warn "[Easy Cabinet] Snap watcher failed: #{e.message}"
       end
     end
 
@@ -315,7 +315,7 @@ module KitchenCabinetMaster
 
         moved << entity
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not resize #{entity.name}: #{e.class}: #{e.message}"
+        warn "[Easy Cabinet] Could not resize #{entity.name}: #{e.class}: #{e.message}"
         notify("Could not resize #{entity.name}: #{e.message}")
       end
       return unless enabled? && !moved.empty?
@@ -325,7 +325,7 @@ module KitchenCabinetMaster
         begin
           snap_group(moved)
         rescue StandardError => e
-          warn "[Kitchen Cabinet Master] Could not snap the group: #{e.class}: #{e.message}"
+          warn "[Easy Cabinet] Could not snap the group: #{e.class}: #{e.message}"
           notify("Could not snap the cabinets: #{e.message}")
         end
         return
@@ -334,7 +334,7 @@ module KitchenCabinetMaster
       moved.each do |entity|
         snap(entity)
       rescue StandardError => e
-        warn "[Kitchen Cabinet Master] Could not snap #{entity.name}: #{e.class}: #{e.message}"
+        warn "[Easy Cabinet] Could not snap #{entity.name}: #{e.class}: #{e.message}"
         notify("Could not snap #{entity.name}: #{e.message}")
       end
     end
