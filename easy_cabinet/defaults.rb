@@ -182,6 +182,7 @@ module EasyCabinet
       'glass_design' => '',         # the doors are frames with panes of glass in this design (see FrontDesign::GLASS_DESIGNS); blank = no glass
       'front_design' => 'flat',     # the design of the doors and drawer fronts (see FrontDesign)
       'drawer_height_adjust' => 0.0, # the top drawer front of every unit is this much taller (shorter when negative)
+      'appliance_rev' => 0,         # the revision of the appliances' look the cabinet was built with (see AppliancePieces::REVISION)
       'gola_rev' => 0,              # the revision of the Gola profiles the cabinet was built with (see GolaProfile::REVISION)
       'door_height_adjust' => 0.0,  # every door is this much taller (shorter when negative): wall units hang from the top, the others grow upward
       'gola_system' => '',          # the Gola handle model: which profile the doors have (b c d e), blank for none

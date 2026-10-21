@@ -9,6 +9,15 @@ module EasyCabinet
   #
   # All numbers are millimetres in the cabinet's frame: X depth (0 at the wall), Y width, Z up from the carcass bottom.
   module AppliancePieces
+    # Raised whenever the look of the appliances changes: a cabinet with appliances that was built under an older revision is built again when the panel opens
+    # (see CabinetManager.refresh_stale_gola), so models made earlier show the new look.
+    REVISION = 3
+
+    # Does a cabinet with these parameters hold appliances (a sink, a hob, a hood, ovens, a fridge)?
+    def self.any?(params)
+      params['sink'] == true || params['hob'] == true || params['hood'] == true || !params['appliance_set'].to_s.empty? || params['cabinet_type'].to_s.include?('fridge')
+    end
+
     # A box: `origin` its low corner, `size` [dx, dy, dz].
     def self.box(role, name, origin, size)
       CabinetLayout::Panel.new(role: role, name: name, extent: size.map { |v| r2(v) }, offset: origin.map { |v| r2(v) }, points: nil)
@@ -44,19 +53,19 @@ module EasyCabinet
     # graphite glass and light greys (no black), as on a Siemens iQ700 or a Teka built-in line in inox.
     APPLIANCE_FINISHES = {
       'body'   => ['Appliance - Body Grey', '#8a919b', { 'roughness' => 0.7, 'metalness' => 0.0 }],
-      'steel'  => ['Appliance - Inox', '#cfd3d8', { 'roughness' => 0.3, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
+      'steel'  => ['Appliance - Stainless Steel', '#cfd3d8', { 'roughness' => 0.3, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
       'chrome' => ['Appliance - Polished Chrome', '#eef0f2', { 'roughness' => 0.05, 'metalness' => 1.0 }],
       'glass'  => ['Appliance - Graphite Glass', '#59616b', { 'roughness' => 0.04, 'metalness' => 0.0 }],
       'window' => ['Appliance - Smoked Window', '#363d45', { 'roughness' => 0.02, 'metalness' => 0.0 }],
-      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
+      'panel'  => ['Appliance - Satin Stainless', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0, 'texture' => 'appliance_steel.png', 'size' => 700 }],
       'led'    => ['Appliance - LED Glow', '#d7efff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
       'black'  => ['Appliance - Graphite Plastic', '#4a5159', { 'roughness' => 0.55, 'metalness' => 0.0 }],
       'seal'   => ['Appliance - Graphite Trim', '#3e454d', { 'roughness' => 0.8, 'metalness' => 0.0 }],
       'white'  => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }],
       'zone'   => ['Appliance - Silver Ring', '#dde1e5', { 'roughness' => 0.3, 'metalness' => 0.2 }],
       'filter' => ['Appliance - Mesh Steel', '#aab1b8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
-      'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'appliance_sink_steel.png', 'size' => 400 }],
-      'groove' => ['Appliance - Sink Groove Inox', '#7d848c', { 'roughness' => 0.45, 'metalness' => 1.0 }],
+      'basin'  => ['Appliance - Sink Stainless', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'appliance_sink_steel.png', 'size' => 400 }],
+      'groove' => ['Appliance - Sink Groove Steel', '#7d848c', { 'roughness' => 0.45, 'metalness' => 1.0 }],
       'wastesteel' => ['Appliance - Waste Steel', '#b9bfc6', { 'roughness' => 0.35, 'metalness' => 1.0, 'texture' => 'appliance_sink_steel.png', 'size' => 400 }],
       'castiron' => ['Appliance - Cast Iron', '#3a3d42', { 'roughness' => 0.8, 'metalness' => 0.4, 'texture' => 'appliance_cast_iron.png', 'size' => 300 }],
       'whiteglass' => ['Appliance - White Glass', '#f1f3f5', { 'roughness' => 0.03, 'metalness' => 0.0, 'texture' => 'appliance_white_glass.png', 'size' => 1000 }],
@@ -315,9 +324,7 @@ module EasyCabinet
         parts << box("#{key}_plate_#{n}", name, [sx, oy, oz], [door_t, ow, oh])
       end
       add_bar = lambda do |n, bar_y, mid_z, length|
-        parts << cyl("#{key}_bar_#{n}", 'Fridge Handle', :z, [x + d + 32.0, bar_y, mid_z - (length / 2.0)], 20.0, length)
-        parts << cyl("#{key}_post_#{n}a", 'Fridge Handle Post', :x, [sx + door_t, bar_y, mid_z - (length / 2.0) + 18.0], 12.0, 32.0)
-        parts << cyl("#{key}_post_#{n}b", 'Fridge Handle Post', :x, [sx + door_t, bar_y, mid_z + (length / 2.0) - 18.0], 12.0, 32.0)
+        parts << box("#{key}_bar_#{n}", 'Fridge Handle', [x + d, bar_y - 10.0, mid_z - (length / 2.0)], [26.0, 20.0, length])
       end
       bottom = z0 + plinth
       top = z0 + h
@@ -347,10 +354,9 @@ module EasyCabinet
         add_bar.call(1, mid_y - 36.0, bottom + (body_h * 0.55), 700.0)
         add_bar.call(2, mid_y + 36.0, bottom + (body_h * 0.55), 700.0)
         dispenser_y = y0 + (half / 2.0)
-        parts << box("#{key}_panel", 'Water Dispenser', [face, dispenser_y - 90.0, bottom + (body_h * 0.55) - 120.0], [0.8, 180.0, 330.0])
-        parts << box("#{key}_led", 'Dispenser Display', [face + 0.8, dispenser_y - 48.0, bottom + (body_h * 0.55) + 110.0], [0.4, 96.0, 40.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, dispenser_y, bottom + (body_h * 0.55) + 130.0, 26.0))
-        parts << box("#{key}_trim_1", 'Dispenser Recess', [face + 0.8, dispenser_y - 55.0, bottom + (body_h * 0.55) - 70.0], [0.4, 110.0, 110.0])
+        parts << box("#{key}_ctrlglass", 'Water Dispenser', [face, dispenser_y - 90.0, bottom + (body_h * 0.55) - 120.0], [1.5, 180.0, 330.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.5, dispenser_y, bottom + (body_h * 0.55) + 135.0, 26.0, kind: 'ledfig'))
+        parts << box("#{key}_bezel", 'Dispenser Tray', [face + 1.5, dispenser_y - 55.0, bottom + (body_h * 0.55) - 80.0], [0.6, 110.0, 110.0])
       else
         freezer = (body_h * 0.3).round
         split = bottom + freezer
@@ -362,12 +368,9 @@ module EasyCabinet
         add_bar.call(2, mid_y - 36.0, split + 60.0 + 350.0, 700.0)
         add_bar.call(3, mid_y + 36.0, split + 60.0 + 350.0, 700.0)
         length = [w * 0.5, 600.0].min
-        parts << cyl("#{key}_bar_1", 'Freezer Handle', :y, [x + d + 32.0, mid_y - (length / 2.0), split - 55.0], 20.0, length)
-        parts << cyl("#{key}_post_1a", 'Freezer Handle Post', :x, [sx + door_t, mid_y - (length / 2.0) + 18.0, split - 55.0], 12.0, 32.0)
-        parts << cyl("#{key}_post_1b", 'Freezer Handle Post', :x, [sx + door_t, mid_y + (length / 2.0) - 18.0, split - 55.0], 12.0, 32.0)
-        parts << box("#{key}_panel", 'Fridge Display', [face, mid_y - 60.0, top - 150.0], [0.8, 120.0, 40.0])
-        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, mid_y - 48.0, top - 150.0], [0.4, 96.0, 32.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, mid_y, top - 134.0, 22.0))
+        parts << box("#{key}_bar_1", 'Freezer Handle', [x + d, mid_y - (length / 2.0), split - 65.0], [26.0, length, 20.0])
+        parts << box("#{key}_ctrlglass", 'Fridge Display', [face, mid_y - 60.0, top - 150.0], [1.5, 120.0, 40.0])
+        parts.concat(digits(key, '4*C', :x, face + 1.5, mid_y, top - 130.0, 22.0, kind: 'ledfig'))
       end
       parts
     end

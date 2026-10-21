@@ -430,6 +430,9 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Appliance - Gas Flame Core', AppliancePieces.finish('appliance_hob_1_flamecore_2')[0]
     assert_equal 'Appliance - White Glass', AppliancePieces.finish('appliance_sink_1_deck_1')[0]
     assert_equal 'Appliance - Cast Iron', AppliancePieces.finish('appliance_hob_1_grate_1_2')[0]
+    result, = unit('base', 'base_hob', 900)
+    assert_equal AppliancePieces::REVISION, result.params['appliance_rev'], 'a cabinet with appliances records the look it was built with, so an older one is built again'
+    assert_equal 0, unit('base', 'base_2door', 900)[0].params['appliance_rev']
     assert_equal 'Appliance - Waste Steel', AppliancePieces.finish('appliance_sink_1_bowl_1_waste')[0]
     assert_equal 'appliance_steel.png', AppliancePieces.finish('appliance_fridge_1_free_plate_1')[2]['texture']
     assert_equal 'appliance_black_glass.png', AppliancePieces.finish('appliance_oven_1_doorglass')[2]['texture']
@@ -569,9 +572,9 @@ class KitchenCatalogTest < Minitest::Test
     %w[doorglass doorwin panel bezel seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
     finish = ->(role) { AppliancePieces.finish(role)[0] }
     assert_equal 'Appliance - Black Door Glass', finish.call('appliance_oven_1_doorglass')
-    assert_equal 'Appliance - Inox', finish.call('appliance_oven_1_handle')
+    assert_equal 'Appliance - Stainless Steel', finish.call('appliance_oven_1_handle')
     assert_equal 'Appliance - Polished Chrome', finish.call('appliance_sink_1_tap_spout')
-    assert_equal 'Appliance - Sink Inox', finish.call('appliance_sink_1_bowl_1_floor')
+    assert_equal 'Appliance - Sink Stainless', finish.call('appliance_sink_1_bowl_1_floor')
     assert_equal 'Appliance - Gloss White', finish.call('appliance_fridge_1_body')
     assert_equal 'Appliance - Gas Flame', finish.call('appliance_hob_1_flame_1')
     assert_equal 'Appliance - Cast Iron', finish.call('appliance_hob_1_grate_1_3')
@@ -637,7 +640,7 @@ class KitchenCatalogTest < Minitest::Test
       assert figures.all? { |f| f.offset[0] >= display.offset[0] + display.extent[0] - 0.01 }, "#{kind}: standing on its face"
     end
     _, house = unit('tall', 'tall_fridge_housing_free', 900)
-    assert house.appliances.any? { |a| a.role =~ /housed_digit_/ }, 'a freestanding fridge shows its temperature'
+    assert house.appliances.any? { |a| a.role =~ /housed_(digit|ledfig)_/ }, 'a freestanding fridge shows its temperature'
     assert_equal 'Appliance - Graphite Trim', AppliancePieces.finish('appliance_oven_1_digit_4')[0]
     assert_equal '12:30'.length, 5
   end

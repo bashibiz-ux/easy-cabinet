@@ -1070,7 +1070,7 @@ module EasyCabinet
 
     # Does any override change what this cabinet already has?
     def self.differs?(stored, overrides)
-      return true if stale_gola?(stored) # (built when the Gola profiles did less: it is built again)
+      return true if stale_gola?(stored) || stale_appliances?(stored) # (built when the Gola profiles did less, or the appliances looked different: it is built again)
 
       overrides.any? do |key, value|
         next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
@@ -1091,12 +1091,12 @@ module EasyCabinet
       model = Sketchup.active_model
       return 0 unless model
 
-      stale = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && stale_gola?(AttributeManager.read(item)) }
+      stale = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && (stale_gola?(AttributeManager.read(item)) || stale_appliances?(AttributeManager.read(item))) }
       return 0 if stale.empty?
 
       done = 0
       SelectionManager.suspend do
-        with_operation(model, 'Update Gola Profiles') do
+        with_operation(model, 'Update Gola Profiles and Appliances') do
           stale.each do |cabinet|
             params, errors = restyle_params(model, AttributeManager.read(cabinet), {})
             next unless params && errors.empty?
@@ -1122,6 +1122,12 @@ module EasyCabinet
       has && stored['gola_rev'].to_i != GolaProfile::REVISION
     end
     private_class_method :stale_gola?
+
+    # A cabinet with appliances that was built when they looked different.
+    def self.stale_appliances?(stored)
+      defined?(AppliancePieces) && AppliancePieces.any?(stored) && stored['appliance_rev'].to_i != AppliancePieces::REVISION
+    end
+    private_class_method :stale_appliances?
 
     # A stored cabinet's parameters with `overrides` put in, checked by the same rules
     # as an Update. Returns [params, []] or [nil, errors].

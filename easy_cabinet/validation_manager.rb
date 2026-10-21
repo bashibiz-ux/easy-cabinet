@@ -120,6 +120,7 @@ module EasyCabinet
       out['gola_system'] = %w[b c d e].include?(raw['gola_system'].to_s) ? raw['gola_system'].to_s : ''
       out['gola_system_drawer'] = %w[b c d e].include?(raw['gola_system_drawer'].to_s) ? raw['gola_system_drawer'].to_s : ''
       out['gola_rev'] = (%w[b c d e].include?(out['gola_system']) || %w[b c d e].include?(out['gola_system_drawer'])) ? 7 : 0 # (GolaProfile::REVISION)
+      out['appliance_rev'] = defined?(AppliancePieces) && AppliancePieces.any?(out) ? AppliancePieces::REVISION : 0
       out['glass_door'] = truthy?(raw['glass_door'])
       out['lift_door'] = truthy?(raw['lift_door'])
       out['bifold'] = truthy?(raw['bifold'])
