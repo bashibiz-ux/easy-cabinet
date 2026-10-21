@@ -364,7 +364,8 @@ class GolaTest < Minitest::Test
     assert_equal %w[b top], front.gola.values_at('system', 'kind')
     assert_in_delta plain.drawers.first.extent[2] - 33.0, front.extent[2], 0.05, 'the front stops 35 mm under the worktop'
     rail = layout.panels.find { |p| p.role == 'top_front_rail' }
-    assert_in_delta plain.panels.find { |p| p.role == 'top_front_rail' }.offset[0] - (27.0 - 2.0), rail.offset[0], 0.5, 'the front rail stands back'
+    assert_operator rail.offset[0], :<, plain.panels.find { |p| p.role == 'top_front_rail' }.offset[0], 'the top front rail stands back'
+    assert_in_delta 27.0, front.offset[0] - (rail.offset[0] + rail.extent[0]), 0.01, 'its front is 27 mm (the depth of the profile) behind the back of the front'
   end
 
   def test_a_cabinet_with_gola_profiles_remembers_the_revision_they_were_built_under

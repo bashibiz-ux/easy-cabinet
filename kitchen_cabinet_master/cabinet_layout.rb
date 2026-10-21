@@ -166,12 +166,13 @@ module KitchenCabinetMaster
       return false if GolaProfile.clean(params['gola_system']).empty? && GolaProfile.clean(params['gola_system_drawer']).empty?
 
       GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, base: category == 'base' && !params['top_front'].to_f.positive?)
-      if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' }
-        shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
+      front = (doors + drawers).find { |item| item.gola && item.gola['kind'] == 'top' }
+      if front # (B Plus: the top front rail stands back so that its front is 27 mm (the depth of the profile) behind the back of the front, whatever the depth of the space)
+        reach = GolaProfile::SYSTEMS['b'][:depth]
         rail = panels.find { |item| item.role == 'top_front_rail' }
-        rail.offset = [round2(rail.offset[0] - shift), rail.offset[1], rail.offset[2]] if rail
+        rail.offset = [round2(rail.offset[0] - [reach - (front.offset[0] - (rail.offset[0] + rail.extent[0])), 0.0].max), rail.offset[1], rail.offset[2]] if rail
         full = panels.find { |item| item.role == 'top' }
-        full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
+        full.extent = [round2(full.extent[0] - [reach - (front.offset[0] - (full.offset[0] + full.extent[0])), 0.0].max), full.extent[1], full.extent[2]] if full && !full.points
       end
       true
     end
