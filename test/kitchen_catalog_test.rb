@@ -388,7 +388,7 @@ class KitchenCatalogTest < Minitest::Test
   end
 
   def test_the_sinks_are_the_teka_ones_with_the_uni_mixer
-    { [1, true, 1000] => [830.0, 480.0], [2, true, 1200] => [1130.0, 490.0], [2, false, 900] => [710.0, 410.0] }.each do |(bowls, tray, width), (length, depth)|
+    { [1, true, 1000] => [830.0, 480.0], [2, true, 1300] => [1130.0, 490.0], [2, false, 900] => [710.0, 410.0] }.each do |(bowls, tray, width), (length, depth)|
       result, layout = unit('base', 'base_sink', width, 'sink_bowls' => bowls, 'sink_tray' => tray)
       assert_empty result.errors.map { |e| e['message'] }, "#{bowls} bowls, drainer #{tray}"
       plan = Fixtures.sink_plan(result.params.merge('door_count' => 2, 'drawer_count' => 0), CabinetLayout.send(:dimensions, result.params.merge('door_count' => 2, 'drawer_count' => 0)))
