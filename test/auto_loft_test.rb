@@ -53,7 +53,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager placement_manager cabinet_layout].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager placement_manager gola_profile cabinet_layout front_design appliance_parts fixtures].each { |f| require File.join(plugin, f) }
 
 module EasyCabinet
   module AttributeManager

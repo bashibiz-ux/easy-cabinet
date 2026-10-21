@@ -11,7 +11,7 @@ module EasyCabinet
   DATA_DIR = 'unused'
 end
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[defaults toe_kick cabinet_layout].each { |f| require File.join(plugin, f) }
+%w[defaults toe_kick gola_profile cabinet_layout front_design appliance_parts fixtures].each { |f| require File.join(plugin, f) }
 
 class ToeKickReturnTest < Minitest::Test
   TK = EasyCabinet::ToeKick

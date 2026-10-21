@@ -9,7 +9,7 @@ module EasyCabinet
   DATA_DIR = 'unused'
 end
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager cabinet_layout toe_kick part_manager].each do |file|
+%w[response defaults attribute_manager gola_profile cabinet_layout front_design appliance_parts fixtures toe_kick part_manager].each do |file|
   path = File.join(plugin, "#{file}.rb")
   begin
     require path

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'gola_profile'
-
 module EasyCabinet
   # The cut list: every board of every cabinet and part in the model, grouped by name, size and
   # material with a quantity, and a CSV export of it. Sizes are millimetres, written

@@ -29,7 +29,7 @@ plugin = File.expand_path('../easy_cabinet', __dir__)
 module EasyCabinet
   DATA_DIR = 'unused'
 end
-%w[response defaults attribute_manager toe_kick cabinet_layout part_layout validation_manager
+%w[response defaults attribute_manager toe_kick gola_profile cabinet_layout front_design appliance_parts fixtures part_layout validation_manager
    naming_manager cabinet_generator selection_manager part_manager].each do |f|
   begin
     require File.join(plugin, f)

@@ -9,7 +9,7 @@ module EasyCabinet
   DATA_DIR = 'unused'
 end
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager validation_manager cabinet_layout customizer toe_kick part_layout].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager validation_manager gola_profile cabinet_layout front_design appliance_parts fixtures customizer toe_kick part_layout].each { |f| require File.join(plugin, f) }
 
 class CustomizerTest < Minitest::Test
   include EasyCabinet

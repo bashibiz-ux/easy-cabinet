@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'gola_profile'
-
 module EasyCabinet
   # Works out every carcass panel: its role, size and position. All numbers are
   # millimetres and use NO SketchUp API, so the rules live in one readable place.
@@ -1419,7 +1417,3 @@ module EasyCabinet
   end
 end
 
-# The sink, hob and hood parts (loaded here too so the layout works wherever it is loaded alone, as in the tests).
-require_relative 'front_design'
-require_relative 'appliance_parts'
-require_relative 'fixtures'

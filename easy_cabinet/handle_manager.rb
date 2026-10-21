@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'gola_profile'
-
 module EasyCabinet
   # Handles are separate components that live INSIDE their door's container, so a
   # door's rotation carries the handle with it during Open / Close / Toggle.

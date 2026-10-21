@@ -22,7 +22,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager validation_manager catalog_manager cabinet_layout handle_manager
+%w[response defaults attribute_manager validation_manager catalog_manager gola_profile cabinet_layout front_design appliance_parts fixtures handle_manager
    selection_manager placement_manager cabinet_generator cabinet_manager].each { |f| require File.join(plugin, f) }
 
 class Thing < Sketchup::ComponentInstance

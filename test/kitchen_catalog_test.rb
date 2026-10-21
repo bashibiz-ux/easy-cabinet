@@ -11,7 +11,7 @@ module EasyCabinet
   DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation panel_generator].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager gola_profile cabinet_layout front_design appliance_parts fixtures front_design validation_manager catalog_manager handle_manager door_animation panel_generator].each { |f| require File.join(plugin, f) }
 
 class KitchenCatalogTest < Minitest::Test
   include EasyCabinet

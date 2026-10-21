@@ -22,7 +22,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults toe_kick cabinet_layout attribute_manager validation_manager placement_manager naming_manager].each do |f|
+%w[response defaults toe_kick gola_profile cabinet_layout front_design appliance_parts fixtures attribute_manager validation_manager placement_manager naming_manager].each do |f|
   require File.join(plugin, f)
 end
 

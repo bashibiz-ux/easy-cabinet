@@ -96,7 +96,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager cabinet_layout placement_manager snap_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager gola_profile cabinet_layout front_design appliance_parts fixtures placement_manager snap_manager].each { |f| require File.join(plugin, f) }
 
 class FakeModel
   attr_reader :entities, :operations

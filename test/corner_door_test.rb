@@ -13,7 +13,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults toe_kick cabinet_layout door_animation validation_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults toe_kick gola_profile cabinet_layout front_design appliance_parts fixtures door_animation validation_manager].each { |f| require File.join(plugin, f) }
 
 class CornerDoorTest < Minitest::Test
   include EasyCabinet

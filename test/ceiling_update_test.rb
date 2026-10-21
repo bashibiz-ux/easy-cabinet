@@ -67,7 +67,7 @@ module EasyCabinet
 end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
-%w[response defaults attribute_manager validation_manager cabinet_layout toe_kick placement_manager].each { |f| require File.join(plugin, f) }
+%w[response defaults attribute_manager validation_manager gola_profile cabinet_layout front_design appliance_parts fixtures toe_kick placement_manager].each { |f| require File.join(plugin, f) }
 require File.join(plugin, 'cabinet_manager')
 
 class FakeEntities
