@@ -178,8 +178,7 @@ module EasyCabinet
 
     # Component definitions are named after the cabinet: BU600, BU600 Carcass,
     # BU600 Door 1 ... (no prefix). Called on every sync, so it also renames the
-    # parts when the cabinet is renamed after a resize, and converts definitions
-    # that older versions named "KCM CABINET_0001 ...".
+    # parts when the cabinet is renamed after a resize.
     def self.name_parts(model, root)
       label = root.name.to_s
       return if label.empty?

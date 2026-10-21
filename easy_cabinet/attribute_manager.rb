@@ -144,8 +144,7 @@ module EasyCabinet
     end
 
     def self.managed?(definition)
-      definition.get_attribute(DICTIONARY, MANAGED_KEY) == true ||
-        definition.name.to_s.start_with?(Defaults::LEGACY_DEFINITION_PREFIX)
+      definition.get_attribute(DICTIONARY, MANAGED_KEY) == true
     end
 
     # Next unique ID such as CABINET_0001. The counter lives on the model, so no

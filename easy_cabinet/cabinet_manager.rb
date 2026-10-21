@@ -368,7 +368,7 @@ module EasyCabinet
     end
     private_class_method :following_end_panels
     # Anything you drew in the model (a group, a component, loose geometry; one thing or several together) is kept as a
-    # model file of its own in your catalog, and inserted again as a component beside the selected item. The catalog entry
+    # Ruby file (.rb, see ModelScript) of its own in your catalog that draws it again, and inserted as a component beside the selected item. The catalog entry
     # has its size (width along X, depth along Y, height along Z). Several items together are grouped for the save only.
     def self.save_components(model, raw)
       catalog_name = raw['catalog_name'].to_s.strip
@@ -391,11 +391,11 @@ module EasyCabinet
       name = guess if name.empty?
       category ||= 'base'
       slug = CatalogManager.slug(catalog_name.empty? ? CatalogManager::DEFAULT_CUSTOM_NAME : catalog_name)
-      file = File.join('models', "custom_#{slug}_#{CatalogManager.slug(name)}.skp")
+      file = File.join('models', "custom_#{slug}_#{CatalogManager.slug(name)}#{ModelScript::EXTENSION}")
       path = File.join(CatalogManager.user_dir.to_s, file)
       FileUtils.mkdir_p(File.dirname(path))
-      size = write_model_file(model, items, single, path)
-      return Response.fail('That could not be saved as a model file.') unless size && File.file?(path)
+      size = write_model_file(items, single, path, name)
+      return Response.fail('That could not be saved as a Ruby file.') unless size && File.file?(path)
 
       entry = CatalogManager.component_entry(name, size, file, front || raw['front'])
       ids = CatalogManager.save_custom(catalog_name, category, entry)
@@ -410,24 +410,22 @@ module EasyCabinet
     end
     private_class_method :guess_name
 
-    # Writes the model file; returns [width, depth, height] in mm (its X, Y and Z extent) or nil.
-    def self.write_model_file(model, items, single, path)
+    # Writes the model as a Ruby file (see ModelScript): a single group or component by what is in it, several things (or loose geometry) as they stand in the model.
+    # Returns [width, depth, height] in mm (its X, Y and Z extent) or nil.
+    def self.write_model_file(items, single, path, name)
       if single
         definition = single.definition
-        definition.save_as(path)
+        ModelScript.write(path, definition.entities.to_a, name: name)
         return bounds_mm(definition.bounds)
       end
 
-      size = nil
-      model.start_operation('Save to catalog', true)
-      begin
-        group = model.active_entities.add_group(items)
-        group.definition.save_as(path)
-        size = bounds_mm(group.definition.bounds)
-      ensure
-        model.abort_operation # the model is left as it was
-      end
-      size
+      box = Geom::BoundingBox.new
+      items.each { |item| box.add(item.bounds) }
+      ModelScript.write(path, items, name: name)
+      bounds_mm(box)
+    rescue StandardError => e
+      warn "[Easy Cabinet] Could not write #{path}: #{e.message}"
+      nil
     end
     private_class_method :write_model_file
 
@@ -455,7 +453,7 @@ module EasyCabinet
       instance = nil
       with_operation(model, 'Insert Model') do
         clear_live_parts(model)
-        definition = model.definitions.load(path)
+        definition = ModelScript.load_definition(model, path)
         definition.entities.grep(Sketchup::ComponentInstance).select { |item| item.name == CUSTOM_HANDLE_NAME }.each(&:erase!) # (a handle left in the saved model: the cabinet gets its own, on its door)
         entities, target = PlacementManager.target_for_new(model, params)
         low = definition.bounds.min
@@ -505,8 +503,8 @@ module EasyCabinet
     end
     private_class_method :insert_component
 
-    # Adds a handle of your own to the Handle lists: what is selected in the model (a group, a component or geometry you drew as a handle), or,
-    # when nothing is selected, a SketchUp model file you choose. Drawn as seen from the front of a door: the grip along the red axis (or the
+    # Adds a handle of your own to the Handle lists: what is selected in the model (a group, a component or geometry you drew as a handle), kept as a Ruby
+    # file (see ModelScript) that draws it again. Drawn as seen from the front of a door: the grip along the red axis (or the
     # blue one), the back of the handle on the high-Y side and the handle standing out towards low Y. It is kept as a handle package of
     # its own, with the finish "As drawn" (and the metal finishes for what you left unpainted).
     def self.add_handle(raw)
@@ -514,12 +512,11 @@ module EasyCabinet
       model = Sketchup.active_model
       items = model.selection.to_a
       items = [] if items.any? { |item| AttributeManager.cabinet?(item) || AttributeManager.part?(item) } # (a cabinet is not a handle)
-      from = ''
       return Response.fail('Select the handle you drew in the model first (a group or component), then press Save.') if items.empty?
 
       single = items.length == 1 && (items.first.is_a?(Sketchup::Group) || items.first.is_a?(Sketchup::ComponentInstance)) ? items.first : nil
       name = raw['handle_name'].to_s.strip
-      guess = items.empty? ? File.basename(from, '.*').tr('_', ' ') : guess_name(single)
+      guess = guess_name(single)
       if name.empty? && defined?(UI) && UI.respond_to?(:inputbox)
         answer = UI.inputbox(['Handle name'], [guess], 'Add my handle')
         return Response.fail('No handle was added.') unless answer
@@ -527,30 +524,16 @@ module EasyCabinet
         name = answer[0].to_s.strip
       end
       name = guess if name.empty?
-      file = File.join('models', "handle_#{CatalogManager.slug(name)}.skp")
+      file = File.join('models', "handle_#{CatalogManager.slug(name)}#{ModelScript::EXTENSION}")
       path = File.join(CatalogManager.user_dir.to_s, file)
       FileUtils.mkdir_p(File.dirname(path))
-      size = items.empty? ? measure_model_file(model, from, path) : write_model_file(model, items, single, path)
+      size = write_model_file(items, single, path, name)
       return Response.fail('That could not be kept as a handle.') unless size && File.file?(path)
 
       id = CatalogManager.save_custom_handle(CatalogManager.handle_from_model(name, size, file))
       Response.ok("#{name} added to the handles: #{size.map { |v| v.round(1) }.join(' x ')} mm. Choose it in Handle Bundle.", { 'handle_id' => id, 'handle_bundles' => CatalogManager.handle_bundles })
     end
     private_class_method :add_handle
-
-    # Copies a model file into your folder and returns its size (X, Y, Z in mm).
-    def self.measure_model_file(model, from, path)
-      FileUtils.cp(from, path) unless File.expand_path(from) == File.expand_path(path)
-      size = nil
-      model.start_operation('Measure handle', true)
-      begin
-        size = bounds_mm(model.definitions.load(path).bounds)
-      ensure
-        model.abort_operation # the model is left as it was
-      end
-      size
-    end
-    private_class_method :measure_model_file
 
     def self.remove_handle(raw)
       raw = {} unless raw.is_a?(Hash)

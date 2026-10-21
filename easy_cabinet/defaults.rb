@@ -98,9 +98,7 @@ module EasyCabinet
 
     # Component definitions this extension creates are named after what they are
     # (BU600, BU600 Carcass, Panel 18 x 560 x 780 ...) and carry a "managed" marker
-    # attribute so they can be recognised and cleaned up. Older versions instead
-    # prefixed the name with "KCM "; those are still recognised.
-    LEGACY_DEFINITION_PREFIX = 'KCM '
+    # attribute so they can be recognised and cleaned up.
 
     # Carcass construction rules (mm). Not user parameters; a future catalog
     # could override them per cabinet type.

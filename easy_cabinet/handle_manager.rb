@@ -320,7 +320,7 @@ module EasyCabinet
       path = CatalogManager.handle_path(bundle)
       return false unless path && File.file?(path)
 
-      source = model.definitions.load(path)
+      source = ModelScript.load_definition(model, path)
       bounds = source.bounds
       x, y, z, origin = model_axes(bundle['along'], bounds.min.to_a, bounds.max.to_a)
       axes = [x, y, z].map { |v| Geom::Vector3d.new(*v) }
