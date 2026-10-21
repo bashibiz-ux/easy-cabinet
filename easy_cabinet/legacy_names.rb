@@ -51,13 +51,15 @@ module EasyCabinet
     # The preferences kept in SketchUp (the Presets, the snapping switch): read from the old section when the new one has nothing yet.
     def self.migrate_preferences
       [[PresetManager::SECTION, PresetManager::KEY], [SnapManager::PREFERENCE_SECTION, SnapManager::PREFERENCE_KEY]].each do |section, key|
-        old = Sketchup.read_default(OLD_DICTIONARY, key, nil)
-        next if old.nil? || !Sketchup.read_default(section, key, nil).nil?
+        begin
+          old = Sketchup.read_default(OLD_DICTIONARY, key, nil)
+          next if old.nil? || !Sketchup.read_default(section, key, nil).nil?
 
-        Sketchup.write_default(section, key, old)
+          Sketchup.write_default(section, key, old)
+        rescue StandardError, ScriptError => e # (SketchUp reads a text it kept with quotes in it by evaluating it: that can be a SyntaxError)
+          warn "[Easy Cabinet] Could not bring the preference #{key} over: #{e.message[0, 80]}"
+        end
       end
-    rescue StandardError => e
-      warn "[Easy Cabinet] Could not bring the preferences over: #{e.message}"
     end
 
     # Your own catalogs, handles, materials and models: the folders they had in the Plugins folder (under the old name and under this one) are moved to
