@@ -3,7 +3,7 @@
 # Easy Cabinet: registers the extension. The code is in the easy_cabinet folder (see easy_cabinet/main.rb).
 module EasyCabinet
   EXTENSION_NAME = 'Easy Cabinet'
-  EXTENSION_VERSION = '1.77.2'
+  EXTENSION_VERSION = '1.78.0'
 
   EXTENSION = SketchupExtension.new(EXTENSION_NAME, 'easy_cabinet/main')
   EXTENSION.creator     = 'Bashi'

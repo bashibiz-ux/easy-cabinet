@@ -56,13 +56,15 @@ module EasyCabinet
       'zone'   => ['Appliance - Silver Ring', '#dde1e5', { 'roughness' => 0.3, 'metalness' => 0.2 }],
       'filter' => ['Appliance - Mesh Steel', '#aab1b8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
       'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
-      'groove' => ['Appliance - Sink Groove Inox', '#a7aeb5', { 'roughness' => 0.45, 'metalness' => 1.0 }]
+      'groove' => ['Appliance - Sink Groove Inox', '#a7aeb5', { 'roughness' => 0.45, 'metalness' => 1.0 }],
+      'doorglass' => ['Appliance - Black Door Glass', '#30343a', { 'roughness' => 0.03, 'metalness' => 0.0 }],
+      'doorwin'   => ['Appliance - Black Oven Window', '#2c3036', { 'roughness' => 0.02, 'metalness' => 0.0 }]
     }.freeze
     # The first rule that matches the end of a role (its number taken off) says which finish the part gets.
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\A(display|icon)/, 'led'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
@@ -110,8 +112,8 @@ module EasyCabinet
     # Writes `text` (digits, ':', a degree sign written as '*', and C, P, -) in seven-segment figures `height` mm high, centred on
     # (u_mid, v_mid) of a display. `plane` :x is a display on a vertical front (u runs along Y, v up Z, `depth` is the X of the
     # glass); :z is a display lying flat (u along Y, v towards the back, so -X; `depth` is the Z of the glass). Each segment is a
-    # thin box with the role "<key>_digit_<n>" (the finish "digit": dark figures on the lit display).
-    def self.digits(key, text, plane, depth, u_mid, v_mid, height)
+    # thin box with the role "<key>_<kind>_<n>" (kind "digit": dark figures on the lit display; "ledfig": lit figures on a dark display).
+    def self.digits(key, text, plane, depth, u_mid, v_mid, height, kind: 'digit')
       t = [height * 0.13, 1.0].max
       w = height * 0.55
       gap = t * 1.3
@@ -138,15 +140,17 @@ module EasyCabinet
         v_lo = v_mid - (height / 2.0) + v0
         size_v = v1 - v0
         if plane == :x
-          box("#{key}_digit_#{i + 1}", 'Display Figure', [depth, u_mid + u0, v_lo], [thin, u1 - u0, size_v])
+          box("#{key}_#{kind}_#{i + 1}", 'Display Figure', [depth, u_mid + u0, v_lo], [thin, u1 - u0, size_v])
         else
-          box("#{key}_digit_#{i + 1}", 'Display Figure', [v_mid + (height / 2.0) - v1, u_mid + u0, depth], [size_v, u1 - u0, thin])
+          box("#{key}_#{kind}_#{i + 1}", 'Display Figure', [v_mid + (height / 2.0) - v1, u_mid + u0, depth], [size_v, u1 - u0, thin])
         end
       end
     end
     # ---- the oven -------------------------------------------------------------------------------------
 
-    # `item` = { z:, height: }: where the oven stands (on its shelf) and how tall it is.
+    # `item` = { z:, height: }: where the oven stands (on its shelf) and how tall it is. Modelled on the Teka HSB 6456 SS: a stainless control strip across the
+    # top (two rotary knobs and a dark display with the time), a black glass door edge to edge under it, a long flat stainless handle just under the strip,
+    # a wide dark window and the logo low in the middle.
     def self.oven(key, dims, item)
       front = dims.depth
       h = item[:height]
@@ -156,53 +160,55 @@ module EasyCabinet
       mid = y0 + (w / 2.0)
       body_w = dims.inner_w - 4.0
       body_d = [dims.interior_d - 30.0, 550.0].min
-      trim = 6.0 # the stainless frame
-      inset = 7.0 # steel showing round the glass
+      trim = 6.0 # the frame behind the glass
+      inset = 1.0 # the glass runs to the edge
       glass_x = front + trim
       glass_t = 2.5
       face = glass_x + glass_t
-      strip = [60.0, h * 0.13].min
+      strip = [h * 0.19, 112.0].min # the control strip
       strip_z = z0 + h - inset - strip
-      door_top = strip_z - 5.0
+      door_top = strip_z - 3.0
       door_bottom = z0 + inset
       inner_y = y0 + inset
       inner_w = w - (2 * inset)
-      knob_z = strip_z + (strip / 2.0)
+      knob_z = strip_z + (strip * 0.46)
+      knob_off = [w * 0.2, 122.0].min # the knobs stand this far from the sides
 
       parts = [
         box("#{key}_body", 'Oven Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
         box("#{key}_frame", 'Oven Frame', [front, y0, z0], [trim, w, h]),
-        box("#{key}_panel", 'Oven Control Glass', [glass_x, inner_y, strip_z], [glass_t, inner_w, strip]),
+        box("#{key}_panel", 'Oven Control Strip', [glass_x, inner_y, strip_z], [glass_t, inner_w, strip]),
         box("#{key}_seal", 'Oven Door Gap', [glass_x, inner_y, door_top], [glass_t + 0.2, inner_w, strip_z - door_top]),
-        box("#{key}_bezel", 'Oven Display Surround', [face, mid - 56.0, knob_z - 19.0], [0.5, 112.0, 38.0]),
-        box("#{key}_display", 'Oven Display', [face + 0.5, mid - 48.0, knob_z - 15.0], [0.5, 96.0, 30.0]),
-        *digits(key, '12:30', :x, face + 1.0, mid, knob_z, 20.0),
-        box("#{key}_icon_1", 'Oven Function Light', [face, mid - 70.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_2", 'Oven Function Light', [face, mid - 82.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_3", 'Oven Function Light', [face, mid + 64.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        box("#{key}_icon_4", 'Oven Function Light', [face, mid + 76.0, knob_z - 3.0], [0.5, 6.0, 6.0]),
-        cyl("#{key}_knob_1", 'Oven Knob 1', :x, [face, inner_y + 38.0, knob_z], 36.0, 13.0),
-        cyl("#{key}_cap_1", 'Oven Knob Ring 1', :x, [face, inner_y + 38.0, knob_z], 24.0, 14.0),
-        cyl("#{key}_knob_2", 'Oven Knob 2', :x, [face, y0 + w - inset - 38.0, knob_z], 36.0, 13.0),
-        cyl("#{key}_cap_2", 'Oven Knob Ring 2', :x, [face, y0 + w - inset - 38.0, knob_z], 24.0, 14.0)
+        box("#{key}_bezel", 'Oven Display', [face, mid - 105.0, knob_z - 17.0], [0.5, 210.0, 34.0]),
+        *digits(key, '19:24', :x, face + 1.0, mid, knob_z, 20.0, kind: 'ledfig'),
+        box("#{key}_icon_1", 'Oven Function Light', [face, mid - 86.0, knob_z - 22.0], [0.5, 5.0, 5.0]),
+        box("#{key}_icon_2", 'Oven Function Light', [face, mid - 70.0, knob_z - 22.0], [0.5, 5.0, 5.0]),
+        box("#{key}_icon_3", 'Oven Function Light', [face, mid + 65.0, knob_z - 22.0], [0.5, 5.0, 5.0]),
+        box("#{key}_icon_4", 'Oven Function Light', [face, mid + 81.0, knob_z - 22.0], [0.5, 5.0, 5.0]),
+        cyl("#{key}_knob_1", 'Oven Knob 1', :x, [face, inner_y + knob_off, knob_z], 46.0, 13.0),
+        cyl("#{key}_cap_1", 'Oven Knob Centre 1', :x, [face, inner_y + knob_off, knob_z], 30.0, 14.0),
+        cyl("#{key}_knob_2", 'Oven Knob 2', :x, [face, y0 + w - inset - knob_off, knob_z], 46.0, 13.0),
+        cyl("#{key}_cap_2", 'Oven Knob Centre 2', :x, [face, y0 + w - inset - knob_off, knob_z], 30.0, 14.0)
       ]
-      return parts if door_top - door_bottom < 60.0
+      door_h = door_top - door_bottom
+      return parts if door_h < 60.0
 
-      handle_z = door_top - 34.0
-      handle_len = [w - 150.0, 120.0].max
+      handle_h = 26.0
+      handle_top = door_top - (door_h >= 300.0 ? 21.0 : 10.0)
+      handle_len = w * 0.87
       handle_y = mid - (handle_len / 2.0)
       parts + [
-        box("#{key}_glass", 'Oven Door Glass', [glass_x, inner_y, door_bottom], [glass_t, inner_w, door_top - door_bottom]),
-        box("#{key}_window", 'Oven Window', [face, inner_y + 22.0, door_bottom + 26.0], [0.4, inner_w - 44.0, [door_top - door_bottom - 80.0, 10.0].max]),
-        cyl("#{key}_handle", 'Oven Handle', :y, [face + 36.0, handle_y, handle_z], 18.0, handle_len),
-        cyl("#{key}_post_1", 'Oven Handle Post 1', :x, [face, handle_y + 14.0, handle_z], 12.0, 36.0),
-        cyl("#{key}_post_2", 'Oven Handle Post 2', :x, [face, handle_y + handle_len - 14.0, handle_z], 12.0, 36.0),
-        box("#{key}_badge", 'Oven Badge', [face, mid - 22.0, door_bottom + 8.0], [0.5, 44.0, 5.0])
+        box("#{key}_doorglass", 'Oven Door Glass', [glass_x, inner_y, door_bottom], [glass_t, inner_w, door_h]),
+        box("#{key}_doorwin", 'Oven Window', [face, inner_y + (inner_w * 0.155), door_bottom + (door_h * 0.19)], [0.4, inner_w * 0.70, [door_h * 0.59, 10.0].max]),
+        box("#{key}_handle", 'Oven Handle', [face, handle_y, handle_top - handle_h], [20.0, handle_len, handle_h]),
+        box("#{key}_logo", 'Oven Logo', [face, mid - 23.0, door_bottom + [door_h * 0.1, 12.0].max], [0.5, 46.0, 9.0])
       ]
     end
 
     # ---- the microwave --------------------------------------------------------------------------------
 
+    # Modelled on the Teka MWE 255 FI: a stainless trim frame round a black glass front, the door on the left with a dark window and the logo under it, and a
+    # narrow control column on the right (a display, a block of keys, a dial and a recessed button). It has no handle: the door opens with the button.
     def self.microwave(key, dims, item)
       front = dims.depth
       h = item[:height]
@@ -211,40 +217,43 @@ module EasyCabinet
       y0 = (dims.width - w) / 2.0
       body_w = dims.inner_w - 4.0
       body_d = [dims.interior_d - 30.0, 350.0].min
-      trim = 6.0
-      inset = 7.0
+      trim = 6.0 # the frame
       glass_x = front + trim
       glass_t = 2.5
       face = glass_x + glass_t
-      ctrl_w = (w * 0.22).round
-      ctrl_y = y0 + w - inset - ctrl_w
-      door_y = y0 + inset
-      door_w = ctrl_y - 6.0 - door_y
-      mid_z = z0 + (h / 2.0)
-      handle_len = h * 0.55
+      side = w * 0.067 # the stainless trim round the glass
+      band = h * 0.13
+      iy0 = y0 + side
+      iw = w - (2 * side)
+      iz0 = z0 + band
+      ih = h - (2 * band)
+      door_w = iw * 0.805
+      ctrl_y = iy0 + door_w + 2.0
+      ctrl_w = iw - door_w - 2.0
+      ctrl_mid = ctrl_y + (ctrl_w / 2.0)
+      shown = iz0 + (ih * 0.825) # the display
 
       parts = [
         box("#{key}_body", 'Microwave Body', [front - body_d, (dims.width - body_w) / 2.0, z0 + 2.0], [body_d, body_w, h - 4.0]),
         box("#{key}_frame", 'Microwave Frame', [front, y0, z0], [trim, w, h]),
-        box("#{key}_panel", 'Microwave Control Glass', [glass_x, ctrl_y, z0 + inset], [glass_t, ctrl_w, h - (2 * inset)]),
-        box("#{key}_bezel", 'Microwave Display Surround', [face, ctrl_y + 6.0, z0 + h - inset - 8.0 - 40.0], [0.5, ctrl_w - 12.0, 40.0]),
-        box("#{key}_display", 'Microwave Display', [face + 0.5, ctrl_y + 11.0, z0 + h - inset - 12.0 - 32.0], [0.5, ctrl_w - 22.0, 32.0]),
-        *digits(key, '0:30', :x, face + 1.0, ctrl_y + (ctrl_w / 2.0), z0 + h - inset - 12.0 - 16.0, 22.0),
-        cyl("#{key}_knob_1", 'Microwave Dial', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 44.0, 12.0),
-        cyl("#{key}_cap_1", 'Microwave Dial Centre', :x, [face, ctrl_y + (ctrl_w / 2.0), mid_z - 10.0], 30.0, 13.0)
+        box("#{key}_ctrlglass", 'Microwave Control Glass', [glass_x, ctrl_y, iz0], [glass_t, ctrl_w, ih]),
+        box("#{key}_seal", 'Microwave Door Gap', [glass_x, ctrl_y - 2.0, iz0], [glass_t + 0.2, 2.0, ih]),
+        box("#{key}_bezel", 'Microwave Display', [face, ctrl_y + 6.0, shown - 11.0], [0.5, ctrl_w - 12.0, 22.0]),
+        *digits(key, 'P100', :x, face + 1.0, ctrl_mid, shown, 14.0, kind: 'ledfig'),
+        box("#{key}_bezel_2", 'Microwave Release Button', [face, ctrl_y + (ctrl_w * 0.1), iz0 + (ih * 0.065)], [0.5, ctrl_w * 0.8, 24.0]),
+        cyl("#{key}_knob_1", 'Microwave Dial', :x, [face, ctrl_mid, iz0 + (ih * 0.31)], 27.0, 8.0),
+        cyl("#{key}_cap_1", 'Microwave Dial Centre', :x, [face, ctrl_mid, iz0 + (ih * 0.31)], 15.0, 9.0),
+        box("#{key}_key_5", 'Microwave Key', [face, ctrl_y + (ctrl_w * 0.1), iz0 + (ih * 0.48) - 4.0], [0.5, ctrl_w * 0.8, 8.0])
       ]
-      3.times do |index|
-        parts << cyl("#{key}_knob_#{index + 2}", "Microwave Button #{index + 1}", :x,
-                     [face, ctrl_y + (ctrl_w * (0.25 + (index * 0.25))), z0 + inset + 22.0], 14.0, 3.0)
+      [[0.71, 0.3], [0.71, 0.7], [0.6, 0.3], [0.6, 0.7]].each_with_index do |(zk, yk), index|
+        parts << box("#{key}_key_#{index + 1}", 'Microwave Key', [face, ctrl_y + (ctrl_w * yk) - 10.0, iz0 + (ih * zk) - 6.5], [0.5, 20.0, 13.0])
       end
       return parts if door_w < 60.0
 
       parts + [
-        box("#{key}_glass", 'Microwave Door Glass', [glass_x, door_y, z0 + inset], [glass_t, door_w, h - (2 * inset)]),
-        box("#{key}_window", 'Microwave Window', [face, door_y + 14.0, z0 + inset + 14.0], [0.4, door_w - 28.0 - 24.0, h - (2 * inset) - 28.0]),
-        cyl("#{key}_handle", 'Microwave Handle', :z, [face + 26.0, ctrl_y - 18.0, mid_z - (handle_len / 2.0)], 14.0, handle_len),
-        cyl("#{key}_post_1", 'Microwave Handle Post 1', :x, [face, ctrl_y - 18.0, mid_z - (handle_len / 2.0) + 12.0], 10.0, 26.0),
-        cyl("#{key}_post_2", 'Microwave Handle Post 2', :x, [face, ctrl_y - 18.0, mid_z + (handle_len / 2.0) - 12.0], 10.0, 26.0)
+        box("#{key}_doorglass", 'Microwave Door Glass', [glass_x, iy0, iz0], [glass_t, door_w, ih]),
+        box("#{key}_doorwin", 'Microwave Window', [face, iy0 + (door_w * 0.18), iz0 + (ih * 0.24)], [0.4, door_w * 0.61, ih * 0.53]),
+        box("#{key}_logo", 'Microwave Logo', [face, iy0 + (door_w * 0.62) - 23.0, iz0 + (ih * 0.12)], [0.5, 46.0, 9.0])
       ]
     end
 

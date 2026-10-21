@@ -130,7 +130,7 @@ class KitchenCatalogTest < Minitest::Test
       assert_equal count, layout.appliances.count { |a| a.role.end_with?('_body') }, "#{set}: a body for each"
       assert_equal count, layout.appliances.count { |a| a.role.end_with?('_frame') }, "#{set}: a front for each"
       assert layout.appliances.any? { |a| a.role.end_with?('_handle') }, 'with a handle'
-      assert layout.appliances.any? { |a| a.role.end_with?('_glass') }, 'and a window'
+      assert layout.appliances.any? { |a| a.role.end_with?('_doorglass') }, 'and a window'
     end
     _, one = oven_unit('oven')
     _, two = oven_unit('double_oven')
@@ -512,11 +512,11 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_appliances_are_drawn_with_round_parts_and_a_finish_for_each
     _, layout = oven_unit('oven_micro')
     shapes = layout.appliances.map(&:shape).compact.uniq
-    assert_equal ['cyl_x', 'cyl_y', 'cyl_z'].sort, (shapes + ['cyl_z']).uniq.sort, 'knobs, handle bars'
+    assert_equal ['cyl_x', 'cyl_z'].sort, (shapes + ['cyl_z']).uniq.sort, 'knobs'
     roles = layout.appliances.map(&:role)
-    %w[glass window panel display seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
+    %w[doorglass doorwin panel bezel seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
     finish = ->(role) { AppliancePieces.finish(role)[0] }
-    assert_equal 'Appliance - Graphite Glass', finish.call('appliance_oven_1_glass')
+    assert_equal 'Appliance - Black Door Glass', finish.call('appliance_oven_1_doorglass')
     assert_equal 'Appliance - Inox', finish.call('appliance_oven_1_handle')
     assert_equal 'Appliance - Polished Chrome', finish.call('appliance_sink_1_tap_spout')
     assert_equal 'Appliance - Sink Inox', finish.call('appliance_sink_1_bowl_1_floor')
@@ -532,7 +532,7 @@ class KitchenCatalogTest < Minitest::Test
     assert AppliancePieces::APPLIANCE_FINISHES.values.all? { |_, color, look| color =~ /\A#\h{6}\z/ && look['roughness'] }, 'every finish has a colour and a roughness'
   end
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
-    ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_glass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
+    ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_doorglass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
               'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
               'appliance_sink_1_tray' => 'sink' }
     ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
@@ -576,9 +576,9 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_displays_of_the_appliances_show_numbers
     _, oven = oven_unit('oven_micro')
     %w[oven micro].each do |kind|
-      display = oven.appliances.find { |a| a.role == "appliance_#{kind}_1_display" }
-      figures = oven.appliances.select { |a| a.role =~ /appliance_#{kind}_1_digit_\d+\z/ }
-      assert_operator figures.length, :>=, 12, "#{kind}: the clock reads 12:30 / 0:30"
+      display = oven.appliances.find { |a| a.role == "appliance_#{kind}_1_bezel" }
+      figures = oven.appliances.select { |a| a.role =~ /appliance_#{kind}_1_(digit|ledfig)_\d+\z/ }
+      assert_operator figures.length, :>=, 12, "#{kind}: the clock reads 19:24 / P100"
       assert figures.all? { |f| f.offset[1] >= display.offset[1] - 0.01 && f.offset[1] + f.extent[1] <= display.offset[1] + display.extent[1] + 0.01 }, "#{kind}: the figures lie on the display"
       assert figures.all? { |f| f.offset[2] >= display.offset[2] - 0.01 && f.offset[2] + f.extent[2] <= display.offset[2] + display.extent[2] + 0.01 }, "#{kind}: and inside its height"
       assert figures.all? { |f| f.offset[0] >= display.offset[0] + display.extent[0] - 0.01 }, "#{kind}: standing on its face"
