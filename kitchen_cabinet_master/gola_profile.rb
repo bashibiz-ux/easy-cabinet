@@ -4,13 +4,15 @@ module KitchenCabinetMaster
   # The Gola handle model: instead of handles, aluminium profiles (the Häfele Gola systems) are fixed in the gaps between the fronts, and the fronts are cut
   # back to make room for them. Pure maths, no SketchUp objects; all numbers are millimetres. The sections are drawn from Häfele's drawings.
   #
-  #   B Plus  horizontal, between the worktop and the top doors or drawers of a base unit: the gap is the 56.5 mm of the profile, it is 27 mm deep from its back
-  #           plate to the back of the doors (the top front rail of the carcass stands back for it)
-  #   C Plus  horizontal, between a drawer or door and the one above it: the gap is 73 mm, the profile 26 mm deep
+  #   B Plus  horizontal, under the worktop of a base unit, behind the top doors or drawers: 35 mm of it is the gap to put the fingers in, between the worktop and
+  #           the front, the other 21.5 of its 56.5 is behind the front; it is 27 mm deep from its back plate to the back of the doors (the top front rail of the
+  #           carcass stands back for it)
+  #   C Plus  horizontal, between a drawer or door and the one above it, behind both: 35 mm of its 73 is the gap, 19 are behind each front; 26 mm deep
   #   D, E    vertical, between two doors side by side (30 and 35 mm apart); the doors are screwed to it. An end profile takes the place of the second door
   #           at the end of a run. D is 66.5 wide and 12 deep behind the doors, E 72 wide and 20 deep.
   module GolaProfile
-    DEFAULT_GAP = 30.0 # mm: the finger gap between a front and the Gola profile over it, to start with (the fronts can grow into it: see apply!)
+    DEFAULT_GAP = 35.0 # mm: the gap to put the fingers in, to start with: between the worktop and the top front (B Plus), between two fronts (C Plus). The profile
+    #                  goes behind the fronts and covers the rest of its height behind them (21.5 under the worktop, 19 behind each of two fronts).
     PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this
@@ -104,7 +106,7 @@ module KitchenCabinetMaster
       return if systems.values.all?(&:empty?)
 
       reveal = params['door_reveal'].to_f
-      gap = DEFAULT_GAP - params['gola_grow'].to_f # (the finger gap between the top of a front and the profile over it: the fronts grow upward into it)
+      gap = DEFAULT_GAP - params['gola_grow'].to_f # (the gap to put the fingers in: the fronts grow upward into it)
       carcass_top = limit + reveal
       everything = doors + drawers
       fronts = doors.map { |item| [item, systems[:doors]] } + drawers.map { |item| [item, systems[:drawers]] }
@@ -128,14 +130,14 @@ module KitchenCabinetMaster
       along.each do |item, system|
         spec = SYSTEMS[system]
         if system == 'b'
-          profile_bottom = carcass_top - spec[:size] # (the profile hangs under the worktop, and stays there)
-          cut = (limit - (profile_bottom - gap)) # (the front stops the finger gap under it)
+          profile_bottom = carcass_top - spec[:size] # (the profile hangs under the worktop, behind the front, and stays there)
+          cut = limit - (carcass_top - gap) # (the front stops the gap under the worktop)
         else
           above = uppers[item]
           next unless above
 
-          profile_bottom = above.offset[2] - spec[:size] # (the profile hangs under the front over it)
-          cut = top_of(item) - (profile_bottom - gap)
+          profile_bottom = above.offset[2] - DEFAULT_GAP - ((spec[:size] - DEFAULT_GAP) / 2.0) # (behind the two fronts, as much behind each: it stays there)
+          cut = top_of(item) - (above.offset[2] - gap) # (the front under stops the gap under the front over it)
         end
         next if cut.negative? || item.extent[2] - cut < MIN_FRONT
 
@@ -144,7 +146,7 @@ module KitchenCabinetMaster
         right = right ? right / 2.0 : reveal
         item.extent = [item.extent[0], item.extent[1], round2(item.extent[2] - cut)]
         item.gola = { 'system' => system, 'kind' => system == 'b' ? 'top' : 'between', 'back' => round2(-item.extent[0]), 'horizontal' => true,
-                      'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => item.extent[2], 'z' => round2(profile_bottom) }
+                      'length' => round2(item.extent[1] + left + right), 'u' => round2((item.extent[1] + right - left) / 2.0), 'v' => round2(profile_bottom - item.offset[2]), 'z' => round2(profile_bottom) }
       end
 
       verticals = fronts.select { |item, system| !SYSTEMS[system][:horizontal] && doors.include?(item) }.sort_by { |item, _| [item.offset[1], item.offset[2]] }

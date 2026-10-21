@@ -88,11 +88,11 @@ class GolaTest < Minitest::Test
     layout, params = layout_of('base', 'base_2door', 900, 'b')
     reveal = params['door_reveal'].to_f
     layout.doors.each_with_index do |door, i|
-      assert_in_delta plain.doors[i].extent[2] - (56.5 + 30.0 - reveal), door.extent[2], 0.02, 'the door is cut back for the profile (56.5) and the finger gap under it (30)'
-      assert_in_delta top(plain.doors[i]) - 56.5 - 30.0 + reveal, top(door), 0.02
+      assert_in_delta plain.doors[i].extent[2] - (35.0 - reveal), door.extent[2], 0.02, 'the door stops 35 mm under the worktop: the gap to put the fingers in'
+      assert_in_delta top(plain.doors[i]) + reveal - 35.0, top(door), 0.02
       assert_equal 'top', door.gola['kind']
-      assert_in_delta door.extent[2] + 30.0, door.gola['v'], 0.02, 'the profile hangs 30 mm over the top edge of the door, under the worktop'
-      assert_in_delta top(plain.doors[i]) + reveal, door.offset[2] + door.gola['v'] + 56.5, 0.02, 'its top is the top of the carcass'
+      assert_in_delta top(plain.doors[i]) + reveal, door.offset[2] + door.gola['v'] + 56.5, 0.02, 'the profile (56.5) hangs under the worktop'
+      assert_in_delta 21.5, top(door) - (door.offset[2] + door.gola['v']), 0.02, 'and is 21.5 mm behind the door'
     end
     assert_equal ['b'], layout.doors.map { |d| d.gola['system'] }.uniq
   end
@@ -136,8 +136,10 @@ class GolaTest < Minitest::Test
       above = ordered[i + 1]
       gap = above.offset[2] - top(drawer)
       before = plain.drawers.sort_by { |d| d.offset[2] }
-      assert_in_delta 73.0 + 30.0 - (before[i + 1].offset[2] - top(before[i])), before[i].extent[2] - drawer.extent[2], 0.05, 'the lower front gives up what the profile and the finger gap need'
-      assert_in_delta 73.0 + 30.0, gap, 0.05, 'the profile (73 high) hangs under the front over it, with 30 mm between it and the front under it'
+      assert_in_delta 35.0 - (before[i + 1].offset[2] - top(before[i])), before[i].extent[2] - drawer.extent[2], 0.05, 'the lower front gives up what the 35 mm gap needs'
+      assert_in_delta 35.0, gap, 0.05, 'the gap between two fronts is 35 mm'
+      assert_in_delta 19.0, top(drawer) - (drawer.offset[2] + drawer.gola['v']), 0.05, 'the profile (73 high) is 19 mm behind the front under it'
+      assert_in_delta 19.0, (drawer.offset[2] + drawer.gola['v'] + 73.0) - above.offset[2], 0.05, 'and 19 mm behind the front over it'
       assert_equal 'between', drawer.gola['kind']
     end
   end
