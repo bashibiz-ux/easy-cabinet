@@ -428,6 +428,21 @@ class GolaTest < Minitest::Test
     end
   end
 
+  def test_the_drawer_boxes_do_not_change_or_move_with_the_drawer_fr_height_adjustment
+    %w[b ''].each do |system|
+      plain, = layout_of('base', 'base_3drawer', 600, system == "''" ? '' : system)
+      grown, = layout_of('base', 'base_3drawer', 600, system == "''" ? '' : system, system == "''" ? '' : system, 'drawer_height_adjust' => '9')
+      assert_equal plain.drawer_boxes.keys, grown.drawer_boxes.keys
+      plain.drawer_boxes.each do |role, boards|
+        boards.zip(grown.drawer_boxes[role]).each do |was, now|
+          assert_equal was.extent, now.extent, "#{role} #{was.name}: the box keeps its size"
+          assert_equal was.offset, now.offset, "#{role} #{was.name}: and its place"
+        end
+      end
+      refute_equal plain.drawers.map { |d| d.extent[2] }, grown.drawers.map { |d| d.extent[2] }, 'the fronts did change'
+    end
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

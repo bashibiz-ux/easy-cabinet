@@ -138,6 +138,7 @@ module EasyCabinet
       drawers = drawer_panels(params, dims, base_z)
       gola = apply_gola(params, dims, doors, drawers, panels, base_z, category) # (the Gola handle model: the fronts are cut back for the profiles first; the profiles stay where they are when the fronts are adjusted after)
       adjust_door_heights(doors, params, category)
+      box_fronts = drawers.map(&:dup) # (the drawer boxes are made from the fronts as they were: the Drawer FR Height Adjustment changes the fronts alone)
       adjust_drawer_heights(drawers, params, category)
       GolaProfile.settle!(doors + drawers) if gola
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
@@ -161,9 +162,9 @@ module EasyCabinet
         end
       end
       custom = params['custom_overrides']
-      drawers.each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
+      (drawers + box_fronts).each { |drawer| tweak_item(drawer, custom[drawer.role]) } if custom.is_a?(Hash) && !custom.empty?
       apply_overrides(Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: doors,
-                                 drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
+                                 drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, box_fronts),
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
 
