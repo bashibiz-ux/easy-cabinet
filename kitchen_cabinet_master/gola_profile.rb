@@ -27,71 +27,140 @@ module KitchenCabinetMaster
       SYSTEMS.key?(system.to_s) ? system.to_s : ''
     end
 
-    # The section of a horizontal profile seen from the end: [[x, y], ...], x out of the front (0 is the face of the doors, `back` the back of the doors, negative),
-    # y up from the top edge of the front it sits on, from the drawings. The back plate stands `depth` behind the doors, with two small clips on its back.
-    # B Plus: a plate under the worktop with a short flange at its top, curving at its foot into a tray that ends in a hook on the top of the door.
-    # C Plus: a plate with an arm and a hook at each end that rest on the two fronts, and a clip in the middle.
-    def self.horizontal_outline(system, back)
-      spec = SYSTEMS.fetch(system)
-      h = spec[:size]
-      d = spec[:depth]
-      xb = back - d # (the back of the plate)
-      clips = lambda do |y0, y1| # a small hook on the back: from y1 down to y0
-        [[xb, y1], [xb - 6.0, y1], [xb - 6.0, y1 - PLATE], [xb, y1 - PLATE], [xb, y0 + PLATE], [xb - 6.0, y0 + PLATE], [xb - 6.0, y0], [xb, y0]]
+    # ---- the sections, traced from the Häfele drawings -------------------------------------------------------------------------------------------------------
+    #
+    # Each is worked out in the measures of the drawing, as points [u, y]: u is how far behind the back of the doors (0 is the plane the back faces of the doors are
+    # in; u grows towards the back of the cabinet); y is up from the foot of a horizontal profile, or across from the middle of the gap between two doors for a vertical
+    # one. They are then put in the frame of the handle (x = back - u, `back` being the back of the door, negative). A section can have holes: the hollow chambers of
+    # the aluminium. Its sheet is 1 to 1.6 mm.
+
+    # Points [u, y] on the arc of the circle (u0, y0, radius) from one angle to another, in degrees.
+    def self.arc(u0, y0, radius, from, to, steps = 6)
+      (0..steps).map do |k|
+        angle = (from + ((to - from) * k / steps.to_f)) * Math::PI / 180.0
+        [u0 + (radius * Math.cos(angle)), y0 + (radius * Math.sin(angle))]
       end
-      points =
-        if system == 'b'
-          [[xb, 0.0], [xb + d, 0.0], [xb + d, 5.0], [xb + d - PLATE, 5.0], [xb + d - PLATE, PLATE], [xb + 8.0, PLATE], [xb + 5.0, 2.6], [xb + 3.2, 4.4], [xb + PLATE, 8.0],
-           [xb + PLATE, h - PLATE], [xb + 10.0, h - PLATE], [xb + 10.0, h], [xb, h]]
-        else
-          [[xb, 0.0], [xb + d, 0.0], [xb + d, 8.0], [xb + d - PLATE, 8.0], [xb + d - PLATE, PLATE], [xb + PLATE, PLATE], [xb + PLATE, h - PLATE], [xb + d - PLATE, h - PLATE],
-           [xb + d - PLATE, h - 8.0], [xb + d, h - 8.0], [xb + d, h], [xb, h]]
-        end
-      middle = system == 'b' ? [[xb, 46.5], [xb - 6.0, 46.5], [xb - 6.0, 44.5], [xb, 44.5], [xb, 30.0], [xb - 6.0, 30.0], [xb - 6.0, 28.0], [xb, 28.0]] : clips.call(38.5, 40.5)
-      points + middle
     end
 
-    # The section of a vertical profile seen from above: [[x, y], ...], x out of the doors, y across them, centred on the gap between two doors (30 mm for D,
-    # 35 for E, the gap to put the fingers in). The profile is behind the doors: a back plate `depth` behind them, as wide as the profile is (so 18.5 of it
-    # is behind each door), a short leg at each end that reaches the back of the door, and two walls that line the gap up to the face of the doors.
-    def self.vertical_outline(system, back)
-      spec = SYSTEMS.fetch(system)
-      w = spec[:size] / 2.0
-      g = spec[:gap] / 2.0
-      xb = back - spec[:depth]
-      t = PLATE
-      [[xb, -w], [back, -w], [back, -w + t], [xb + t, -w + t], [xb + t, -g], [0.0, -g], [0.0, -g + t], [xb + t, -g + t],
-       [xb + t, g - t], [0.0, g - t], [0.0, g], [xb + t, g], [xb + t, w - t], [back, w - t], [back, w], [xb, w]]
+    # B Plus, 56.5 high and 27 deep to the back of its clips: a plate 20 mm behind the doors with a flange at its top that runs back towards the cabinet and ends in a small
+    # lip; two clips on the back of the plate that face one another; at its foot the plate curves forward into an arm that ends in a foot (a stub down and a tab back) at the
+    # back of the door. => [outline, holes]
+    def self.b_section
+      points = [[0.0, 0.0], [4.0, 0.0], [4.0, 1.4], [1.6, 1.4], [1.6, 3.3], [14.2, 3.3]]
+      points += arc(14.2, 10.6, 7.3, -90.0, 0.0)[1..]
+      points += [[21.5, 10.9], [27.0, 10.9], [27.0, 16.4], [25.8, 16.4], [25.8, 12.4], [21.5, 12.4], [21.5, 25.6], [25.8, 25.6], [25.8, 21.7], [27.0, 21.7], [27.0, 26.8],
+                 [21.5, 26.8], [21.5, 55.0], [26.4, 55.0], [26.4, 53.2], [28.0, 53.2], [28.0, 56.5], [19.9, 56.5], [19.9, 10.6]]
+      points += arc(14.2, 10.6, 5.7, 0.0, -90.0)[1..]
+      points << [0.0, 4.9]
+      [points, []]
+    end
+
+    # C Plus, 73 high and 26 deep: a plate 20 mm behind the doors that curves at both ends into an arm reaching the back of the front, each ending in a foot (a stub and a
+    # tab) round the edge of the front; in the middle of the back a hollow clip (a box). => [outline, holes]
+    def self.c_section
+      points = [[0.0, 0.0], [4.3, 0.0], [4.3, 1.2], [1.4, 1.2], [1.4, 3.5], [15.3, 3.5]]
+      points += arc(15.3, 9.3, 5.8, -90.0, 0.0)[1..]
+      points += [[21.1, 28.6], [26.2, 28.6], [26.2, 44.3], [21.1, 44.3], [21.1, 63.7]]
+      points += arc(15.3, 63.7, 5.8, 0.0, 90.0)[1..]
+      points += [[1.4, 69.5], [1.4, 71.8], [4.3, 71.8], [4.3, 73.0], [0.0, 73.0], [0.0, 68.2], [15.3, 68.2]]
+      points += arc(15.3, 63.7, 4.5, 90.0, 0.0)[1..]
+      points << [19.8, 9.3]
+      points += arc(15.3, 9.3, 4.5, 0.0, -90.0)[1..]
+      points << [0.0, 4.8]
+      [points, [[[21.1, 30.0], [24.8, 30.0], [24.8, 42.9], [21.1, 42.9]]]]
+    end
+
+    # The numbers of the vertical profiles, from the drawings: wall (the sheet), width (over the outer walls of the feet), total (the height with the tube), tube (the width
+    # of the tube: the gap between the panels it is screwed to), foot (how wide a foot is), foot_in .. turn_y, turn_u, radius (the slanted wall goes from the inner end of
+    # the foot up to where it turns, with that radius, into the plate), end_width (an end profile, from the cabinet to the outer wall).
+    VERTICAL = {
+      'e' => { wall: 1.0, width: 72.0, total: 41.0, tube: 35.0, foot: 4.5, foot_in: 31.5, turn_y: 27.5, turn_u: 15.0, radius: 4.0, end_width: 53.0 },
+      'd' => { wall: 0.9, width: 66.5, total: 37.0, tube: 30.0, foot: 6.8, foot_in: 25.6, turn_y: 24.3, turn_u: 7.0, radius: 4.0, end_width: 48.5 }
+    }.freeze
+
+    # The right half of a vertical section, from the middle of the underside of the plate to the top of the tube: the underside, the slanted wall (it is hollow with the outer
+    # wall, which stands on the foot: a cell open at its top, to the panel), the top of the plate and the outside of the tube. `outer` is where the outer wall is, `foot_in` and
+    # `turn_y` where the slanted wall is, `half` the tube's outside.
+    def self.vertical_half(v, outer, foot_in, turn_y, half)
+      t = v[:wall]
+      r = v[:radius]
+      under = v[:turn_u] + r
+      top = under + t
+      pull = turn_y - r
+      points = [[under, 0.0], [under, pull]]
+      points += arc(v[:turn_u], pull, r, 0.0, 90.0)[1..]
+      points += [[0.0, foot_in], [0.0, outer], [top, outer], [top, outer - t], [1.0, outer - t], [1.0, foot_in + t], [v[:turn_u], turn_y + t]]
+      points += arc(v[:turn_u], pull, r + t, 90.0, 0.0)[1..]
+      points += [[top, half], [v[:total], half], [v[:total], half - t], [v[:total] - 1.5, half - t]]
+      points
+    end
+    private_class_method :vertical_half
+
+    # D or E between two doors, centred on the gap: [outline, holes] in [u, y]. The tube is hollow.
+    def self.vertical_section(system)
+      v = VERTICAL.fetch(system)
+      t = v[:wall]
+      half = v[:tube] / 2.0
+      right = vertical_half(v, v[:width] / 2.0, v[:foot_in], v[:turn_y], half)
+      left = right.map { |u, y| [u, -y] }.reverse
+      outline = right + left[1..-2]
+      under = v[:turn_u] + v[:radius]
+      [outline, [[[under + t, -(half - t)], [v[:total] - 2.5, -(half - t)], [v[:total] - 2.5, half - t], [under + t, half - t]]]]
+    end
+
+    # An end profile (between the cabinet and a door), as drawn: y from the face of the cabinet (0) to the outer wall of the foot, which is behind the door. A long wall along the
+    # cabinet, the plate with a fillet to it, the tube, and the foot and slanted wall of a profile between doors. [outline, holes] in [u, y].
+    def self.end_section(system)
+      v = VERTICAL.fetch(system)
+      t = v[:wall]
+      r = v[:radius]
+      outer = v[:end_width]
+      foot_in = outer - v[:foot]
+      turn_y = foot_in - (v[:foot_in] - v[:turn_y])
+      half = v[:tube]
+      under = v[:turn_u] + r
+      top = under + t
+      fillet = 3.0
+      points = [[0.0, 0.0], [0.0, t], [under - fillet, t]]
+      points += arc(under - fillet, t + fillet, fillet, -90.0, 0.0)[1..]
+      points << [under, turn_y - r]
+      points += vertical_half(v, outer, foot_in, turn_y, half)[2..]
+      points += [[v[:total] - 1.5, t], [v[:total], t], [v[:total], 0.0]]
+      [points, [[[top, t], [v[:total] - 2.5, t], [v[:total] - 2.5, half - t], [top, half - t]]]]
+    end
+
+    # The section and holes of a spot (see apply!) in the frame of the handle: [[x, y], ...] and [[[x, y], ...], ...], x out of the front (0) and `back` the back of the door.
+    def self.section_for(spot)
+      system = spot['system']
+      back = spot['back'].to_f
+      gap = SYSTEMS.fetch(system)[:gap]
+      outline, holes =
+        case spot['kind']
+        when 'pair' then vertical_section(system)
+        when 'end_right', 'end_left'
+          shape, cavity = end_section(system)
+          # from the face of the cabinet to from the edge of the door out over the gap to the cabinet (a left one is the other way round)
+          flip = spot['kind'] == 'end_right' ? ->(y) { gap - y } : ->(y) { y - gap }
+          [shape.map { |u, y| [u, flip.call(y)] }, cavity.map { |loop| loop.map { |u, y| [u, flip.call(y)] } }]
+        else SYSTEMS[system][:horizontal] ? (system == 'b' ? b_section : c_section) : vertical_section(system)
+        end
+      place = ->(points) { points.map { |u, y| [back - u, y] } }
+      [place.call(outline), holes.map { |loop| place.call(loop) }]
+    end
+
+    # The outline of the section of a spot (see section_for).
+    def self.outline_for(spot)
+      section_for(spot).first
+    end
+
+    # The holes of the section of a spot.
+    def self.holes_for(spot)
+      section_for(spot).last
     end
 
     # How much narrower than it was a door is made for an end profile: the gap of the system, less the reveal it had there.
     def self.end_reduce(system, reveal)
       [SYSTEMS.fetch(system)[:gap] - reveal, 10.0].max
-    end
-
-    # An end profile (a door at the end of a run, the cabinet beside it), seen from above, y from the edge of the door out over the gap to the cabinet (mirrored
-    # for one on the left of its door): half a profile between doors. Behind the door as far as the profile between doors is (18.5 mm), then the gap (35 or
-    # 30 mm) with a wall along the edge of the door and one along the cabinet.
-    def self.end_outline(system, back, mirror = false)
-      spec = SYSTEMS.fetch(system)
-      t = PLATE
-      xb = back - spec[:depth]
-      overlap = (spec[:size] - spec[:gap]) / 2.0
-      gap = spec[:gap]
-      points = [[xb, -overlap], [back, -overlap], [back, -overlap + t], [xb + t, -overlap + t], [xb + t, 0.0], [0.0, 0.0], [0.0, t], [xb + t, t],
-                [xb + t, gap - t], [0.0, gap - t], [0.0, gap], [xb, gap]]
-      mirror ? points.map { |x, y| [x, -y] }.reverse : points
-    end
-
-    # The section for a spot (see apply!).
-    def self.outline_for(spot)
-      system = spot['system']
-      case spot['kind']
-      when 'pair' then vertical_outline(system, spot['back'])
-      when 'end_right' then end_outline(system, spot['back'])
-      when 'end_left' then end_outline(system, spot['back'], true)
-      else SYSTEMS[system][:horizontal] ? horizontal_outline(system, spot['back']) : vertical_outline(system, spot['back']) # (a profile with no place given: its own direction)
-      end
     end
 
     # What a profile is called, so that one definition is shared by all that are alike.

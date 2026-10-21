@@ -62,35 +62,62 @@ class GolaTest < Minitest::Test
 
   # ---- the sections are closed solids ---------------------------------------------------------
 
+  # The faces of a shape with holes have the whole as { 'outer' =>, 'holes' => }: its edges are the outside and, the other way round, the holes.
+  def loops_of(face) = face.is_a?(Hash) ? [face['outer']] + face['holes'] : [face]
+
+  def points_of(faces) = faces.flat_map { |face| loops_of(face).flatten(1) }
+
   def closed?(faces)
     edges = Hash.new(0)
-    faces.each { |c| c.each_with_index { |p, i| edges[[p.map { |v| v.round(3) }, c[(i + 1) % c.length].map { |v| v.round(3) }]] += 1 } }
+    faces.each { |face| loops_of(face).each { |c| c.each_with_index { |p, i| edges[[p.map { |v| v.round(3) }, c[(i + 1) % c.length].map { |v| v.round(3) }]] += 1 } } }
     edges.keys.reject { |a, b| edges.key?([b, a]) }.empty?
   end
 
-  def test_every_section_is_a_simple_closed_shape_drawn_as_a_closed_solid
-    %w[b c d e].each do |system|
-      kinds = GolaProfile::SYSTEMS[system][:horizontal] ? %w[top between] : %w[pair end_right end_left]
-      kinds.each do |kind|
-        spot = { 'system' => system, 'kind' => kind, 'back' => -21.0 }
-        outline = GolaProfile.outline_for(spot)
-        outline.each_with_index { |p, i| assert_operator Math.hypot(p[0] - outline[(i + 1) % outline.length][0], p[1] - outline[(i + 1) % outline.length][1]), :>, 0.5, "#{system} #{kind}" }
-        faces = HandleManager.loft_faces([[-100.0, outline], [100.0, outline]])
-        assert closed?(faces), "#{system} #{kind}"
+  # Do the sides of a polygon (not neighbours) cross one another?
+  def crossing?(points)
+    count = points.length
+    sides = (0...count).map { |i| [points[i], points[(i + 1) % count]] }
+    turn = ->(a, b, c) { ((b[0] - a[0]) * (c[1] - a[1])) - ((b[1] - a[1]) * (c[0] - a[0])) }
+    sides.each_with_index.any? do |(a, b), i|
+      sides.each_with_index.any? do |(c, d), j|
+        next false if j <= i + 1 || (i.zero? && j == count - 1)
+
+        (turn.call(a, b, c) * turn.call(a, b, d)).negative? && (turn.call(c, d, a) * turn.call(c, d, b)).negative?
       end
     end
   end
 
-  def test_the_vertical_profiles_are_behind_the_doors_and_as_wide_as_the_hafele_details
-    { 'd' => [66.5, 30.0, 12.0], 'e' => [72.0, 35.0, 20.0] }.each do |system, (width, gap, depth)|
-      outline = GolaProfile.vertical_outline(system, -18.5)
-      ys = outline.map { |p| p[1] }
-      xs = outline.map { |p| p[0] }
-      assert_in_delta width, ys.max - ys.min, 0.001, "#{system}: as wide as the profile, so (#{width} - #{gap}) / 2 of it is behind each door"
-      assert_in_delta(-18.5 - depth, xs.min, 0.001, "#{system}: the back plate is behind the doors")
-      assert_in_delta 0.0, xs.max, 0.001, 'the walls of the gap reach the face of the doors'
-      stop = GolaProfile.end_outline(system, -18.5)
-      assert_in_delta ((width - gap) / 2.0) + gap, stop.map { |p| p[1] }.max - stop.map { |p| p[1] }.min, 0.001, "#{system}: an end profile is a gap and what goes behind one door"
+  def test_every_section_is_a_simple_shape_with_its_holes_inside_and_drawn_as_a_closed_solid
+    %w[b c d e].each do |system|
+      kinds = GolaProfile::SYSTEMS[system][:horizontal] ? %w[top between] : %w[pair end_right end_left]
+      kinds.each do |kind|
+        outline, holes = GolaProfile.section_for({ 'system' => system, 'kind' => kind, 'back' => -21.0 })
+        ([outline] + holes).each do |loop|
+          loop.each_with_index { |p, i| assert_operator Math.hypot(p[0] - loop[(i + 1) % loop.length][0], p[1] - loop[(i + 1) % loop.length][1]), :>, 0.3, "#{system} #{kind}" }
+          refute crossing?(loop), "#{system} #{kind}: the outline crosses itself"
+        end
+        holes.each { |hole| assert(hole.all? { |x, y| x.between?(outline.map(&:first).min, outline.map(&:first).max) && y.between?(outline.map(&:last).min, outline.map(&:last).max) }, "#{system} #{kind}: a hole is outside") }
+        faces = HandleManager.loft_with_holes(outline, holes, -100.0, 100.0)
+        assert closed?(faces), "#{system} #{kind}"
+        assert_equal holes.length, faces.count { |face| face.is_a?(Hash) } / 2, 'two ends with holes in them' if holes.any?
+      end
+    end
+  end
+
+  def test_the_sections_have_the_sizes_of_the_hafele_drawings
+    size = lambda do |system, kind|
+      outline = GolaProfile.outline_for({ 'system' => system, 'kind' => kind, 'back' => 0.0 })
+      [(-outline.map(&:first).min).round(1), (outline.map(&:last).max - outline.map(&:last).min).round(1)] # [how far behind the doors, how high or wide]
+    end
+    assert_equal [28.0, 56.5], size.call('b', 'top'), 'B Plus: 56.5 high, the clips 27 and the flange 28 behind the doors'
+    assert_equal [26.2, 73.0], size.call('c', 'between'), 'C Plus: 73 high, the clip 26 behind the doors'
+    assert_equal [41.0, 72.0], size.call('e', 'pair'), 'E: 72 wide, 20 of tray and 41 with the tube'
+    assert_equal [37.0, 66.5], size.call('d', 'pair'), 'D: 66.5 wide, 12 of tray and 37 with the tube'
+    %w[d e].each do |system|
+      v = GolaProfile::VERTICAL[system]
+      shape, = GolaProfile.end_section(system)
+      assert_in_delta v[:end_width], shape.map(&:last).max - shape.map(&:last).min, 0.001, "#{system}: an end profile is #{v[:end_width]} wide, from the cabinet to the outer wall"
+      assert_in_delta v[:total], shape.map(&:first).max, 0.001
     end
   end
 
@@ -341,10 +368,10 @@ class GolaTest < Minitest::Test
     layout, = layout_of('base', 'base_3drawer', 600, 'c')
     drawer = layout.drawers.min_by { |d| d.offset[2] }
     faces = HandleManager.handle_faces(bundle, drawer.gola['length'], false, drawer.gola)
-    xs = faces.flatten(1).map { |p| p[0] }
-    assert_in_delta drawer.gola['back'] - 26.0 - 6.0, xs.min, 0.001, 'the back plate is 26 behind the doors, its clips 6 further'
-    assert_in_delta drawer.gola['back'], xs.max, 0.001, 'the hooks end at the back of the doors'
-    ys = faces.flatten(1).map { |p| p[1] }
+    xs = points_of(faces).map { |p| p[0] }
+    assert_in_delta drawer.gola['back'] - 26.2, xs.min, 0.001, 'the clip is 26.2 behind the doors'
+    assert_in_delta drawer.gola['back'], xs.max, 0.001, 'the feet end at the back of the doors'
+    ys = points_of(faces).map { |p| p[1] }
     assert_in_delta 73.0, ys.max - ys.min, 0.001
     assert closed?(faces)
   end

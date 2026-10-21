@@ -1160,7 +1160,7 @@ class KitchenCatalogTest < Minitest::Test
         [false, true].each do |flip|
           faces = HandleManager.handle_faces(bundle, length.to_f, flip)
           assert_operator faces.length, :>, 6, "#{bundle['id']} #{length}"
-          faces.each do |face|
+          faces.flat_map { |face| face.is_a?(Hash) ? [face['outer']] + face['holes'] : [face] }.each do |face| # (a face with holes: its outside and each hole)
             assert_operator face.length, :>=, 3
             face.each_with_index do |p, i|
               q = face[(i + 1) % face.length]

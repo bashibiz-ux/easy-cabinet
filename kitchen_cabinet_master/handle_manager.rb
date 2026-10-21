@@ -290,7 +290,14 @@ module KitchenCabinetMaster
       if bundle['profile'] == 'model' # a handle you drew: its model file, set in the handle's frame (a plain bar if the file is gone)
         return definition if place_model(model, definition, bundle)
       end
-      handle_faces(bundle, length, flip, spot).each { |points| definition.entities.add_face(points.map { |x, y, z| [x.mm, y.mm, z.mm] }) }
+      handle_faces(bundle, length, flip, spot).each do |face|
+        if face.is_a?(Hash) # a face with holes: drawn whole, then the holes taken out of it
+          definition.entities.add_face(face['outer'].map { |x, y, z| [x.mm, y.mm, z.mm] })
+          face['holes'].each { |hole| definition.entities.add_face(hole.map { |x, y, z| [x.mm, y.mm, z.mm] })&.erase! }
+        else
+          definition.entities.add_face(face.map { |x, y, z| [x.mm, y.mm, z.mm] })
+        end
+      end
       PanelGenerator.soften(definition.entities)
       definition
     end
@@ -329,8 +336,9 @@ module KitchenCabinetMaster
       projection = projection(bundle)
       case bundle['profile']
       when 'gola'
-        outline = GolaProfile.outline_for(spot || { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -18.0 })
-        loft_faces([[-length / 2.0, outline], [length / 2.0, outline]])
+        spot ||= { 'system' => bundle['system'].to_s, 'kind' => 'top', 'back' => -18.0 }
+        outline, holes = GolaProfile.section_for(spot)
+        loft_with_holes(outline, holes, -length / 2.0, length / 2.0)
       when 'knob' then knob_faces(length, projection, KNOB_SEGMENTS, bundle['style'].to_s)
       when 'dbar' then dbar_faces(length, projection, bundle)
       when 'edge_pull'
@@ -517,6 +525,29 @@ module KitchenCabinetMaster
       end
       faces.filter_map { |face| collapse(face) }
     end
+
+    # The faces of a shape with holes (the hollow chambers of a profile) pushed out from z0 to z1: as loft_faces, with the inside of every hole facing into it, and the two
+    # end faces as { 'outer' => points, 'holes' => [points, ...] } (a face with holes: drawn whole, then the holes taken out of it). Pure maths.
+    def self.loft_with_holes(outline, holes, z0, z1)
+      faces = loft_faces([[z0, outline], [z1, outline]])
+      return faces if holes.empty?
+
+      ends = faces.first(2) # (the cap at z1, the cap at z0: the shape itself, each way up)
+      sides = faces.drop(2)
+      cups = holes.map { |hole| shoelace(hole).negative? ? hole.reverse : hole } # (counter-clockwise)
+      cups.each do |hole|
+        walls = loft_faces([[z0, hole], [z1, hole]]).drop(2)
+        sides.concat(walls.map(&:reverse)) # (facing into the hole)
+      end
+      far = { 'outer' => ends[0], 'holes' => cups.map { |hole| hole.reverse.map { |x, y| [x, y, z1] } } }
+      near = { 'outer' => ends[1], 'holes' => cups.map { |hole| hole.map { |x, y| [x, y, z0] } } }
+      [far, near] + sides
+    end
+
+    def self.shoelace(points)
+      points.each_with_index.sum { |(x, y), i| nx, ny = points[(i + 1) % points.length]; (x * ny) - (nx * y) }
+    end
+    private_class_method :shoelace
 
     # A strip whose two ends have closed to a point (the end of a shell) is a triangle; one with two points that are the same loses one.
     def self.collapse(corners)
