@@ -8,14 +8,14 @@ require_relative 'geom_stub'
 module Sketchup
   class ComponentInstance; end
 end
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults toe_kick cabinet_layout part_layout cut_list_manager].each { |f| require File.join(plugin, f) }
 
 class CutListTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def cabinet(overrides = {})
     Defaults.params.merge('cabinet_id' => 'CABINET_1', 'cabinet_name' => 'BU600', 'cabinet_category' => 'base', 'width' => 600.0,

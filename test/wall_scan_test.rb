@@ -39,7 +39,7 @@ module Sketchup
   end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   module AttributeManager
     def self.cabinet?(entity) = entity.respond_to?(:cabinet_marker)
     def self.row_item?(entity) = cabinet?(entity)
@@ -47,10 +47,10 @@ module KitchenCabinetMaster
   end
 end
 
-require_relative '../kitchen_cabinet_master/snap_manager'
+require_relative '../easy_cabinet/snap_manager'
 
 class WallScanTest < Minitest::Test
-  Snap = KitchenCabinetMaster::SnapManager
+  Snap = EasyCabinet::SnapManager
   P = Geom::Point3d
   Group = Sketchup::Group
 

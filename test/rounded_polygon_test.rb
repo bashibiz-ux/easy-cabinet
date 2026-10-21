@@ -8,15 +8,15 @@ require_relative 'geom_stub'
 module Sketchup
   class ComponentInstance; end
 end
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
   module AttributeManager; end
   module MaterialManager; end
 end
-require File.expand_path('../kitchen_cabinet_master/panel_generator', __dir__)
+require File.expand_path('../easy_cabinet/panel_generator', __dir__)
 
 class RoundedPolygonTest < Minitest::Test
-  PG = KitchenCabinetMaster::PanelGenerator
+  PG = EasyCabinet::PanelGenerator
   CORNER = [[0.0, 0.0], [0.0, 900.0], [800.0, 900.0], [900.0, 800.0], [900.0, 0.0]].freeze
 
   def key(point) = point.map { |v| v.round(6) }

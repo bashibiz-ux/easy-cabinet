@@ -1,8 +1,8 @@
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/island_back_panel'
+require_relative '../easy_cabinet/island_back_panel'
 
 class IslandBackPanelTest < Minitest::Test
-  P = KitchenCabinetMaster::IslandBackPanel
+  P = EasyCabinet::IslandBackPanel
 
   def test_the_board_stands_against_the_back_of_the_units_the_length_of_the_island
     origin, size = P.box({ length: 1800.0, height: 880.0 })

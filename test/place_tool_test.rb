@@ -4,10 +4,10 @@
 # Run:  ruby test/place_tool_test.rb
 
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/place_tool'
+require_relative '../easy_cabinet/place_tool'
 
 class PlaceToolTest < Minitest::Test
-  Tool = KitchenCabinetMaster::PlaceTool
+  Tool = EasyCabinet::PlaceTool
 
   def test_with_no_edge_the_front_faces_along_x
     assert_equal [1.0, 0.0], Tool.frame(nil, nil)

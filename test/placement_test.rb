@@ -12,7 +12,7 @@ module Sketchup
   class ComponentInstance; end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   module SelectionManager
     class << self
       attr_accessor :selected
@@ -21,7 +21,7 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults toe_kick cabinet_layout attribute_manager validation_manager placement_manager naming_manager].each do |f|
   require File.join(plugin, f)
 end
@@ -34,7 +34,7 @@ class FakeCabinet < Sketchup::ComponentInstance
     super()
     @transformation = transformation
     @parent = parent
-    env = KitchenCabinetMaster::CabinetLayout.envelope(params)
+    env = EasyCabinet::CabinetLayout.envelope(params)
     @attrs = { 'cabinet_id' => "CABINET_#{sequence}", 'sequence' => sequence, 'width' => params['width'],
                'cabinet_category' => params['cabinet_category'], 'cabinet_type' => params['cabinet_type'].to_s, 'depth' => params['depth'], 'top_z' => env[2],
                'envelope_depth' => env[0], 'envelope_width' => env[1], 'envelope_top' => env[2],
@@ -70,7 +70,7 @@ class FakeModel
 end
 
 class PlacementTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup
     @entities = FakeEntities.new

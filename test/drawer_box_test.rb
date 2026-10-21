@@ -5,14 +5,14 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout validation_manager handle_manager].each { |f| require File.join(plugin, f) }
 
 class DrawerBoxTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(extra = {})
     Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0, 'height' => 780.0,

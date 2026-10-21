@@ -7,14 +7,14 @@ require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation panel_generator].each { |f| require File.join(plugin, f) }
 
 class KitchenCatalogTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   CATALOG = 'kitchen_cabinets'
 
@@ -712,7 +712,7 @@ class KitchenCatalogTest < Minitest::Test
   def test_no_face_of_a_handle_has_two_points_closer_than_sketchup_accepts
     faces = []
     [28.0, 32.0, 38.0].each { |d| faces << HandleManager.knob_faces(d, 28.0) }
-    Dir[File.join(KitchenCabinetMaster::DATA_DIR, 'handles', '*.json')].each do |file|
+    Dir[File.join(EasyCabinet::DATA_DIR, 'handles', '*.json')].each do |file|
       bundle = JSON.parse(File.read(file, encoding: 'UTF-8'))
       next unless bundle['profile'] == 'bar'
 
@@ -850,7 +850,7 @@ class KitchenCatalogTest < Minitest::Test
   end
 
   def test_the_global_settings_the_panel_sends_are_taken_by_the_cabinet_manager
-    source = File.read(File.expand_path('../kitchen_cabinet_master/cabinet_manager.rb', __dir__))
+    source = File.read(File.expand_path('../easy_cabinet/cabinet_manager.rb', __dir__))
     numbers = source[/GLOBAL_NUMBERS = %w\[(.*?)\]/m, 1].split
     %w[finger_gap finger_gap_drawer door_opening_angle].each { |key| assert_includes numbers, key }
     assert_includes source[/GLOBAL_MATERIALS = %w\[(.*?)\]/m, 1].split, 'door_opening_direction'

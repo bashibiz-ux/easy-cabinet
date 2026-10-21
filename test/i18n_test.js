@@ -33,11 +33,11 @@ doc.createTreeWalker = (root, _what, filter) => {
 global.window = {};
 
 // ---- the files ---------------------------------------------------------------------------------
-const dir = path.join(__dirname, '..', 'kitchen_cabinet_master', 'html');
-global.window.KCM_LANG = {};
+const dir = path.join(__dirname, '..', 'easy_cabinet', 'html');
+global.window.EC_LANG = {};
 ['de', 'zh'].forEach((code) => new Function('window', fs.readFileSync(path.join(dir, 'lang', `${code}.js`), 'utf8'))(global.window));
 new Function('window', fs.readFileSync(path.join(dir, 'i18n.js'), 'utf8'))(global.window);
-const I18N = global.window.KCM_I18N;
+const I18N = global.window.EC_I18N;
 
 // ---- the page ----------------------------------------------------------------------------------
 const label = new El('span').append(t('Settings'));

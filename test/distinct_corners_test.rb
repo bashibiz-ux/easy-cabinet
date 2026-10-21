@@ -1,11 +1,11 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 module Sketchup; end
-module KitchenCabinetMaster; module AttributeManager; end; end
-require_relative '../kitchen_cabinet_master/panel_generator'
+module EasyCabinet; module AttributeManager; end; end
+require_relative '../easy_cabinet/panel_generator'
 
 class DistinctCornersTest < Minitest::Test
-  P = KitchenCabinetMaster::PanelGenerator
+  P = EasyCabinet::PanelGenerator
 
   def test_a_repeated_corner_is_dropped_whether_it_is_next_to_the_other_or_wraps_round
     assert_equal [[0, 0], [1, 0], [1, 1]], P.distinct_corners([[0, 0], [1, 0], [1, 0], [1, 1]])

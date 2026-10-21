@@ -6,7 +6,7 @@ require 'json'
 require 'tmpdir'
 require 'minitest/autorun'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
   # (only what MyAppliances asks of the catalog manager)
   module CatalogManager
@@ -20,10 +20,10 @@ module KitchenCabinetMaster
     def self.fail(message, errors = []) = { 'ok' => false, 'message' => message, 'errors' => errors }
   end
 end
-require_relative '../kitchen_cabinet_master/my_appliances'
+require_relative '../easy_cabinet/my_appliances'
 
 class MyAppliancesTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
   Part = Struct.new(:role, :offset, :extent)
 
   # Where a point of the model (mm, as drawn) ends up: the same steps as the transformation CabinetGenerator builds.

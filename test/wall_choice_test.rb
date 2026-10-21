@@ -5,13 +5,13 @@
 
 require 'minitest/autorun'
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
-%w[response defaults catalog_manager island_hood kitchen_planner].each { |file| require_relative "../kitchen_cabinet_master/#{file}" }
+%w[response defaults catalog_manager island_hood kitchen_planner].each { |file| require_relative "../easy_cabinet/#{file}" }
 
 class WallChoiceTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   U = { 'layout' => 'u', 'wall_a' => 4200.0, 'wall_b' => 5200.0, 'wall_c' => 5200.0, 'wall_units' => true }.freeze
 

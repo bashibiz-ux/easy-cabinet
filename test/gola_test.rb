@@ -6,14 +6,14 @@ require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout front_design validation_manager catalog_manager handle_manager door_animation panel_generator].each { |f| require File.join(plugin, f) }
 
 class GolaTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   CATALOG = 'kitchen_cabinets_gola_profile'
 

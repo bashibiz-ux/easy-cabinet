@@ -7,14 +7,14 @@ require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[defaults toe_kick cabinet_layout].each { |f| require File.join(plugin, f) }
 
 class ToeKickReturnTest < Minitest::Test
-  TK = KitchenCabinetMaster::ToeKick
+  TK = EasyCabinet::ToeKick
 
   def params(extra = {})
     { 'toe_kick_height' => 100.0, 'toe_kick_thickness' => 18.0, 'toe_kick_piece_length' => 2000.0, 'toe_kick_pieces' => 1, 'toe_kick_recess' => 50.0,

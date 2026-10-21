@@ -12,10 +12,10 @@ module Sketchup
   class AppObserver; end
 end
 
-require_relative '../kitchen_cabinet_master/snap_manager'
+require_relative '../easy_cabinet/snap_manager'
 
 class WallSnapTest < Minitest::Test
-  Snap = KitchenCabinetMaster::SnapManager
+  Snap = EasyCabinet::SnapManager
   THRESHOLD = 200.0
 
   # A wall along Y at X = `x`, `length` long, `height` tall (its surface faces +X / -X).

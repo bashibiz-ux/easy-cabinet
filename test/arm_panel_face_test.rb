@@ -5,17 +5,17 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout front_design toe_kick part_layout].each do |file|
   path = File.join(plugin, "#{file}.rb")
   require path if File.exist?(path)
 end
 
 class ArmPanelFaceTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(side)
     { 'depth' => 580.0, 'thickness' => 18.0, 'height' => 1400.0, 'target_base_z' => 880.0, 'side' => side, 'face' => 'flat', 'front_radius' => 3.0 }

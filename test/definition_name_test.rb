@@ -1,17 +1,17 @@
-﻿# frozen_string_literal: true
+# frozen_string_literal: true
 
 # A cabinet's component definition is named with the cabinet's own number. Run:  ruby test/definition_name_test.rb
 
 require 'minitest/autorun'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-require_relative '../kitchen_cabinet_master/defaults'
-require_relative '../kitchen_cabinet_master/naming_manager'
+require_relative '../easy_cabinet/defaults'
+require_relative '../easy_cabinet/naming_manager'
 
 class DefinitionNameTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def test_the_definition_is_named_with_the_cabinet_number
     assert_equal 'BU600 - 113', NamingManager.definition_name('BU600', 'CABINET_0113')

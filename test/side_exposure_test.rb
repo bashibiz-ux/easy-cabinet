@@ -1,8 +1,8 @@
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/side_exposure'
+require_relative '../easy_cabinet/side_exposure'
 
 class SideExposureTest < Minitest::Test
-  E = KitchenCabinetMaster::SideExposure
+  E = EasyCabinet::SideExposure
   SIDE = { depth: 580.0, base: 0.0, top: 2100.0 }.freeze
 
   def test_a_side_nothing_touches_shows_all_of_it

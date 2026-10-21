@@ -13,14 +13,14 @@ module Sketchup
   class AppObserver; end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout part_layout validation_manager tag_manager worktop_manager].each { |f| require File.join(plugin, f) }
 
 class WorktopTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def item(y:, width: 600.0, depth: 580.0, top: 880.0, x: 0.0, hx: 0.0, hy: 1.0, corner: false, return_depth: nil, island_back: nil)
     { island_back: island_back, x: x, y: y, hx: hx, hy: hy, width: width, depth: depth, top: top, corner: corner, return_depth: return_depth }
@@ -272,7 +272,7 @@ class WorktopTest < Minitest::Test
     %w[apply_worktop remove_worktop].each { |action| assert_includes dialog, action }
     refute_includes dialog, 'create_scene', 'the 3D scene section is gone'
   end
-  def plugin_dir = File.expand_path('../kitchen_cabinet_master', __dir__)
+  def plugin_dir = File.expand_path('../easy_cabinet', __dir__)
 
   # ---- cutting into pieces -----------------------------------------------------------
 

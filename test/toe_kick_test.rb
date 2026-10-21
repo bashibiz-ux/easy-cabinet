@@ -18,15 +18,15 @@ module Sketchup
   def self.active_model = @active_model ||= FakeModel.new(:model_entities)
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   # Every material name is "in the model" for these tests.
   module MaterialManager
     def self.available?(_model, _name) = true
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
-module KitchenCabinetMaster
+plugin = File.expand_path('../easy_cabinet', __dir__)
+module EasyCabinet
   DATA_DIR = 'unused'
 end
 %w[response defaults attribute_manager toe_kick cabinet_layout part_layout validation_manager
@@ -63,7 +63,7 @@ class FakeParent
 end
 
 class ToeKickTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(overrides = {})
     { 'toe_kick_height' => 100.0, 'toe_kick_thickness' => 18.0, 'toe_kick_piece_length' => 600.0,

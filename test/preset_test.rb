@@ -14,14 +14,14 @@ module Sketchup
     def write_default(section, key, value) = @store[[section, key]] = value
   end
 end
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response preset_manager].each { |f| require File.join(plugin, f) }
 
 class PresetTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup = Sketchup.store.clear
 
@@ -47,7 +47,7 @@ class PresetTest < Minitest::Test
   end
 
   def test_damaged_saved_text_does_not_break_the_panel
-    Sketchup.write_default('KitchenCabinetMaster', 'panel_presets', '{not json')
+    Sketchup.write_default('EasyCabinet', 'panel_presets', '{not json')
     assert_equal({}, PresetManager.perform('load_presets', {})['data']['values'])
   end
 end

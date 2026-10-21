@@ -5,14 +5,14 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout door_animation].each { |f| require File.join(plugin, f) }
 
 class DoorAngleTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def door(hinge, swing = nil)
     CabinetLayout::Door.new(role: 'door_1', name: 'Door 1', extent: [18.0, 400.0, 700.0], offset: [0.0, 0.0, 0.0],

@@ -5,10 +5,10 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout toe_kick part_manager].each do |file|
   path = File.join(plugin, "#{file}.rb")
   begin
@@ -19,7 +19,7 @@ plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
 end
 
 class ArmCornerTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(category, style = 'l_shape')
     Defaults.params.merge('cabinet_category' => category, 'corner_style' => style, 'width' => 1000.0, 'depth' => 560.0, 'height' => 2160.0)

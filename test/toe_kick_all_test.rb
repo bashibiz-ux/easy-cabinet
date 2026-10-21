@@ -14,7 +14,7 @@ module Sketchup
   class AppObserver; end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   module MaterialManager
     def self.available?(_model, _name) = true
   end
@@ -49,7 +49,7 @@ module KitchenCabinetMaster
   DATA_DIR = 'unused'
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager toe_kick cabinet_layout part_layout validation_manager
    naming_manager cabinet_generator selection_manager part_manager].each { |f| require File.join(plugin, f) }
 
@@ -107,7 +107,7 @@ class FakeSketchModel
 end
 
 class ToeKickAllTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup
     @bag = Bag.new

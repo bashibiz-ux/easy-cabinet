@@ -6,14 +6,14 @@
 require 'json'
 require 'minitest/autorun'
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout catalog_manager handle_manager].each { |f| require File.join(plugin, f) }
 
 class StartingValuesTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def test_a_toe_kick_and_the_cabinets_standing_on_it_start_at_100_mm
     assert_equal 100.0, Defaults.toe_kick_params['toe_kick_height']

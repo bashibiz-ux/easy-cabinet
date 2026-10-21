@@ -5,15 +5,15 @@
 require 'minitest/autorun'
 require 'json'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-require File.expand_path('../kitchen_cabinet_master/defaults', __dir__)
+require File.expand_path('../easy_cabinet/defaults', __dir__)
 
 class DefaultColoursTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
-  PRESETS = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/materials.json', __dir__), encoding: 'UTF-8'))['materials']
+  PRESETS = JSON.parse(File.read(File.expand_path('../easy_cabinet/data/materials.json', __dir__), encoding: 'UTF-8'))['materials']
 
   def colour(name) = PRESETS.find { |m| m['name'] == name }&.fetch('color')
 

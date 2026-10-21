@@ -4,10 +4,10 @@
 # Run:  ruby test/path_kitchen_test.rb
 
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/path_kitchen'
+require_relative '../easy_cabinet/path_kitchen'
 
 class PathKitchenTest < Minitest::Test
-  PK = KitchenCabinetMaster::PathKitchen
+  PK = EasyCabinet::PathKitchen
 
   def rectangle(width = 4000.0, depth = 3000.0)
     pts = [[0, 0], [width, 0], [width, depth], [0, depth]]

@@ -15,7 +15,7 @@ module Sketchup
   end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
   module HandleManager
     MODEL_KEYS = [].freeze
@@ -66,7 +66,7 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager validation_manager cabinet_layout toe_kick placement_manager].each { |f| require File.join(plugin, f) }
 require File.join(plugin, 'cabinet_manager')
 
@@ -82,10 +82,10 @@ class FakeLoft < Sketchup::ComponentInstance
     super()
     @transformation = Geom::Transformation.translation(Geom::Vector3d.new(0, 0, z))
     @parent = parent
-    base = KitchenCabinetMaster::Defaults.params.merge(
+    base = EasyCabinet::Defaults.params.merge(
       'cabinet_category' => 'wall', 'cabinet_type' => 'wall_loft_2door', 'catalog_id' => 'kitchen_cabinets', 'width' => 600.0, 'depth' => 560.0, 'height' => 290.0,
-      'toe_kick_height' => 0.0, 'door_count' => 2, 'drawer_count' => 0, 'door_opening_direction' => KitchenCabinetMaster::Defaults.direction_ids.first,
-      'top_panel_style' => KitchenCabinetMaster::Defaults::TOP_PANEL_STYLES.first, 'cabinet_id' => 'CABINET_0001', 'base_z' => 0.0, 'top_z' => 290.0,
+      'toe_kick_height' => 0.0, 'door_count' => 2, 'drawer_count' => 0, 'door_opening_direction' => EasyCabinet::Defaults.direction_ids.first,
+      'top_panel_style' => EasyCabinet::Defaults::TOP_PANEL_STYLES.first, 'cabinet_id' => 'CABINET_0001', 'base_z' => 0.0, 'top_z' => 290.0,
       'envelope_depth' => 580.0, 'envelope_width' => 600.0, 'envelope_top' => 290.0
     )
     @attrs = kind == :wall ? base.merge('cabinet_type' => 'wall_2door', 'cabinet_id' => 'CABINET_0003', 'height' => 780.0, 'top_z' => 780.0, 'envelope_top' => 780.0, 'sequence' => 3) : kind == :tall ? base.merge('cabinet_category' => 'tall', 'cabinet_type' => 'tall_1door', 'cabinet_id' => 'CABINET_0002', 'door_count' => 1, 'height' => 2160.0, 'toe_kick_height' => 100.0, 'base_z' => 100.0, 'top_z' => 2260.0, 'envelope_top' => 2260.0, 'sequence' => 1) : base.merge('sequence' => 2)
@@ -125,7 +125,7 @@ class FakeModel
 end
 
 class CeilingUpdateTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup
     @model = FakeModel.new

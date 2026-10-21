@@ -4,10 +4,10 @@
 
 require 'minitest/autorun'
 require 'uri'
-require_relative '../kitchen_cabinet_master/feedback_manager'
+require_relative '../easy_cabinet/feedback_manager'
 
 class FeedbackTest < Minitest::Test
-  FM = KitchenCabinetMaster::FeedbackManager
+  FM = EasyCabinet::FeedbackManager
 
   def mail(raw, opts = {}) = FM.mailto(raw, **opts)
 

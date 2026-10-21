@@ -4,10 +4,10 @@
 # Run:  ruby test/room_shell_test.rb
 
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/room_shell'
+require_relative '../easy_cabinet/room_shell'
 
 class RoomShellTest < Minitest::Test
-  RS = KitchenCabinetMaster::RoomShell
+  RS = EasyCabinet::RoomShell
 
   # a cabinet whose back is on the line through `origin` and whose front faces `front`
   def item(x0, y0, x1, y1, front, origin, top: 2260.0) = { min: [x0, y0], max: [x1, y1], top: top, origin: origin, front: front }

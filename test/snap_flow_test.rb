@@ -52,7 +52,7 @@ module UI
   end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   module DialogManager
     @messages = []
     class << self
@@ -95,7 +95,7 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout placement_manager snap_manager].each { |f| require File.join(plugin, f) }
 
 class FakeModel
@@ -133,8 +133,8 @@ class FakeCabinet < Sketchup::ComponentInstance
     @parent = Struct.new(:entities).new(entities)
     @name = name
     @transformation = Geom::Transformation.translation(Geom::Vector3d.new(x, y, z))
-    env = KitchenCabinetMaster::CabinetLayout.envelope(
-      KitchenCabinetMaster::Defaults.params.merge('cabinet_category' => 'base', 'width' => width, 'depth' => 560.0,
+    env = EasyCabinet::CabinetLayout.envelope(
+      EasyCabinet::Defaults.params.merge('cabinet_category' => 'base', 'width' => width, 'depth' => 560.0,
                                                   'height' => 780.0, 'toe_kick_height' => 100.0)
     )
     @attrs = { 'cabinet_id' => "CABINET_#{@persistent_id}", 'cabinet_category' => category, 'width' => width, 'depth' => 560.0, 'height' => 780.0, 'envelope_depth' => env[0],
@@ -150,7 +150,7 @@ class FakeCabinet < Sketchup::ComponentInstance
 end
 
 class SnapFlowTest < Minitest::Test
-  Snap = KitchenCabinetMaster::SnapManager
+  Snap = EasyCabinet::SnapManager
   V = Geom::Vector3d
   P = Geom::Point3d
 
@@ -162,7 +162,7 @@ class SnapFlowTest < Minitest::Test
     Snap.instance_variable_set(:@busy, false)
     Sketchup.snap_default = true
     UI.timers.clear
-    KitchenCabinetMaster::DialogManager.messages.clear
+    EasyCabinet::DialogManager.messages.clear
   end
 
   def cabinet(**opts)
@@ -198,7 +198,7 @@ class SnapFlowTest < Minitest::Test
     b = cabinet(y: 1200.0, name: 'BU600')    # B, then dragged to 40 mm clear of A
     move_and_settle(b, dy: -560.0)
     assert_origin [0.0, 600.0], b
-    assert_equal [['snap', { 'message' => 'BU600 snapped to the next cabinet.' }]], KitchenCabinetMaster::DialogManager.messages
+    assert_equal [['snap', { 'message' => 'BU600 snapped to the next cabinet.' }]], EasyCabinet::DialogManager.messages
   end
 
   def test_the_snap_is_one_transparent_operation_so_undo_takes_back_both
@@ -213,7 +213,7 @@ class SnapFlowTest < Minitest::Test
     b = cabinet(y: 1000.0, x: 0.0)
     move_and_settle(b, dx: 80.0)             # dragged 80 mm off the wall
     assert_origin [0.0, 1000.0], b
-    assert_equal 'BU600 snapped to the wall.', KitchenCabinetMaster::DialogManager.messages.last[1]['message']
+    assert_equal 'BU600 snapped to the wall.', EasyCabinet::DialogManager.messages.last[1]['message']
   end
 
   def test_sides_and_wall_together
@@ -222,7 +222,7 @@ class SnapFlowTest < Minitest::Test
     b = cabinet(y: 1200.0)
     move_and_settle(b, dx: 60.0, dy: -560.0) # 60 forward of the wall, 40 short of the neighbour
     assert_origin [0.0, 600.0], b
-    assert_equal 'BU600 snapped to the next cabinet.', KitchenCabinetMaster::DialogManager.messages.last[1]['message'],
+    assert_equal 'BU600 snapped to the next cabinet.', EasyCabinet::DialogManager.messages.last[1]['message'],
                  'the back was already level with the neighbour, which is on the wall'
   end
 
@@ -231,7 +231,7 @@ class SnapFlowTest < Minitest::Test
     b = cabinet(y: 3000.0)
     move_and_settle(b, dy: -300.0)           # still ~2 m from A
     assert_origin [0.0, 2700.0], b
-    assert_empty KitchenCabinetMaster::DialogManager.messages
+    assert_empty EasyCabinet::DialogManager.messages
     assert_empty @model.operations
   end
 
@@ -282,7 +282,7 @@ class SnapFlowTest < Minitest::Test
     Snap.modified(b)
     b.define_singleton_method(:transform!) { |_t| raise 'boom' }      # ... the snap's does not
     UI.fire_all
-    assert_match(/Could not snap BU600: boom/, KitchenCabinetMaster::DialogManager.messages.last[1]['message'])
+    assert_match(/Could not snap BU600: boom/, EasyCabinet::DialogManager.messages.last[1]['message'])
     assert_includes @model.operations, [:abort]
   end
 
@@ -338,11 +338,11 @@ class SnapFlowTest < Minitest::Test
   end
 
   def test_a_hand_scaled_cabinet_is_rebuilt_at_the_new_size_with_the_scale_taken_off
-    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
-    KitchenCabinetMaster::CabinetManager.rejects = false
+    EasyCabinet::CabinetGenerator.rebuilt.clear
+    EasyCabinet::CabinetManager.rejects = false
     a = cabinet(y: 0.0, width: 600.0)
     rescale_flow(a) { scale(a, x: 1.25, y: 1.5) } # 25 % deeper, 50 % wider
-    root, params = KitchenCabinetMaster::CabinetGenerator.rebuilt.last
+    root, params = EasyCabinet::CabinetGenerator.rebuilt.last
     assert_same a, root
     assert_equal 700.0, params['depth']
     assert_equal 900.0, params['width']
@@ -350,33 +350,33 @@ class SnapFlowTest < Minitest::Test
     assert_equal 'BU900', params['cabinet_name'], 'the name follows the new size'
     assert_in_delta 1.0, a.transformation.xscale, 1e-9, 'the scale is taken off again, so panels keep their thickness'
     assert_in_delta 1.0, a.transformation.yscale, 1e-9
-    assert(KitchenCabinetMaster::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('900') })
+    assert(EasyCabinet::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('900') })
   end
 
   def test_a_rejected_size_puts_the_cabinet_back
-    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
-    KitchenCabinetMaster::CabinetManager.rejects = true
+    EasyCabinet::CabinetGenerator.rebuilt.clear
+    EasyCabinet::CabinetManager.rejects = true
     a = cabinet(y: 0.0, width: 600.0)
     rescale_flow(a) { scale(a, y: 0.1) }
-    assert_empty KitchenCabinetMaster::CabinetGenerator.rebuilt
+    assert_empty EasyCabinet::CabinetGenerator.rebuilt
     assert_in_delta 1.0, a.transformation.yscale, 1e-9
-    assert(KitchenCabinetMaster::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('put back') })
+    assert(EasyCabinet::DialogManager.messages.any? { |_e, d| d['message'].to_s.include?('put back') })
   ensure
-    KitchenCabinetMaster::CabinetManager.rejects = false
+    EasyCabinet::CabinetManager.rejects = false
   end
 
   def test_scaling_is_handled_even_when_snapping_is_switched_off
-    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    EasyCabinet::CabinetGenerator.rebuilt.clear
     Sketchup.snap_default = false
     a = cabinet(y: 0.0, width: 600.0)
     rescale_flow(a) { scale(a, y: 2.0) }
-    assert_equal 1200.0, KitchenCabinetMaster::CabinetGenerator.rebuilt.last[1]['width']
+    assert_equal 1200.0, EasyCabinet::CabinetGenerator.rebuilt.last[1]['width']
   end
 
   def test_an_unscaled_cabinet_is_never_rebuilt
-    KitchenCabinetMaster::CabinetGenerator.rebuilt.clear
+    EasyCabinet::CabinetGenerator.rebuilt.clear
     a = cabinet(y: 0.0, width: 600.0)
     rescale_flow(a) { a.transformation = Geom::Transformation.translation(V.new(0, 40, 0)) }
-    assert_empty KitchenCabinetMaster::CabinetGenerator.rebuilt
+    assert_empty EasyCabinet::CabinetGenerator.rebuilt
   end
 end

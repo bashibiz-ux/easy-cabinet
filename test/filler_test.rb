@@ -16,7 +16,7 @@ module Sketchup
   def self.active_model = @active_model ||= FakeModel.new(:model_entities)
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 
   module MaterialManager
@@ -24,7 +24,7 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager toe_kick cabinet_layout part_layout validation_manager naming_manager
    placement_manager cabinet_generator selection_manager part_generator part_manager].each { |f| require File.join(plugin, f) }
 
@@ -57,7 +57,7 @@ class FakeParent
 end
 
 class FillerTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup
     @entities = FakeEntities.new
@@ -261,7 +261,7 @@ class FillerTest < Minitest::Test
   end
 
   # MaterialManager.apply records the colour on the piece so the test can read it back.
-  module ::KitchenCabinetMaster::MaterialManager
+  module ::EasyCabinet::MaterialManager
     def self.apply(entity, name, _model = nil, _color = nil)
       entity.painted = name
       true

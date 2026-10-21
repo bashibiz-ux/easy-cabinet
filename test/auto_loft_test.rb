@@ -10,7 +10,7 @@ module Sketchup
   class ComponentInstance; end
 end
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
   module KitchenPlanner
     Item = Struct.new(:category, :type, :width, :kind, :run, :start, :gap_before, :extra, keyword_init: true)
@@ -52,10 +52,10 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager placement_manager cabinet_layout].each { |f| require File.join(plugin, f) }
 
-module KitchenCabinetMaster
+module EasyCabinet
   module AttributeManager
     def self.write(entity, params)
       params.each { |key, value| entity.attrs[key.to_s] = value }
@@ -66,7 +66,7 @@ module KitchenCabinetMaster
 end
 load File.join(plugin, 'part_manager.rb')
 
-module KitchenCabinetMaster
+module EasyCabinet
   module LiveParts
     class << self
       attr_accessor :follow
@@ -77,7 +77,7 @@ module KitchenCabinetMaster
 end
 
 class AutoLoftTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   class Unit < Sketchup::ComponentInstance
     attr_reader :attrs, :transformation, :entities_list
@@ -178,13 +178,13 @@ class AutoLoftTest < Minitest::Test
     assert_equal ['CABINET_0001'], PlacementManager.lofts(@model).map { |l| l.attrs['loft_over'] }
   end
   def test_the_lofts_follow_the_loft_handles_tick_of_the_visibility
-    @model.set_attribute('KitchenCabinetMaster', 'hide_loft_handles', true)
+    @model.set_attribute('EasyCabinet', 'hide_loft_handles', true)
     sync({})
     assert(KitchenManager.built.all? { |b| b[:panel]['hide_loft_handles'] == true })
     KitchenManager.reset!
     @model.entities_list.clear
     @tall = unit(@model, 'CABINET_0001', 'tall', 600.0)
-    @model.set_attribute('KitchenCabinetMaster', 'hide_loft_handles', false)
+    @model.set_attribute('EasyCabinet', 'hide_loft_handles', false)
     sync({})
     assert(KitchenManager.built.none? { |b| b[:panel]['hide_loft_handles'] == true })
   end

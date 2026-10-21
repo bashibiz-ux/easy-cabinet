@@ -7,7 +7,7 @@
 require 'minitest/autorun'
 
 class ActionsTest < Minitest::Test
-  PLUGIN = File.expand_path('../kitchen_cabinet_master', __dir__)
+  PLUGIN = File.expand_path('../easy_cabinet', __dir__)
 
   def source(name) = File.read(File.join(PLUGIN, name), encoding: 'UTF-8')
 

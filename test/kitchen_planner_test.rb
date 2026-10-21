@@ -6,14 +6,14 @@
 require 'json'
 require 'minitest/autorun'
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 require File.join(plugin, 'island_hood')
 require File.join(plugin, 'kitchen_planner')
 
 class KitchenPlannerTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
-  CATALOG = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/catalogs/kitchen_cabinets.json', __dir__)))
+  CATALOG = JSON.parse(File.read(File.expand_path('../easy_cabinet/data/catalogs/kitchen_cabinets.json', __dir__)))
   IDS = CATALOG['categories'].to_h { |category, list| [category, list.map { |entry| entry['id'] }] }
 
   def plan(options = {})

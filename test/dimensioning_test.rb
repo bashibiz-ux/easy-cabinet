@@ -1,8 +1,8 @@
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/dimensioning'
+require_relative '../easy_cabinet/dimensioning'
 
 class DimensioningTest < Minitest::Test
-  D = KitchenCabinetMaster::Dimensioning
+  D = EasyCabinet::Dimensioning
 
   def unit(y:, width: 600.0, **opts)
     { x: 0.0, y: y, z: 0.0, hx: 0.0, hy: 1.0, fx: 1.0, fy: 0.0, width: width, depth: 580.0, base_z: 0.0, top: 880.0, tall: false }.merge(opts)

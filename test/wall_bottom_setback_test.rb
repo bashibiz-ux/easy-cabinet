@@ -6,16 +6,16 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults validation_manager attribute_manager worktop_manager].each { |f| require File.join(plugin, f) rescue nil }
 require File.join(plugin, 'wall_bottom_manager') rescue nil
 
 class WallBottomSetbackTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(raw) = WallBottomManager.send(:read_params, raw).first
 

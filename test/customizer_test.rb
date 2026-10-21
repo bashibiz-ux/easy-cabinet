@@ -5,14 +5,14 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager validation_manager cabinet_layout customizer toe_kick part_layout].each { |f| require File.join(plugin, f) }
 
 class CustomizerTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(extra = {})
     Defaults.params.merge('cabinet_category' => 'base', 'width' => 600.0, 'depth' => 560.0, 'height' => 780.0, 'door_count' => 0,

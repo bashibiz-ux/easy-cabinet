@@ -4,10 +4,10 @@
 # Run:  ruby test/tag_names_test.rb
 
 require 'minitest/autorun'
-require_relative '../kitchen_cabinet_master/tag_manager'
+require_relative '../easy_cabinet/tag_manager'
 
 class TagNamesTest < Minitest::Test
-  TM = KitchenCabinetMaster::TagManager
+  TM = EasyCabinet::TagManager
 
   def test_the_tags_are_numbered
     assert_equal ['01 Base Unit', '02 Wall Unit', '03 Loft Unit', '04 Tall Unit', '05 Toe Kick', '06 Side Panels', '07 Ceiling Filler', '08 Worktop'], TM::ALL

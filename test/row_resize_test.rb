@@ -13,15 +13,15 @@ module Sketchup
   class AppObserver; end
 end
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 
   module MaterialManager
     def self.available?(_model, _name) = true
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager validation_manager catalog_manager cabinet_layout handle_manager
    selection_manager placement_manager cabinet_generator cabinet_manager].each { |f| require File.join(plugin, f) }
 
@@ -53,7 +53,7 @@ class Holder
 end
 
 class RowResizeTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def setup
     @bag = Bag.new

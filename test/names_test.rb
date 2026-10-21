@@ -5,14 +5,14 @@
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout validation_manager].each { |f| require File.join(plugin, f) }
 
 class NamesTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def raw(extra = {})
     { 'catalog_id' => 'c', 'cabinet_category' => 'base', 'cabinet_type' => 'b', 'width' => '600', 'depth' => '560', 'height' => '780',

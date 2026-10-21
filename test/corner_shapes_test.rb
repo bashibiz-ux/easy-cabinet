@@ -6,14 +6,14 @@ require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   DATA_DIR = 'unused'
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager cabinet_layout validation_manager].each { |f| require File.join(plugin, f) }
 
 class CornerShapesTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   def params(extra = {})
     Defaults.params.merge('cabinet_category' => 'base', 'corner_style' => 'l_shape', 'width' => 900.0, 'depth' => 560.0,
@@ -96,7 +96,7 @@ class CornerShapesTest < Minitest::Test
       assert_in_delta blind_width, blind.extent[1], 0.02, "#{width}: the blind panel is #{blind_width}"
       assert_in_delta width - (2 * reveal) - gap - blind_width, door.extent[1], 0.02, 'the door is resized to fit'
     end
-    catalog_entry = JSON.parse(File.read(File.expand_path('../kitchen_cabinet_master/data/catalogs/kitchen_cabinets.json', __dir__)))['categories']
+    catalog_entry = JSON.parse(File.read(File.expand_path('../easy_cabinet/data/catalogs/kitchen_cabinets.json', __dir__)))['categories']
     %w[base wall].each do |category|
       entry = catalog_entry[category].find { |e| e['corner'] == 'blind' }
       assert_equal 630, entry['blind'], "#{category}: the blind panel starts at 630"

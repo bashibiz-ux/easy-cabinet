@@ -8,15 +8,15 @@ require_relative 'geom_stub'
 module Sketchup
   class ComponentInstance; end
 end
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
   module MaterialManager; end
 end
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager front_design validation_manager panel_generator].each { |f| require File.join(plugin, f) }
 
 class FrontRadiusTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   PG = PanelGenerator
 

@@ -9,7 +9,7 @@ require 'json'
 
 class TranslationsTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
-  HTML_DIR = File.join(ROOT, 'kitchen_cabinet_master', 'html')
+  HTML_DIR = File.join(ROOT, 'easy_cabinet', 'html')
   KEYS = File.read(File.join(ROOT, 'translations', 'keys.txt'), encoding: 'UTF-8').lines.map(&:chomp).reject(&:empty?)
   INDEX = File.read(File.join(HTML_DIR, 'index.html'), encoding: 'UTF-8')
   FILES = Dir[File.join(HTML_DIR, 'lang', '*.js')].sort

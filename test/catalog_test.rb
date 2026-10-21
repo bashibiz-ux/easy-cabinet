@@ -6,16 +6,16 @@
 require 'json'
 require 'minitest/autorun'
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 end
-require_relative '../kitchen_cabinet_master/response'
-require_relative '../kitchen_cabinet_master/defaults'
-require_relative '../kitchen_cabinet_master/catalog_manager'
+require_relative '../easy_cabinet/response'
+require_relative '../easy_cabinet/defaults'
+require_relative '../easy_cabinet/catalog_manager'
 
 class CatalogTest < Minitest::Test
-  include KitchenCabinetMaster
-  DATA_DIR_FOR_TEST = KitchenCabinetMaster::DATA_DIR
+  include EasyCabinet
+  DATA_DIR_FOR_TEST = EasyCabinet::DATA_DIR
 
   def test_the_models_are_kitchen_cabinet_with_handle_gola_handle_and_without_handle
     catalogs = CatalogManager.catalogs

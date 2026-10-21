@@ -11,10 +11,10 @@ module Sketchup
   class AppObserver; end
 end
 
-require_relative '../kitchen_cabinet_master/snap_manager'
+require_relative '../easy_cabinet/snap_manager'
 
 class SnapTest < Minitest::Test
-  Snap = KitchenCabinetMaster::SnapManager
+  Snap = EasyCabinet::SnapManager
   THRESHOLD = 150.0
 
   def box(x, y, depth, width) = { min: [x, y], max: [x + depth, y + width] }

@@ -8,15 +8,15 @@ require 'json'
 require 'minitest/autorun'
 require_relative 'geom_stub'
 
-module KitchenCabinetMaster
+module EasyCabinet
   module AttributeManager; DICTIONARY = 'kcm'; end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults toe_kick cabinet_layout door_animation validation_manager].each { |f| require File.join(plugin, f) }
 
 class CornerDoorTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   WIDTH = 900.0
   RETURN_DEPTH = 600.0

@@ -35,7 +35,7 @@ module Sketchup
 
     def initialize = @selection = FakeSelection.new
     def active_entities = :entities
-    def entities = KitchenCabinetMaster::CabinetGenerator.made.to_a
+    def entities = EasyCabinet::CabinetGenerator.made.to_a
     def get_attribute(_dictionary, key, default = nil) = (@attributes ||= {}).fetch(key, default)
     def set_attribute(_dictionary, key, value) = ((@attributes ||= {})[key] = value)
     def find_entity_by_persistent_id(id) = entities.find { |entity| entity.persistent_id == id }
@@ -48,8 +48,8 @@ module Sketchup
   def self.active_model = (@model ||= FakeModel.new)
 end
 
-module KitchenCabinetMaster
-  DATA_DIR = File.expand_path('../kitchen_cabinet_master/data', __dir__)
+module EasyCabinet
+  DATA_DIR = File.expand_path('../easy_cabinet/data', __dir__)
 
   Built = Struct.new(:params, :transformation) do
     def persistent_id = object_id
@@ -61,7 +61,7 @@ module KitchenCabinetMaster
   end
 
   module AttributeManager
-    DICTIONARY = 'KitchenCabinetMaster'
+    DICTIONARY = 'EasyCabinet'
     @id = 0
     def self.next_cabinet_id(_model) = "C#{@id += 1}"
     def self.next_sequence(_model) = @id
@@ -171,11 +171,11 @@ module KitchenCabinetMaster
   end
 end
 
-plugin = File.expand_path('../kitchen_cabinet_master', __dir__)
+plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults catalog_manager kitchen_planner island_hood island_back_panel kitchen_manager].each { |f| require File.join(plugin, f) }
 
 class KitchenManagerTest < Minitest::Test
-  include KitchenCabinetMaster
+  include EasyCabinet
 
   HoodSpy = []
   IslandHood.singleton_class.send(:define_method, :build) { |_model, _entities, frame, hood| HoodSpy << [frame, hood] }
@@ -366,9 +366,9 @@ class KitchenManagerTest < Minitest::Test
 
   def test_every_island_unit_is_marked_with_its_seating_overhang_for_the_worktop
     design({ 'wall_a' => 4200, 'island' => true, 'island_seating' => 300 })
-    island = made.select { |built| built.attributes.key?(['KitchenCabinetMaster', 'island_seating']) }
+    island = made.select { |built| built.attributes.key?(['EasyCabinet', 'island_seating']) }
     assert_operator island.length, :>=, 2
-    assert(island.all? { |built| built.attributes[['KitchenCabinetMaster', 'island_seating']] == 300.0 })
+    assert(island.all? { |built| built.attributes[['EasyCabinet', 'island_seating']] == 300.0 })
     refute_equal made.length, island.length, 'the wall units are not marked'
   end
 
