@@ -20,7 +20,6 @@ module EasyCabinet
       'carcass_raise'         => { label: 'Carcass bottom raise', min: 0.0, max: 1000.0 },
       'door_height_adjust'    => { label: 'Door height adjustment', min: -300.0, max: 300.0 },
       'drawer_height_adjust'  => { label: 'Drawer front height adjustment', min: -300.0, max: 300.0 },
-      'gola_grow'             => { label: 'Finger gap of the Gola profiles: how far the fronts grow upward', min: -70.0, max: 30.0 },
       'oven_height'           => { label: 'Oven height', min: 300.0, max: 900.0 },
       'oven2_height'          => { label: 'Second oven height', min: 300.0, max: 900.0 },
       'micro_height'          => { label: 'Microwave height', min: 200.0, max: 600.0 },

@@ -923,7 +923,7 @@ module EasyCabinet
 
     # ---- settings that belong to every cabinet -------------------------------------
 
-    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise door_height_adjust drawer_height_adjust gola_grow finger_gap finger_gap_drawer door_opening_angle
+    GLOBAL_NUMBERS = %w[door_gap door_reveal door_distance front_radius material_thickness back_thickness toe_kick_height carcass_raise door_height_adjust drawer_height_adjust finger_gap finger_gap_drawer door_opening_angle
                       handle_length handle_side_offset handle_vertical_offset handle_custom_x handle_custom_z].freeze
     GLOBAL_FLAGS = %w[finger_all].freeze # ticks (true / false)
     GLOBAL_MATERIALS = %w[base_material wall_material tall_material carcass_material top_panel_style
@@ -1076,7 +1076,6 @@ module EasyCabinet
         next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
         next false if key == 'carcass_raise' && stored['cabinet_category'] != 'wall' # only wall units lift their carcass
         next false if %w[finger_gap finger_gap_drawer finger_all].include?(key) && stored['finger_pull'] != true # only the model without handles has a finger gap
-        next false if key == 'gola_grow' && GolaProfile.clean(stored['gola_system']).empty? && GolaProfile.clean(stored['gola_system_drawer']).empty? # only the Gola profiles have this gap
         if GLOBAL_NUMBERS.include?(key)
           ValidationManager.to_float(stored[key]) != ValidationManager.to_float(value)
         else

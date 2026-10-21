@@ -311,20 +311,6 @@ class GolaTest < Minitest::Test
     assert_equal({ 'gola_system' => '', 'gola_system_drawer' => '' }, CatalogManager.gola_systems({}))
   end
 
-  def test_the_fronts_grow_upward_into_the_finger_gap_when_a_value_is_typed
-    assert_equal 0.0, Defaults.params['gola_grow']
-    start, = layout_of('base', 'base_2door', 900, 'b')
-    grown, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '10')
-    deeper, = layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '-10')
-    assert_in_delta start.doors.first.extent[2] + 10.0, grown.doors.first.extent[2], 0.05, 'a value typed: the doors grow upward'
-    assert_in_delta start.doors.first.extent[2] - 10.0, deeper.doors.first.extent[2], 0.05, 'a minus value: a bigger gap'
-    assert_in_delta start.doors.first.offset[2], grown.doors.first.offset[2], 0.05, 'their bottom edge stays'
-    assert_in_delta start.doors.first.offset[2] + start.doors.first.gola['v'], grown.doors.first.offset[2] + grown.doors.first.gola['v'], 0.05, 'the profile stays where it is'
-    refute_empty layout_of('base', 'base_2door', 900, 'b', 'b', 'gola_grow' => '30').first.doors
-    result = ValidationManager.validate({ 'catalog_id' => CATALOG, 'cabinet_category' => 'base', 'cabinet_type' => 'base_2door', 'width' => '900', 'depth' => '560', 'height' => '780', 'toe_kick_height' => '100', 'gola_grow' => '31' }, door_count: 2, drawer_count: 0)
-    refute_empty result.errors, 'the gap cannot be closed past the profile'
-  end
-
   def test_every_drawer_front_grows_upward_from_its_own_bottom_edge_and_none_of_them_moves
     plain, = layout_of('base', 'base_3drawer', 600, 'b')
     taller, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '15')
@@ -441,6 +427,20 @@ class GolaTest < Minitest::Test
       end
       refute_equal plain.drawers.map { |d| d.extent[2] }, grown.drawers.map { |d| d.extent[2] }, 'the fronts did change'
     end
+  end
+
+  def test_the_door_height_adjustment_changes_the_front_of_a_dishwasher_too
+    [['', ''], %w[b c]].each do |door_system, drawer_system|
+      plain, = layout_of('base', 'base_dishwasher', 600, door_system, drawer_system, 'dishwasher' => true)
+      taller, = layout_of('base', 'base_dishwasher', 600, door_system, drawer_system, 'dishwasher' => true, 'door_height_adjust' => '12')
+      shorter, = layout_of('base', 'base_dishwasher', 600, door_system, drawer_system, 'dishwasher' => true, 'door_height_adjust' => '-12')
+      assert_in_delta plain.drawers.first.extent[2] + 12.0, taller.drawers.first.extent[2], 0.05, "system #{door_system.inspect}"
+      assert_in_delta plain.drawers.first.extent[2] - 12.0, shorter.drawers.first.extent[2], 0.05
+      assert_in_delta plain.drawers.first.offset[2], taller.drawers.first.offset[2], 0.05, 'its bottom edge stays'
+    end
+    plain, = layout_of('base', 'base_dishwasher', 600, '', '', 'dishwasher' => true, 'dishwasher_handle' => false)
+    taller, = layout_of('base', 'base_dishwasher', 600, '', '', 'dishwasher' => true, 'dishwasher_handle' => false, 'door_height_adjust' => '12')
+    assert_in_delta plain.panels.find { |p| p.role == 'dishwasher_front' }.extent[2] + 12.0, taller.panels.find { |p| p.role == 'dishwasher_front' }.extent[2], 0.05, 'a front with no handle too'
   end
 
   def test_a_catalog_without_gola_profiles_is_not_touched

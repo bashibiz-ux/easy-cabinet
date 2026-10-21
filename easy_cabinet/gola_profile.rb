@@ -181,7 +181,7 @@ module EasyCabinet
       return if systems.values.all?(&:empty?)
 
       reveal = params['door_reveal'].to_f
-      gap = DEFAULT_GAP - params['gola_grow'].to_f # (the gap to put the fingers in: the fronts grow upward into it)
+      gap = DEFAULT_GAP # (the gap to put the fingers in)
       carcass_top = limit + reveal
       everything = doors + drawers
       fronts = doors.map { |item| [item, systems[:doors]] } + drawers.map { |item| [item, systems[:drawers]] }

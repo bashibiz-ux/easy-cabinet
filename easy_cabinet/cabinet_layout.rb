@@ -244,6 +244,7 @@ module EasyCabinet
         front.front = true # the colour of the doors
         front.shape = "front_#{FrontDesign.clean(params['front_design'])}"
         front.round = params['front_radius'].to_f
+        front.extent = [front.extent[0], front.extent[1], round2(front.extent[2] + dishwasher_adjustment(front.extent[2], params))] # (the Door Height Adjustment)
         panels << front
         return Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [], toe_kick: [], drawer_boxes: {}, appliances: [])
       end
@@ -251,10 +252,18 @@ module EasyCabinet
       # With a handle the front is a front like a drawer's (door material and design, the handle of the Handle section on it, centred).
       front = Door.new(role: 'drawer_1', name: 'Dishwasher Front', extent: [dims.thick, width, height].map { |v| round2(v) },
                        offset: [x, reveal, base_z + reveal].map { |v| round2(v) }, hinge: 'center', pivot: [dims.depth, reveal, base_z].map { |v| round2(v) }, rotation: 0.0)
-      GolaProfile.settle!([front]) if apply_gola(params, dims, [], [front], panels, base_z, 'base') # (the Gola handle model: the profile under the worktop)
+      gola = apply_gola(params, dims, [], [front], panels, base_z, 'base') # (the Gola handle model: the profile under the worktop)
+      front.extent = [front.extent[0], front.extent[1], round2(front.extent[2] + dishwasher_adjustment(front.extent[2], params))] # (the Door Height Adjustment: the top edge moves)
+      GolaProfile.settle!([front]) if gola
       Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [front], toe_kick: [], drawer_boxes: {}, appliances: [])
     end
     private_class_method :dishwasher_layout
+
+    # How much taller (or shorter) the front of a dishwasher is made by the Door Height Adjustment: its top edge moves, never below 60 mm high.
+    def self.dishwasher_adjustment(height, params)
+      [params['door_height_adjust'].to_f, 60.0 - height.to_f].max
+    end
+    private_class_method :dishwasher_adjustment
 
     # Two doors one above the other have a shelf between them, flush with the front of the carcass, in the gap between the doors (its middle on the
     # middle of the gap), as the middle of a two-layer lift-up unit is.

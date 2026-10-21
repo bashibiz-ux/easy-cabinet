@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.76.1';
+  const APP_VERSION = '1.76.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -55,7 +55,6 @@
     carcass_raise: 'carcassRaise',
     door_height_adjust: 'doorHeightAdjust',
     drawer_height_adjust: 'drawerHeightAdjust',
-    gola_grow: 'golaGapGlobal',
     leg2_length: 'leg2Length',
     leg2_depth: 'leg2Depth',
     appliance_set: 'applianceSet',
@@ -112,7 +111,6 @@
     carcass_raise: 'carcassRaise',
     door_height_adjust: 'doorHeightAdjust',
     drawer_height_adjust: 'drawerHeightAdjust',
-    gola_grow: 'golaGapGlobal',
     door_opening_angle: 'angle',
     placement_gap: 'gap',
     width: 'width',
@@ -586,7 +584,7 @@
    * ---------------------------------------------------------------------- */
 
   const PRESET_IDS = [
-    'units', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'drawerHeightAdjust', 'golaGapGlobal', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
+    'units', 'cfHeight', 'cfThickness', 'cfRecess', 'cfPiece', 'cfMaterial', 'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'drawerHeightAdjust', 'fingerGapGlobal', 'fingerAllGlobal', 'liveCabinet', 'liveSizes', 'resizeNeighbours', 'thickness', 'backThickness', 'topPanel',
     'handle', 'drawerHandle', 'handleLength', 'handleOrientation', 'handleHPlace', 'handleSide', 'handleVert', 'handleMaterial',
     'baseMaterial', 'wallMaterial', 'tallMaterial', 'carcassMaterial',
     'toeHeight', 'toeThickness', 'toeRecess', 'pieceLength', 'toeMaterial', 'toeCover',
@@ -859,7 +857,7 @@
 
   // The inputs that hold a length. Each one's text is in the chosen unit.
   const LENGTH_IDS = [
-    'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'drawerHeightAdjust', 'golaGapGlobal', 'thickness', 'backThickness',
+    'doorGap', 'doorReveal', 'doorDistance', 'frontRadius', 'doorHeightAdjust', 'drawerHeightAdjust', 'thickness', 'backThickness',
     'width', 'depth', 'height', 'kitchenWallA', 'kitchenWallB', 'kitchenWallC', 'kitchenIslandLength', 'kitchenIslandAisle', 'kitchenWin1From', 'kitchenWin1Width', 'kitchenWin2From', 'kitchenWin2Width', 'carcassRaise', 'leg2Length', 'leg2Depth', 'ovenHeight', 'ovenHeight2', 'microHeight', 'zoneHeight', 'bottomHeight', 'topFrontHeight', 'fridgeHeight', 'smallDrawer', 'blindWidth', 'splitHeight', 'liftHeight', 'fingerGapGlobal', 'drawerH1', 'drawerH2', 'drawerH3', 'drawerH4', 'drawerH5', 'drawerH6', 'wbThickness', 'wbLength', 'wbSetback', 'wbLoftSetback', 'gap', 'toeHeight', 'handleSide', 'handleVert', 'handleCustomX', 'handleCustomZ',
     'fillerWidth', 'fillerThickness', 'fillerHeight', 'epDepth', 'epThickness', 'epHeight',
     'toeThickness', 'toeRecess', 'pieceLength', 'wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtSplash',
@@ -1166,7 +1164,6 @@ function currentCabinet() {
       carcass_raise: mmv('carcassRaise'),
       door_height_adjust: mmv('doorHeightAdjust'),
       drawer_height_adjust: mmv('drawerHeightAdjust'),
-      gola_grow: hasGolaField() ? mmv('golaGapGlobal') : '',
       leg2_length: mmv('leg2Length'),
       leg2_depth: mmv('leg2Depth'),
       appliance_set: isApplianceCabinet() ? $('applianceSet').value : '',
@@ -1247,7 +1244,6 @@ function currentCabinet() {
     setText('carcassRaise', Number(p.carcass_raise) || 0); // a cabinet saved before this option has none
     setText('doorHeightAdjust', Number(p.door_height_adjust) || 0);
     setText('drawerHeightAdjust', Number(p.drawer_height_adjust) || 0);
-    if (hasGolaField()) setText('golaGapGlobal', Number(p.gola_grow) || 0);
     // An L-shaped corner has a second leg; 0 / missing means it is the same as the first.
     setText('leg2Length', Number(p.leg2_length) > 0 ? Number(p.leg2_length) : Number(p.width));
     setText('leg2Depth', Number(p.leg2_depth) > 0 ? Number(p.leg2_depth) : Number(p.depth));
@@ -1515,8 +1511,6 @@ function currentCabinet() {
   const hasSplitField = () => hasCatalogField('split_label');
   const hasLiftField = () => hasCatalogField('lift_label');
   // The model without handles (a catalog with finger_pull) lets the height the doors of a base unit are reduced by be set.
-  // The Gola handle model (a catalog with gola) has the finger gap between a front and the profile over it.
-  const hasGolaField = () => !!(currentCatalog() || {}).gola && categoryKind() === 'cabinet';
   const hasFingerField = () => !!(currentCatalog() || {}).finger_pull && categoryKind() === 'cabinet' && $('category').value === 'base';
   // A unit of drawers (drawers and no doors: drawer units, a hob unit, a pull-out) has no shelves, so the field is not shown.
   const hasShelvesField = () => {
@@ -1560,8 +1554,6 @@ function currentCabinet() {
     setSoft($('glassDoorsField'), !hasTwoDoors());
     setSoft($('liftDoorField'), !hasLiftTick()); // (a lift-up or bi-fold unit needs no tick)
     setSoft($('fingerGapGlobalField'), !(currentCatalog() || {}).finger_pull);
-    setSoft($('golaGapGlobalField'), !(currentCatalog() || {}).gola);
-    if ((currentCatalog() || {}).gola && !$('golaGapGlobal').value) setText('golaGapGlobal', 0);
     if ((currentCatalog() || {}).finger_pull && !$('fingerGapGlobal').value) setText('fingerGapGlobal', 35);
     if (cabinet && cabinet.lift_label) $('liftHeightLabel').textContent = cabinet.lift_label;
     setSoft($('sinkFields'), !hasSinkField());
@@ -2364,7 +2356,6 @@ if (details.length) {
     carcassRaise: ['carcass_raise', 'carcassRaise'],
     doorHeightAdjust: ['door_height_adjust', 'doorHeightAdjust'],
     drawerHeightAdjust: ['drawer_height_adjust', 'drawerHeightAdjust'],
-    golaGapGlobal: ['gola_grow', 'golaGapGlobal'],
     handle: ['handle_id', 'handle'],
     drawerHandle: ['drawer_handle_id', 'drawerHandle'],
     handleLength: ['handle_length', 'handleLength'],
