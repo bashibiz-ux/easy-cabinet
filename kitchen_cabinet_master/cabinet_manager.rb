@@ -1087,6 +1087,8 @@ module KitchenCabinetMaster
 
     # Does any override change what this cabinet already has?
     def self.differs?(stored, overrides)
+      return true if stale_gola?(stored) # (built when the Gola profiles did less: it is built again)
+
       overrides.any? do |key, value|
         next false if key == 'toe_kick_height' && stored['cabinet_category'] == 'wall' # a wall unit hangs: no toe kick
         next false if key == 'carcass_raise' && stored['cabinet_category'] != 'wall' # only wall units lift their carcass
@@ -1100,6 +1102,44 @@ module KitchenCabinetMaster
       end
     end
     private_class_method :differs?
+
+    # The cabinets with Gola profiles that were built under an older revision of them (before a corner unit or a dishwasher had them) are built again. One Undo step.
+    # Called when the panel opens. => how many.
+    def self.refresh_stale_gola
+      model = Sketchup.active_model
+      return 0 unless model
+
+      stale = model.entities.grep(Sketchup::ComponentInstance).select { |item| AttributeManager.cabinet?(item) && !AttributeManager.custom_model?(item) && stale_gola?(AttributeManager.read(item)) }
+      return 0 if stale.empty?
+
+      done = 0
+      SelectionManager.suspend do
+        with_operation(model, 'Update Gola Profiles') do
+          stale.each do |cabinet|
+            params, errors = restyle_params(model, AttributeManager.read(cabinet), {})
+            next unless params && errors.empty?
+
+            params['cabinet_name'] = NamingManager.for_update(cabinet, params)
+            CabinetGenerator.update(model, cabinet, params)
+            PartManager.follow_door(model, cabinet)
+            done += 1
+          end
+          WallBottomManager.refresh(model) if defined?(WallBottomManager)
+        end
+      end
+      SelectionManager.push_selection(model)
+      done
+    rescue StandardError => e
+      warn "[Kitchen Cabinet Master] Could not update the Gola profiles: #{e.message}"
+      0
+    end
+
+    # A cabinet with Gola profiles that was built under an older revision of them (a corner unit or a dishwasher, before they had them).
+    def self.stale_gola?(stored)
+      has = !GolaProfile.clean(stored['gola_system']).empty? || !GolaProfile.clean(stored['gola_system_drawer']).empty?
+      has && stored['gola_rev'].to_i != GolaProfile::REVISION
+    end
+    private_class_method :stale_gola?
 
     # A stored cabinet's parameters with `overrides` put in, checked by the same rules
     # as an Update. Returns [params, []] or [nil, errors].

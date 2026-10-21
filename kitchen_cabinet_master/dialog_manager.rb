@@ -84,7 +84,7 @@ module KitchenCabinetMaster
         chosen = KEEP_SELECTION.include?(action) ? selection_keys(Sketchup.active_model) : nil
 
         result = case action
-        when 'init'          then (organise_tags; unhide_base_units; Response.ok('', init_payload))
+        when 'init'          then (organise_tags; unhide_base_units; CabinetManager.refresh_stale_gola; Response.ok('', init_payload))
         when 'undo'          then undo_last
         when 'set_snap'      then (SnapManager.enabled = data['enabled'] == true; Response.ok(SnapManager.enabled? ? 'Moved cabinets stick to their neighbours and the walls.' : 'Moved cabinets stay where you put them.'))
         when 'send_feedback' then FeedbackManager.perform(data)

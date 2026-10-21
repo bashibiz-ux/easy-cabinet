@@ -367,6 +367,20 @@ class GolaTest < Minitest::Test
     assert_in_delta plain.panels.find { |p| p.role == 'top_front_rail' }.offset[0] - (27.0 - 2.0), rail.offset[0], 0.5, 'the front rail stands back'
   end
 
+  def test_a_cabinet_with_gola_profiles_remembers_the_revision_they_were_built_under
+    _, with = layout_of('base', 'base_2door', 900, 'b')
+    _, without = layout_of('base', 'base_2door', 900, '')
+    assert_equal GolaProfile::REVISION, with['gola_rev'], 'so that the cabinets of an older revision are built again'
+    assert_equal 0, without['gola_rev']
+  end
+
+  def test_the_wider_door_of_an_l_corner_has_its_profile_too
+    layout, = layout_of('base', 'base_corner_l', 1000, 'b', 'b', 'corner_style' => 'l_shape', 'leg2_length' => '900')
+    assert_equal 2, layout.doors.length
+    assert(layout.doors.all?(&:gola), 'both doors are cut back for a profile')
+    assert_includes layout.doors.map(&:handle), false, 'one of them has no handle in other models: the profile goes on it all the same'
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

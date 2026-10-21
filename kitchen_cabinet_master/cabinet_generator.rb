@@ -423,7 +423,8 @@ module KitchenCabinetMaster
           params = HandleManager.drawer_params(params, own)
         end
       end
-      unless bundle && door.handle != false # no handle on this door (an L corner has one, on its narrower door)
+      gola = bundle && bundle['profile'] == 'gola' && door.gola # (a Gola profile is on every front it was cut back for, an L corner's wider door too)
+      unless bundle && (door.handle != false || gola) # no handle on this door (an L corner has one, on its narrower door)
         discard_instance(model, existing) if existing
         return
       end
