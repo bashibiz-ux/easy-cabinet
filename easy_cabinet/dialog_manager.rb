@@ -14,7 +14,7 @@ module EasyCabinet
     PART_ACTIONS = %w[insert_filler insert_end_panel insert_panel insert_exposed_side_panels insert_toe_kick apply_toe_kicks apply_ceiling_fillers update_placed update_part delete_part].freeze
     LIVE_ACTIONS = %w[set_live_loft set_live_loft_follow set_live_loft_bottom set_live_ceiling_filler set_live_dimensions set_live_side_panels set_live_toe_kicks set_live_wall_bottom set_live_worktop].freeze
     WORKTOP_ACTIONS = %w[apply_worktop remove_worktop apply_wall_bottom remove_wall_bottom].freeze
-    ROOM_ACTIONS = %w[build_room remove_room update_room].freeze
+    ROOM_ACTIONS = %w[build_room remove_room update_room create_layout_scenes].freeze
     CUT_LIST_ACTIONS = %w[get_cut_list export_cut_list].freeze
     PRESET_ACTIONS = %w[load_presets save_presets reset_presets].freeze
     KITCHEN_ACTIONS = %w[design_kitchen design_kitchen_options design_path_kitchen].freeze

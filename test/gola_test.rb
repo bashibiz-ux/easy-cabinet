@@ -353,7 +353,7 @@ class GolaTest < Minitest::Test
         assert_in_delta plain.doors[i].extent[2] - (35.0 - 2.0), door.extent[2], 1.0, "#{id}: the door stops 35 mm under the worktop"
         assert_in_delta 21.5, (door.offset[2] + door.extent[2]) - (door.offset[2] + door.gola['v']), 0.001, "#{id}: 21.5 behind the door"
       end
-      assert(layout.panels.select { |p| %w[left_side right_side].include?(p.role) }.all? { |p| p.shape.nil? }, "#{id}: no notches in the sides of a corner unit") unless id == 'base_corner_blind'
+      assert(layout.panels.select { |p| %w[left_side right_side].include?(p.role) }.all? { |p| p.shape.nil? }, "#{id}: no notches in the sides of a diagonal corner unit") unless %w[base_corner_blind base_corner_l].include?(id)
     end
   end
 
@@ -371,6 +371,22 @@ class GolaTest < Minitest::Test
         assert_operator behind, :<=, -27.0 + 0.05, "#{id}: the top panel is 27 mm (the profile) behind the back of #{door.name}"
       end
     end
+  end
+
+  def test_the_two_profiles_of_an_l_corner_meet_at_the_inner_corner_and_the_sides_of_its_legs_are_notched
+    layout, = layout_of('base', 'base_corner_l', 1000, 'b', 'b', 'corner_style' => 'l_shape', 'leg2_length' => '900')
+    first = layout.doors.find { |d| d.role == 'door_1' }
+    second = layout.doors.find { |d| d.role == 'door_2' }
+    low_y = first.offset[1] + first.gola['u'] - (first.gola['length'] / 2.0) # (door 1 runs along +Y)
+    assert_in_delta second.offset[1], low_y, 0.05, 'it runs on to the plane of the back of the other door'
+    low_x = second.offset[0] - (second.gola['u'] + (second.gola['length'] / 2.0)) # (door 2 runs along -X)
+    assert_in_delta first.offset[0], low_x, 0.05, 'and the other one to the back of this one'
+    right = layout.panels.find { |p| p.role == 'right_side' }
+    front = layout.panels.find { |p| p.role == 'front_return' }
+    assert_equal 'notch', right.shape
+    assert_equal 'notch_y', front.shape, 'the end of the second leg runs along Y'
+    assert_equal right.path, front.path
+    assert_in_delta 27.0 - 2.0, right.path.first[0], 0.5, 'as deep as the profile stands behind the doors'
   end
 
   def test_the_front_of_a_dishwasher_has_the_profile_under_the_worktop

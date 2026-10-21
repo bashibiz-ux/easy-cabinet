@@ -399,6 +399,7 @@ module EasyCabinet
       when 'build_room' then build(raw)
       when 'remove_room' then remove
       when 'update_room' then update
+      when 'create_layout_scenes' then LayoutScenes.create(raw)
       else Response.fail("Unknown action \"#{action}\".")
       end
     end
@@ -758,6 +759,11 @@ module EasyCabinet
       nil
     end
     private_class_method :load_plan
+
+    # The room that was built ({ x0:, y0:, x1:, y1:, height:, backs: }), or nil.
+    def self.plan_of(model)
+      load_plan(model)
+    end
 
     # What became of the doors and windows, from [[index, [x, y, z] now, [x, y, z] drawn at]] (one entry for each door or window group in the model): a group that is
     # not where it was drawn has been MOVED; a second group with the same index is a COPY (a door or window copied and pasted: it is a new opening of its own, as

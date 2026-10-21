@@ -142,13 +142,20 @@ module EasyCabinet
       GolaProfile.settle!(doors + drawers) if gola
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
-      if gola && (style.nil? || style == 'blind') # (the profiles run through the side panels: notches; the sides of a corner unit are not along its fronts)
+      join_l_corner(doors) if gola && style == 'l_shape' # (the two profiles meet at the inner corner)
+      if gola && (style.nil? || style == 'blind' || style == 'l_shape') # (the profiles run through the side panels: notches; the sides of a diagonal corner are not along its door)
         notches = GolaProfile.notches(doors, drawers, distance: door_distance(params), base_z: base_z, height: dims.height) # (the profiles run through the sides)
         unless notches.empty?
           panels.each do |item|
             next unless %w[left_side right_side].include?(item.role) && item.shape.nil?
 
             item.shape = 'notch'
+            item.path = notches
+          end
+          panels.each do |item|
+            next unless item.role == 'front_return' && item.shape.nil? # (the end of the second leg of an L runs along Y: its front edge is the high end of Y)
+
+            item.shape = 'notch_y'
             item.path = notches
           end
         end
@@ -185,6 +192,22 @@ module EasyCabinet
       true
     end
     private_class_method :apply_gola
+
+    # The profiles of the two doors of an L corner reach the plane of the other door's back, so that they meet (and overlap) at the inner corner: the first door's
+    # profile runs on down Y to the back of the second door, the second's on along X to the back of the first.
+    def self.join_l_corner(doors)
+      first = doors.find { |door| door.role == 'door_1' }
+      second = doors.find { |door| door.role == 'door_2' }
+      return unless first&.gola && second&.gola
+
+      spot = first.gola
+      right_first = ((spot['length'] - first.extent[1]) / 2.0) + spot['u'] - (first.extent[1] / 2.0) # (what it reaches past the far end of the door)
+      GolaProfile.set_ends!(first, first.offset[1] - second.offset[1], right_first)
+      spot = second.gola
+      left_second = ((spot['length'] - second.extent[1]) / 2.0) - (spot['u'] - (second.extent[1] / 2.0)) # (what it reaches past the start of the door: its far end is the inner corner)
+      GolaProfile.set_ends!(second, left_second, (second.offset[0] - second.extent[1]) - first.offset[0])
+    end
+    private_class_method :join_l_corner
 
     # The part of a polygon [[x, y], ...] that is on the near side of a line: the points p with (p - origin) . normal <= limit. Pure maths.
     def self.clip_behind(points, origin, normal, limit)

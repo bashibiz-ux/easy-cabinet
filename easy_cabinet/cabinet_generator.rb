@@ -801,6 +801,7 @@ module EasyCabinet
         if item.points then PanelGenerator.polygon_definition(model, item.points, item.extent[2])
         elsif item.shape.to_s == 'fluted' then PanelGenerator.fluted_definition(model, item.extent)
         elsif item.shape.to_s == 'notch' then PanelGenerator.notched_definition(model, item.extent, item.path)
+        elsif item.shape.to_s == 'notch_y' then PanelGenerator.notched_definition(model, item.extent, item.path, along: :y)
         elsif item.shape.to_s.start_with?('front_') then PanelGenerator.front_definition(model, item.extent, item.shape.to_s.delete_prefix('front_'), item.round.to_f)
         else PanelGenerator.definition(model, item.extent)
         end

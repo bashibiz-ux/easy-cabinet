@@ -13,7 +13,7 @@ module EasyCabinet
   module GolaProfile
     DEFAULT_GAP = 35.0 # mm: the gap to put the fingers in, to start with: between the worktop and the top front (B Plus), between two fronts (C Plus). The profile
     #                  goes behind the fronts and covers the rest of its height behind them (21.5 under the worktop, 19 behind each of two fronts).
-    REVISION = 6       # what the profiles do (changes when a version makes them do more): a cabinet built under an older one is built again by the next setting for all cabinets
+    REVISION = 7       # what the profiles do (changes when a version makes them do more): a cabinet built under an older one is built again by the next setting for all cabinets
     PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this
@@ -276,6 +276,15 @@ module EasyCabinet
         other != item && !%w[top fold].include?(other.hinge) && other.offset[2] - top_of(item) >= -0.6 && other.offset[2] - top_of(item) <= NEIGHBOUR &&
           [other.offset[1] + other.extent[1], item.offset[1] + item.extent[1]].min - [other.offset[1], item.offset[1]].max > 0.5 * [other.extent[1], item.extent[1]].min
       end.min_by { |other| other.offset[2] }
+    end
+
+    # Makes the profile of a front reach `left` and `right` beyond its edges (what a profile does at the end of a run: the reveal, or half the gap to the front beside it).
+    def self.set_ends!(item, left, right)
+      spot = item.gola
+      return unless spot && spot['horizontal']
+
+      spot['length'] = round2(item.extent[1] + left + right)
+      spot['u'] = round2((item.extent[1] + right - left) / 2.0)
     end
 
     # The notches the horizontal profiles need in the front edge of the side panels, where they run through them: [[depth, from, to], ...] (mm, from the bottom of

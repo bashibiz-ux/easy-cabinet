@@ -99,18 +99,24 @@ module EasyCabinet
       points.each_with_object([]) { |p, kept| kept << p unless kept.last == p }
     end
 
-    # A panel (size [x, y, z] in mm) with notches in its front edge (see notched_outline), the outline pushed out along Y.
-    def self.notched_definition(model, size, notches)
+    # A panel (size [x, y, z] in mm) with notches in its front edge (see notched_outline), the outline pushed out along Y. `along: :y` is for a panel that is thin in X
+    # and runs along Y (the end of the second leg of an L corner): its front edge is the high end of Y, the outline is drawn in the YZ plane and pushed out along X.
+    def self.notched_definition(model, size, notches, along: :x)
       dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
       list = Array(notches).map { |n| n.map { |v| (v.to_f * 100).round / 100.0 } }
-      name = format('%<prefix>sNotched %<x>g x %<y>g x %<z>g n%<n>s', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, n: list.flatten.join('.'))
+      name = format('%<prefix>sNotched%<along>s %<x>g x %<y>g x %<z>g n%<n>s', prefix: NAME_PREFIX, along: along == :y ? ' Y' : '', x: dx, y: dy, z: dz, n: list.flatten.join('.'))
       existing = model.definitions[name]
       return existing if existing && AttributeManager.managed?(existing)
 
       definition = model.definitions.add(name)
       AttributeManager.mark_managed(definition)
-      face = definition.entities.add_face(notched_outline(dx, dz, list).map { |x, z| [x.mm, 0, z.mm] })
-      face.pushpull(face.normal.y.positive? ? dy.mm : -dy.mm)
+      if along == :y
+        face = definition.entities.add_face(notched_outline(dy, dz, list).map { |y, z| [0, y.mm, z.mm] })
+        face.pushpull(face.normal.x.positive? ? dx.mm : -dx.mm)
+      else
+        face = definition.entities.add_face(notched_outline(dx, dz, list).map { |x, z| [x.mm, 0, z.mm] })
+        face.pushpull(face.normal.y.positive? ? dy.mm : -dy.mm)
+      end
       definition
     end
 
