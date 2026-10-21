@@ -15,7 +15,7 @@ module EasyCabinet
     SINK_STEEL = 2.0       # thickness of the steel
     SINK_CORNER = 28.0     # the radius of a bowl's corners
     HOB_WIDTH = 860.0      # the widest hob
-    HOB_DEPTH = 510.0
+    HOB_DEPTH = 500.0
     ARC_STEPS = 12
     TAP_STEPS = 24
 
@@ -85,7 +85,7 @@ module EasyCabinet
       sink = sink_plan(params, dims)
       out << sink[:rect] if sink && sink[:fits]
       hob = hob_plate(params, dims)
-      out << inset(hob, 10.0) if hob
+      out << [hob[0] + 12.5, hob[1] - 12.5, hob[2] + 13.5, hob[3] - 13.5] if hob # (the opening of a 860 x 500 hob is 833 x 475)
       out
     end
 
@@ -216,67 +216,104 @@ module EasyCabinet
     end
     private_class_method :hob_plate
 
-    # An induction hob: black glass with a thin steel bevel, cooking zones printed as two silver rings each, a
-    # touch slider and display along the front.
+    # A gas hob in stainless steel, like the Teka EX 90 1 5G AI AL DR CI: a steel plate, five gas burners (four on a narrow hob) with a blue flame ring, three
+    # cast iron pan supports (two on a narrow hob) and a row of knobs along the front.
+    # Each burner is [across, front to back, flame ring diameter] as fractions of the plate; each pan support [across from, across to, burners].
+    WIDE_HOB = [[0.018, 0.32, [[0.174, 0.48, 160.0]]], [0.337, 0.65, [[0.498, 0.24, 115.0], [0.498, 0.68, 115.0]]], [0.67, 0.98, [[0.828, 0.25, 135.0], [0.828, 0.69, 105.0]]]].freeze
+    NARROW_HOB = [[0.03, 0.48, [[0.255, 0.3, 115.0], [0.255, 0.68, 135.0]]], [0.52, 0.97, [[0.745, 0.3, 115.0], [0.745, 0.68, 135.0]]]].freeze
+    WIDE_KNOBS = [0.09, 0.248, 0.5, 0.75, 0.906].freeze
+    NARROW_KNOBS = [0.14, 0.38, 0.62, 0.86].freeze
+
     def self.hob_parts(plate, top)
       key = 'appliance_hob_1'
       x0, x1, y0, y1 = plate
       width = y1 - y0
       depth = x1 - x0
-      glass = 6.0
-      out = [box("#{key}_glass", 'Hob', [x0, y0, top], [depth, width, glass])]
-      bevel = 3.0
-      out << box("#{key}_trim_1", 'Hob Bevel', [x0, y0, top + glass], [bevel, width, 0.8])
-      out << box("#{key}_trim_2", 'Hob Bevel', [x1 - bevel, y0, top + glass], [bevel, width, 0.8])
-      out << box("#{key}_trim_3", 'Hob Bevel', [x0 + bevel, y0, top + glass], [depth - (2 * bevel), bevel, 0.8])
-      out << box("#{key}_trim_4", 'Hob Bevel', [x0 + bevel, y1 - bevel, top + glass], [depth - (2 * bevel), bevel, 0.8])
-      z = top + glass + 0.8
-      # cooking zones as (fraction across, fraction back to front, size); the front row is kept clear for the controls
-      zones = width >= 700.0 ? [[0.17, 0.3, 160.0], [0.17, 0.68, 160.0], [0.5, 0.45, 240.0], [0.83, 0.3, 160.0], [0.83, 0.68, 160.0]] :
-                               [[0.27, 0.3, 160.0], [0.27, 0.68, 190.0], [0.73, 0.3, 160.0], [0.73, 0.68, 190.0]]
-      zones.each_with_index do |(across, back, size), i|
-        cx = x0 + (depth * back * 0.88)
-        cy = y0 + (width * across)
-        n = i + 1
-        out << cyl("#{key}_zone_#{n}", "Hob Zone #{n}", :z, [cx, cy, z], size, 0.3)
-        out << cyl("#{key}_gap_#{n}", "Hob Zone #{n} Glass", :z, [cx, cy, z + 0.3], size - 6.0, 0.3)
-        out << cyl("#{key}_core_#{n}", "Hob Zone #{n} Ring", :z, [cx, cy, z + 0.6], size * 0.6, 0.3)
-        out << cyl("#{key}_gap_#{n}b", "Hob Zone #{n} Centre", :z, [cx, cy, z + 0.9], (size * 0.6) - 5.0, 0.3)
+      thick = 5.0
+      z = top + thick # the top of the steel plate
+      wide = width >= 700.0
+      out = [box("#{key}_plate", 'Hob', [x0, y0, top], [depth, width, thick])]
+      out << box("#{key}_trim_1", 'Hob Front Strip', [x1 - 14.0, y0, z], [14.0, width, 2.0])
+      count = 0
+      (wide ? WIDE_HOB : NARROW_HOB).each_with_index do |(a0, a1, burners), index|
+        gy0 = y0 + (width * a0)
+        gy1 = y0 + (width * a1)
+        gx0 = x0 + (depth * 0.03)
+        gx1 = x0 + (depth * 0.94)
+        out.concat(pan_support(key, index + 1, [gx0, gx1, gy0, gy1], burners.map { |across, back, size| [x0 + (depth * back), y0 + (width * across), size] }, z))
+        burners.each do |across, back, size|
+          count += 1
+          cx = x0 + (depth * back)
+          cy = y0 + (width * across)
+          out << cyl("#{key}_head_#{count}", "Hob Burner #{count}", :z, [cx, cy, z], size * 1.15, 3.0)
+          out << cyl("#{key}_flame_#{count}", "Hob Flame #{count}", :z, [cx, cy, z + 3.0], size, 3.0)
+          out << cyl("#{key}_cap_#{count}", "Hob Burner Cap #{count}", :z, [cx, cy, z + 3.0], size * 0.74, 9.0)
+          out << cyl("#{key}_flame_#{count}b", "Hob Flame #{count} Inner", :z, [cx, cy, z + 12.0], size * 0.5, 1.0) if size >= 150.0
+          out << cyl("#{key}_cap_#{count}b", "Hob Burner Centre #{count}", :z, [cx, cy, z + 12.0], size * 0.3, 1.5) if size >= 150.0
+        end
       end
-      # the controls: a power button, a touch slider and the display, on a dark strip at the front
-      front = x1 - 55.0
-      mid = y0 + (width / 2.0)
-      out << cyl("#{key}_zone_power", 'Hob Power Button', :z, [front + 12.0, mid - (width * 0.3), z], 24.0, 0.3)
-      out << cyl("#{key}_gap_power", 'Hob Power Button Glass', :z, [front + 12.0, mid - (width * 0.3), z + 0.3], 19.0, 0.3)
-      slider = [width * 0.42, 340.0].min
-      out << box("#{key}_zone_slider", 'Hob Touch Slider', [front + 8.0, mid - (slider / 2.0), z], [8.0, slider, 0.3])
-      out << box("#{key}_led_1", 'Hob Display', [front + 20.0, mid - 42.0, z], [20.0, 84.0, 0.5])
-      out.concat(AppliancePieces.digits(key, 'P9', :z, z + 0.5, mid, front + 30.0, 15.0))
-      4.times do |k|
-        out << box("#{key}_led_#{k + 2}", 'Hob Level Light', [front + 3.0, mid - (slider / 2.0) + 25.0 + (k * (slider - 50.0) / 3.0) - 2.0, z], [3.0, 4.0, 0.5])
+      (wide ? WIDE_KNOBS : NARROW_KNOBS).each_with_index do |across, index|
+        out << cyl("#{key}_knob_#{index + 1}", "Hob Knob #{index + 1}", :x, [x1, y0 + (width * across), z + 8.0], 26.0, 30.0)
+        out << cyl("#{key}_cap_k#{index + 1}", "Hob Knob Centre #{index + 1}", :x, [x1 + 29.0, y0 + (width * across), z + 8.0], 12.0, 1.5)
       end
       out
     end
+
+    # The cast iron pan support round some burners: a frame and four fingers towards each burner. `rect` = [x0, x1, y0, y1], `burners` = [[x, y, size], ...].
+    def self.pan_support(key, number, rect, burners, z)
+      x0, x1, y0, y1 = rect
+      frame = 12.0
+      finger = 9.0
+      base = z + 4.0
+      n = 0
+      out = []
+      add = lambda do |ox, oy, dx, dy, high|
+        next unless dx > 1.0 && dy > 1.0
+
+        n += 1
+        out << box("#{key}_grate_#{number}_#{n}", 'Hob Pan Support', [ox, oy, base], [dx, dy, high])
+      end
+      add.call(x0, y0, x1 - x0, frame, 12.0)
+      add.call(x0, y1 - frame, x1 - x0, frame, 12.0)
+      add.call(x0, y0, frame, y1 - y0, 12.0)
+      add.call(x1 - frame, y0, frame, y1 - y0, 12.0)
+      sorted = burners.sort_by(&:first)
+      sorted.each_with_index do |(cx, cy, size), i|
+        reach = size * 0.55
+        back = i.zero? ? x0 : (sorted[i - 1][0] + cx) / 2.0
+        front = i == sorted.length - 1 ? x1 : (sorted[i + 1][0] + cx) / 2.0
+        add.call(back, cy - (finger / 2.0), (cx - reach) - back, finger, 10.0)
+        add.call(cx + reach, cy - (finger / 2.0), front - (cx + reach), finger, 10.0)
+        add.call(cx - (finger / 2.0), y0, finger, (cy - reach) - y0, 10.0)
+        add.call(cx - (finger / 2.0), cy + reach, finger, y1 - (cy + reach), 10.0)
+      end
+      out
+    end
+    private_class_method :pan_support
     private_class_method :hob_parts
 
     # ---- the hood -----------------------------------------------------------------------------
 
-    # A slim pull-out cooker hood under a wall cabinet: a steel visor that reaches 90 mm past the doors with a black
-    # glass front, three buttons, two LED lights and a ribbed grease filter. Below the carcass (negative Z).
+    # A slim integrated pull-out cooker hood under a wall cabinet, like the Teka Integra GFI 67350: a steel visor that reaches 90 mm past the doors with a 51 mm black
+    # glass front (the logo on the left, touch controls and the fan speed on the right), two LED lights and a ribbed grease filter. Below the carcass (negative Z).
     def self.hood_parts(dims)
       key = 'appliance_hood_1'
       width = dims.width - 40.0
       d = dims.depth
+      front = d + 84.0 # the face of the glass front
       out = [
         box("#{key}_frame", 'Hood Visor', [60.0, 20.0, -22.0], [d + 10.0, width, 14.0]),
-        box("#{key}_lip", 'Hood Front Glass', [d + 70.0, 20.0, -44.0], [14.0, width, 36.0]),
-        box("#{key}_trim_1", 'Hood Front Trim', [d + 68.0, 20.0, -10.0], [18.0, width, 3.0]),
-        box("#{key}_trim_2", 'Hood Front Trim', [d + 68.0, 20.0, -48.0], [18.0, width, 4.0]),
-        box("#{key}_panel", 'Hood Filter Frame', [110.0, 70.0, -24.0], [d - 110.0 + 20.0, width - 100.0, 2.0])
+        box("#{key}_doorglass", 'Hood Front Glass', [d + 70.0, 20.0, -58.0], [14.0, width, 51.0]),
+        box("#{key}_trim_1", 'Hood Front Trim', [d + 68.0, 20.0, -7.0], [18.0, width, 3.0]),
+        box("#{key}_trim_2", 'Hood Front Trim', [d + 68.0, 20.0, -62.0], [18.0, width, 4.0]),
+        box("#{key}_panel", 'Hood Filter Frame', [110.0, 70.0, -24.0], [d - 110.0 + 20.0, width - 100.0, 2.0]),
+        box("#{key}_logo", 'Hood Logo', [front, 20.0 + 40.0, -40.0], [0.5, 46.0, 9.0])
       ]
-      3.times do |k|
-        out << cyl("#{key}_knob_#{k + 1}", "Hood Button #{k + 1}", :x, [d + 84.0, 20.0 + width - 60.0 - (k * 40.0), -26.0], 14.0, 3.0)
+      # the touch controls on the glass, on the right: power, less, the fan speed, more, the light
+      [-120.0, -90.0, 0.0, 90.0, 120.0].each_with_index do |from_mid, k|
+        out << cyl("#{key}_icon_#{k + 1}", "Hood Control #{k + 1}", :x, [front, 20.0 + (width * 0.72) + from_mid, -34.0], 9.0, 0.5) unless k == 2
       end
+      out.concat(AppliancePieces.digits(key, '2', :x, front, 20.0 + (width * 0.72), -34.0, 14.0, kind: 'ledfig'))
       ribs = [((width - 130.0) / 22.0).floor, 4].max
       ribs.times do |k|
         out << box("#{key}_filter_#{k + 1}", 'Hood Filter Rib', [120.0, 90.0 + (k * ((width - 140.0) / (ribs - 1.0))), -26.0], [d - 150.0 + 20.0, 4.0, 2.0])

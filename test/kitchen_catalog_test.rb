@@ -391,13 +391,13 @@ class KitchenCatalogTest < Minitest::Test
     [600, 900].each do |width|
       result, layout = unit('base', 'base_hob', width)
       assert_empty result.errors.map { |e| e['message'] }
-      glass = layout.appliances.find { |a| a.role == 'appliance_hob_1_glass' }
+      glass = layout.appliances.find { |a| a.role == 'appliance_hob_1_plate' }
       assert glass, 'the hob'
       assert_in_delta [width - 20.0, 860.0].min, glass.extent[1], 0.01, 'as wide as the unit allows (860 at most)'
-      assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_zone_\d\z/ }, 'cooking zones'
+      assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_flame_\d\z/ }, 'gas burners'
       assert layout.appliances.any? { |a| a.shape == 'cyl_z' }, 'drawn round'
       cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 2)).first
-      assert_in_delta glass.extent[1] - 20.0, cut[3] - cut[2], 0.01, 'the opening is a little smaller than the glass'
+      assert_in_delta glass.extent[1] - 27.0, cut[3] - cut[2], 0.01, 'the opening is a little smaller than the plate (833 in 860)'
     end
     assert_equal true, Defaults.params['visibility_settings'].values_at('sink', 'hob', 'hood').all?
   end
@@ -521,7 +521,8 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 'Appliance - Polished Chrome', finish.call('appliance_sink_1_tap_spout')
     assert_equal 'Appliance - Sink Inox', finish.call('appliance_sink_1_bowl_1_floor')
     assert_equal 'Appliance - Gloss White', finish.call('appliance_fridge_1_body')
-    assert_equal 'Appliance - Silver Ring', finish.call('appliance_hob_1_zone_1')
+    assert_equal 'Appliance - Gas Flame', finish.call('appliance_hob_1_flame_1')
+    assert_equal 'Appliance - Cast Iron', finish.call('appliance_hob_1_grate_1_3')
     assert_equal 'Appliance - LED Glow', finish.call('appliance_oven_1_display')
     assert_equal 'Appliance - Graphite Plastic', finish.call('appliance_oven_1_cap_1')
     assert AppliancePieces::APPLIANCE_FINISHES.values.none? { |_, color, _| color[1, 6].scan(/../).map { |h| h.to_i(16) }.max < 0x30 }, 'no finish is pure black'
@@ -532,7 +533,7 @@ class KitchenCatalogTest < Minitest::Test
     assert AppliancePieces::APPLIANCE_FINISHES.values.all? { |_, color, look| color =~ /\A#\h{6}\z/ && look['roughness'] }, 'every finish has a colour and a roughness'
   end
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
-    ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_doorglass' => 'microwave', 'appliance_hob_1_glass' => 'hob', 'appliance_hood_1_frame' => 'hood',
+    ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_doorglass' => 'microwave', 'appliance_hob_1_plate' => 'hob', 'appliance_hood_1_frame' => 'hood',
               'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
               'appliance_sink_1_tray' => 'sink' }
     ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
@@ -568,7 +569,7 @@ class KitchenCatalogTest < Minitest::Test
       assert_empty result.errors.map { |e| e['message'] }, width.to_s
       roles = layout.appliances.map(&:role)
       assert roles.any? { |r| r.start_with?('appliance_oven_1_') }, 'the oven'
-      assert_includes roles, 'appliance_hob_1_glass'
+      assert_includes roles, 'appliance_hob_1_plate'
       cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 1))
       assert_equal 1, cut.length, 'an opening for the hob in the worktop'
     end
@@ -583,11 +584,6 @@ class KitchenCatalogTest < Minitest::Test
       assert figures.all? { |f| f.offset[2] >= display.offset[2] - 0.01 && f.offset[2] + f.extent[2] <= display.offset[2] + display.extent[2] + 0.01 }, "#{kind}: and inside its height"
       assert figures.all? { |f| f.offset[0] >= display.offset[0] + display.extent[0] - 0.01 }, "#{kind}: standing on its face"
     end
-    _, hob = unit('base', 'base_hob', 600)
-    led = hob.appliances.find { |a| a.role == 'appliance_hob_1_led_1' }
-    marks = hob.appliances.select { |a| a.role =~ /appliance_hob_1_digit_/ }
-    assert_operator marks.length, :>=, 8, 'the hob shows P9'
-    assert marks.all? { |m| m.offset[0] >= led.offset[0] - 0.01 && m.offset[0] + m.extent[0] <= led.offset[0] + led.extent[0] + 0.01 }, 'on its display'
     _, house = unit('tall', 'tall_fridge_housing_free', 900)
     assert house.appliances.any? { |a| a.role =~ /housed_digit_/ }, 'a freestanding fridge shows its temperature'
     assert_equal 'Appliance - Graphite Trim', AppliancePieces.finish('appliance_oven_1_digit_4')[0]
