@@ -325,7 +325,7 @@ class GolaTest < Minitest::Test
     refute_empty result.errors, 'the gap cannot be closed past the profile'
   end
 
-  def test_every_drawer_front_of_a_stack_has_the_height_adjustment_and_the_ones_over_it_move_up
+  def test_every_drawer_front_grows_upward_from_its_own_bottom_edge_and_none_of_them_moves
     plain, = layout_of('base', 'base_3drawer', 600, 'b')
     taller, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '15')
     shorter, = layout_of('base', 'base_3drawer', 600, 'b', 'b', 'drawer_height_adjust' => '-15')
@@ -333,8 +333,8 @@ class GolaTest < Minitest::Test
     order.call(plain).zip(order.call(taller), order.call(shorter)).each_with_index do |(p, up, down), i|
       assert_in_delta p.extent[2] + 15.0, up.extent[2], 0.05, "front #{i + 1} grows"
       assert_in_delta p.extent[2] - 15.0, down.extent[2], 0.05
-      assert_in_delta p.offset[2] + (15.0 * i), up.offset[2], 0.05, "front #{i + 1} stands higher by what grew under it"
-      assert_in_delta p.offset[2] - (15.0 * i), down.offset[2], 0.05
+      assert_in_delta p.offset[2], up.offset[2], 0.05, "front #{i + 1} keeps its bottom edge: the set does not move up"
+      assert_in_delta p.offset[2], down.offset[2], 0.05
     end
     top_front = order.call(taller).last
     assert_in_delta order.call(plain).last.offset[2] + order.call(plain).last.gola['v'], top_front.offset[2] + top_front.gola['v'], 0.05, 'the profile does not move'
