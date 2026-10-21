@@ -11,6 +11,7 @@ module EasyCabinet
     SINK_DEPTH = 420.0     # and this deep
     SINK_DIVIDER = 30.0    # between two bowls, and between the last bowl and the tray
     SINK_BOWL_DEPTH = 180.0
+    SINK_SHIFT = 40.0      # the sink stands this far further to the front
     SINK_RIM = 15.0        # the rim lies this far over the worktop around the opening
     SINK_STEEL = 2.0       # thickness of the steel
     SINK_CORNER = 28.0     # the radius of a bowl's corners
@@ -36,7 +37,8 @@ module EasyCabinet
       tray = params['sink_tray'] == true
       mirror = mirrored?(params)
       length_room = dims.inner_w - 40.0
-      depth_room = dims.depth - dims.interior_start - 60.0
+      centre_x = (dims.depth / 2.0) - 10.0 + SINK_SHIFT
+      depth_room = [dims.depth - dims.interior_start - 60.0, 2.0 * (dims.depth - 30.0 - centre_x)].min
 
       # one bowl and a drainer: the Teka Diamond RS15 1B 1D 86 (860 x 510, a 400 x 400 bowl, a white glass deck); two bowls and a drainer: the Teka Zenit RS15 2B 1D R
       # (1160 x 520, two 340 x 400 bowls, all stainless steel); two bowls and no drainer: the Teka Flexlinea RS15 2B 740 (740 x 440, two 340 x 400 bowls)
@@ -48,7 +50,7 @@ module EasyCabinet
       tray_width = tray ? [free * 0.32, 450.0].min : 0.0
       bowl_width = (free - tray_width) / bowls
 
-      frame = { centre: [(dims.depth / 2.0) - 10.0, dims.width / 2.0], length: length, depth: depth, mirror: mirror }
+      frame = { centre: [centre_x, dims.width / 2.0], length: length, depth: depth, mirror: mirror }
       turn = ->(u0, u1, v0, v1) { place(frame, u0, u1, v0, v1) }
       step = bowl_width + SINK_DIVIDER
       spans = nil # where the bowls lie along the sink: [[u0, u1], ...]
@@ -241,25 +243,26 @@ module EasyCabinet
     # and the lever on the other side. It stands at the back (by the first bowl; with two bowls on the join between them), the spout over the first bowl.
     def self.uni_tap(key, plan, top)
       cx, _, cy, = plan[:turn].call(plan[:tap_u], plan[:tap_u], plan[:tap_v], plan[:tap_v])
-      dy = plan[:mirror] ? 1.0 : -1.0 # towards the bowl
+      turn = Math::PI / 4.0 # the spout is turned 45 degrees inwards (towards the front) from pointing along the sink
+      sx = Math.sin(turn)
+      sy = (plan[:mirror] ? 1.0 : -1.0) * Math.cos(turn) # (towards the bowl along Y)
       arc_z = top + 255.0
       radius = 100.0
       neck = [[cx, cy, top + 88.0], [cx, cy, arc_z]]
       TAP_STEPS.times do |i|
         angle = Math::PI * (i + 1) / TAP_STEPS
-        neck << [cx, cy + (dy * radius * (1.0 - Math.cos(angle))), arc_z + (radius * Math.sin(angle))]
+        reach = radius * (1.0 - Math.cos(angle))
+        neck << [cx + (sx * reach), cy + (sy * reach), arc_z + (radius * Math.sin(angle))]
       end
-      neck << [cx, cy + (dy * 2.0 * radius), arc_z - 14.0]
-      housing_from = dy.negative? ? cy + 10.0 : cy - 10.0 - 34.0
-      rod_y = dy.negative? ? cy + 10.0 + 22.0 : cy - 10.0 - 22.0
+      neck << [cx + (sx * 2.0 * radius), cy + (sy * 2.0 * radius), arc_z - 14.0]
       [
         cyl("#{key}_tap_base", 'Tap Base Plate', :z, [cx, cy, top], 52.0, 6.0),
         cyl("#{key}_tap_body", 'Tap Body', :z, [cx, cy, top + 6.0], 42.0, 82.0),
         cyl("#{key}_tap_collar", 'Tap Collar', :z, [cx, cy, top + 88.0], 28.0, 6.0),
         AppliancePieces.tube("#{key}_tap_neck", 'Tap Swan Neck', neck, 24.0),
-        cyl("#{key}_tap_aerator", 'Tap Aerator', :z, [cx, cy + (dy * 2.0 * radius), arc_z - 32.0], 22.0, 18.0),
-        cyl("#{key}_tap_boss", 'Tap Lever Housing', :y, [cx, housing_from, top + 62.0], 40.0, 34.0),
-        cyl("#{key}_tap_lever", 'Tap Lever', :z, [cx, rod_y, top + 72.0], 12.0, 58.0)
+        cyl("#{key}_tap_aerator", 'Tap Aerator', :z, [cx + (sx * 2.0 * radius), cy + (sy * 2.0 * radius), arc_z - 32.0], 22.0, 18.0),
+        AppliancePieces.tube("#{key}_tap_boss", 'Tap Lever Housing', [[cx - (sx * 10.0), cy - (sy * 10.0), top + 62.0], [cx - (sx * 44.0), cy - (sy * 44.0), top + 62.0]], 40.0),
+        cyl("#{key}_tap_lever", 'Tap Lever', :z, [cx - (sx * 32.0), cy - (sy * 32.0), top + 72.0], 12.0, 58.0)
       ]
     end
     private_class_method :uni_tap

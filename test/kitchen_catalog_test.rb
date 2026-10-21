@@ -359,10 +359,10 @@ class KitchenCatalogTest < Minitest::Test
     assert_equal 1, cuts.length
     x0, x1, y0, y1 = cuts.first
     assert_operator x0, :>, 10.0
-    assert_operator x1, :<, 560.0
+    assert_operator x1, :<=, 570.0
     assert_operator y0, :>, 18.0
     assert_operator y1, :<, 900.0 - 18.0
-    assert_in_delta 480.0, x1 - x0, 0.01, 'the opening is the size of the sink (510 with its deck)'
+    assert_in_delta 440.0, x1 - x0, 0.01, 'the opening is the size of the sink, as deep as a 560 deep cabinet allows with the sink 40 mm to the front'
 
     # two bowls, no drainer; and mirrored: the drainer on the other side
     two, = unit('base', 'base_sink', 1200, 'sink_bowls' => 2, 'sink_tray' => false)
@@ -379,7 +379,7 @@ class KitchenCatalogTest < Minitest::Test
     assert_operator centre.call(flat[:tray]), :>, centre.call(flat[:bowls].first), 'the drainer is on the right'
     assert_operator centre.call(flipped[:tray]), :<, centre.call(flipped[:bowls].first), 'mirrored it is on the left'
     assert_equal flat[:rect], flipped[:rect], 'the opening is the same either way'
-    assert_equal 480.0, flat[:depth], 'it is not turned: the bowls keep their depth'
+    assert_equal 440.0, flat[:depth], 'it is not turned: the bowls keep their depth'
     # a sink that does not fit is refused
     narrow, = unit('base', 'base_sink_1door', 400, 'sink_bowls' => 2)
     assert_includes narrow.errors.map { |e| e['field'] }, 'sink_bowls'
@@ -394,7 +394,7 @@ class KitchenCatalogTest < Minitest::Test
       plan = Fixtures.sink_plan(result.params.merge('door_count' => 2, 'drawer_count' => 0), CabinetLayout.send(:dimensions, result.params.merge('door_count' => 2, 'drawer_count' => 0)))
       assert plan[:fits]
       assert_in_delta length, plan[:rect][3] - plan[:rect][2], 0.01, "#{bowls} bowls, drainer #{tray}: the length of the opening"
-      assert_in_delta [depth, 484.0].min, plan[:rect][1] - plan[:rect][0], 0.01, 'and its depth (at most what a 600 deep cabinet leaves)'
+      assert_in_delta [depth, 440.0].min, plan[:rect][1] - plan[:rect][0], 0.01, 'and its depth (at most what a 560 deep cabinet leaves, with the sink 40 mm to the front)'
       roles = layout.appliances.map(&:role)
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_floor/).length
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_waste/).length, 'a square waste in each bowl'

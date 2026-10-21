@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.81.1';
+  const APP_VERSION = '1.82.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
