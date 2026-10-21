@@ -48,12 +48,19 @@ class PresetTest < Minitest::Test
 
   def test_the_saved_text_has_no_quotes_so_sketchup_can_read_it_back
     PresetManager.perform('save_presets', 'values' => { 'doorGap' => 2.0, 'name' => 'a "quoted" word' })
-    refute_includes Sketchup.read_default('EasyCabinet', 'panel_presets'), '"'
+    refute_includes Sketchup.read_default('EasyCabinet', PresetManager::KEY), '"'
   end
 
-  def test_settings_saved_as_json_by_an_older_version_still_load
+  def test_the_old_json_text_is_never_read
     Sketchup.write_default('EasyCabinet', 'panel_presets', '{"doorGap":2.0}')
-    assert_equal({ 'doorGap' => 2.0 }, PresetManager.perform('load_presets', {})['data']['values'])
+    reads = []
+    Sketchup.define_singleton_method(:read_default) { |section, key, default = nil| reads << key; @store.fetch([section, key], default) }
+    assert_equal({}, PresetManager.perform('load_presets', {})['data']['values'])
+    assert_equal [PresetManager::KEY], reads.uniq, 'only the new key is read: SketchUp reports an error when it cannot read the old text'
+    refute_equal 'panel_presets', PresetManager::KEY
+  ensure
+    Sketchup.singleton_class.send(:remove_method, :read_default)
+    Sketchup.define_singleton_method(:read_default) { |section, key, default = nil| @store.fetch([section, key], default) }
   end
 
   def test_a_text_sketchup_cannot_read_back_does_not_break_the_panel
@@ -65,7 +72,7 @@ class PresetTest < Minitest::Test
   end
 
   def test_damaged_saved_text_does_not_break_the_panel
-    Sketchup.write_default('EasyCabinet', 'panel_presets', '{not json')
+    Sketchup.write_default('EasyCabinet', PresetManager::KEY, '{not json')
     assert_equal({}, PresetManager.perform('load_presets', {})['data']['values'])
   end
 end

@@ -9,7 +9,7 @@ module EasyCabinet
   # when it opens.
   module PresetManager
     SECTION = 'EasyCabinet'
-    KEY = 'panel_presets'
+    KEY = 'panel_presets_text' # (not 'panel_presets': what older versions kept under that name is a JSON text that SketchUp cannot read back; it is never read)
     MAX_FIELDS = 120
 
     def self.perform(action, raw)
@@ -22,10 +22,10 @@ module EasyCabinet
     end
 
     # SketchUp keeps a text with double quotes in it without escaping them, and reads it back by evaluating it as Ruby: a JSON text cannot be read
-    # back (a SyntaxError). So the settings are kept as base64 text (letters and digits only); a JSON text kept by an older version is read when it can be.
+    # back (a SyntaxError, which SketchUp also reports as an extension error). So the settings are kept as base64 text (letters and digits only).
     def self.load_presets
       text = Sketchup.read_default(SECTION, KEY, '').to_s
-      text = text.unpack1('m').force_encoding('UTF-8') unless text.empty? || text.start_with?('{')
+      text = text.unpack1('m').force_encoding('UTF-8') unless text.empty?
       values = text.empty? ? {} : JSON.parse(text)
       Response.ok('', { 'values' => values.is_a?(Hash) ? clean(values) : {} })
     rescue JSON::ParserError, ArgumentError, ScriptError

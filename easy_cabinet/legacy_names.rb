@@ -48,9 +48,10 @@ module EasyCabinet
     end
     private_class_method :bring_over
 
-    # The preferences kept in SketchUp (the Presets, the snapping switch): read from the old section when the new one has nothing yet.
+    # The snapping switch kept in SketchUp: read from the old section when the new one has nothing yet. (The panel's saved settings are not brought over: they were
+    # kept as a JSON text that SketchUp cannot read back, and reading it makes SketchUp report an extension error.)
     def self.migrate_preferences
-      [[PresetManager::SECTION, PresetManager::KEY], [SnapManager::PREFERENCE_SECTION, SnapManager::PREFERENCE_KEY]].each do |section, key|
+      [[SnapManager::PREFERENCE_SECTION, SnapManager::PREFERENCE_KEY]].each do |section, key|
         begin
           old = Sketchup.read_default(OLD_DICTIONARY, key, nil)
           next if old.nil? || !Sketchup.read_default(section, key, nil).nil?
