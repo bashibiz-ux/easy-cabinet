@@ -17,22 +17,24 @@ class LegacyNamesTest < Minitest::Test
 
   def test_the_folder_of_your_own_data_is_renamed_to_the_new_name
     Dir.mktmpdir do |plugins|
+      target = File.join(plugins, "user", "EasyCabinet")
       FileUtils.mkdir_p(File.join(plugins, LegacyNames::OLD_DATA_DIR, 'catalogs'))
       File.write(File.join(plugins, LegacyNames::OLD_DATA_DIR, 'catalogs', 'mine.json'), '{}')
-      LegacyNames.move_user_dir(plugins)
+      LegacyNames.move_user_dir(plugins, target)
       refute File.exist?(File.join(plugins, LegacyNames::OLD_DATA_DIR)), 'the old one is gone'
-      assert File.exist?(File.join(plugins, 'EasyCabinet_Data', 'catalogs', 'mine.json')), 'its files are in the new one'
+      assert File.exist?(File.join(target, 'catalogs', 'mine.json')), 'its files are in your user folder'
     end
   end
 
   def test_a_folder_that_is_already_there_under_the_new_name_is_left_alone
     Dir.mktmpdir do |plugins|
+      target = File.join(plugins, "user", "EasyCabinet")
       FileUtils.mkdir_p(File.join(plugins, LegacyNames::OLD_DATA_DIR))
-      FileUtils.mkdir_p(File.join(plugins, 'EasyCabinet_Data'))
-      File.write(File.join(plugins, 'EasyCabinet_Data', 'keep.txt'), 'x')
-      LegacyNames.move_user_dir(plugins)
+      FileUtils.mkdir_p(target)
+      File.write(File.join(target, 'keep.txt'), 'x')
+      LegacyNames.move_user_dir(plugins, target)
       assert File.exist?(File.join(plugins, LegacyNames::OLD_DATA_DIR)), 'nothing is overwritten'
-      assert File.exist?(File.join(plugins, 'EasyCabinet_Data', 'keep.txt'))
+      assert File.exist?(File.join(target, 'keep.txt'))
     end
   end
 

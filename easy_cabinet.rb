@@ -9,7 +9,7 @@ module EasyCabinet
   # Set again on every load, so installing a newer version over a running one is
   # noticed (see EasyCabinet.reload_if_updated in main.rb).
   remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
-  EXTENSION_VERSION = '1.76.2'
+  EXTENSION_VERSION = '1.77.0'
 
   if file_loaded?(__FILE__)
     # Loaded again after an install or update: swap in the new code, no restart needed.
@@ -20,7 +20,7 @@ module EasyCabinet
                             'animated doors, handles and toe kicks.'
     extension.version   = EXTENSION_VERSION
     extension.creator   = EXTENSION_NAME
-    extension.copyright = '2026'
+    extension.copyright = 'Copyright 2026 Easy Cabinet'
     Sketchup.register_extension(extension, true)
     file_loaded(__FILE__)
   end

@@ -9,10 +9,7 @@ module EasyCabinet
   HTML_DIR   = File.join(PLUGIN_DIR, 'html').freeze unless const_defined?(:HTML_DIR)
   LOADER     = File.join(File.dirname(PLUGIN_DIR), 'easy_cabinet.rb').freeze unless const_defined?(:LOADER)
 
-  # Load order matters: Response/Defaults first, UI layer last. Loaded with `load`
-  # (not `require`) so that installing a newer version over a running one can pick
-  # the new code up without restarting SketchUp (see reload_if_updated).
-  remove_const(:CODE_FILES) if const_defined?(:CODE_FILES)
+  # Load order matters: Response/Defaults first, UI layer last. Loaded with Sketchup.require, so the files can be encrypted and signed for the Extension Warehouse.
   CODE_FILES = %w[
     response defaults model_script gola_profile attribute_manager legacy_names validation_manager material_manager catalog_manager my_appliances
     cabinet_layout appliance_parts fixtures customizer toe_kick part_layout door_animation drawer_animation handle_manager
@@ -21,11 +18,7 @@ module EasyCabinet
   ].freeze
 
   def self.load_code
-    saved = $VERBOSE
-    $VERBOSE = nil # constants set again on a reload are not worth a warning
-    CODE_FILES.each { |file| load File.join(PLUGIN_DIR, "#{file}.rb") }
-  ensure
-    $VERBOSE = saved
+    CODE_FILES.each { |file| Sketchup.require(File.join(PLUGIN_DIR, file)) }
   end
 
   load_code
@@ -41,36 +34,16 @@ module EasyCabinet
       nil
     end
 
-    # Installing a newer .rbz over a running one replaces the files on disk, but the
-    # old code is still in memory. This loads the new code in its place, and reopens
-    # the panel if it was showing, so no restart is needed. Called when the panel is
-    # opened and whenever the extension file is loaded again.
+    # Installing a newer .rbz over a running one replaces the files on disk, but the old code is still in memory until SketchUp is restarted. Called when
+    # the panel is opened and whenever the extension file is loaded again: tells the user so (once), and returns whether a restart is needed.
     def reload_if_updated
       version = disk_version
       return false if version.nil? || version == @code_version
+      return true if @restart_told == version
 
-      reopen = DialogManager.open?
-      DialogManager.close
-      CustomizeManager.close
-      remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
-      const_set(:EXTENSION_VERSION, version)
-      # Loading main.rb again reloads every code file it lists (a new version may list
-      # more files than the old one did) and records the new version.
-      saved = $VERBOSE
-      begin
-        $VERBOSE = nil
-        load File.join(PLUGIN_DIR, 'main.rb')
-      ensure
-        $VERBOSE = saved
-      end
-      @code_version = version
-      DialogManager.show if reopen
+      @restart_told = version
+      UI.messagebox("Easy Cabinet #{version} is installed. Please restart SketchUp to use it.")
       true
-    rescue StandardError, ScriptError => e
-      warn "[Easy Cabinet] Could not load the new version: #{e.class}: #{e.message}"
-      UI.messagebox("Easy Cabinet #{version} is installed, but could not be loaded without restarting SketchUp. " \
-                    'Please restart SketchUp.')
-      false
     end
 
     # What the menu item runs.

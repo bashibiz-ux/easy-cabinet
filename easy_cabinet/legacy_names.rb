@@ -60,11 +60,19 @@ module EasyCabinet
       warn "[Easy Cabinet] Could not bring the preferences over: #{e.message}"
     end
 
-    # Your own catalogs, handles, materials and models: the folder of the old name is renamed (when the new one is not there).
-    def self.move_user_dir(plugins)
-      old = File.join(plugins, OLD_DATA_DIR)
-      new = File.join(plugins, CatalogManager::USER_DIR_NAME)
-      FileUtils.mv(old, new) if File.directory?(old) && !File.exist?(new)
+    # Your own catalogs, handles, materials and models: the folders they had in the Plugins folder (under the old name and under this one) are moved to
+    # `target`, your user folder (when that is not there yet).
+    def self.move_user_dir(plugins, target)
+      return if plugins.nil? || File.exist?(target)
+
+      [OLD_DATA_DIR, CatalogManager::USER_DIR_NAME].each do |name|
+        old = File.join(plugins, name)
+        next unless File.directory?(old)
+
+        FileUtils.mkdir_p(File.dirname(target))
+        FileUtils.mv(old, target)
+        break
+      end
     rescue StandardError => e
       warn "[Easy Cabinet] Could not bring your own data over: #{e.message}"
     end

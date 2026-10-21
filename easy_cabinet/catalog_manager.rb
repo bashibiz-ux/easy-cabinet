@@ -9,7 +9,7 @@ module EasyCabinet
   #
   # Files are read from:
   #   1. <plugin>/data/catalogs/*.json and data/handles/*.json  (bundled)
-  #   2. <SketchUp Plugins folder>/EasyCabinet_Data/catalogs|handles/*.json  (yours)
+  #   2. <your user folder>/SketchUp/EasyCabinet/catalogs|handles/*.json  (yours)
   # Files in (2) with the same "id" replace bundled ones.
   module CatalogManager
     USER_DIR_NAME = 'EasyCabinet_Data'
@@ -110,7 +110,7 @@ module EasyCabinet
       # Where your own catalogs are kept (tests point this at a temporary folder).
       attr_writer :user_root_override
 
-      # The cabinets you save from the model go into catalogs of your own: a file in your EasyCabinet_Data
+      # The cabinets you save from the model go into catalogs of your own: a file in your EasyCabinet
       # folder, listed beside the bundled catalogs. Saving a cabinet under a name the catalog already has replaces it.
       # `entry` is a catalog entry (see entry_from); returns [catalog id, cabinet id].
       def save_custom(catalog_name, category, entry)
@@ -398,9 +398,11 @@ module EasyCabinet
         return @user_root_override if @user_root_override
         return nil unless defined?(Sketchup) && Sketchup.respond_to?(:find_support_file)
 
-        plugins = Sketchup.find_support_file('Plugins')
-        LegacyNames.move_user_dir(plugins) if plugins && defined?(LegacyNames) # (the folder of the old name is renamed)
-        plugins ? File.join(plugins, USER_DIR_NAME) : nil
+        # Your own data lives in your user folder, not in the Plugins folder: an update or an uninstall of the extension leaves it alone.
+        base = ENV['APPDATA'] || File.join(Dir.home, 'Library', 'Application Support')
+        root = File.join(base, 'SketchUp', 'EasyCabinet')
+        LegacyNames.move_user_dir(Sketchup.find_support_file('Plugins'), root) if defined?(LegacyNames) # (the folder it had in Plugins is moved here)
+        root
       rescue StandardError
         nil
       end

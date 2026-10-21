@@ -153,7 +153,7 @@ module EasyCabinet
     private_class_method :style
 
     # ---- your own materials ----------------------------------------------------------------------------
-    # Kept in your EasyCabinet_Data folder (materials.json, pictures in textures/), in categories of your own;
+    # Kept in your EasyCabinet data folder (materials.json, pictures in textures/), in categories of your own;
     # they are listed under "My materials - <category>" with the bundled ones and can be used anywhere a material is chosen.
 
     def self.custom_file
