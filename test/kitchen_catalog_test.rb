@@ -394,7 +394,7 @@ class KitchenCatalogTest < Minitest::Test
       plan = Fixtures.sink_plan(result.params.merge('door_count' => 2, 'drawer_count' => 0), CabinetLayout.send(:dimensions, result.params.merge('door_count' => 2, 'drawer_count' => 0)))
       assert plan[:fits]
       assert_in_delta length, plan[:rect][3] - plan[:rect][2], 0.01, "#{bowls} bowls, drainer #{tray}: the length of the opening"
-      assert_in_delta depth, plan[:rect][1] - plan[:rect][0], 0.01, 'and its depth'
+      assert_in_delta [depth, 484.0].min, plan[:rect][1] - plan[:rect][0], 0.01, 'and its depth (at most what a 600 deep cabinet leaves)'
       roles = layout.appliances.map(&:role)
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_floor/).length
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_waste/).length, 'a square waste in each bowl'
