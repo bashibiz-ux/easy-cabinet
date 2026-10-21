@@ -51,6 +51,30 @@ class WallBottomSetbackTest < Minitest::Test
     assert_equal [[0.0, 600.0], [618.0, 1218.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
   end
 
+  def test_a_wider_gap_between_two_units_is_covered_so_that_the_panel_is_continuous
+    run = { items: [item(0.0, 320.0), item(900.0, 320.0)], length: 1500.0 } # 300 mm between them: a filler, a space
+    assert_equal [[0.0, 1500.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
+    run = { items: [item(0.0, 320.0), item(649.0, 320.0)], length: 1249.0 } # 49 mm: a side panel stands there
+    assert_equal [[0.0, 600.0], [649.0, 1249.0]], WallBottomManager.send(:segments_of, run).map { |from, to, _| [from, to] }
+  end
+
+  def test_two_runs_on_one_line_get_one_panel_across_the_space_between_them
+    a = { items: [item(0.0, 320.0)], length: 600.0, top: 2000.0 }
+    b = { items: [item(1500.0, 320.0)], length: 600.0, top: 2000.0 } # 900 mm away: more than the 150 mm of a run
+    a[:items].each { |i| i[:top] = 2000.0 }
+    b[:items].each { |i| i[:top] = 2000.0 }
+    joined = WallBottomManager.send(:joined_runs, [a, b])
+    assert_equal 1, joined.length
+    assert_equal 2100.0, joined.first[:length]
+    assert_equal [[0.0, 2100.0]], WallBottomManager.send(:segments_of, joined.first).map { |from, to, _| [from, to] }
+    far = { items: [item(2600.0, 320.0).merge(top: 2000.0)], length: 600.0, top: 2000.0 } # 500 beyond the end of b... still within 1200
+    assert_equal 1, WallBottomManager.send(:joined_runs, [a, b, far]).length
+    farther = { items: [item(4800.0, 320.0).merge(top: 2000.0)], length: 600.0, top: 2000.0 }
+    assert_equal 2, WallBottomManager.send(:joined_runs, [a, b, farther]).length, 'too far apart: a panel of its own'
+    other_level = { items: [item(1500.0, 320.0).merge(top: 1700.0)], length: 600.0, top: 1700.0 }
+    assert_equal 2, WallBottomManager.send(:joined_runs, [a, other_level]).length, 'not at the same level'
+  end
+
   def test_a_change_of_depth_along_the_run_starts_a_new_stretch_with_its_own_depth
     run = { items: [item(0.0, 320.0), item(600.0, 320.0), item(1200.0, 580.0)], length: 1800.0 }
     stretches = WallBottomManager.send(:segments_of, run)

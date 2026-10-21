@@ -14,6 +14,8 @@ module KitchenCabinetMaster
     DEFAULT_LENGTH = 2000.0 # each piece, laid end to end along the run (0 = one piece for the whole run)
     DEFAULT_SETBACK = 20.0  # the panel stops this far short of the carcass front
     DEFAULT_LOFT_SETBACK = 0.0 # (under a loft: flush with its front)
+    BRIDGE_MAX = 1200.0     # runs of wall units on one line and at one level this far apart (an appliance, a space) get one panel: it is continuous between them
+    SIDE_PANEL_MAX = 50.0   # a gap this narrow between two units is where a side panel stands: the panel is left open there; a wider one is covered
 
     def self.perform(action, raw)
       case action
@@ -51,7 +53,7 @@ module KitchenCabinetMaster
         with_operation(model, 'Apply Wall Bottom Panel') do
           # The carcass rises by the thickness of the panel, so the panel takes the room under it and the doors stay where they were.
           raised, problems = raise_wall_units(model, thickness) if keys.empty?
-          runs = Worktop.runs(items_of(model))
+          runs = joined_runs(Worktop.runs(items_of(model)))
           skip = Array(raw['skip_runs']).map(&:to_s) # (the runs whose panel was deleted, while the Presets switch keeps it up)
           runs = runs.reject { |run| skip.include?(run_key(run)) }
           runs = runs.select { |run| keys.include?(run_key(run)) } unless keys.empty?
@@ -94,7 +96,7 @@ module KitchenCabinetMaster
       return if existing.empty?
 
       params = params_of(AttributeManager.read(existing.first))
-      runs = Worktop.runs(items_of(model))
+      runs = joined_runs(Worktop.runs(items_of(model)))
       own = existing.map { |item| AttributeManager.read(item) }.reject { |s| s['run_key'].to_s.empty? }.to_h { |s| [s['run_key'].to_s, s] }
       existing.each { |item| PartGenerator.remove(model, item) }
       runs.each do |run|
@@ -172,8 +174,43 @@ module KitchenCabinetMaster
     end
     private_class_method :lower_wall_units
 
-    def self.run_key(run)
-      run[:items].first[:ref].persistent_id.to_s
+    # The runs of wall units that stand on one line and at one level, with no more than BRIDGE_MAX between one and the next, as one run: the panel goes on across
+    # the space between them, to the next panel (it was cut in two where the units are more than 150 mm apart). => the runs, joined.
+    def self.joined_runs(runs)
+      lines, others = runs.partition { |run| !run[:corner] && run[:items].any? }
+      joined = []
+      lines.sort_by { |run| [run[:items].first[:top].to_f.round, (run[:items].first[:x] * run[:items].first[:hy]) - (run[:items].first[:y] * run[:items].first[:hx])] }.each do |run|
+        before = joined.last
+        if before && same_line?(before, run)
+          before[:items] += run[:items]
+          before[:items].sort_by! { |item| ((item[:x] - before[:items].first[:x]) * before[:items].first[:hx]) + ((item[:y] - before[:items].first[:y]) * before[:items].first[:hy]) }
+          first = before[:items].first
+          last = before[:items].last
+          before[:length] = (((last[:x] - first[:x]) * first[:hx]) + ((last[:y] - first[:y]) * first[:hy])) + last[:width].to_f
+        else
+          joined << run.merge(items: run[:items].dup)
+        end
+      end
+      joined + others
+    end
+    private_class_method :joined_runs
+
+    # Do these two runs stand on one line, at one level, with at most BRIDGE_MAX between them?
+    def self.same_line?(a, b)
+      one = a[:items].first
+      two = b[:items].first
+      return false unless ((one[:hx] * two[:hx]) + (one[:hy] * two[:hy])) > 0.999 && (one[:top].to_f - two[:top].to_f).abs < 1.0
+
+      across = ((two[:x] - one[:x]) * -one[:hy]) + ((two[:y] - one[:y]) * one[:hx])
+      return false unless across.abs < 1.0
+
+      end_of_a = ((a[:items].last[:x] - one[:x]) * one[:hx]) + ((a[:items].last[:y] - one[:y]) * one[:hy]) + a[:items].last[:width].to_f
+      start_of_b = ((two[:x] - one[:x]) * one[:hx]) + ((two[:y] - one[:y]) * one[:hy])
+      start_of_b - end_of_a <= BRIDGE_MAX
+    end
+    private_class_method :same_line?
+
+    def self.run_key(run)      run[:items].first[:ref].persistent_id.to_s
     end
 
     def self.selected_run_keys(model)
@@ -282,8 +319,9 @@ module KitchenCabinetMaster
       marks[0][0] = 0.0
       stretches = []
       marks.each_with_index do |(start, item), index|
-        edge = start + item[:width].to_f # (a panel stops at the carcass: where a side panel stands between two units it does not go through it)
-        stop = index + 1 < marks.length && marks[index + 1][0] - edge <= 1.0 ? marks[index + 1][0] : edge
+        edge = start + item[:width].to_f # (a panel stops at the carcass: where a side panel stands between two units it does not go through it; across a wider gap, a filler,
+        gap = index + 1 < marks.length ? marks[index + 1][0] - edge : 0.0 # a space, it goes on to the next unit, so that the panel is continuous)
+        stop = index + 1 < marks.length && (gap <= 1.0 || gap > SIDE_PANEL_MAX) ? marks[index + 1][0] : edge
         stop = [stop, run[:length]].min if index + 1 == marks.length
         next if stop - start < 0.5
 
