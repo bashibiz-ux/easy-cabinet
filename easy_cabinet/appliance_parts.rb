@@ -262,10 +262,11 @@ module EasyCabinet
     # ---- a fridge that stands by itself ----------------------------------------------------------------
 
     # A stainless steel fridge-freezer with its front face at `x + d`, standing on the floor `z0`, `w` wide from `y0`,
-    # `d` deep and `h` high. Narrow (under 800 mm): a fridge door over a freezer drawer-door. 800 to 1100: two tall
+    # `d` deep and `h` high. Narrow (under 800 mm): like the Teka RBF 3450 SS (a bottom-freezer: a tall fridge door over a freezer door with a dark recessed
+    # handle groove between them, a black display and the logo on the fridge door; every size follows the width and the height). 800 to 1100: two tall
     # doors side by side with a water dispenser. Wider: French doors over a freezer drawer.
     def self.free_fridge(key, x, y0, z0, w, d, h, hinge_left)
-      plinth = 45.0
+      plinth = w < 800.0 ? 35.0 : 45.0
       door_t = 24.0
       body_h = h - plinth
       sx = x + d - door_t
@@ -289,16 +290,21 @@ module EasyCabinet
       face = x + d
 
       if w < 800.0
-        freezer = (body_h * 0.3).round
-        split = bottom + freezer
-        add_door.call(1, 'Fridge Freezer Door', y0, w, bottom, freezer - gap)
-        add_door.call(2, 'Fridge Door', y0, w, split + gap, top - split - gap)
-        bar_y = hinge_left ? y0 + w - 42.0 : y0 + 42.0
-        add_bar.call(1, bar_y, split - 70.0 - 150.0, 300.0)
-        add_bar.call(2, bar_y, split + 70.0 + 300.0, 600.0)
-        parts << box("#{key}_panel", 'Fridge Display', [face, y0 + (w / 2.0) - 40.0, top - 170.0], [0.8, 80.0, 40.0])
-        parts << box("#{key}_led", 'Fridge Display Light', [face + 0.8, y0 + (w / 2.0) - 38.0, top - 170.0], [0.4, 76.0, 32.0])
-        parts.concat(digits(key, '4*C', :x, face + 1.2, y0 + (w / 2.0), top - 154.0, 22.0))
+        lower = (body_h * 0.42).round # the freezer door
+        band = [h * 0.0286, 20.0].max # the dark handle groove between the doors
+        split = bottom + lower
+        mid_y = y0 + (w / 2.0)
+        add_door.call(1, 'Fridge Freezer Door', y0, w, bottom, lower)
+        add_door.call(2, 'Fridge Door', y0, w, split + band, top - split - band)
+        parts << box("#{key}_bezel", 'Fridge Handle Groove', [sx + door_t - 4.0, y0, split], [4.2, w, band])
+        parts << box("#{key}_bezel_2", 'Fridge Handle Groove Top', [sx + door_t - 10.0, y0, split + band - 6.0], [10.0, w, 6.0]) # (the lip of the door above)
+        display_w = [w * 0.075, 36.0].max
+        display_h = h * 0.106
+        display_top = top - (h * 0.092)
+        parts << box("#{key}_ctrlglass", 'Fridge Display', [face, mid_y - (display_w / 2.0), display_top - display_h], [0.8, display_w, display_h])
+        parts.concat(digits(key, '4*C', :x, face + 0.8, mid_y, display_top - (display_h * 0.3), display_w * 0.42, kind: 'ledfig'))
+        parts.concat(digits(key, '-18', :x, face + 0.8, mid_y, display_top - (display_h * 0.68), display_w * 0.42, kind: 'ledfig'))
+        parts << box("#{key}_logo", 'Fridge Logo', [face, mid_y - (w * 0.035), top - (h * 0.058)], [0.4, w * 0.07, 7.0])
       elsif w < 1100.0
         half = w / 2.0
         add_door.call(1, 'Fridge Freezer Door', y0, half - (gap / 2.0), bottom, top - bottom)
