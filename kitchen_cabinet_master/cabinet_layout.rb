@@ -173,10 +173,33 @@ module KitchenCabinetMaster
         rail.offset = [round2(rail.offset[0] - [reach - (front.offset[0] - (rail.offset[0] + rail.extent[0])), 0.0].max), rail.offset[1], rail.offset[2]] if rail
         full = panels.find { |item| item.role == 'top' }
         full.extent = [round2(full.extent[0] - [reach - (front.offset[0] - (full.offset[0] + full.extent[0])), 0.0].max), full.extent[1], full.extent[2]] if full && !full.points
+        if full&.points # (a corner unit's top panel is a shape: cut back behind the profile of each of its doors, along the door)
+          (doors + drawers).each do |item|
+            next unless item.gola && item.gola['kind'] == 'top'
+
+            angle = item.rotation.to_f * Math::PI / 180.0
+            full.points = clip_behind(full.points, item.offset, [Math.cos(angle), Math.sin(angle)], -reach)
+          end
+        end
       end
       true
     end
     private_class_method :apply_gola
+
+    # The part of a polygon [[x, y], ...] that is on the near side of a line: the points p with (p - origin) . normal <= limit. Pure maths.
+    def self.clip_behind(points, origin, normal, limit)
+      side = ->(p) { (((p[0] - origin[0]) * normal[0]) + ((p[1] - origin[1]) * normal[1])) - limit }
+      result = []
+      points.each_with_index do |p, i|
+        q = points[(i + 1) % points.length]
+        dp = side.call(p)
+        dq = side.call(q)
+        result << p if dp <= 0.0
+        result << [round2(p[0] + ((q[0] - p[0]) * dp / (dp - dq))), round2(p[1] + ((q[1] - p[1]) * dp / (dp - dq)))] if (dp.negative? && dq.positive?) || (dp.positive? && dq.negative?)
+      end
+      result
+    end
+    private_class_method :clip_behind
 
     # A space for a built-in dishwasher: no carcass (the neighbours' sides are its sides), two rails across the top that carry the worktop, and
     # the front of the dishwasher in the door material and design, as tall as the doors of the units beside it, with a handle (unless it is turned off).

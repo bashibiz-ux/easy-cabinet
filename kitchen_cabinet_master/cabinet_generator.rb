@@ -34,6 +34,7 @@ module KitchenCabinetMaster
     DOOR_PANEL_ROLE = 'panel'
     DOOR_GLASS_ROLE = 'door_glass'
     HANDLE_ROLE = 'handle'
+    GOLA_PREFIX = 'gola_' # a Gola profile: a part of the cabinet (not of a door, so that it stays when the door opens), one for each front that has one
     DOOR_SYMBOL_ROLE = 'door_symbol'
     SIGNATURE_KEY = 'signature'
     TOLERANCE = 1e-6
@@ -119,6 +120,8 @@ module KitchenCabinetMaster
         elsif role == TOE_KICK_ROLE then instance.visible = visibility['toe_kick'] != false
         elsif role == INDICATOR_ROLE then instance.visible = doors_visible && show_floor_symbol
         elsif role == APPLIANCES_ROLE then apply_appliance_visibility(instance, visibility)
+        elsif role.start_with?(GOLA_PREFIX)
+          instance.visible = !(if loft then hide_loft_handles elsif wall then hide_wall_handles elsif tall then hide_tall_handles else base_like && hide_base_handles end)
         elsif role.start_with?(DOOR_PREFIX) || role.start_with?(DRAWER_PREFIX)
           instance.visible = doors_visible
           symbol = index_by_role(instance.definition.entities)[DOOR_SYMBOL_ROLE]
@@ -221,6 +224,7 @@ module KitchenCabinetMaster
       sync_toe_kick(model, root, top, layout, ToeKick.material_name(params, door_mat, carcass_mat), visibility['toe_kick'] != false)
       sync_doors(model, root, top, params, layout, door_mat, doors_visible)
       sync_drawers(model, root, top, params, layout, door_mat, doors_visible, carcass_mat)
+      sync_gola(model, root, top, params, layout)
       sync_indicator(model, root, top, params, layout, doors_visible)
       sync_appliances(model, root, top, params, layout)
       sync_name_label(model, root, top, params, layout)
@@ -423,13 +427,11 @@ module KitchenCabinetMaster
           params = HandleManager.drawer_params(params, own)
         end
       end
-      gola = bundle && bundle['profile'] == 'gola' && door.gola # (a Gola profile is on every front it was cut back for, an L corner's wider door too)
-      unless bundle && (door.handle != false || gola) # no handle on this door (an L corner has one, on its narrower door)
+      if bundle && bundle['profile'] == 'gola' # (a Gola profile is not in the door: see sync_gola)
         discard_instance(model, existing) if existing
         return
       end
-
-      if bundle['profile'] == 'gola' && !door.gola # (a front the Gola profiles do not reach has no handle)
+      unless bundle && door.handle != false # no handle on this door (an L corner has one, on its narrower door)
         discard_instance(model, existing) if existing
         return
       end
@@ -450,6 +452,43 @@ module KitchenCabinetMaster
       paint_handle(model, handle, bundle, settings)
     end
     private_class_method :sync_handle
+
+    # The Gola profiles: one instance for each front that has one, in the cabinet itself, at the place of the front when it is closed. A door that opens turns on its
+    # own: the profile stays on the carcass.
+    def self.sync_gola(model, root, top, params, layout)
+      entities = root.definition.entities
+      stale = top.select { |role, _| role.start_with?(GOLA_PREFIX) }
+      angle = params['door_opening_angle'].to_f
+      depth = params['depth'].to_f
+      (layout.doors + layout.drawers).each do |item|
+        spot = item.gola
+        next unless spot
+
+        drawer = item.role.start_with?(DRAWER_PREFIX)
+        bundle = CatalogManager.handle_bundle(params['handle_id'])
+        settings_params = params
+        if drawer && !params['drawer_handle_id'].to_s.empty? && (own = CatalogManager.handle_bundle(params['drawer_handle_id']))
+          bundle = own
+          settings_params = HandleManager.drawer_params(params, own)
+        end
+        next unless bundle && bundle['profile'] == 'gola'
+
+        role = "#{GOLA_PREFIX}#{item.role}"
+        closed = drawer ? DrawerAnimation.transformation(item, depth, 0.0) : DoorAnimation.transformation(item, angle, 0.0)
+        definition = HandleManager.definition(model, bundle, spot['length'], false, spot)
+        profile = place_instance(model, entities, stale.delete(role), role, definition, closed * HandleManager.transformation(spot.merge('flip' => false), item.extent[0]))
+        profile.name = 'Gola Profile'
+        profile.visible = !case params['cabinet_category']
+                           when 'wall' then params['cabinet_type'].to_s.start_with?('wall_loft') ? params['hide_loft_handles'] == true : params['hide_wall_handles'] == true
+                           when 'tall' then params['hide_tall_handles'] == true
+                           when 'base', 'corner' then params['hide_base_handles'] == true
+                           else false
+                           end
+        paint_handle(model, profile, bundle, HandleManager.settings(settings_params, bundle))
+      end
+      stale.each_value { |surplus| discard_instance(model, surplus) }
+    end
+    private_class_method :sync_gola
 
     # The material of a handle: the one picked in the Handle section, or the finish of its package.
     def self.paint_handle(model, handle, bundle, settings)

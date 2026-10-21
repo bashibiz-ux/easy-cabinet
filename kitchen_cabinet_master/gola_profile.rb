@@ -13,7 +13,7 @@ module KitchenCabinetMaster
   module GolaProfile
     DEFAULT_GAP = 35.0 # mm: the gap to put the fingers in, to start with: between the worktop and the top front (B Plus), between two fronts (C Plus). The profile
     #                  goes behind the fronts and covers the rest of its height behind them (21.5 under the worktop, 19 behind each of two fronts).
-    REVISION = 5       # what the profiles do (changes when a version makes them do more): a cabinet built under an older one is built again by the next setting for all cabinets
+    REVISION = 6       # what the profiles do (changes when a version makes them do more): a cabinet built under an older one is built again by the next setting for all cabinets
     PLATE = 2.0        # the thickness of the sheet the sections are drawn with
     NEIGHBOUR = 60.0   # fronts this close are neighbours
     MIN_FRONT = 60.0   # a front is never cut back to less than this

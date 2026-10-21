@@ -357,6 +357,22 @@ class GolaTest < Minitest::Test
     end
   end
 
+  def test_the_top_panel_of_a_corner_unit_stands_back_for_the_profile_like_a_rail_does
+    { 'base_corner_diagonal' => { 'corner_style' => 'diagonal' }, 'base_corner_l' => { 'corner_style' => 'l_shape', 'leg2_length' => '900' } }.each do |id, extra|
+      plain, = layout_of('base', id, 1000, '', '', extra)
+      layout, = layout_of('base', id, 1000, 'b', 'b', extra)
+      top = layout.panels.find { |p| p.role == 'top' }
+      refute_nil top.points, id
+      refute_equal plain.panels.find { |p| p.role == 'top' }.points, top.points, "#{id}: the panel was cut back"
+      layout.doors.each do |door|
+        angle = door.rotation.to_f * Math::PI / 180.0
+        normal = [Math.cos(angle), Math.sin(angle)]
+        behind = top.points.map { |x, y| ((x - door.offset[0]) * normal[0]) + ((y - door.offset[1]) * normal[1]) }.max
+        assert_operator behind, :<=, -27.0 + 0.05, "#{id}: the top panel is 27 mm (the profile) behind the back of #{door.name}"
+      end
+    end
+  end
+
   def test_the_front_of_a_dishwasher_has_the_profile_under_the_worktop
     plain, = layout_of('base', 'base_dishwasher', 600, '', '', 'dishwasher' => true)
     layout, = layout_of('base', 'base_dishwasher', 600, 'b', 'c', 'dishwasher' => true)
