@@ -200,32 +200,17 @@ module EasyCabinet
         rect = turn.call(ua, ub, va, vb)
         out << box("#{key}_#{name}", label, [rect[0], rect[2], z], [rect[1] - rect[0], rect[3] - rect[2], height])
       end
-      edge = spans.first[0]
       last = spans.last[1]
-      if flex # (a steel flange 15 mm wide round the two bowls)
-        piece.call('rim_1', 'Sink Rim', -15.0, 0.0, -15.0, depth + 15.0, top, deck)
-        piece.call('rim_2', 'Sink Rim', length, length + 15.0, -15.0, depth + 15.0, top, deck)
-        piece.call('rim_3', 'Sink Rim', 0.0, length, -15.0, 0.0, top, deck)
-        piece.call('rim_4', 'Sink Rim', 0.0, length, depth, depth + 15.0, top, deck)
-        piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
-      elsif zenit # (the steel deck: the same finish as the bowls)
-        piece.call('rim_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
-        piece.call('rim_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
-        piece.call('rim_3', 'Sink Deck', edge, last, bv0 + bd, depth + 15.0, top, deck)
-        if single
-          piece.call('rim_4', 'Sink Deck', last, length + 15.0, -15.0, depth + 15.0, top, deck)
-        else
-          piece.call('divider_1', 'Sink Divider', spans[0][1], spans[1][0], bv0, bv0 + bd, top, deck)
-          piece.call('tray', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
-        end
-      else
-        piece.call('deck_1', 'Sink Deck', -15.0, edge, -15.0, depth + 15.0, top, deck)
-        piece.call('deck_2', 'Sink Deck', edge, last, -15.0, bv0, top, deck)
-        piece.call('deck_3', 'Sink Deck', edge, last, bv0 + bd, depth + 15.0, top, deck)
-        piece.call('deck_4', 'Sink Drainer', last, length + 15.0, -15.0, depth + 15.0, top, deck)
-      end
+      # the deck is ONE slab with an opening for each bowl (no joints between pieces): white glass for the Diamond, steel for the others
+      slab = turn.call(-15.0, length + 15.0, -15.0, depth + 15.0)
+      openings = plan[:bowls].map { |rect| [rect[0] - slab[0], rect[1] - slab[0], rect[2] - slab[2], rect[3] - slab[2], 12.0] }
+      out << CabinetLayout::Panel.new(role: "#{key}_#{plan[:teka] == :diamond ? 'deck_1' : 'rim_1'}", name: flex ? 'Sink Rim' : 'Sink Deck',
+                                      extent: [slab[1] - slab[0], slab[3] - slab[2], deck].map { |v| round2(v) }, offset: [slab[0], slab[2], top].map { |v| round2(v) },
+                                      points: nil, shape: 'deck', path: openings.map { |hole| hole.map { |v| round2(v) } })
       spans.each_with_index do |(ua, ub), i|
-        out.concat(bowl(key, i + 1, plan[:bowls][i], top - SINK_BOWL_DEPTH, top + deck, radius: 12.0, waste: false))
+        rect = plan[:bowls][i] # (the bowl is one hollow solid, not walls and a floor in pieces)
+        out << CabinetLayout::Panel.new(role: "#{key}_bowl_#{i + 1}_floor", name: "Sink Bowl #{i + 1}", extent: [rect[1] - rect[0], rect[3] - rect[2], SINK_BOWL_DEPTH + deck].map { |v| round2(v) },
+                                        offset: [rect[0], rect[2], top - SINK_BOWL_DEPTH].map { |v| round2(v) }, points: nil, shape: 'bowl', path: [SINK_STEEL], round: 12.0)
         shown = zenit ? ((ub - ua) / 2.0) + 22.0 : ((ub - ua) / 2.0) + (flex ? 0.0 : 73.0) # the square waste: a little towards the drainer, and towards the back
         back = zenit ? bv0 + 50.0 : bv0 + (bd / 2.0) - (flex ? 107.0 : 51.0)
         sq = turn.call(ua + shown - 35.0, ua + shown + 35.0, back, back + 70.0)
@@ -394,9 +379,10 @@ module EasyCabinet
           cx = x0 + (depth * back)
           cy = y0 + (width * across)
           out << cyl("#{key}_head_#{count}", "Hob Burner #{count}", :z, [cx, cy, z], size * 1.15, 3.0)
-          out << cyl("#{key}_flame_#{count}", "Hob Flame #{count}", :z, [cx, cy, z + 3.0], size, 3.0)
+          out << shaped("#{key}_flame_#{count}", "Hob Flame #{count}", flame_points(cx, cy, size / 2.0, size * 0.43, 44), z + 3.0, 2.5)
+          out << shaped("#{key}_flamecore_#{count}", "Hob Flame Core #{count}", flame_points(cx, cy, size * 0.44, size * 0.37, 44), z + 5.5, 1.5)
           out << cyl("#{key}_cap_#{count}", "Hob Burner Cap #{count}", :z, [cx, cy, z + 3.0], size * 0.74, 9.0)
-          out << cyl("#{key}_flame_#{count}b", "Hob Flame #{count} Inner", :z, [cx, cy, z + 12.0], size * 0.5, 1.0) if size >= 150.0
+          out << shaped("#{key}_flame_#{count}b", "Hob Flame #{count} Inner", flame_points(cx, cy, size * 0.25, size * 0.21, 28), z + 12.0, 1.5) if size >= 150.0
           out << cyl("#{key}_cap_#{count}b", "Hob Burner Centre #{count}", :z, [cx, cy, z + 12.0], size * 0.3, 1.5) if size >= 150.0
         end
       end
@@ -406,6 +392,16 @@ module EasyCabinet
       end
       out
     end
+
+    # The outline of a ring of small flame tongues: `teeth` points out to `radius` and in to `inner`, going round.
+    def self.flame_points(cx, cy, radius, inner, teeth)
+      (0...(teeth * 2)).map do |i|
+        r = i.even? ? radius : inner
+        angle = Math::PI * i / teeth
+        [cx + (r * Math.cos(angle)), cy + (r * Math.sin(angle))]
+      end
+    end
+    private_class_method :flame_points
 
     # The cast iron pan support round some burners: a frame and four fingers towards each burner. `rect` = [x0, x1, y0, y1], `burners` = [[x, y, size], ...].
     def self.pan_support(key, number, rect, burners, z)
@@ -455,8 +451,8 @@ module EasyCabinet
         box("#{key}_trim_1", 'Hood Front Trim', [d + 68.0, 20.0, -7.0], [18.0, width, 3.0]),
         box("#{key}_trim_2", 'Hood Front Trim', [d + 68.0, 20.0, -62.0], [18.0, width, 4.0]),
         box("#{key}_panel", 'Hood Filter Frame', [110.0, 70.0, -24.0], [d - 110.0 + 20.0, width - 100.0, 2.0]),
-        box("#{key}_logo", 'Hood Logo', [front, 20.0 + 40.0, -40.0], [0.5, 46.0, 9.0])
       ]
+      out.concat(AppliancePieces.text(key, 'TEKA', front, 83.0, -44.0, 9.0))
       # the touch controls on the glass, on the right: power, less, the fan speed, more, the light
       [-120.0, -90.0, 0.0, 90.0, 120.0].each_with_index do |from_mid, k|
         out << cyl("#{key}_icon_#{k + 1}", "Hood Control #{k + 1}", :x, [front, 20.0 + (width * 0.72) + from_mid, -34.0], 9.0, 0.5) unless k == 2

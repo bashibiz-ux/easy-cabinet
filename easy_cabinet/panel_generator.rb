@@ -471,8 +471,91 @@ module EasyCabinet
       definition
     end
 
-    # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is
-    # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
+    # A rectangle with rounded corners as a list of points [[x, y], ...] going round (anticlockwise).
+    def self.rounded_rect(x0, x1, y0, y1, radius, steps = 8)
+      r = [radius.to_f, (x1 - x0) / 2.0, (y1 - y0) / 2.0].min
+      return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] if r <= 0.01
+
+      [[x1 - r, y0 + r, 270.0], [x1 - r, y1 - r, 0.0], [x0 + r, y1 - r, 90.0], [x0 + r, y0 + r, 180.0]].flat_map do |cx, cy, from|
+        (0..steps).map do |step|
+          angle = (from + (90.0 * step / steps)) * Math::PI / 180.0
+          [cx + (r * Math.cos(angle)), cy + (r * Math.sin(angle))]
+        end
+      end
+    end
+
+    # Every edge of a part is hidden: an appliance or a sink is steel or glass, which shows no joint lines (the faces still shade the shape).
+    def self.hide_edges(entities)
+      entities.grep(Sketchup::Edge).each { |edge| edge.hidden = true }
+    end
+
+    # A flat slab (size [x, y, z] in mm, its low corner at the origin) with rounded openings cut right through it, in one piece with no joints: the deck
+    # of a sink. `holes` = [[x0, x1, y0, y1, corner radius], ...].
+    def self.deck_definition(model, size, holes)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      key = holes.map { |hole| hole.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('.') }.join('_')
+      name = format('%<prefix>sDeck %<x>g x %<y>g x %<z>g h%<k>s', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, k: key)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      entities = definition.entities
+      face = entities.add_face([0, 0, 0], [dx.mm, 0, 0], [dx.mm, dy.mm, 0], [0, dy.mm, 0])
+      face.reverse! if face.normal.z < 0
+      face.pushpull(dz.mm)
+      holes.each do |x0, x1, y0, y1, radius|
+        opening = entities.add_face(rounded_rect(x0, x1, y0, y1, radius).map { |x, y| [x.mm, y.mm, dz.mm] })
+        opening.pushpull(opening.normal.z.positive? ? -dz.mm : dz.mm)
+      rescue StandardError => e
+        warn "[Easy Cabinet] Could not cut an opening in a sink deck: #{e.message}"
+      end
+      soften(entities)
+      hide_edges(entities)
+      definition
+    end
+
+    # A sink bowl in one piece: a solid with rounded corners (size [x, y, z] in mm, its low corner at the origin), hollowed out from the top, leaving
+    # `wall` mm of steel at the sides and the floor.
+    def self.bowl_definition(model, size, radius, wall)
+      dx, dy, dz = size.map { |v| (v.to_f * 100).round / 100.0 }
+      name = format('%<prefix>sBowl %<x>g x %<y>g x %<z>g r%<r>g w%<w>g', prefix: NAME_PREFIX, x: dx, y: dy, z: dz, r: radius.to_f, w: wall.to_f)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      entities = definition.entities
+      outer = entities.add_face(rounded_rect(0.0, dx, 0.0, dy, radius).map { |x, y| [x.mm, y.mm, 0] })
+      outer.reverse! if outer.normal.z < 0
+      outer.pushpull(dz.mm)
+      inner = entities.add_face(rounded_rect(wall, dx - wall, wall, dy - wall, [radius.to_f - wall, 0.5].max).map { |x, y| [x.mm, y.mm, dz.mm] })
+      inner.pushpull(inner.normal.z.positive? ? -(dz - wall).mm : (dz - wall).mm)
+      soften(entities)
+      hide_edges(entities)
+      definition
+    end
+
+    # A flat shape standing on a front (a letter, a sign): the outline `points` [[y, z], ...] in the Y-Z plane, in mm, pushed out `thickness` mm along X.
+    def self.plate_definition(model, points, thickness)
+      key = points.flatten.map { |v| format('%g', (v.to_f * 100).round / 100.0) }.join('-')
+      thick = (thickness.to_f * 100).round / 100.0
+      name = format('%<prefix>sPlate %<key>s t%<t>g', prefix: NAME_PREFIX, key: key, t: thick)
+
+      existing = model.definitions[name]
+      return existing if existing && AttributeManager.managed?(existing)
+
+      definition = model.definitions.add(name)
+      AttributeManager.mark_managed(definition)
+      face = definition.entities.add_face(points.map { |y, z| [0, y.mm, z.mm] })
+      face.reverse! if face.normal.x < 0
+      face.pushpull(thick.mm)
+      definition
+    end
+
+    # A slab (size [x, y, z] in mm) whose FRONT-TOP edge (the high X side, top Z) is    # rounded with `radius`: the profile in the X-Z plane, pushed out along Y. Named after
     # its size and radius, so equal pieces share one definition.
     ROUND_STEPS = 24
 

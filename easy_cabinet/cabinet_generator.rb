@@ -561,7 +561,16 @@ module EasyCabinet
       entities = container.definition.entities
       have = index_by_role(entities)
       items.each do |item|
-        definition = appliance_definition(model, item)
+        definition = begin
+          appliance_definition(model, item)
+        rescue StandardError => e # (a shape that cannot be drawn is a plain box instead: the cabinet is still built)
+          warn "[Easy Cabinet] Could not draw #{item.name}: #{e.message}"
+          PanelGenerator.definition(model, item.extent)
+        end
+        unless definition.get_attribute(AttributeManager::DICTIONARY, 'edges_hidden') # (no black edge lines on steel and glass)
+          PanelGenerator.hide_edges(definition.entities)
+          definition.set_attribute(AttributeManager::DICTIONARY, 'edges_hidden', true)
+        end
         instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
         instance.name = item.name
         material_name, color, look = appliance_finish(item.role)
@@ -620,6 +629,12 @@ module EasyCabinet
 
     # A box, a round bar (shape cyl_x / cyl_y / cyl_z) or a flat board with an outline (points).
     def self.appliance_definition(model, item)
+      case item.shape.to_s
+      when 'deck' then return PanelGenerator.deck_definition(model, item.extent, item.path)
+      when 'bowl' then return PanelGenerator.bowl_definition(model, item.extent, item.round, item.path.first)
+      when 'plate_x' then return PanelGenerator.plate_definition(model, item.path, item.extent[0])
+      end
+
       if item.points && !item.points.empty?
         PanelGenerator.polygon_definition(model, item.points, item.extent[2])
       elsif item.shape == 'tube'

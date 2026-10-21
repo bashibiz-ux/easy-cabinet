@@ -48,7 +48,7 @@ module EasyCabinet
       'chrome' => ['Appliance - Polished Chrome', '#eef0f2', { 'roughness' => 0.05, 'metalness' => 1.0 }],
       'glass'  => ['Appliance - Graphite Glass', '#59616b', { 'roughness' => 0.04, 'metalness' => 0.0 }],
       'window' => ['Appliance - Smoked Window', '#363d45', { 'roughness' => 0.02, 'metalness' => 0.0 }],
-      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0 }],
+      'panel'  => ['Appliance - Satin Steel', '#b4bac1', { 'roughness' => 0.4, 'metalness' => 1.0, 'texture' => 'stainless_steel.png', 'size' => 400 }],
       'led'    => ['Appliance - LED Glow', '#d7efff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
       'black'  => ['Appliance - Graphite Plastic', '#4a5159', { 'roughness' => 0.55, 'metalness' => 0.0 }],
       'seal'   => ['Appliance - Graphite Trim', '#3e454d', { 'roughness' => 0.8, 'metalness' => 0.0 }],
@@ -57,16 +57,18 @@ module EasyCabinet
       'filter' => ['Appliance - Mesh Steel', '#aab1b8', { 'roughness' => 0.45, 'metalness' => 1.0 }],
       'basin'  => ['Appliance - Sink Inox', '#d2d6da', { 'roughness' => 0.25, 'metalness' => 1.0, 'texture' => 'brushed_steel.png', 'size' => 400 }],
       'groove' => ['Appliance - Sink Groove Inox', '#a7aeb5', { 'roughness' => 0.45, 'metalness' => 1.0 }],
-      'castiron' => ['Appliance - Cast Iron', '#3a3d42', { 'roughness' => 0.7, 'metalness' => 0.3 }],
+      'castiron' => ['Appliance - Cast Iron', '#3a3d42', { 'roughness' => 0.8, 'metalness' => 0.4, 'texture' => 'appliance_cast_iron.png', 'size' => 300 }],
+      'whiteglass' => ['Appliance - White Glass', '#f1f3f5', { 'roughness' => 0.03, 'metalness' => 0.0, 'texture' => 'appliance_white_glass.png', 'size' => 1000 }],
+      'flamecore' => ['Appliance - Gas Flame Core', '#bfe0ff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
       'flame'    => ['Appliance - Gas Flame', '#2f80ff', { 'roughness' => 0.2, 'metalness' => 0.0, 'emissive' => 1.0 }],
-      'doorglass' => ['Appliance - Black Door Glass', '#30343a', { 'roughness' => 0.03, 'metalness' => 0.0 }],
-      'doorwin'   => ['Appliance - Black Oven Window', '#2c3036', { 'roughness' => 0.02, 'metalness' => 0.0 }]
+      'doorglass' => ['Appliance - Black Door Glass', '#30343a', { 'roughness' => 0.03, 'metalness' => 0.0, 'texture' => 'appliance_black_glass.png', 'size' => 1000 }],
+      'doorwin'   => ['Appliance - Black Oven Window', '#2c3036', { 'roughness' => 0.02, 'metalness' => 0.0, 'texture' => 'appliance_dark_window.png', 'size' => 800 }]
     }.freeze
     # The first rule that matches the end of a role (its number taken off) says which finish the part gets.
     APPLIANCE_RULES = [
       [/\Atap_aerator/, 'steel'], [/\Atap_/, 'chrome'], [/waste\z/, 'chrome'], [/hole\z/, 'seal'], [/\Agroove/, 'groove'],
       [/\A(rim|divider|tray|bowl)/, 'basin'], [/\A(zone|core)/, 'zone'], [/\Agap/, 'glass'], [/\Alip\z/, 'glass'],
-      [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Adeck/, 'white'], [/\Agrate/, 'castiron'], [/\Aflame/, 'flame'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
+      [/\A(display|icon|ledfig)/, 'led'], [/\Alogo\z/, 'white'], [/\Adeck/, 'whiteglass'], [/\Agrate/, 'castiron'], [/\Aflamecore/, 'flamecore'], [/\Aflame/, 'flame'], [/\Actrlglass/, 'doorglass'], [/\Akey/, 'seal'], [/\Adigit\z/, 'seal'], [/\Acap\z/, 'black'], [/\Aplinth\z/, 'black'], [/\A(recess|bezel)\z/, 'seal'], [/\Afilter/, 'filter'], [/\Aposts?_/, 'steel']
     ].freeze
     FRIDGE_FINISHES = { 'body' => ['Appliance - Gloss White', '#eef0f2', { 'roughness' => 0.15, 'metalness' => 0.0 }] }.freeze
 
@@ -105,8 +107,39 @@ module EasyCabinet
                                points: nil, shape: 'tube', path: relative, round: diameter) # ound is its thickness
     end
 
-    # ---- numbers on a display ---------------------------------------------------------------------------
+    # ---- letters ----------------------------------------------------------------------------------------
 
+    # The letters of a logo: [width, [outline, ...]] in units of the letter height, the outlines as [[across, up], ...].
+    GLYPHS = {
+      'T' => [0.75, [[[0.0, 1.0], [0.75, 1.0], [0.75, 0.83], [0.46, 0.83], [0.46, 0.0], [0.29, 0.0], [0.29, 0.83], [0.0, 0.83]]]],
+      'E' => [0.62, [[[0.0, 0.0], [0.62, 0.0], [0.62, 0.17], [0.17, 0.17], [0.17, 0.42], [0.55, 0.42], [0.55, 0.59], [0.17, 0.59], [0.17, 0.83], [0.62, 0.83], [0.62, 1.0], [0.0, 1.0]]]],
+      'K' => [0.78, [[[0.0, 0.0], [0.17, 0.0], [0.17, 1.0], [0.0, 1.0]], [[0.17, 0.40], [0.36, 0.40], [0.78, 1.0], [0.59, 1.0]], [[0.30, 0.58], [0.49, 0.58], [0.78, 0.0], [0.59, 0.0]]]],
+      'A' => [0.85, [[[0.0, 0.0], [0.18, 0.0], [0.52, 1.0], [0.33, 1.0]], [[0.67, 0.0], [0.85, 0.0], [0.52, 1.0], [0.33, 1.0]], [[0.20, 0.20], [0.65, 0.20], [0.65, 0.36], [0.20, 0.36]]]]
+    }.freeze
+
+    # `text` in capital letters TEKA, `height` mm high, standing on a front whose face is at `x`, centred along Y on `u_mid`, its foot at `z`. Each letter shape is a
+    # plate `thick` mm thick with the role "<key>_<kind>_<n>" (the finish "logo": white).
+    def self.text(key, text, x, u_mid, z, height, kind: 'logo', thick: 0.5)
+      glyphs = text.each_char.map { |ch| GLYPHS[ch] }.compact
+      gap = 0.2
+      cursor = -((glyphs.sum { |width, _| width } + (gap * (glyphs.length - 1))) / 2.0)
+      count = 0
+      glyphs.flat_map do |width, outlines|
+        parts = outlines.map do |outline|
+          count += 1
+          points = outline.map { |across, up| [(cursor + across) * height, up * height] }
+          y0 = points.map(&:first).min
+          z0 = points.map(&:last).min
+          relative = points.map { |py, pz| [r2(py - y0), r2(pz - z0)] }
+          CabinetLayout::Panel.new(role: "#{key}_#{kind}_#{count}", name: 'Logo Letter', extent: [thick, r2(points.map(&:first).max - y0), r2(points.map(&:last).max - z0)],
+                                   offset: [x, r2(u_mid + y0), r2(z + z0)], points: nil, shape: 'plate_x', path: relative)
+        end
+        cursor += width + gap
+        parts
+      end
+    end
+
+    # ---- numbers on a display ---------------------------------------------------------------------------
     # Which segments (a top, b top right, c bottom right, d bottom, e bottom left, f top left, g middle) make each sign.
     SEGMENTS = { '0' => 'abcdef', '1' => 'bc', '2' => 'abdeg', '3' => 'abcdg', '4' => 'bcfg', '5' => 'acdfg', '6' => 'acdefg',
                  '7' => 'abc', '8' => 'abcdefg', '9' => 'abcdfg', 'C' => 'adef', 'P' => 'abefg', '-' => 'g' }.freeze
@@ -203,7 +236,7 @@ module EasyCabinet
         box("#{key}_doorglass", 'Oven Door Glass', [glass_x, inner_y, door_bottom], [glass_t, inner_w, door_h]),
         box("#{key}_doorwin", 'Oven Window', [face, inner_y + (inner_w * 0.155), door_bottom + (door_h * 0.19)], [0.4, inner_w * 0.70, [door_h * 0.59, 10.0].max]),
         box("#{key}_handle", 'Oven Handle', [face, handle_y, handle_top - handle_h], [20.0, handle_len, handle_h]),
-        box("#{key}_logo", 'Oven Logo', [face, mid - 23.0, door_bottom + [door_h * 0.1, 12.0].max], [0.5, 46.0, 9.0])
+        *text(key, 'TEKA', face, mid, door_bottom + [door_h * 0.1, 12.0].max, 9.0)
       ]
     end
 
@@ -255,7 +288,7 @@ module EasyCabinet
       parts + [
         box("#{key}_doorglass", 'Microwave Door Glass', [glass_x, iy0, iz0], [glass_t, door_w, ih]),
         box("#{key}_doorwin", 'Microwave Window', [face, iy0 + (door_w * 0.18), iz0 + (ih * 0.24)], [0.4, door_w * 0.61, ih * 0.53]),
-        box("#{key}_logo", 'Microwave Logo', [face, iy0 + (door_w * 0.62) - 23.0, iz0 + (ih * 0.12)], [0.5, 46.0, 9.0])
+        *text(key, 'TEKA', face, iy0 + (door_w * 0.62), iz0 + (ih * 0.12), 8.0)
       ]
     end
 
@@ -304,7 +337,7 @@ module EasyCabinet
         parts << box("#{key}_ctrlglass", 'Fridge Display', [face, mid_y - (display_w / 2.0), display_top - display_h], [0.8, display_w, display_h])
         parts.concat(digits(key, '4*C', :x, face + 0.8, mid_y, display_top - (display_h * 0.3), display_w * 0.42, kind: 'ledfig'))
         parts.concat(digits(key, '-18', :x, face + 0.8, mid_y, display_top - (display_h * 0.68), display_w * 0.42, kind: 'ledfig'))
-        parts << box("#{key}_logo", 'Fridge Logo', [face, mid_y - (w * 0.035), top - (h * 0.058)], [0.4, w * 0.07, 7.0])
+        parts.concat(text(key, 'TEKA', face, mid_y, top - (h * 0.058), 7.0, thick: 0.4))
       elsif w < 1100.0
         half = w / 2.0
         add_door.call(1, 'Fridge Freezer Door', y0, half - (gap / 2.0), bottom, top - bottom)

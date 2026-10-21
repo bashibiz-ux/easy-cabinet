@@ -348,7 +348,7 @@ class KitchenCatalogTest < Minitest::Test
     result, layout = unit('base', 'base_sink', 900)
     assert_empty result.errors.map { |e| e['message'] }
     roles = layout.appliances.map(&:role)
-    %w[appliance_sink_1_bowl_1_floor appliance_sink_1_deck_1 appliance_sink_1_tap_body appliance_sink_1_deck_4].each { |role| assert_includes roles, role }
+    %w[appliance_sink_1_bowl_1_floor appliance_sink_1_deck_1 appliance_sink_1_tap_body].each { |role| assert_includes roles, role }
     assert_equal 1, roles.grep(/bowl_\d_floor/).length, 'one bowl and a drainer to start'
     floor = layout.appliances.find { |a| a.role.end_with?('bowl_1_floor') }
     rim = layout.appliances.find { |a| a.role.end_with?('deck_1') }
@@ -398,11 +398,41 @@ class KitchenCatalogTest < Minitest::Test
       roles = layout.appliances.map(&:role)
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_floor/).length
       assert_equal bowls, roles.grep(/sink_1_bowl_\d_waste/).length, 'a square waste in each bowl'
-      assert_equal tray, roles.any? { |r| r.end_with?('_tray') || r.end_with?('deck_4') }, 'a drainer only when asked for'
+      assert_equal 1, roles.grep(/sink_1_(deck|rim)_1/).length, 'the deck is one slab, not pieces'
       assert_equal tray ? 5 : 0, roles.grep(/sink_1_groove_\d/).length, 'five grooves in the drainer'
       neck = layout.appliances.find { |a| a.shape == 'tube' }
       assert neck && neck.round == 24.0, 'the Uni 9310 has a 24 mm neck'
       assert_includes roles, 'appliance_sink_1_tap_lever'
+    end
+  end
+
+  def test_a_sink_is_one_deck_and_one_hollow_bowl_each_and_the_logos_are_letters_and_the_flames_are_tongues
+    [[1, true, 1000], [2, true, 1300], [2, false, 900], [1, false, 700]].each do |bowls, tray, width|
+      _, layout = unit('base', 'base_sink', width, 'sink_bowls' => bowls, 'sink_tray' => tray)
+      decks = layout.appliances.select { |a| a.shape == 'deck' }
+      assert_equal 1, decks.length, "#{bowls} bowls, drainer #{tray}: one slab, no joints"
+      assert_equal bowls, decks.first.path.length, 'an opening for each bowl'
+      assert decks.first.path.all? { |x0, x1, y0, y1, r| x0 >= 0 && y0 >= 0 && x1 <= decks.first.extent[0] && y1 <= decks.first.extent[1] && r.positive? }, 'inside the slab, with rounded corners'
+      solids = layout.appliances.select { |a| a.shape == 'bowl' }
+      assert_equal bowls, solids.length, 'each bowl is one solid'
+      assert solids.all? { |b| b.path == [2.0] && b.round.positive? }, 'with 2 mm steel and rounded corners'
+      assert_empty layout.appliances.select { |a| a.role =~ /bowl_\d_(wall|corner)/ }, 'no walls and corners in pieces'
+    end
+    _, oven = oven_unit('oven_micro')
+    letters = oven.appliances.select { |a| a.role =~ /oven_1_logo_\d+\z/ }
+    assert_equal 8, letters.length, 'T, E, K (3 strokes), A (3 strokes)'
+    assert letters.all? { |l| l.shape == 'plate_x' && l.path.length >= 4 }, 'letter shapes'
+    assert_equal 'Appliance - Gloss White', AppliancePieces.finish('appliance_oven_1_logo_5')[0]
+    _, hob = unit('base', 'base_hob', 900)
+    flames = hob.appliances.select { |a| a.role =~ /hob_1_flame_\d\z/ }
+    assert_equal 5, flames.length
+    assert flames.all? { |f| f.points.length == 88 }, 'a ring of 44 small tongues'
+    assert_equal 'Appliance - Gas Flame Core', AppliancePieces.finish('appliance_hob_1_flamecore_2')[0]
+    assert_equal 'Appliance - White Glass', AppliancePieces.finish('appliance_sink_1_deck_1')[0]
+    assert_equal 'Appliance - Cast Iron', AppliancePieces.finish('appliance_hob_1_grate_1_2')[0]
+    assert_equal 'appliance_black_glass.png', AppliancePieces.finish('appliance_oven_1_doorglass')[2]['texture']
+    %w[appliance_black_glass appliance_dark_window appliance_white_glass appliance_cast_iron].each do |name|
+      assert File.file?(File.join(__dir__, '..', 'easy_cabinet', 'data', 'textures', "#{name}.png")), "the picture #{name}"
     end
   end
 
@@ -531,7 +561,8 @@ class KitchenCatalogTest < Minitest::Test
   def test_the_appliances_are_drawn_with_round_parts_and_a_finish_for_each
     _, layout = oven_unit('oven_micro')
     shapes = layout.appliances.map(&:shape).compact.uniq
-    assert_equal ['cyl_x', 'cyl_z'].sort, (shapes + ['cyl_z']).uniq.sort, 'knobs'
+    assert_equal ['cyl_x', 'cyl_z'].sort, (shapes.select { |s| s.start_with?('cyl_') } + ['cyl_z']).uniq.sort, 'knobs'
+    assert_includes shapes, 'plate_x', 'the TEKA logo is drawn with real letter shapes'
     roles = layout.appliances.map(&:role)
     %w[doorglass doorwin panel bezel seal handle].each { |suffix| assert roles.any? { |r| r.end_with?("oven_1_#{suffix}") }, "the oven has a #{suffix}" }
     finish = ->(role) { AppliancePieces.finish(role)[0] }
@@ -554,7 +585,7 @@ class KitchenCatalogTest < Minitest::Test
   def test_every_appliance_is_under_show_appliances_with_a_tick_of_its_own
     ticks = { 'appliance_oven_1_frame' => 'oven', 'appliance_micro_1_doorglass' => 'microwave', 'appliance_hob_1_plate' => 'hob', 'appliance_hood_1_frame' => 'hood',
               'appliance_fridge_1_free_plate_1' => 'free_fridge', 'appliance_fridge_1_housed_plate_2' => 'free_fridge',
-              'appliance_sink_1_deck_4' => 'sink' }
+              'appliance_sink_1_deck_1' => 'sink' }
     ticks.each { |role, tick| tick ? assert_equal(tick, AppliancePieces.tick_for(role), role) : assert_nil(AppliancePieces.tick_for(role), role) }
     assert_equal true, Defaults.params['visibility_settings']['free_fridge'], 'the freestanding fridge has its own tick'
     _, housing = unit('tall', 'tall_fridge_housing_free', 900)
