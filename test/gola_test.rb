@@ -382,6 +382,20 @@ class GolaTest < Minitest::Test
     assert_includes layout.doors.map(&:handle), false, 'one of them has no handle in other models: the profile goes on it all the same'
   end
 
+  def test_the_drawer_adjustment_moves_no_front_in_any_unit_and_leaves_wall_units_alone
+    %w[base tall wall].each do |category|
+      CatalogManager.cabinets(CATALOG, category).select { |entry| entry['drawers'].to_i.positive? && !entry['corner'] }.each do |entry|
+        width = (entry['widths'] || [entry['defaults']['width']]).first
+        plain, = layout_of(category, entry['id'], width, '')
+        grown, = layout_of(category, entry['id'], width, '', '', 'drawer_height_adjust' => '12')
+        plain.drawers.zip(grown.drawers).each do |was, now|
+          assert_in_delta was.offset[2], now.offset[2], 0.001, "#{entry['id']} #{was.name}: no front moves"
+          assert_in_delta was.extent[2] + (category == 'wall' ? 0.0 : 12.0), now.extent[2], 0.001, "#{entry['id']} #{was.name}"
+        end
+      end
+    end
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

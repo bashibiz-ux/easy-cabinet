@@ -245,21 +245,18 @@ module KitchenCabinetMaster
     end
     private_class_method :adjust_door_heights
 
-    # The drawer fronts can be made taller or shorter too (the Drawer FR Height Adjustment field): every front grows upward from its own bottom edge (a wall unit's from its
-    # top edge, downward), and none of them moves: the set stays where it is. A front never gets lower than 60 mm.
+    # The drawer fronts can be made taller or shorter too (the Drawer FR Height Adjustment field): the top edge of every front moves up by the value (down when it is
+    # negative) and its bottom edge stays, so no front moves and the set does not shift upward. A wall unit's fronts are left as they are. A front never gets lower than 60 mm.
     def self.adjust_drawer_heights(drawers, params, category)
       adjust = params['drawer_height_adjust'].to_f
-      return if adjust.zero? || drawers.empty?
+      return if adjust.zero? || drawers.empty? || category == 'wall'
 
       drawers.each do |drawer|
         next if drawer.parent || drawer.hinge == 'fold'
 
         height = drawer.extent[2].to_f
         delta = [adjust, 60.0 - height].max
-        next if delta.zero?
-
-        drawer.extent = [drawer.extent[0], drawer.extent[1], round2(height + delta)]
-        drawer.offset = [drawer.offset[0], drawer.offset[1], round2(drawer.offset[2] - delta)] if category == 'wall'
+        drawer.extent = [drawer.extent[0], drawer.extent[1], round2(height + delta)] unless delta.zero?
       end
     end
     private_class_method :adjust_drawer_heights
