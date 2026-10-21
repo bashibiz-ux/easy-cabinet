@@ -342,6 +342,31 @@ class GolaTest < Minitest::Test
     adjusted, = layout_of('base', 'base_3drawer', 600, '', '', 'drawer_height_adjust' => '15')
     assert_in_delta plain_none.drawers.sum { |d| d.extent[2] } + 45.0, adjusted.drawers.sum { |d| d.extent[2] }, 0.05, 'the adjustment works in every model'
   end
+  def test_the_doors_of_a_corner_unit_have_the_profile_under_the_worktop
+    { 'base_corner_diagonal' => { 'corner_style' => 'diagonal' }, 'base_corner_l' => { 'corner_style' => 'l_shape', 'leg2_length' => '900' },
+      'base_corner_blind' => { 'corner_style' => 'blind', 'blind_width' => '630' } }.each do |id, extra|
+      plain, = layout_of('base', id, 1000, '', '', extra)
+      layout, = layout_of('base', id, 1000, 'b', 'b', extra)
+      refute_empty layout.doors, id
+      layout.doors.each_with_index do |door, i|
+        assert_equal %w[b top], door.gola&.values_at('system', 'kind'), "#{id}: door #{i + 1}"
+        assert_in_delta plain.doors[i].extent[2] - (35.0 - 2.0), door.extent[2], 1.0, "#{id}: the door stops 35 mm under the worktop"
+        assert_in_delta 21.5, (door.offset[2] + door.extent[2]) - (door.offset[2] + door.gola['v']), 0.001, "#{id}: 21.5 behind the door"
+      end
+      assert(layout.panels.select { |p| %w[left_side right_side].include?(p.role) }.all? { |p| p.shape.nil? }, "#{id}: no notches in the sides of a corner unit") unless id == 'base_corner_blind'
+    end
+  end
+
+  def test_the_front_of_a_dishwasher_has_the_profile_under_the_worktop
+    plain, = layout_of('base', 'base_dishwasher', 600, '', '', 'dishwasher' => true)
+    layout, = layout_of('base', 'base_dishwasher', 600, 'b', 'c', 'dishwasher' => true)
+    front = layout.drawers.first
+    assert_equal %w[b top], front.gola.values_at('system', 'kind')
+    assert_in_delta plain.drawers.first.extent[2] - 33.0, front.extent[2], 0.05, 'the front stops 35 mm under the worktop'
+    rail = layout.panels.find { |p| p.role == 'top_front_rail' }
+    assert_in_delta plain.panels.find { |p| p.role == 'top_front_rail' }.offset[0] - (27.0 - 2.0), rail.offset[0], 0.5, 'the front rail stands back'
+  end
+
   def test_a_catalog_without_gola_profiles_is_not_touched
     plain, = layout_of('base', 'base_2door', 900, '')
     assert(plain.doors.all? { |d| d.gola.nil? })

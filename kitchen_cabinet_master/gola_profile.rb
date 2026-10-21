@@ -205,7 +205,7 @@ module KitchenCabinetMaster
         spec = SYSTEMS[system]
         if system == 'b'
           profile_bottom = carcass_top - spec[:size] # (the profile hangs under the worktop, behind the front, and stays there)
-          cut = limit - (carcass_top - gap) # (the front stops the gap under the worktop)
+          cut = top_of(item) - (carcass_top - gap) # (the front stops the gap under the worktop: the doors of a corner unit are as high as their own)
         else
           above = uppers[item]
           next unless above

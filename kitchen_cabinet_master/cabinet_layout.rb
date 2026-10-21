@@ -136,23 +136,13 @@ module KitchenCabinetMaster
       panels << top_front_panel(params, dims) if params['top_front'].to_f.positive?
       doors = door_panels(params, dims, base_z)
       drawers = drawer_panels(params, dims, base_z)
-      gola = style.nil? && (!GolaProfile.clean(params['gola_system']).empty? || !GolaProfile.clean(params['gola_system_drawer']).empty?)
-      if gola # (the Gola handle model: the fronts are cut back for the profiles first; the profiles stay where they are when the fronts are adjusted after)
-        GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, base: category == 'base' && !params['top_front'].to_f.positive?)
-        if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' } # (B Plus: the top front rail stands back for the profile)
-          shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
-          rail = panels.find { |item| item.role == 'top_front_rail' }
-          rail.offset = [round2(rail.offset[0] - shift), rail.offset[1], rail.offset[2]] if rail
-          full = panels.find { |item| item.role == 'top' }
-          full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
-        end
-      end
+      gola = apply_gola(params, dims, doors, drawers, panels, base_z, category) # (the Gola handle model: the fronts are cut back for the profiles first; the profiles stay where they are when the fronts are adjusted after)
       adjust_door_heights(doors, params, category)
       adjust_drawer_heights(drawers, params, category)
       GolaProfile.settle!(doors + drawers) if gola
       # A drawer front the user resized or moved: its inner box follows it, so it is changed before the box is made.
       panels.concat(finger_pull_panels(params, dims, doors, drawers, base_z, panels)) # (the top fronts are shorter: the finger gap)
-      if gola # (the profiles run through the side panels: notches)
+      if gola && (style.nil? || style == 'blind') # (the profiles run through the side panels: notches; the sides of a corner unit are not along its fronts)
         notches = GolaProfile.notches(doors, drawers, distance: door_distance(params), base_z: base_z, height: dims.height) # (the profiles run through the sides)
         unless notches.empty?
           panels.each do |item|
@@ -169,6 +159,23 @@ module KitchenCabinetMaster
                                  drawers: drawers, toe_kick: [], drawer_boxes: drawer_boxes(params, dims, drawers),
                                  appliances: appliance_boxes(params, dims, front_zone(params, dims))), params, drawers: false)
     end
+
+    # The Gola handle model: cuts the fronts back for the profiles (see GolaProfile.apply!) and, where B Plus goes under the worktop, sets the top front rail of the
+    # carcass back for it. A corner unit's doors each have their own profile along their top. => true when the unit has Gola profiles.
+    def self.apply_gola(params, dims, doors, drawers, panels, base_z, category)
+      return false if GolaProfile.clean(params['gola_system']).empty? && GolaProfile.clean(params['gola_system_drawer']).empty?
+
+      GolaProfile.apply!(params, doors, drawers, limit: base_z + dims.height - params['door_reveal'].to_f, base: category == 'base' && !params['top_front'].to_f.positive?)
+      if (doors + drawers).any? { |item| item.gola && item.gola['kind'] == 'top' }
+        shift = [GolaProfile::SYSTEMS['b'][:depth] - door_distance(params), 0.0].max
+        rail = panels.find { |item| item.role == 'top_front_rail' }
+        rail.offset = [round2(rail.offset[0] - shift), rail.offset[1], rail.offset[2]] if rail
+        full = panels.find { |item| item.role == 'top' }
+        full.extent = [round2(full.extent[0] - shift), full.extent[1], full.extent[2]] if full && !full.points
+      end
+      true
+    end
+    private_class_method :apply_gola
 
     # A space for a built-in dishwasher: no carcass (the neighbours' sides are its sides), two rails across the top that carry the worktop, and
     # the front of the dishwasher in the door material and design, as tall as the doors of the units beside it, with a handle (unless it is turned off).
@@ -196,6 +203,7 @@ module KitchenCabinetMaster
       # With a handle the front is a front like a drawer's (door material and design, the handle of the Handle section on it, centred).
       front = Door.new(role: 'drawer_1', name: 'Dishwasher Front', extent: [dims.thick, width, height].map { |v| round2(v) },
                        offset: [x, reveal, base_z + reveal].map { |v| round2(v) }, hinge: 'center', pivot: [dims.depth, reveal, base_z].map { |v| round2(v) }, rotation: 0.0)
+      GolaProfile.settle!([front]) if apply_gola(params, dims, [], [front], panels, base_z, 'base') # (the Gola handle model: the profile under the worktop)
       Layout.new(base_z: base_z, top_z: round2(base_z + dims.height), panels: panels, doors: [], drawers: [front], toe_kick: [], drawer_boxes: {}, appliances: [])
     end
     private_class_method :dishwasher_layout
