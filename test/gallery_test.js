@@ -30,7 +30,10 @@ assert.ok(flat.includes('ecSheen') && flat.includes('ecShadow'), 'a sheen on the
 // the 3D view: only the faces turned to the viewer (front, left, top), far ones first
 const faces = gallery.faces3d(unit);
 assert.ok(faces.length > 0 && faces.length <= unit.parts.length * 3, 'at most three faces of a box');
-for (let i = 1; i < faces.length; i += 1) assert.ok(faces[i].depth >= faces[i - 1].depth - 1e-9, 'sorted from far to near');
+for (let i = 1; i < faces.length; i += 1) {
+  assert.ok(faces[i].layer >= faces[i - 1].layer, 'the carcass, then the fronts, then the handles');
+  if (faces[i].layer === faces[i - 1].layer) assert.ok(faces[i].depth >= faces[i - 1].depth - 1e-9, 'each layer from far to near');
+}
 const solid = gallery.svg3d(unit);
 assert.ok(solid.includes('<polygon') && solid.includes('viewBox'));
 

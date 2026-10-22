@@ -12,6 +12,9 @@
   const PITCH = (24 * Math.PI) / 180; // and from this far above
   const COLOURS = { body: '#d6c39b', door: '#efe2c4', drawer: '#efe2c4', toe: '#43474f', appl: '#8d98a4', handle: '#8b9199', gola: '#b4b9c1' };
   const ORDER = { body: 0, appl: 1, toe: 1, drawer: 2, door: 3, handle: 4, gola: 4 };
+  // What is drawn first: the carcass and what is inside it, then the fronts, then what stands on the fronts (handles, profiles). A big face (a shelf) has a depth in
+  // the middle of its length, so by depth alone it could be drawn over a front it is behind.
+  const LAYER = { body: 0, appl: 0, toe: 0, drawer: 1, door: 1, handle: 2, gola: 2 };
   const LIGHT = normalize([0.55, -0.35, 0.75]);
   const VIEWER = [Math.cos(YAW) * Math.cos(PITCH), -Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH)];
   const STROKE = 'rgba(70, 58, 38, 0.62)';
@@ -53,6 +56,8 @@
     });
     return out;
   }
+
+  const hangs = (shape) => shape.cat === 'wall' || shape.cat === 'loft';
 
   const withHandles = (shape) => ({ ...shape, parts: (shape.parts || []).concat(handles(shape)) });
 
@@ -111,11 +116,11 @@
         const depth = projected.reduce((sum, p) => sum + p.depth, 0) / projected.length;
         const lit = 0.66 + (0.34 * Math.max(0, dot(face.normal, LIGHT)));
         const front = face.normal[2] === 0 && dot(face.normal, [1, 0, 0]) > 0.9; // a face looking to the front
-        out.push({ points: projected, depth, order: ORDER[part.k] || 0, index, fill: shade(COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer') });
+        out.push({ points: projected, depth, layer: LAYER[part.k] || 0, order: ORDER[part.k] || 0, index, fill: shade(COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer') });
       });
     });
-    // a part is drawn after what is behind it; parts of the same depth by kind (the doors over the carcass)
-    return out.sort((a, b) => (a.depth - b.depth) || (a.order - b.order) || (a.index - b.index));
+    // the carcass first, then the fronts, then the handles; each layer from far to near
+    return out.sort((a, b) => (a.layer - b.layer) || (a.depth - b.depth) || (a.order - b.order) || (a.index - b.index));
   }
 
   // The boxes seen from the front: [{ x, y, w, h, kind }] with y up (millimetres), the carcass first and the doors last.
@@ -146,7 +151,8 @@
     + '<radialGradient id="ecShadow"><stop offset="0" stop-color="#1c1608" stop-opacity="0.40"/><stop offset="1" stop-color="#1c1608" stop-opacity="0"/></radialGradient>'
     + '</defs>';
 
-  function shadow(box, floorY, centreX, spread) {
+  function shadow(box, floorY, centreX, spread, hangs) {
+    if (hangs) return ''; // (a unit that hangs on the wall casts no shadow on the floor)
     const rx = (spread * 0.62) + 6;
     const ry = Math.max(box.height * 0.045, 5);
     return `<ellipse cx="${round(centreX)}" cy="${round(floorY)}" rx="${round(rx)}" ry="${round(ry)}" fill="url(#ecShadow)"/>`;
@@ -168,7 +174,7 @@
       const base = `<polygon points="${points}" fill="${f.fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}" stroke-linejoin="round"/>`;
       return f.sheen ? `${base}<polygon points="${points}" fill="url(#ecSheen)" stroke="none"/>` : base;
     }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.01), centreX, spread)}${body}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.01), centreX, spread, hangs(plain))}${body}</svg>`;
   }
 
   function svg2d(plain) {
@@ -189,7 +195,7 @@
       const base = `<rect ${where} fill="${fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}"/>`;
       return front ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"/>` : base;
     }).join('');
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.012), (left + right) / 2, (right - left) / 2)}${body}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.012), (left + right) / 2, (right - left) / 2, hangs(plain))}${body}</svg>`;
   }
 
   const api = { svg2d, svg3d, faces3d, rects2d, footprint, handles, withHandles };

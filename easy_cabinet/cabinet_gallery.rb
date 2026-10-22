@@ -31,17 +31,19 @@ module EasyCabinet
     # The boxes of a layout (see `shape`), also for the ghost that follows the cursor when a cabinet is placed (see PlaceTool).
     def self.from_layout(layout, params, mode = 'handle')
       parts = []
-      layout.panels.to_a.each { |panel| parts << part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel) }
+      lift = layout.base_z.to_f
+      # (the boards and appliances are measured from the bottom of the carcass, the doors and drawers from the floor: the boards are lifted to the floor level)
+      lifted = ->(box) { box && box.merge('o' => [box['o'][0], box['o'][1], (box['o'][2] + lift).round(1)]) }
+      layout.panels.to_a.each { |panel| parts << lifted.call(part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel)) }
       layout.appliances.to_a.each do |item|
         next unless item.shape.nil? && item.points.nil? && item.extent[1].to_f >= MIN_APPLIANCE_MM[0] && item.extent[2].to_f >= MIN_APPLIANCE_MM[1]
 
-        parts << part('appl', item)
+        parts << lifted.call(part('appl', item))
       end
       layout.drawers.to_a.each { |front| parts << part('drawer', front) }
       layout.doors.to_a.each { |door| parts << part('door', door) }
       (layout.drawers.to_a + layout.doors.to_a).each { |front| parts.concat(gola_parts(front)) } if mode == 'gola'
       parts.compact!
-      lift = layout.base_z.to_f
       if lift.positive? # the plinth under a unit that stands on the floor
         depth = params['depth'].to_f
         parts << { 'k' => 'toe', 'o' => [60.0, 0.0, 0.0], 'e' => [[depth - 90.0, 20.0].max, params['width'].to_f, lift] }
