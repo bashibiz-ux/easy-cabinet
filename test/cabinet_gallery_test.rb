@@ -57,3 +57,38 @@ class CabinetGalleryTest < Minitest::Test
     assert_operator shape['parts'].count { |p| p['k'] == 'drawer' }, :>=, 2
   end
 end
+
+# The ghost that follows the cursor when a cabinet is placed from the gallery: the cabinet's own boxes, with its doors and plinth.
+require File.join(File.expand_path('../easy_cabinet', __dir__), 'place_tool')
+
+class PlaceGhostTest < Minitest::Test
+  include EasyCabinet
+
+  def params_of(id, category = 'base')
+    entry = CatalogManager.cabinet('kitchen_cabinets', category, id)
+    _layout, params = CabinetGallery.send(:layout_of, 'kitchen_cabinets', category, entry)
+    params
+  end
+
+  def test_the_ghost_has_edges_fronts_and_a_plinth
+    tool = PlaceTool.allocate
+    ghost = tool.send(:ghost_of, params_of('base_2door'))
+    refute_nil ghost
+    assert_operator ghost[:edges].length, :>, 60, 'the edges of every box'
+    assert_equal 0, ghost[:edges].length % 2
+    assert_operator ghost[:fronts].length, :>=, 8, 'two doors'
+    assert_equal 0, ghost[:fronts].length % 4
+    assert_equal 4, ghost[:toe].length, 'the plinth of a base unit'
+  end
+
+  def test_a_wall_unit_has_no_plinth
+    ghost = PlaceTool.allocate.send(:ghost_of, params_of('wall_2door', 'wall'))
+    assert_empty ghost[:toe]
+  end
+
+  def test_the_shape_says_where_a_door_is_hinged_and_which_kind_of_unit_it_is
+    shape = CabinetGallery.shapes('kitchen_cabinets', 'base')['base_1door']
+    assert_equal 'base', shape['cat']
+    assert_includes %w[left right], shape['parts'].find { |p| p['k'] == 'door' }['g']
+  end
+end

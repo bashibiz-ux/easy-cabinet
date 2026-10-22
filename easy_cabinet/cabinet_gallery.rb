@@ -19,6 +19,11 @@ module EasyCabinet
       layout, params = layout_of(catalog_id, category, entry)
       return fallback(entry) unless layout
 
+      from_layout(layout, params)
+    end
+
+    # The boxes of a layout (see `shape`), also for the ghost that follows the cursor when a cabinet is placed (see PlaceTool).
+    def self.from_layout(layout, params)
       parts = []
       layout.panels.to_a.each { |panel| parts << part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel) }
       layout.appliances.to_a.each do |item|
@@ -34,7 +39,7 @@ module EasyCabinet
         depth = params['depth'].to_f
         parts << { 'k' => 'toe', 'o' => [60.0, 0.0, 0.0], 'e' => [[depth - 90.0, 20.0].max, params['width'].to_f, lift] }
       end
-      { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'parts' => parts }
+      { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'cat' => params['cabinet_category'].to_s, 'parts' => parts }
     end
 
     # The layout of a cabinet at its standard size, built the way the panel builds it; nil when the parameters are refused.
@@ -73,6 +78,7 @@ module EasyCabinet
       out['p'] = points.map { |x, y| [x.to_f.round(1), y.to_f.round(1)] } if points && !points.empty?
       rotation = item.respond_to?(:rotation) ? item.rotation.to_f : 0.0
       out['r'] = rotation.round(2) unless rotation.zero?
+      out['g'] = item.hinge.to_s if item.respond_to?(:hinge) && item.hinge # (where a door is hinged: its handle is on the other side)
       out
     end
     private_class_method :part

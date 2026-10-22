@@ -24,7 +24,8 @@ assert.deepStrictEqual([door.x, door.y, door.w, door.h], [2, 102, 596, 776]);
 
 const flat = gallery.svg2d(unit);
 assert.ok(flat.startsWith('<svg') && flat.includes('<rect'), 'an SVG of rectangles');
-assert.strictEqual((flat.match(/<rect /g) || []).length, 5);
+assert.ok((flat.match(/<rect /g) || []).length > 5, 'the boxes, a sheen on the front and a handle');
+assert.ok(flat.includes('ecSheen') && flat.includes('ecShadow'), 'a sheen on the fronts and a shadow on the floor');
 
 // the 3D view: only the faces turned to the viewer (front, left, top), far ones first
 const faces = gallery.faces3d(unit);
@@ -32,6 +33,14 @@ assert.ok(faces.length > 0 && faces.length <= unit.parts.length * 3, 'at most th
 for (let i = 1; i < faces.length; i += 1) assert.ok(faces[i].depth >= faces[i - 1].depth - 1e-9, 'sorted from far to near');
 const solid = gallery.svg3d(unit);
 assert.ok(solid.includes('<polygon') && solid.includes('viewBox'));
+
+// a door gets a handle on the side away from its hinge, a drawer a bar along its edge, a wall unit near the bottom
+const handled = gallery.handles({ cat: 'base', parts: [{ k: 'door', g: 'left', o: [562, 2, 102], e: [18, 596, 776] }, { k: 'drawer', o: [562, 2, 102], e: [18, 596, 200] }] });
+assert.strictEqual(handled.length, 2);
+assert.ok(handled[0].o[1] > 300, 'the door hinged on the left has its handle on the right');
+assert.ok(handled[1].e[1] > handled[1].e[2], 'a drawer handle is a horizontal bar');
+const wall = gallery.handles({ cat: 'wall', parts: [{ k: 'door', g: 'right', o: [300, 0, 1400], e: [18, 400, 700] }] });
+assert.ok(wall[0].o[2] < 1400 + 200, 'a wall unit has its handle near the bottom of the door');
 
 // a board with an outline (a corner unit's shelf) and a door turned about Z
 const corner = { w: 800, d: 800, h: 780, parts: [

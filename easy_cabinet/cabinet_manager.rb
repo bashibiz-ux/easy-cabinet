@@ -86,10 +86,10 @@ module EasyCabinet
       entry = raw.is_a?(Hash) ? CatalogManager.cabinet(raw['catalog_id'], raw['cabinet_category'], raw['cabinet_type']) : nil
       return Response.fail('A model of your own is inserted after the selected cabinet: use Insert.') if entry && entry['component']
 
-      _params, failure = prepare(raw)
+      params, failure = prepare(raw)
       return failure if failure
 
-      PlaceTool.start(raw)
+      PlaceTool.start(raw, params)
     end
     private_class_method :insert_at_point
 

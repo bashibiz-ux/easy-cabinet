@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.87.0';
+  const APP_VERSION = '1.88.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1540,24 +1540,52 @@ function currentCabinet() {
     grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === $('cabinet').value));
   }
 
+  // The panel scrolls and jumps when the fields above the gallery change height (a picked cabinet changes them): for a moment after a pick the gallery is kept
+  // where it was on the screen, so nothing moves under the pointer.
+  function scrollerOf(el) {
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      const overflow = getComputedStyle(node).overflowY;
+      if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function holdGallery(change) {
+    const grid = $('galleryGrid');
+    const scroller = scrollerOf(grid);
+    const top = grid.getBoundingClientRect().top;
+    change();
+    const until = performance.now() + 900; // (the cards slide open and shut over a moment)
+    const keep = () => {
+      const moved = grid.getBoundingClientRect().top - top;
+      if (Math.abs(moved) > 0.5) scroller.scrollTop += moved;
+      if (performance.now() < until) requestAnimationFrame(keep);
+    };
+    requestAnimationFrame(keep);
+  }
+
   // A click chooses the cabinet, as if it was picked in the list.
   function chooseFromGallery(id) {
     if (!state.cabinets.some((c) => c.id === id)) return;
-    $('cabinet').value = id;
-    $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+    holdGallery(() => {
+      $('cabinet').value = id;
+      $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+    });
   }
 
   // Dragged out of the panel: the cabinet is chosen (without changing the cabinet that is selected in the model) and the tool that puts it where you click starts.
   async function placeFromGallery(id) {
     if (!state.cabinets.some((c) => c.id === id)) return;
     state.galleryPick = true;
-    try {
-      $('cabinet').value = id;
-      $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
-    } finally {
-      state.galleryPick = false;
-    }
-    await runAction('insert_at_point');
+    holdGallery(() => {
+      try {
+        $('cabinet').value = id;
+        $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+      } finally {
+        state.galleryPick = false;
+      }
+    });
+    await runAction('insert_at_point', { extra: { place_toe_kick: { ...collectToeKick(), toe_kick_piece_length: mmv('width'), toe_kick_pieces: '1', toe_kick_cover_row: false } } }); // (the cabinet is put down with a toe kick as long as it is wide)
   }
 
   function wireGallery() {
@@ -1585,9 +1613,11 @@ function currentCabinet() {
       drag.sent = true;
       placeFromGallery(drag.id);
     };
+    grid.addEventListener('dragstart', (e) => e.preventDefault()); // (the picture is not dragged as an image: the card is)
     grid.addEventListener('pointerdown', (e) => {
       const card = e.target.closest('.gcard');
       if (!card || e.button !== 0) return;
+      e.preventDefault(); // (no text selection and no automatic scrolling of the panel while the card is dragged)
       drag = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, moved: false, sent: false };
       try { card.setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
     });
@@ -2420,7 +2450,7 @@ if (details.length) {
 
   // `live` is an Update the panel sends by itself while the user edits a field.
   // It leaves the buttons alone and never steals the cursor.
-  async function runAction(action, { live = false, replace = false } = {}) {
+  async function runAction(action, { live = false, replace = false, extra = null } = {}) {
     if (state.busy) return;
     if (action === 'undo') clearTimeout(state.liveTimer); // a pending live edit would redo what is being undone
     clearInvalid();
@@ -2435,6 +2465,7 @@ if (details.length) {
       const payload = kind ? COLLECTORS[kind]() : (CATALOG_PAYLOAD[action] ? CATALOG_PAYLOAD[action]() : {});
       if (action === 'insert_on_path') { payload.flip = $('kitchenPathFlip').checked; payload.wall_units = $('pathWallUnits').checked; } // (the tick of the Auto Kitchen card turns the cabinets round)
       if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
+      if (extra) Object.assign(payload, extra);
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);

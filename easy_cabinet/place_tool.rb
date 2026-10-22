@@ -25,20 +25,27 @@ module EasyCabinet
       out
     end
 
-    def self.start(raw)
+    def self.start(raw, params = nil)
       model = Sketchup.active_model
-      model.select_tool(new(raw))
+      model.select_tool(new(raw, params))
       Response.ok('Click where the cabinet goes: on an edge to stand against it. The arrow keys turn it, Esc cancels.')
     end
 
-    def initialize(raw)
+    def initialize(raw, params = nil)
       @raw = raw
       @input = Sketchup::InputPoint.new
       @quarters = 0
+      @ghost = params ? ghost_of(params) : nil
     end
 
     def activate
       Sketchup.status_text = 'Click where the cabinet goes (on an edge: its back stands against it). Left / Right arrow: turn. Esc: cancel.'
+      # The cabinet is on view at once, in the middle of the view, and follows the cursor from its first move.
+      view = Sketchup.active_model.active_view
+      @input.pick(view, view.vpwidth / 2, view.vpheight / 2)
+      view.invalidate
+    rescue StandardError
+      nil
     end
 
     def deactivate(view)
@@ -69,6 +76,7 @@ module EasyCabinet
       view.drawing_color = 'blue'
       view.line_width = 2
       view.draw_polyline(corners + [corners.first])
+      draw_ghost(view) if @ghost
     end
 
     def onLButtonDown(_flags, x, y, view)
@@ -78,12 +86,79 @@ module EasyCabinet
       out = out_of(view)
       at = { 'x' => @input.position.x.to_mm, 'y' => @input.position.y.to_mm, 'out_x' => out[0], 'out_y' => out[1] }
       answer = CabinetManager.perform('insert', @raw.merge('place_at' => at))
-      LiveParts.refresh if answer['ok']
+      if answer['ok']
+        LiveParts.refresh
+        add_toe_kick
+      end
       Sketchup.active_model.select_tool(nil)
       DialogManager.push(answer['ok'] ? 'info' : 'notice', { 'message' => answer['message'] })
     end
 
     private
+
+    # A cabinet placed from the gallery stands on its toe kick (the Toe Kick fields of the panel): one is made under it unless the Toe kick switch has already made it.
+    def add_toe_kick
+      toe = @raw['place_toe_kick']
+      return unless toe.is_a?(Hash) && @raw['cabinet_category'].to_s != 'wall' && toe['toe_kick_height'].to_f.positive?
+
+      model = Sketchup.active_model
+      placed = model.selection.to_a
+      PartManager.perform('insert_toe_kick', toe) # (refused when there is one already: nothing more to do then)
+      model.selection.clear
+      placed.each { |item| model.selection.add(item) }
+    rescue StandardError => e
+      warn "[Easy Cabinet] Could not add the toe kick: #{e.message}"
+    end
+
+    # ---- the ghost: the cabinet itself, drawn at the cursor ------------------------------------------------
+
+    # The boxes of the cabinet as edges and front faces in its own frame (x towards the front, y along the row, z up), in millimetres: { edges:, fronts:, toe: }.
+    def ghost_of(params)
+      layout = CabinetLayout.compute(params)
+      shape = CabinetGallery.from_layout(layout, params)
+      ghost = { edges: [], fronts: [], toe: [] }
+      shape['parts'].each do |part|
+        next if part['p'] # (a board with an outline: drawn as its outline from above)
+
+        ox, oy, oz = part['o']
+        dx, dy, dz = part['e']
+        turn = part['r'].to_f * Math::PI / 180.0
+        c = Math.cos(turn)
+        s = Math.sin(turn)
+        at = ->(x, y, z) { [ox + (x * c) - (y * s), oy + (x * s) + (y * c), oz + z] }
+        low = [at.call(0, 0, 0), at.call(dx, 0, 0), at.call(dx, dy, 0), at.call(0, dy, 0)]
+        high = low.map { |x, y, _| [x, y, oz + dz] }
+        4.times do |i|
+          ghost[:edges].push(low[i], low[(i + 1) % 4], high[i], high[(i + 1) % 4], low[i], high[i])
+        end
+        face = [low[1], low[2], high[2], high[1]] # the face at the high X end: the front of a door
+        case part['k']
+        when 'door', 'drawer' then ghost[:fronts].concat(face)
+        when 'toe' then ghost[:toe].concat(face)
+        end
+      end
+      ghost
+    rescue StandardError
+      nil
+    end
+
+    def draw_ghost(view)
+      out = out_of(view)
+      along = [-out[1], out[0]]
+      origin = @input.position
+      place = ->(point) { Geom::Point3d.new(origin.x + (out[0] * point[0].mm) + (along[0] * point[1].mm), origin.y + (out[1] * point[0].mm) + (along[1] * point[1].mm), origin.z + point[2].mm) }
+      unless @ghost[:toe].empty?
+        view.drawing_color = Sketchup::Color.new(55, 60, 70, 170)
+        view.draw(GL_QUADS, @ghost[:toe].map(&place))
+      end
+      unless @ghost[:fronts].empty?
+        view.drawing_color = Sketchup::Color.new(240, 228, 200, 150)
+        view.draw(GL_QUADS, @ghost[:fronts].map(&place))
+      end
+      view.drawing_color = Sketchup::Color.new(60, 80, 130)
+      view.line_width = 1
+      view.draw(GL_LINES, @ghost[:edges].map(&place))
+    end
 
     def out_of(view)
       edge = @input.edge
