@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.92.0';
+  const APP_VERSION = '1.93.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1540,51 +1540,30 @@ function currentCabinet() {
     grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === $('cabinet').value));
   }
 
-  // The panel scrolls and jumps when the fields above the gallery change height (a picked cabinet changes them): for a moment after a pick the gallery is kept
-  // where it was on the screen, so nothing moves under the pointer.
-  function scrollerOf(el) {
-    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
-      const overflow = getComputedStyle(node).overflowY;
-      if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node;
-    }
-    return document.scrollingElement || document.documentElement;
-  }
-
-  function holdGallery(change) {
-    const grid = $('galleryGrid');
-    const scroller = scrollerOf(grid);
-    const top = grid.getBoundingClientRect().top;
-    change();
-    const until = performance.now() + 900; // (the cards slide open and shut over a moment)
-    const keep = () => {
-      const moved = grid.getBoundingClientRect().top - top;
-      if (Math.abs(moved) > 0.5) scroller.scrollTop += moved;
-      if (performance.now() < until) requestAnimationFrame(keep);
-    };
-    requestAnimationFrame(keep);
-  }
+  // Picking a cabinet changes the fields above the gallery (their heights), and the panel may then scroll a selected item into view. Nothing of that must move the
+  // panel under the pointer: the browser's own scroll anchoring keeps the gallery where it is when the fields above it change (it needs no help from here, and a
+  // script that moves the scroll position as well fights the panel's smooth scrolling), and for a few seconds the panel is kept from scrolling to a section by itself.
+  const holdPanel = () => { state.noFocusUntil = Date.now() + 4000; };
 
   // A click chooses the cabinet, as if it was picked in the list.
   function chooseFromGallery(id) {
     if (!state.cabinets.some((c) => c.id === id)) return;
-    holdGallery(() => {
-      $('cabinet').value = id;
-      $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    holdPanel();
+    $('cabinet').value = id;
+    $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   // Dragged out of the panel: the cabinet is chosen (without changing the cabinet that is selected in the model) and the tool that puts it where you click starts.
   async function placeFromGallery(id) {
     if (!state.cabinets.some((c) => c.id === id)) return;
     state.galleryPick = true;
-    holdGallery(() => {
-      try {
-        $('cabinet').value = id;
-        $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
-      } finally {
-        state.galleryPick = false;
-      }
-    });
+    holdPanel();
+    try {
+      $('cabinet').value = id;
+      $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+    } finally {
+      state.galleryPick = false;
+    }
     await runAction('insert_at_point', { extra: { place_toe_kick: { ...collectToeKick(), toe_kick_piece_length: mmv('width'), toe_kick_pieces: '1', toe_kick_cover_row: false } } }); // (the cabinet is put down with a toe kick as long as it is wide)
   }
 
@@ -1618,6 +1597,7 @@ function currentCabinet() {
       const card = e.target.closest('.gcard');
       if (!card || e.button !== 0) return;
       e.preventDefault(); // (no text selection and no automatic scrolling of the panel while the card is dragged)
+      holdPanel();
       drag = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, moved: false, sent: false };
       try { card.setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
     });
