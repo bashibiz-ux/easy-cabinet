@@ -50,6 +50,7 @@ module EasyCabinet
 
     def deactivate(view)
       view.invalidate
+      DialogManager.push('place_end', {}) # (the panel was told to leave its cards alone while the cabinet is put down: it has been now)
     end
 
     def onCancel(_reason, view)

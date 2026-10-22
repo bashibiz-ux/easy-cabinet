@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.99.0';
+  const APP_VERSION = '1.99.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -203,6 +203,11 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
+    if (name === 'place_end') { // the placing is over: the late selection events of the insert are still left alone, then what is selected is read once
+      state.noFocusUntil = Date.now() + 1500;
+      setTimeout(() => { call('get_selection').catch(() => {}); }, 1700);
+      return;
+    }
     if (followSelection() || name === 'cabinet_cleared') { state.heldKind = null; state.heldData = null; }
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
     // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
@@ -1559,7 +1564,12 @@ function currentCabinet() {
     } finally {
       state.galleryPick = false;
     }
+    // While the cabinet follows the cursor and is put down, what is selected in the model changes (the new cabinet, its toe kick, the cabinet again): the panel must
+    // not follow that with its cards and lists (they would jump up and down), so it leaves them alone until the placing is over (the event place_end).
+    state.noFocusUntil = Date.now() + 600000;
+    state.lastResult = null;
     await runAction('insert_at_point', { extra: { place_toe_kick: { ...collectToeKick(), toe_kick_piece_length: mmv('width'), toe_kick_pieces: '1', toe_kick_cover_row: false } } }); // (the cabinet is put down with a toe kick as long as it is wide)
+    if (!state.lastResult || !state.lastResult.ok) state.noFocusUntil = 0; // (the placing did not start: nothing is to be left alone)
   }
 
   function wireGallery() {
@@ -2453,6 +2463,7 @@ if (details.length) {
       if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
       if (extra) Object.assign(payload, extra);
       const res = await call(serverAction(action), payload);
+      state.lastResult = res;
       if (res.ok) {
         setStatus('ok', res.message);
         if (action === 'get_cut_list') { renderCutList(res.data || {}); state.cutShown = true; }
