@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.85.0';
+  const APP_VERSION = '1.86.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1449,6 +1449,170 @@ function currentCabinet() {
     else { fillWidthPreset((currentCabinet() || {}).widths); fillApplianceChoices(currentCabinet()); syncZoneField(); }
     drawPreview();
     lockActions();
+    renderGallery();
+  }
+
+  // ---- the cabinet gallery (see gallery.js): every cabinet of the category as a picture, in the order and with the names of the Cabinet list ----------------------------
+  const GALLERY_KEY = 'ec.gallery';
+  const gallery = { view: '3d', size: 'medium', min: false, shapes: {}, loading: '' };
+
+  function loadGalleryPrefs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(GALLERY_KEY) || '{}');
+      if (['2d', '3d'].includes(saved.view)) gallery.view = saved.view;
+      if (['small', 'medium', 'big'].includes(saved.size)) gallery.size = saved.size;
+      gallery.min = saved.min === true;
+    } catch (_) { /* the usual look */ }
+  }
+
+  function saveGalleryPrefs() {
+    try { localStorage.setItem(GALLERY_KEY, JSON.stringify({ view: gallery.view, size: gallery.size, min: gallery.min })); } catch (_) { /* not remembered */ }
+  }
+
+  function syncGalleryControls() {
+    $('gallery').classList.toggle('min', gallery.min);
+    $('galleryToggle').setAttribute('aria-expanded', String(!gallery.min));
+    $('galleryGrid').dataset.size = gallery.size;
+    document.querySelectorAll('[data-gallery-view]').forEach((b) => b.classList.toggle('on', b.dataset.galleryView === gallery.view));
+    document.querySelectorAll('[data-gallery-size]').forEach((b) => b.classList.toggle('on', b.dataset.gallerySize === gallery.size));
+  }
+
+  // The pictures of the category in the list (fetched once per catalog and category).
+  async function galleryShapes() {
+    if (!$('catalog').value || !$('category').value) return {};
+    const key = `${$('catalog').value}|${$('category').value}`;
+    if (!gallery.shapes[key]) {
+      gallery.loading = key;
+      try {
+        const res = await call('get_cabinet_shapes', { catalog_id: $('catalog').value, cabinet_category: $('category').value });
+        if (res.ok && res.data && res.data.shapes) gallery.shapes[key] = res.data.shapes;
+      } catch (error) { setStatus('error', error.message); }
+      if (gallery.loading === key) gallery.loading = '';
+    }
+    return gallery.shapes[key] || {};
+  }
+
+  async function renderGallery() {
+    const box = $('gallery');
+    if (!box || !window.EC_GALLERY) return;
+    syncGalleryControls();
+    const grid = $('galleryGrid');
+    const entries = groupCabinets(state.cabinets);
+    $('galleryCount').textContent = entries.length ? `(${entries.length})` : '';
+    if (gallery.min || categoryKind() !== 'cabinet') return; // (nothing is drawn while it is minimised: it is drawn when it opens)
+    const shapes = await galleryShapes();
+    const current = groupCabinets(state.cabinets); // (the list may have changed while the pictures came)
+    if (current.length !== entries.length || (current[0] && entries[0] && current[0].id !== entries[0].id)) return;
+    grid.textContent = '';
+    if (!entries.length) {
+      const none = document.createElement('div');
+      none.className = 'gallery-empty';
+      none.textContent = 'No cabinets in this category';
+      grid.append(none);
+      return;
+    }
+    const draw = gallery.view === '2d' ? window.EC_GALLERY.svg2d : window.EC_GALLERY.svg3d;
+    entries.forEach((entry) => {
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      card.dataset.id = entry.id;
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      const shape = shapes[entry.id];
+      const picture = document.createElement('div');
+      picture.innerHTML = shape ? draw(shape) : '';
+      const name = document.createElement('div');
+      name.className = 'gname';
+      name.textContent = entry.name;
+      name.title = entry.name;
+      const size = document.createElement('div');
+      size.className = 'gsize';
+      if (shape) size.textContent = `${fmtU(shape.w)} × ${fmtU(shape.d)} × ${fmtU(shape.h)} ${unitInfo().label}`;
+      card.append(picture.firstChild || document.createElement('span'), name, size);
+      grid.append(card);
+    });
+    markGallery();
+  }
+
+  function markGallery() {
+    const grid = $('galleryGrid');
+    if (!grid) return;
+    grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === $('cabinet').value));
+  }
+
+  // A click chooses the cabinet, as if it was picked in the list.
+  function chooseFromGallery(id) {
+    if (!state.cabinets.some((c) => c.id === id)) return;
+    $('cabinet').value = id;
+    $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Dragged out of the panel: the cabinet is chosen (without changing the cabinet that is selected in the model) and the tool that puts it where you click starts.
+  async function placeFromGallery(id) {
+    if (!state.cabinets.some((c) => c.id === id)) return;
+    state.galleryPick = true;
+    try {
+      $('cabinet').value = id;
+      $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
+    } finally {
+      state.galleryPick = false;
+    }
+    await runAction('insert_at_point');
+  }
+
+  function wireGallery() {
+    if (!$('gallery')) return;
+    loadGalleryPrefs();
+    syncGalleryControls();
+    $('galleryToggle').addEventListener('click', () => {
+      gallery.min = !gallery.min;
+      saveGalleryPrefs();
+      renderGallery();
+    });
+    document.querySelectorAll('[data-gallery-view]').forEach((b) => b.addEventListener('click', () => { gallery.view = b.dataset.galleryView; saveGalleryPrefs(); renderGallery(); }));
+    document.querySelectorAll('[data-gallery-size]').forEach((b) => b.addEventListener('click', () => { gallery.size = b.dataset.gallerySize; saveGalleryPrefs(); renderGallery(); }));
+
+    const grid = $('galleryGrid');
+    let drag = null;
+    const outside = (e) => e.clientX < 0 || e.clientY < 0 || e.clientX > window.innerWidth || e.clientY > window.innerHeight;
+    const finish = () => {
+      if (drag) drag.card.classList.remove('dragging');
+      document.body.classList.remove('gallery-dragging');
+      drag = null;
+    };
+    const send = () => {
+      if (!drag || drag.sent) return;
+      drag.sent = true;
+      placeFromGallery(drag.id);
+    };
+    grid.addEventListener('pointerdown', (e) => {
+      const card = e.target.closest('.gcard');
+      if (!card || e.button !== 0) return;
+      drag = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, moved: false, sent: false };
+      try { card.setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
+    });
+    grid.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
+        drag.moved = true;
+        drag.card.classList.add('dragging');
+        document.body.classList.add('gallery-dragging');
+      }
+      if (drag.moved && outside(e)) send(); // out of the panel and over the model
+    });
+    grid.addEventListener('pointerup', (e) => {
+      if (!drag) return;
+      const was = drag;
+      if (!was.moved) chooseFromGallery(was.id); // a click
+      else if (outside(e)) send(); // let go outside the panel
+      finish();
+    });
+    grid.addEventListener('pointercancel', finish);
+    document.documentElement.addEventListener('mouseleave', () => { if (drag && drag.moved) { send(); finish(); } }); // (the pointer left the window with the button held)
+    grid.addEventListener('keydown', (e) => {
+      const card = e.target.closest('.gcard');
+      if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); chooseFromGallery(card.dataset.id); }
+    });
   }
 
   // The Standard Width list: a fixed size fills the Width field; Width can still be
@@ -2965,9 +3129,10 @@ function liveEdit(el) {
     });
     $('sinkTray').addEventListener('change', syncZoneField);
     $('cabinet').addEventListener('change', () => {
+      markGallery();
       // Choosing another cabinet fills the fields for the next Insert. It does not change the cabinet selected in the model (select it again,
       // or press Update, to change it) unless the tick under the list says so.
-      const follow = $('liveCabinet').checked && state.selectedKind === 'cabinet' && categoryKind() === 'cabinet';
+      const follow = !state.galleryPick && $('liveCabinet').checked && state.selectedKind === 'cabinet' && categoryKind() === 'cabinet';
       if (state.selectedKind && !follow) { state.liveHold = true; clearTimeout(state.liveTimer); }
       const kept = follow ? ['width', 'depth', 'height'].map((id) => [id, $(id).value]) : []; // (the selected cabinet keeps its own size: only its type changes)
       applyCabinetDefaults();
@@ -2976,6 +3141,7 @@ function liveEdit(el) {
       lockActions();
       if (follow) { state.liveHold = false; liveAfterCabinetChange(); } // (picking from the list is a deliberate change: an earlier hold does not stop it)
     });
+    wireGallery();
     $('widthPreset').addEventListener('change', () => {
       if ($('widthPreset').value !== 'custom') {
         setText('width', Number($('widthPreset').value));

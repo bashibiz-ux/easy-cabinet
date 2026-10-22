@@ -4,7 +4,7 @@
 module EasyCabinet
   EXTENSION_NAME = 'Easy Cabinet' unless const_defined?(:EXTENSION_NAME)
   remove_const(:EXTENSION_VERSION) if const_defined?(:EXTENSION_VERSION)
-  EXTENSION_VERSION = '1.85.0'
+  EXTENSION_VERSION = '1.86.0'
 
   if const_defined?(:EXTENSION)
     # Installing over a running copy loads this file again: the extension is registered once, and the new code is loaded in place (see main.rb).

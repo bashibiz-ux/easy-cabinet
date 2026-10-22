@@ -90,6 +90,7 @@ module EasyCabinet
         when 'send_feedback' then FeedbackManager.perform(data)
         when 'open_donation' then FeedbackManager.donate
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
+        when 'get_cabinet_shapes' then Response.ok('', { 'shapes' => CabinetGallery.shapes(data['catalog_id'], data['cabinet_category']) }) # (the pictures of the gallery)
         when 'get_materials' then Response.ok('', { 'materials' => MaterialManager.options(Sketchup.active_model) })
         when 'add_material', 'remove_material' then MaterialManager.perform(action, data) # your own materials
         when *CABINET_ACTIONS then CabinetManager.perform(action, data)

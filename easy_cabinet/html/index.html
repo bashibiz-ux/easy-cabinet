@@ -614,6 +614,26 @@
           <div class="input"><input id="shelves" type="text" inputmode="numeric" autocomplete="off"></div>
         </label>
 
+        <!-- The gallery: every cabinet of the Category above, in the order and with the names of the Cabinet list, as pictures (a front view or a 3D view) in three sizes.
+             Click one to choose it; drag it out of the panel into the model, then click where it goes. It can be minimised. -->
+        <div class="gallery cabinet-only" id="gallery">
+          <div class="gallery-bar">
+            <button class="gallery-toggle" type="button" id="galleryToggle" aria-expanded="true" title="Show or hide the gallery"><span class="gallery-title">Cabinet Gallery</span><span class="gallery-count" id="galleryCount"></span></button>
+          </div>
+          <div class="gallery-body" id="galleryBody">
+            <div class="gallery-options">
+              <div class="seg" role="group" aria-label="View">
+                <button type="button" data-gallery-view="2d" title="A front view of each cabinet">2D</button><button type="button" data-gallery-view="3d" title="Each cabinet seen from the front, left and above">3D</button>
+              </div>
+              <div class="seg" role="group" aria-label="Size">
+                <button type="button" data-gallery-size="small" title="Small pictures">Small</button><button type="button" data-gallery-size="medium" title="Medium pictures">Medium</button><button type="button" data-gallery-size="big" title="Big pictures">Big</button>
+              </div>
+            </div>
+            <p class="gallery-hint">Click a cabinet to choose it. Drag it out of this panel into the model, then click where it goes.</p>
+            <div class="gallery-grid scroll" id="galleryGrid" data-size="medium"></div>
+          </div>
+        </div>
+
         <!-- Shown only with Cabinet Category = Toe Kick: the height of a toe kick, which is also how far cabinets stand off the floor. -->
         <label class="field narrow cabinet-or-toe">
           <span class="label">Toe-kick Height</span>
@@ -1068,6 +1088,7 @@
 <script src="lang/uk.js"></script>
 <script src="lang/vi.js"></script>
 <script src="lang/zh.js"></script>
+<script src="gallery.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
