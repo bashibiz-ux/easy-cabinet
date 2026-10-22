@@ -1,4 +1,9 @@
 {
   "feedback_email": "bashibiz@gmail.com",
-  "donation_url": ""
+  "donation_url": "",
+  "status_url": "",
+  "monthly_target": 1000,
+  "currency": "USD",
+  "grace_days": 10,
+  "developer_hash": "b9d6cdfaeaeadbd437178e43629829ff1c77ee6fb8cb8d7b39f23900ccdfb0c3"
 }

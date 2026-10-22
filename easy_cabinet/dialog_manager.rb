@@ -81,10 +81,17 @@ module EasyCabinet
 
       def dispatch(action, data)
         data = {} unless data.is_a?(Hash)
+        # While the month's target is not reached (after the grace days) the extension is stopped: only what explains it and asks for support still works.
+        if SupportStatus.locked? && !SupportStatus::ALLOWED_WHEN_LOCKED.include?(action)
+          return Response.fail(SupportStatus.state['message'])
+        end
+
         chosen = KEEP_SELECTION.include?(action) ? selection_keys(Sketchup.active_model) : nil
 
         result = case action
-        when 'init'          then (organise_tags; unhide_base_units; CabinetManager.refresh_stale_gola; Response.ok('', init_payload))
+        when 'init'          then (SupportStatus.refresh; SupportStatus.locked? ? Response.ok('', init_payload) : (organise_tags; unhide_base_units; CabinetManager.refresh_stale_gola; Response.ok('', init_payload)))
+        when 'get_support'   then Response.ok('', { 'support' => SupportStatus.state })
+        when 'refresh_support' then (SupportStatus.refresh(true); Response.ok('', { 'support' => SupportStatus.state }))
         when 'undo'          then undo_last
         when 'set_snap'      then (SnapManager.enabled = data['enabled'] == true; Response.ok(SnapManager.enabled? ? 'Moved cabinets stick to their neighbours and the walls.' : 'Moved cabinets stay where you put them.'))
         when 'send_feedback' then FeedbackManager.perform(data)
@@ -214,6 +221,7 @@ module EasyCabinet
       def init_payload
         {
           'version'         => EXTENSION_VERSION,
+          'support'         => SupportStatus.state,
           'snap_enabled'    => SnapManager.enabled?,
           'live_dimensions' => LiveParts.dimensions?,
           'live_side_panels' => LiveParts.side_panels?,
