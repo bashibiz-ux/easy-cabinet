@@ -589,3 +589,8 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .gallery-search { margin-bottom: 6px; }
 .gallery-search input { width: 100%; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--field); color: var(--ink); font: inherit; }
 .gallery-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--glow); }
+
+/* The message of the action bar floats over the bottom of the panel instead of pushing it up: when it came and went, the whole panel above it got shorter and taller
+   again (a shake at every click). */
+.actions { position: relative; }
+.actions .status { position: absolute; left: 14px; right: 14px; bottom: calc(100% + 6px); margin: 0; z-index: 30; box-shadow: 0 3px 14px rgba(30, 45, 70, 0.22); }
