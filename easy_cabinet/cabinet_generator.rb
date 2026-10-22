@@ -567,10 +567,7 @@ module EasyCabinet
           warn "[Easy Cabinet] Could not draw #{item.name}: #{e.message}"
           PanelGenerator.definition(model, item.extent)
         end
-        if definition.get_attribute(AttributeManager::DICTIONARY, 'edges_hidden') # (the edges of the parts were hidden by 1.84.0: they show again)
-          PanelGenerator.show_edges(definition.entities)
-          definition.set_attribute(AttributeManager::DICTIONARY, 'edges_hidden', nil)
-        end
+        apply_appliance_edges(definition, item)
         instance = place_instance(model, entities, have.delete(item.role), item.role, definition, Geom::Transformation.new(item.offset.map(&:mm)))
         instance.name = item.name
         material_name, color, look = appliance_finish(item.role)
@@ -625,6 +622,32 @@ module EasyCabinet
 
         sync_appliances(model, item, index_by_role(item.definition.entities), params, CabinetLayout.compute(with_rise(model, params)))
       end
+    end
+
+    EDGE_REVISION = 2
+
+    # The edges of an appliance part: the outline of a big part (a door, a frame, a bowl) shows, the edges of fine detail (knobs, letters, figures, grooves, buttons,
+    # flames, the bars of a pan support) are hidden, so the appliance is not covered in heavy lines. Done once for a part drawing.
+    def self.apply_appliance_edges(definition, item)
+      return if definition.get_attribute(AttributeManager::DICTIONARY, 'edge_rev') == EDGE_REVISION
+
+      if appliance_detail?(item) then PanelGenerator.hide_edges(definition.entities) else PanelGenerator.show_edges(definition.entities) end
+      definition.set_attribute(AttributeManager::DICTIONARY, 'edge_rev', EDGE_REVISION)
+      definition.set_attribute(AttributeManager::DICTIONARY, 'edges_hidden', nil)
+    rescue StandardError => e
+      warn "[Easy Cabinet] Could not set the edges of #{item.name}: #{e.message}"
+    end
+    private_class_method :apply_appliance_edges
+
+    # Is this part fine detail: round (a knob, a burner), a letter, a flame, a thin line (a groove, a seam), a small piece (a figure, a button), a pan support bar?
+    def self.appliance_detail?(item)
+      return false if %w[deck bowl].include?(item.shape.to_s)
+      return true if item.shape.to_s.start_with?('cyl_') || %w[tube plate_x].include?(item.shape.to_s)
+      return true if item.points && !item.points.empty? # (a flame ring)
+      return true if item.role.to_s.include?('_grate_')
+
+      sizes = Array(item.extent).map(&:to_f).sort
+      sizes.last.to_f < 40.0 || sizes[1].to_f < 4.0
     end
 
     # A box, a round bar (shape cyl_x / cyl_y / cyl_z) or a flat board with an outline (points).

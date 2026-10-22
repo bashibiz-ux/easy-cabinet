@@ -448,6 +448,8 @@ class KitchenCatalogTest < Minitest::Test
       glass = layout.appliances.find { |a| a.role == 'appliance_hob_1_plate' }
       assert glass, 'the hob'
       assert_in_delta [width - 20.0, 860.0].min, glass.extent[1], 0.01, 'as wide as the unit allows (860 at most)'
+      assert_in_delta 70.0, glass.offset[0], 0.01, 'the hob stands 40 mm further to the front, like the sink'
+      assert_operator glass.offset[0] + glass.extent[0], :<=, result.params['depth'].to_f - 20.0 + 0.01, 'and its front stays inside the cabinet'
       assert_equal width >= 700 ? 5 : 4, layout.appliances.count { |a| a.role =~ /hob_1_flame_\d\z/ }, 'gas burners'
       assert layout.appliances.any? { |a| a.shape == 'cyl_z' }, 'drawn round'
       cut = Fixtures.cutouts(result.params.merge('door_count' => 0, 'drawer_count' => 2)).first

@@ -19,6 +19,7 @@ module EasyCabinet
     TEKA_DEPTH = 480.0     # (510 deep)
     HOB_WIDTH = 860.0      # the widest hob
     HOB_DEPTH = 500.0
+    HOB_SHIFT = 40.0       # the hob stands this far further to the front, like the sink (see SINK_SHIFT)
     ARC_STEPS = 12
     TAP_STEPS = 24
 
@@ -343,9 +344,10 @@ module EasyCabinet
       return nil unless params['hob'] == true
 
       width = [dims.width - 20.0, HOB_WIDTH].min
-      depth = [HOB_DEPTH, dims.depth - 50.0].min
+      x0 = 30.0 + HOB_SHIFT
+      depth = [HOB_DEPTH, dims.depth - 20.0 - x0].min # (its front stays inside the cabinet's depth)
       y0 = (dims.width - width) / 2.0
-      [30.0, 30.0 + depth, y0, y0 + width]
+      [x0, x0 + depth, y0, y0 + width]
     end
     private_class_method :hob_plate
 
