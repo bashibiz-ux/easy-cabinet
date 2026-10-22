@@ -32,7 +32,13 @@ module EasyCabinet
       parts = []
       lift = layout.base_z.to_f
       # (the boards and appliances are measured from the bottom of the carcass, the doors and drawers from the floor: the boards are lifted to the floor level)
-      lifted = ->(box) { box && box.merge('o' => [box['o'][0], box['o'][1], (box['o'][2] + lift).round(1)]) }
+      lifted = lambda do |box|
+        next box unless box
+
+        moved = box.merge('o' => [box['o'][0], box['o'][1], (box['o'][2] + lift).round(1)])
+        moved['tp'] = box['tp'].map { |x, y, z| [x, y, (z + lift).round(1)] } if box['tp']
+        moved
+      end
       layout.panels.to_a.each { |panel| parts << lifted.call(part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel)) }
       layout.appliances.to_a.each { |item| appliance_parts(item).each { |box| parts << lifted.call(box) } }
       if params['dishwasher'] == true # (the dishwasher stands behind its front: a steel box in the space)
@@ -73,7 +79,8 @@ module EasyCabinet
         radius = extent[0].to_f / 2.0
         outline = (0...14).map { |i| [(centre[0] + (radius * Math.cos(i * 2.0 * Math::PI / 14.0))).round(1), (centre[1] + (radius * Math.sin(i * 2.0 * Math::PI / 14.0))).round(1)] }
         [base.merge('o' => [0.0, 0.0, offset[2].to_f.round(1)], 'e' => [0.0, 0.0, extent[2].to_f.round(1)], 'p' => outline)]
-      when 'cyl_x', 'cyl_y' then extent.max < MIN_DETAIL_MM ? [] : [box.call(offset, extent)]
+      when 'cyl_x' then extent.max < MIN_DETAIL_MM ? [] : [box.call(offset, extent, 'ax' => 'x')]
+      when 'cyl_y' then extent.max < MIN_DETAIL_MM ? [] : [box.call(offset, extent)]
       else
         if item.points && !item.points.empty? # (a flame ring: an outline)
           [base.merge('o' => [0.0, 0.0, offset[2].to_f.round(1)], 'e' => [0.0, 0.0, extent[2].to_f.round(1)], 'p' => item.points.map { |x, y| [x.to_f.round(1), y.to_f.round(1)] })]
@@ -108,31 +115,20 @@ module EasyCabinet
       dx, dy, dz = extent.map(&:to_f)
       w = [wall, 1.0].max
       at = ->(x, y, z) { [offset[0] + x, offset[1] + y, offset[2] + z] }
-      [box.call(at.call(0, 0, 0), [dx, dy, w]), box.call(at.call(0, 0, 0), [w, dy, dz]), box.call(at.call(dx - w, 0, 0), [w, dy, dz]),
+      [box.call(at.call(0, 0, 0), [dx, dy, w], 'c' => '#8d959e'), box.call(at.call(0, 0, 0), [w, dy, dz]), box.call(at.call(dx - w, 0, 0), [w, dy, dz]),
        box.call(at.call(0, 0, 0), [dx, w, dz]), box.call(at.call(0, dy - w, 0), [dx, w, dz])]
     end
     private_class_method :bowl_boxes
 
-    # A bent pipe (a swan neck: up, over, down) as three bars: the riser, the arch over and the drop.
+    # A bent pipe (a swan neck): one part that keeps its path ('tp', in the cabinet's frame), drawn as a round pipe `td` mm thick. Its box is the riser (the tap's column).
     def self.tube_boxes(offset, path, diameter, box)
-      return [] if path.nil? || path.length < 3
+      return [] if path.nil? || path.length < 2
 
-      d = [diameter, 6.0].max
-      top = path.map { |p| p[2] }.max
-      first = path.first
-      last = path.last
-      start = path[1]
-      riser = box.call([offset[0] + first[0] - (d / 2.0), offset[1] + first[1] - (d / 2.0), offset[2] + first[2]], [d, d, start[2] - first[2]])
-      run = [last[0] - start[0], last[1] - start[1]]
-      length = Math.hypot(run[0], run[1])
-      parts = [riser]
-      if length > 1.0
-        angle = Math.atan2(run[1], run[0])
-        corner = [offset[0] + start[0] + (Math.sin(angle) * d / 2.0), offset[1] + start[1] - (Math.cos(angle) * d / 2.0)]
-        parts << box.call([corner[0], corner[1], offset[2] + top - d], [length, d, d], 'r' => (angle * 180.0 / Math::PI).round(2))
-        parts << box.call([offset[0] + last[0] - (d / 2.0), offset[1] + last[1] - (d / 2.0), offset[2] + last[2]], [d, d, top - last[2] - d])
-      end
-      parts
+      d = [diameter, 14.0].max # (a thin pipe would vanish in a small picture)
+      points = path.map { |x, y, z| [(offset[0] + x).round(1), (offset[1] + y).round(1), (offset[2] + z).round(1)] }
+      top = points.map { |p| p[2] }.max
+      first = points.first
+      [box.call([first[0] - (d / 2.0), first[1] - (d / 2.0), first[2]], [d, d, [top - first[2], 1.0].max], 'tp' => points, 'td' => d.round(1))]
     end
     private_class_method :tube_boxes
 
