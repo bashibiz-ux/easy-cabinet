@@ -6,7 +6,6 @@ module EasyCabinet
   #
   # A shape: { 'w', 'd', 'h', 'parts' => [{ 'k' => 'body' | 'door' | 'drawer' | 'toe' | 'appl', 'o' => [x, y, z], 'e' => [dx, dy, dz], 'r' => degrees (optional), 'p' => [[x, y], ...] (optional) }] }
   module CabinetGallery
-    MIN_APPLIANCE_MM = [120.0, 80.0].freeze # an appliance part smaller than this (knobs, buttons, letters) is left out of a picture
 
     # => { cabinet id => shape } for every cabinet of the category.
     def self.shapes(catalog_id, category)
@@ -35,10 +34,9 @@ module EasyCabinet
       # (the boards and appliances are measured from the bottom of the carcass, the doors and drawers from the floor: the boards are lifted to the floor level)
       lifted = ->(box) { box && box.merge('o' => [box['o'][0], box['o'][1], (box['o'][2] + lift).round(1)]) }
       layout.panels.to_a.each { |panel| parts << lifted.call(part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel)) }
-      layout.appliances.to_a.each do |item|
-        next unless item.shape.nil? && item.points.nil? && item.extent[1].to_f >= MIN_APPLIANCE_MM[0] && item.extent[2].to_f >= MIN_APPLIANCE_MM[1]
-
-        parts << lifted.call(part('appl', item))
+      layout.appliances.to_a.each { |item| appliance_parts(item).each { |box| parts << lifted.call(box) } }
+      if params['dishwasher'] == true # (the dishwasher stands behind its front: a steel box in the space)
+        parts << { 'k' => 'appl', 'c' => '#a3abb4', 's' => true, 'o' => [10.0, 7.0, lift], 'e' => [[params['depth'].to_f - 40.0, 100.0].max, params['width'].to_f - 14.0, params['height'].to_f - 40.0] }
       end
       layout.drawers.to_a.each { |front| parts << part('drawer', front) }
       layout.doors.to_a.each { |door| parts << part('door', door) }
@@ -50,6 +48,93 @@ module EasyCabinet
       end
       { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'cat' => params['cabinet_category'].to_s, 'mode' => mode, 'parts' => parts }
     end
+
+    MIN_DETAIL_MM = 9.0 # an appliance part smaller than this (a figure of a display, a button, a letter) is left out of a picture
+
+    # The boxes (and outlines) an appliance part is drawn as, in its own colour: [{ 'k' => 'appl', 'c' => '#rrggbb', 's' => true when it shines (steel, glass), 'o', 'e', ... }].
+    # A round bar is a box or a disc, a sink deck is boxes round its openings, a sink bowl is a floor and four walls, a bent pipe is straight bars.
+    def self.appliance_parts(item)
+      _name, color, look = AppliancePieces.finish(item.role)
+      look = {} unless look.is_a?(Hash)
+      base = { 'k' => 'appl', 'c' => color, 's' => look['metalness'].to_f >= 1.0 || look['roughness'].to_f < 0.1 }
+      extent = item.extent
+      offset = item.offset
+      return [] if extent.nil? || offset.nil?
+
+      round = ->(list) { list.map { |v| v.to_f.round(1) } }
+      box = ->(o, e, extra = {}) { base.merge('o' => round.call(o), 'e' => round.call(e)).merge(extra) }
+      case item.shape.to_s
+      when 'deck' then deck_boxes(offset, extent, item.path, box)
+      when 'bowl' then bowl_boxes(offset, extent, item.path.first.to_f, box)
+      when 'tube' then tube_boxes(offset, item.path, item.round.to_f, box)
+      when 'plate_x' then []
+      when 'cyl_z'
+        centre = [offset[0].to_f + (extent[0].to_f / 2.0), offset[1].to_f + (extent[1].to_f / 2.0)]
+        radius = extent[0].to_f / 2.0
+        outline = (0...14).map { |i| [(centre[0] + (radius * Math.cos(i * 2.0 * Math::PI / 14.0))).round(1), (centre[1] + (radius * Math.sin(i * 2.0 * Math::PI / 14.0))).round(1)] }
+        [base.merge('o' => [0.0, 0.0, offset[2].to_f.round(1)], 'e' => [0.0, 0.0, extent[2].to_f.round(1)], 'p' => outline)]
+      when 'cyl_x', 'cyl_y' then extent.max < MIN_DETAIL_MM ? [] : [box.call(offset, extent)]
+      else
+        if item.points && !item.points.empty? # (a flame ring: an outline)
+          [base.merge('o' => [0.0, 0.0, offset[2].to_f.round(1)], 'e' => [0.0, 0.0, extent[2].to_f.round(1)], 'p' => item.points.map { |x, y| [x.to_f.round(1), y.to_f.round(1)] })]
+        elsif extent.max.to_f < MIN_DETAIL_MM
+          []
+        else
+          [box.call(offset, extent)]
+        end
+      end
+    end
+    private_class_method :appliance_parts
+
+    # A slab with rectangular openings ([x0, x1, y0, y1, radius] in the slab's own frame) as the boxes round the openings.
+    def self.deck_boxes(offset, extent, holes, box)
+      dx, dy, dz = extent.map(&:to_f)
+      out = []
+      add = ->(x0, x1, y0, y1) { out << box.call([offset[0] + x0, offset[1] + y0, offset[2]], [x1 - x0, y1 - y0, dz]) if x1 - x0 > 0.5 && y1 - y0 > 0.5 }
+      cursor = 0.0
+      Array(holes).sort_by { |hole| hole[2] }.each do |x0, x1, y0, y1, _radius|
+        add.call(0.0, dx, cursor, y0)
+        add.call(0.0, x0, y0, y1)
+        add.call(x1, dx, y0, y1)
+        cursor = y1
+      end
+      add.call(0.0, dx, cursor, dy)
+      out
+    end
+    private_class_method :deck_boxes
+
+    # A hollow bowl: its floor and four walls `wall` mm thick.
+    def self.bowl_boxes(offset, extent, wall, box)
+      dx, dy, dz = extent.map(&:to_f)
+      w = [wall, 1.0].max
+      at = ->(x, y, z) { [offset[0] + x, offset[1] + y, offset[2] + z] }
+      [box.call(at.call(0, 0, 0), [dx, dy, w]), box.call(at.call(0, 0, 0), [w, dy, dz]), box.call(at.call(dx - w, 0, 0), [w, dy, dz]),
+       box.call(at.call(0, 0, 0), [dx, w, dz]), box.call(at.call(0, dy - w, 0), [dx, w, dz])]
+    end
+    private_class_method :bowl_boxes
+
+    # A bent pipe (a swan neck: up, over, down) as three bars: the riser, the arch over and the drop.
+    def self.tube_boxes(offset, path, diameter, box)
+      return [] if path.nil? || path.length < 3
+
+      d = [diameter, 6.0].max
+      top = path.map { |p| p[2] }.max
+      first = path.first
+      last = path.last
+      start = path[1]
+      riser = box.call([offset[0] + first[0] - (d / 2.0), offset[1] + first[1] - (d / 2.0), offset[2] + first[2]], [d, d, start[2] - first[2]])
+      run = [last[0] - start[0], last[1] - start[1]]
+      length = Math.hypot(run[0], run[1])
+      parts = [riser]
+      if length > 1.0
+        angle = Math.atan2(run[1], run[0])
+        corner = [offset[0] + start[0] + (Math.sin(angle) * d / 2.0), offset[1] + start[1] - (Math.cos(angle) * d / 2.0)]
+        parts << box.call([corner[0], corner[1], offset[2] + top - d], [length, d, d], 'r' => (angle * 180.0 / Math::PI).round(2))
+        parts << box.call([offset[0] + last[0] - (d / 2.0), offset[1] + last[1] - (d / 2.0), offset[2] + last[2]], [d, d, top - last[2] - d])
+      end
+      parts
+    end
+    private_class_method :tube_boxes
 
     # The Gola profile along the top of a front (a bar in the gap over it, set into the carcass front).
     def self.gola_parts(front)

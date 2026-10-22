@@ -14,7 +14,7 @@
   const ORDER = { body: 0, appl: 1, toe: 1, drawer: 2, door: 3, handle: 4, gola: 4 };
   // What is drawn first: the carcass and what is inside it, then the fronts, then what stands on the fronts (handles, profiles). A big face (a shelf) has a depth in
   // the middle of its length, so by depth alone it could be drawn over a front it is behind.
-  const LAYER = { body: 0, appl: 0, toe: 0, drawer: 1, door: 1, handle: 2, gola: 2 };
+  const LAYER = { body: 0, toe: 0, appl: 1, drawer: 1, door: 1, handle: 2, gola: 2 };
   const LIGHT = normalize([0.55, -0.35, 0.75]);
   const VIEWER = [Math.cos(YAW) * Math.cos(PITCH), -Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH)];
   const STROKE = 'rgba(70, 58, 38, 0.62)';
@@ -116,11 +116,14 @@
         const depth = projected.reduce((sum, p) => sum + p.depth, 0) / projected.length;
         const lit = 0.66 + (0.34 * Math.max(0, dot(face.normal, LIGHT)));
         const front = face.normal[2] === 0 && dot(face.normal, [1, 0, 0]) > 0.9; // a face looking to the front
-        out.push({ points: projected, depth, layer: LAYER[part.k] || 0, order: ORDER[part.k] || 0, index, fill: shade(COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer') });
+        const layer = LAYER[part.k] || 0;
+        // (what stands on the front of the carcass is ordered by how far forward it is: a wide face has its middle far to one side, which must not decide)
+        const key = layer === 0 ? depth : face.points.reduce((sum, p) => sum + (p[0] * Math.cos(YAW)) - (p[1] * Math.sin(YAW) * 0.15), 0) / face.points.length;
+        out.push({ points: projected, depth, key, layer, order: ORDER[part.k] || 0, index, fill: shade(part.c || COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer' || part.s === true) });
       });
     });
     // the carcass first, then the fronts, then the handles; each layer from far to near
-    return out.sort((a, b) => (a.layer - b.layer) || (a.depth - b.depth) || (a.order - b.order) || (a.index - b.index));
+    return out.sort((a, b) => (a.layer - b.layer) || (a.key - b.key) || (a.order - b.order) || (a.index - b.index));
   }
 
   // The boxes seen from the front: [{ x, y, w, h, kind }] with y up (millimetres), the carcass first and the doors last.
@@ -129,10 +132,10 @@
       .map((part, index) => {
         const base = footprint(part);
         const ys = base.map((p) => p[1]);
-        return { x: Math.min(...ys), y: part.o[2], w: Math.max(...ys) - Math.min(...ys), h: height(part), kind: part.k, order: ORDER[part.k] || 0, index };
+        return { x: Math.min(...ys), y: part.o[2], w: Math.max(...ys) - Math.min(...ys), h: height(part), kind: part.k, colour: part.c, shiny: part.s === true, order: ORDER[part.k] || 0, index, front: Math.max(...base.map((p) => p[0])) };
       })
       .filter((r) => r.w > 0.01 && r.h > 0.01)
-      .sort((a, b) => (a.order - b.order) || (a.index - b.index));
+      .sort((a, b) => (LAYER[a.kind] || 0) - (LAYER[b.kind] || 0) || (a.order - b.order) || ((LAYER[a.kind] || 0) ? a.front - b.front : 0) || (a.index - b.index));
   }
 
   function wrap(points, pad) {
@@ -189,11 +192,11 @@
     const right = Math.max(...corners.map((p) => p.x));
     const body = rects.map((r) => {
       const front = r.kind === 'door' || r.kind === 'drawer';
-      const fill = shade(COLOURS[r.kind] || COLOURS.body, front ? 1.0 : 0.95);
+      const fill = shade(r.colour || COLOURS[r.kind] || COLOURS.body, front || r.shiny ? 1.0 : 0.95);
       const edge = r.kind === 'handle' || r.kind === 'gola' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
       const where = `x="${round(r.x)}" y="${round(-(r.y + r.h))}" width="${round(r.w)}" height="${round(r.h)}"`;
       const base = `<rect ${where} fill="${fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}"/>`;
-      return front ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"/>` : base;
+      return front || r.shiny ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"/>` : base;
     }).join('');
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.012), (left + right) / 2, (right - left) / 2, hangs(plain))}${body}</svg>`;
   }

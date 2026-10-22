@@ -106,3 +106,41 @@ class PlaceGhostTest < Minitest::Test
     assert_includes %w[left right], shape['parts'].find { |p| p['k'] == 'door' }['g']
   end
 end
+
+# The appliances of a cabinet are drawn in their own colours, so that the pictures look like the real thing.
+class GalleryAppliancesTest < Minitest::Test
+  include EasyCabinet
+
+  def shapes(category) = CabinetGallery.shapes('kitchen_cabinets', category)
+
+  def test_a_sink_unit_shows_its_sink_with_a_hollow_bowl_and_a_tap
+    shape = shapes('base')['base_sink']
+    appliances = shape['parts'].select { |p| p['k'] == 'appl' }
+    assert_operator appliances.length, :>=, 8, 'the deck round the bowl, the bowl walls, the grooves, the tap'
+    assert appliances.all? { |p| p['c'].to_s.match?(/\A#\h{6}\z/) }, 'each in its own colour'
+    top = shape['parts'].select { |p| p['k'] == 'body' }.map { |p| p['o'][2] + p['e'][2] }.max
+    assert appliances.any? { |p| p['o'][2] + p['e'][2] > top + 100.0 }, 'the tap stands up above the unit'
+    walls = appliances.select { |p| p['e'][2] > 100.0 && p['e'].min <= 2.5 }
+    assert_operator walls.length, :>=, 4, 'the walls of the bowl, which is hollow'
+  end
+
+  def test_a_hob_unit_shows_its_burners_and_flames
+    parts = shapes('base')['base_hob']['parts'].select { |p| p['k'] == 'appl' }
+    assert parts.any? { |p| p['p'] && p['p'].length == 14 }, 'a round burner cap'
+    assert parts.any? { |p| p['p'] && p['p'].length == 88 }, 'a ring of flame tongues'
+    assert_operator parts.count { |p| p['s'] }, :>=, 1, 'the steel shines'
+  end
+
+  def test_an_oven_housing_shows_the_oven_and_a_fridge_housing_the_fridge
+    oven = shapes('tall')['tall_oven']['parts'].select { |p| p['k'] == 'appl' }
+    assert_operator oven.length, :>=, 5
+    assert oven.any? { |p| p['c'] == '#30343a' }, 'the black glass of the door'
+    fridge = shapes('tall')['tall_fridge_housing_free']['parts'].select { |p| p['k'] == 'appl' }
+    assert fridge.any?
+  end
+
+  def test_the_dishwasher_stands_behind_its_front
+    parts = shapes('base')['base_dishwasher']['parts']
+    assert parts.any? { |p| p['k'] == 'appl' && p['s'] }
+  end
+end
