@@ -427,7 +427,7 @@ class KitchenCatalogTest < Minitest::Test
     flames = hob.appliances.select { |a| a.role =~ /hob_1_flame_\d\z/ }
     assert_equal 5, flames.length
     assert flames.all? { |f| f.shape == 'cyl_z' && f.points.nil? }, 'a smooth blue ring round each burner'
-    assert_equal 5, hob.appliances.count { |a| a.role =~ /hob_1_flamecore_[0-9]z/ }, 'with a lighter band inside it'
+    assert_equal 5, hob.appliances.count { |a| a.role =~ /hob_1_flamecore_\d\z/ }, 'with a lighter band inside it'
     assert_equal 'Appliance - Gas Flame Core', AppliancePieces.finish('appliance_hob_1_flamecore_2')[0]
     assert_equal 'Appliance - White Glass', AppliancePieces.finish('appliance_sink_1_deck_1')[0]
     assert_equal 'Appliance - Cast Iron', AppliancePieces.finish('appliance_hob_1_grate_1_2')[0]
