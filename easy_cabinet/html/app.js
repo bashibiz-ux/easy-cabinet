@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.97.0';
+  const APP_VERSION = '1.98.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1454,7 +1454,7 @@ function currentCabinet() {
 
   // ---- the cabinet gallery (see gallery.js): every cabinet of the category as a picture, in the order and with the names of the Cabinet list ----------------------------
   const GALLERY_KEY = 'ec.gallery';
-  const gallery = { view: '3d', size: 'medium', min: false, shapes: {}, loading: '' };
+  const gallery = { view: '3d', size: 'medium', min: false, shapes: {}, loading: '', query: '' };
 
   function loadGalleryPrefs() {
     try {
@@ -1497,17 +1497,19 @@ function currentCabinet() {
     if (!box || !window.EC_GALLERY) return;
     syncGalleryControls();
     const grid = $('galleryGrid');
-    const entries = groupCabinets(state.cabinets);
-    $('galleryCount').textContent = entries.length ? `(${entries.length})` : '';
+    const all = groupCabinets(state.cabinets);
+    const words = gallery.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const entries = words.length ? all.filter((entry) => words.every((word) => entry.name.toLowerCase().includes(word))) : all; // (the search: every word is in the name)
+    $('galleryCount').textContent = all.length ? (words.length ? `(${entries.length} of ${all.length})` : `(${all.length})`) : '';
     if (gallery.min || categoryKind() !== 'cabinet') return; // (nothing is drawn while it is minimised: it is drawn when it opens)
     const shapes = await galleryShapes();
     const current = groupCabinets(state.cabinets); // (the list may have changed while the pictures came)
-    if (current.length !== entries.length || (current[0] && entries[0] && current[0].id !== entries[0].id)) return;
+    if (current.length !== all.length || (current[0] && all[0] && current[0].id !== all[0].id)) return;
     grid.textContent = '';
     if (!entries.length) {
       const none = document.createElement('div');
       none.className = 'gallery-empty';
-      none.textContent = 'No cabinets in this category';
+      none.textContent = all.length ? 'No cabinet has that name' : 'No cabinets in this category';
       grid.append(none);
       return;
     }
@@ -1545,15 +1547,8 @@ function currentCabinet() {
   // script that moves the scroll position as well fights the panel's smooth scrolling), and for a few seconds the panel is kept from scrolling to a section by itself.
   const holdPanel = () => { state.noFocusUntil = Date.now() + 4000; };
 
-  // A click chooses the cabinet, as if it was picked in the list.
-  function chooseFromGallery(id) {
-    if (!state.cabinets.some((c) => c.id === id)) return;
-    holdPanel();
-    $('cabinet').value = id;
-    $('cabinet').dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  // Dragged out of the panel: the cabinet is chosen (without changing the cabinet that is selected in the model) and the tool that puts it where you click starts.
+  // A click on a cabinet of the gallery: the cabinet is chosen (without changing the cabinet that is selected in the model) and the tool that puts it where you click
+  // starts: it follows the cursor in the model and is put down by the next click there.
   async function placeFromGallery(id) {
     if (!state.cabinets.some((c) => c.id === id)) return;
     state.galleryPick = true;
@@ -1571,6 +1566,15 @@ function currentCabinet() {
     if (!$('gallery')) return;
     loadGalleryPrefs();
     syncGalleryControls();
+    let searchTimer = null;
+    $('gallerySearch').addEventListener('input', () => { // the search: the cabinets whose name has the words typed
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { gallery.query = $('gallerySearch').value; renderGallery(); }, 120);
+    });
+    $('gallerySearch').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { $('gallerySearch').value = ''; gallery.query = ''; renderGallery(); }
+      if (e.key === 'Enter') { const first = $('galleryGrid').querySelector('.gcard'); if (first) placeFromGallery(first.dataset.id); } // (the first cabinet found)
+    });
     $('galleryToggle').addEventListener('click', () => {
       gallery.min = !gallery.min;
       saveGalleryPrefs();
@@ -1584,17 +1588,10 @@ function currentCabinet() {
     const grid = $('galleryGrid');
     let drag = null;
     const panel = () => $('scroll');
-    const outside = (e) => e.clientX < 0 || e.clientY < 0 || e.clientX > window.innerWidth || e.clientY > window.innerHeight;
     const finish = () => {
       if (drag && drag.card) drag.card.classList.remove('dragging');
       document.body.classList.remove('gallery-dragging');
       drag = null;
-    };
-    const send = () => {
-      if (!drag || drag.sent || !drag.id) return;
-      drag.sent = true;
-      drag.card.classList.add('dragging');
-      placeFromGallery(drag.id);
     };
     grid.addEventListener('dragstart', (e) => e.preventDefault()); // (the picture is not dragged as an image)
     grid.addEventListener('pointerdown', (e) => {
@@ -1602,31 +1599,27 @@ function currentCabinet() {
       const card = e.target.closest('.gcard');
       e.preventDefault(); // (no text selection and no automatic scrolling of the panel while it is dragged)
       holdPanel();
-      drag = { id: card ? card.dataset.id : null, card, x: e.clientX, y: e.clientY, from: panel().scrollTop, moved: false, sent: false };
+      drag = { id: card ? card.dataset.id : null, card, x: e.clientX, y: e.clientY, from: panel().scrollTop, moved: false };
       try { (card || grid).setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
     });
     grid.addEventListener('pointermove', (e) => {
-      if (!drag || drag.sent) return;
+      if (!drag) return;
       if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
         drag.moved = true;
         document.body.classList.add('gallery-dragging');
       }
-      if (!drag.moved) return;
-      if (outside(e)) send(); // out of the panel and over the model
-      else panel().scrollTop = drag.from - (e.clientY - drag.y); // the panel moves with the hand
+      if (drag.moved) panel().scrollTop = drag.from - (e.clientY - drag.y); // the panel moves with the hand
     });
-    grid.addEventListener('pointerup', (e) => {
+    grid.addEventListener('pointerup', () => {
       if (!drag) return;
       const was = drag;
-      if (!was.moved) { if (was.id) chooseFromGallery(was.id); } // a click
-      else if (outside(e)) send(); // let go outside the panel
       finish();
+      if (!was.moved && was.id) placeFromGallery(was.id); // a click: the cabinet follows the cursor until it is put down
     });
     grid.addEventListener('pointercancel', finish);
-    document.documentElement.addEventListener('mouseleave', () => { if (drag && drag.moved) { send(); finish(); } }); // (the pointer left the window with the button held)
     grid.addEventListener('keydown', (e) => {
       const card = e.target.closest('.gcard');
-      if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); chooseFromGallery(card.dataset.id); }
+      if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); placeFromGallery(card.dataset.id); }
     });
   }
 

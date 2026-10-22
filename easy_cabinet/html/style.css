@@ -586,3 +586,6 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .gallery-empty { grid-column: 1 / -1; color: var(--muted); padding: 8px 2px; }
 body.gallery-dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 body.gallery-dragging * { cursor: grabbing !important; }
+.gallery-search { margin-bottom: 6px; }
+.gallery-search input { width: 100%; height: 30px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--field); color: var(--ink); font: inherit; }
+.gallery-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--glow); }
