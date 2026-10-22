@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.93.0';
+  const APP_VERSION = '1.94.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1579,41 +1579,46 @@ function currentCabinet() {
     document.querySelectorAll('[data-gallery-view]').forEach((b) => b.addEventListener('click', () => { gallery.view = b.dataset.galleryView; saveGalleryPrefs(); renderGallery(); }));
     document.querySelectorAll('[data-gallery-size]').forEach((b) => b.addEventListener('click', () => { gallery.size = b.dataset.gallerySize; saveGalleryPrefs(); renderGallery(); }));
 
+    // The gallery is moved up and down with the grab hand: press anywhere in it and drag, and the panel scrolls with the hand. A drag that leaves the panel while it
+    // holds a cabinet puts that cabinet in the model instead (see placeFromGallery). A click chooses the cabinet.
     const grid = $('galleryGrid');
     let drag = null;
+    const panel = () => $('scroll');
     const outside = (e) => e.clientX < 0 || e.clientY < 0 || e.clientX > window.innerWidth || e.clientY > window.innerHeight;
     const finish = () => {
-      if (drag) drag.card.classList.remove('dragging');
+      if (drag && drag.card) drag.card.classList.remove('dragging');
       document.body.classList.remove('gallery-dragging');
       drag = null;
     };
     const send = () => {
-      if (!drag || drag.sent) return;
+      if (!drag || drag.sent || !drag.id) return;
       drag.sent = true;
+      drag.card.classList.add('dragging');
       placeFromGallery(drag.id);
     };
-    grid.addEventListener('dragstart', (e) => e.preventDefault()); // (the picture is not dragged as an image: the card is)
+    grid.addEventListener('dragstart', (e) => e.preventDefault()); // (the picture is not dragged as an image)
     grid.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || !e.target.closest('#galleryGrid')) return;
       const card = e.target.closest('.gcard');
-      if (!card || e.button !== 0) return;
-      e.preventDefault(); // (no text selection and no automatic scrolling of the panel while the card is dragged)
+      e.preventDefault(); // (no text selection and no automatic scrolling of the panel while it is dragged)
       holdPanel();
-      drag = { id: card.dataset.id, card, x: e.clientX, y: e.clientY, moved: false, sent: false };
-      try { card.setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
+      drag = { id: card ? card.dataset.id : null, card, x: e.clientX, y: e.clientY, from: panel().scrollTop, moved: false, sent: false };
+      try { (card || grid).setPointerCapture(e.pointerId); } catch (_) { /* no capture: the drag still ends when the pointer leaves */ }
     });
     grid.addEventListener('pointermove', (e) => {
-      if (!drag) return;
+      if (!drag || drag.sent) return;
       if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 6) {
         drag.moved = true;
-        drag.card.classList.add('dragging');
         document.body.classList.add('gallery-dragging');
       }
-      if (drag.moved && outside(e)) send(); // out of the panel and over the model
+      if (!drag.moved) return;
+      if (outside(e)) send(); // out of the panel and over the model
+      else panel().scrollTop = drag.from - (e.clientY - drag.y); // the panel moves with the hand
     });
     grid.addEventListener('pointerup', (e) => {
       if (!drag) return;
       const was = drag;
-      if (!was.moved) chooseFromGallery(was.id); // a click
+      if (!was.moved) { if (was.id) chooseFromGallery(was.id); } // a click
       else if (outside(e)) send(); // let go outside the panel
       finish();
     });

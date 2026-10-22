@@ -571,7 +571,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .seg button:last-child { border-right: 0; }
 .seg button.on { background: var(--accent); color: var(--accent-ink); }
 .gallery-hint { margin: 0 0 6px; color: var(--muted); font-size: 11.5px; }
-.gallery-grid { --cell: 120px; --pic: 96px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr)); gap: 6px; }
+.gallery-grid { cursor: grab; --cell: 120px; --pic: 96px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--cell), 1fr)); gap: 6px; }
 .gallery-grid[data-size="small"] { --cell: 78px; --pic: 62px; }
 .gallery-grid[data-size="big"] { --cell: 180px; --pic: 150px; }
 .gcard { display: flex; flex-direction: column; align-items: stretch; gap: 3px; padding: 5px; border: 1px solid var(--line); border-radius: 7px; background: var(--sheet); cursor: grab; user-select: none; touch-action: none; }
