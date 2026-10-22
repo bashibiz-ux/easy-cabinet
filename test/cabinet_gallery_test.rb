@@ -44,6 +44,20 @@ class CabinetGalleryTest < Minitest::Test
     assert_operator seen, :>, 60
   end
 
+  def test_the_model_chosen_decides_whether_the_cabinets_show_handles_a_gola_profile_or_nothing
+    handle = CabinetGallery.shapes('kitchen_cabinets', 'base')['base_2drawer']
+    gola = CabinetGallery.shapes('kitchen_cabinets_gola_profile', 'base')['base_2drawer']
+    none = CabinetGallery.shapes('kitchen_cabinets_no_handle', 'base')['base_2drawer']
+    assert_equal 'handle', handle['mode']
+    assert_equal 'gola', gola['mode']
+    assert_equal 'none', none['mode']
+    assert handle['parts'].none? { |p| p['k'] == 'gola' }
+    assert_operator gola['parts'].count { |p| p['k'] == 'gola' }, :>=, 1, 'a Gola profile along the fronts'
+    assert none['parts'].none? { |p| p['k'] == 'gola' }, 'no profile and (see gallery.js) no handle'
+    gola_door = CabinetGallery.shapes('kitchen_cabinets_gola_profile', 'base')['base_2door']
+    assert gola_door['parts'].any? { |p| p['k'] == 'gola' }, 'a door unit with Gola too'
+  end
+
   def test_a_base_unit_stands_on_a_plinth_and_a_wall_unit_does_not
     base = CabinetGallery.shapes('kitchen_cabinets', 'base')['base_2door']
     assert base['parts'].any? { |p| p['k'] == 'toe' }, 'a base unit shows its plinth'

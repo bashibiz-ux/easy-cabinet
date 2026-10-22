@@ -19,11 +19,17 @@ module EasyCabinet
       layout, params = layout_of(catalog_id, category, entry)
       return fallback(entry) unless layout
 
-      from_layout(layout, params)
+      from_layout(layout, params, mode_of(catalog_id))
+    end
+
+    # How the fronts of a catalog open: 'handle' (a handle on each front), 'gola' (a Gola profile along the fronts, no handles) or 'none' (no handle: a finger gap).
+    def self.mode_of(catalog_id)
+      catalog = CatalogManager.catalogs.find { |item| item['id'] == catalog_id } || {}
+      if catalog['gola'] == true then 'gola' elsif catalog['finger_pull'] == true then 'none' else 'handle' end
     end
 
     # The boxes of a layout (see `shape`), also for the ghost that follows the cursor when a cabinet is placed (see PlaceTool).
-    def self.from_layout(layout, params)
+    def self.from_layout(layout, params, mode = 'handle')
       parts = []
       layout.panels.to_a.each { |panel| parts << part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel) }
       layout.appliances.to_a.each do |item|
@@ -33,14 +39,26 @@ module EasyCabinet
       end
       layout.drawers.to_a.each { |front| parts << part('drawer', front) }
       layout.doors.to_a.each { |door| parts << part('door', door) }
+      (layout.drawers.to_a + layout.doors.to_a).each { |front| parts.concat(gola_parts(front)) } if mode == 'gola'
       parts.compact!
       lift = layout.base_z.to_f
       if lift.positive? # the plinth under a unit that stands on the floor
         depth = params['depth'].to_f
         parts << { 'k' => 'toe', 'o' => [60.0, 0.0, 0.0], 'e' => [[depth - 90.0, 20.0].max, params['width'].to_f, lift] }
       end
-      { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'cat' => params['cabinet_category'].to_s, 'parts' => parts }
+      { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'cat' => params['cabinet_category'].to_s, 'mode' => mode, 'parts' => parts }
     end
+
+    # The Gola profile along the top of a front (a bar in the gap over it, set into the carcass front).
+    def self.gola_parts(front)
+      spot = front.respond_to?(:gola) ? front.gola : nil
+      return [] unless spot && spot['horizontal'] && spot['length'].to_f.positive?
+
+      centre = front.offset[1].to_f + spot['u'].to_f
+      [{ 'k' => 'gola', 'o' => [(front.offset[0].to_f + front.extent[0].to_f - 24.0).round(1), (centre - (spot['length'].to_f / 2.0)).round(1), (front.offset[2].to_f + front.extent[2].to_f).round(1)],
+         'e' => [24.0, spot['length'].to_f.round(1), 28.0] }]
+    end
+    private_class_method :gola_parts
 
     # The layout of a cabinet at its standard size, built the way the panel builds it; nil when the parameters are refused.
     def self.layout_of(catalog_id, category, entry)
@@ -52,7 +70,7 @@ module EasyCabinet
               'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true,
               'hood' => entry['hood'] == true, 'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'],
               'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s, 'free_housing' => entry['free_housing'] == true,
-              'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true, 'finger_pull' => false, 'dishwasher' => entry['dishwasher'] == true, 'dishwasher_handle' => true,
+              'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true, 'finger_pull' => mode_of(catalog_id) == 'none', 'gola_system' => (mode_of(catalog_id) == 'gola' ? 'b' : ''), 'gola_system_drawer' => (mode_of(catalog_id) == 'gola' ? 'c' : ''), 'dishwasher' => entry['dishwasher'] == true, 'dishwasher_handle' => true,
               'lift_door' => entry['lift_door'] == true, 'bifold' => entry['bifold'] == true, 'door_split' => entry['split'] == true, 'lower_mode' => entry['lower'].to_s }
       doors = entry['doors'].to_i
       drawers = entry['drawers'].to_i

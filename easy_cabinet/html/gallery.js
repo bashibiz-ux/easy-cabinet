@@ -10,8 +10,8 @@
 
   const YAW = (30 * Math.PI) / 180; // the cabinet is seen from the front, turned this far to the left
   const PITCH = (24 * Math.PI) / 180; // and from this far above
-  const COLOURS = { body: '#d6c39b', door: '#efe2c4', drawer: '#efe2c4', toe: '#43474f', appl: '#8d98a4', handle: '#8b9199' };
-  const ORDER = { body: 0, appl: 1, toe: 1, drawer: 2, door: 3, handle: 4 };
+  const COLOURS = { body: '#d6c39b', door: '#efe2c4', drawer: '#efe2c4', toe: '#43474f', appl: '#8d98a4', handle: '#8b9199', gola: '#b4b9c1' };
+  const ORDER = { body: 0, appl: 1, toe: 1, drawer: 2, door: 3, handle: 4, gola: 4 };
   const LIGHT = normalize([0.55, -0.35, 0.75]);
   const VIEWER = [Math.cos(YAW) * Math.cos(PITCH), -Math.sin(YAW) * Math.cos(PITCH), Math.sin(PITCH)];
   const STROKE = 'rgba(70, 58, 38, 0.62)';
@@ -27,6 +27,7 @@
   // drawer or a lift-up door along its edge; a base unit has it near the top of the front, a wall unit near the bottom, a tall unit at hand height.
   function handles(shape) {
     const out = [];
+    if (shape.mode === 'gola' || shape.mode === 'none') return out; // (a Gola profile is in the shape; a model without handles has none)
     const category = shape.cat || 'base';
     (shape.parts || []).forEach((part) => {
       if ((part.k !== 'door' && part.k !== 'drawer') || part.r) return;
@@ -163,7 +164,7 @@
     const spread = (Math.max(...all.map((p) => p.x)) - Math.min(...all.map((p) => p.x))) / 2;
     const body = faces.map((f) => {
       const points = f.points.map((p) => `${round(p.x)},${round(p.y)}`).join(' ');
-      const edge = f.kind === 'handle' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
+      const edge = f.kind === 'handle' || f.kind === 'gola' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
       const base = `<polygon points="${points}" fill="${f.fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}" stroke-linejoin="round"/>`;
       return f.sheen ? `${base}<polygon points="${points}" fill="url(#ecSheen)" stroke="none"/>` : base;
     }).join('');
@@ -183,7 +184,7 @@
     const body = rects.map((r) => {
       const front = r.kind === 'door' || r.kind === 'drawer';
       const fill = shade(COLOURS[r.kind] || COLOURS.body, front ? 1.0 : 0.95);
-      const edge = r.kind === 'handle' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
+      const edge = r.kind === 'handle' || r.kind === 'gola' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
       const where = `x="${round(r.x)}" y="${round(-(r.y + r.h))}" width="${round(r.w)}" height="${round(r.h)}"`;
       const base = `<rect ${where} fill="${fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}"/>`;
       return front ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"/>` : base;
