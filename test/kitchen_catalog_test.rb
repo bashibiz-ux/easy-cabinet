@@ -406,7 +406,7 @@ class KitchenCatalogTest < Minitest::Test
     end
   end
 
-  def test_a_sink_is_one_deck_and_one_hollow_bowl_each_and_the_logos_are_letters_and_the_flames_are_tongues
+  def test_a_sink_is_one_deck_and_one_hollow_bowl_each_and_the_logos_are_letters_and_the_flames_are_blue_rings
     [[1, true, 1000], [2, true, 1300], [2, false, 900], [1, false, 700]].each do |bowls, tray, width|
       _, layout = unit('base', 'base_sink', width, 'sink_bowls' => bowls, 'sink_tray' => tray)
       decks = layout.appliances.select { |a| a.shape == 'deck' }
@@ -426,7 +426,8 @@ class KitchenCatalogTest < Minitest::Test
     _, hob = unit('base', 'base_hob', 900)
     flames = hob.appliances.select { |a| a.role =~ /hob_1_flame_\d\z/ }
     assert_equal 5, flames.length
-    assert flames.all? { |f| f.points.length == 88 }, 'a ring of 44 small tongues'
+    assert flames.all? { |f| f.shape == 'cyl_z' && f.points.nil? }, 'a smooth blue ring round each burner'
+    assert_equal 5, hob.appliances.count { |a| a.role =~ /hob_1_flamecore_dz/ }, 'with a lighter band inside it'
     assert_equal 'Appliance - Gas Flame Core', AppliancePieces.finish('appliance_hob_1_flamecore_2')[0]
     assert_equal 'Appliance - White Glass', AppliancePieces.finish('appliance_sink_1_deck_1')[0]
     assert_equal 'Appliance - Cast Iron', AppliancePieces.finish('appliance_hob_1_grate_1_2')[0]
