@@ -381,10 +381,12 @@ module EasyCabinet
           cx = x0 + (depth * back)
           cy = y0 + (width * across)
           out << cyl("#{key}_head_#{count}", "Hob Burner #{count}", :z, [cx, cy, z], size * 1.15, 3.0)
-          out << cyl("#{key}_flame_#{count}", "Hob Flame #{count}", :z, [cx, cy, z + 3.0], size, 3.0) # (the blue ring round the cap, as it was)
-          out << cyl("#{key}_flamecore_#{count}", "Hob Flame Core #{count}", :z, [cx, cy, z + 6.0], size * 0.86, 0.8) # (a lighter, hotter band inside it)
+          # a ring of small flame tongues round the cap, in three layers from deep blue at the burner to a pale, hot blue at the tips of the inner ones
+          out << shaped("#{key}_flame_#{count}", "Hob Flame #{count}", flame_points(cx, cy, size / 2.0, size * 0.42, 44), z + 3.0, 2.6)
+          out << shaped("#{key}_flamecore_#{count}", "Hob Flame Core #{count}", flame_points(cx, cy, size * 0.45, size * 0.375, 44, 0.5), z + 5.6, 1.6)
+          out << shaped("#{key}_flamecore_#{count}b", "Hob Flame Tips #{count}", flame_points(cx, cy, size * 0.41, size * 0.35, 22), z + 7.2, 1.2)
           out << cyl("#{key}_cap_#{count}", "Hob Burner Cap #{count}", :z, [cx, cy, z + 3.0], size * 0.74, 9.0)
-          out << cyl("#{key}_flame_#{count}b", "Hob Flame #{count} Inner", :z, [cx, cy, z + 12.0], size * 0.5, 1.0) if size >= 150.0
+          out << shaped("#{key}_flame_#{count}b", "Hob Flame #{count} Inner", flame_points(cx, cy, size * 0.25, size * 0.21, 28), z + 12.0, 1.5) if size >= 150.0
           out << cyl("#{key}_cap_#{count}b", "Hob Burner Centre #{count}", :z, [cx, cy, z + 12.0], size * 0.3, 1.5) if size >= 150.0
         end
       end
@@ -394,6 +396,16 @@ module EasyCabinet
       end
       out
     end
+
+    # The outline of a ring of small flame tongues: `teeth` points out to `radius` and in to `inner`, going round; `phase` turns it that fraction of a tooth.
+    def self.flame_points(cx, cy, radius, inner, teeth, phase = 0.0)
+      (0...(teeth * 2)).map do |i|
+        r = i.even? ? radius : inner
+        angle = (Math::PI * (i + (phase * 2.0)) / teeth)
+        [cx + (r * Math.cos(angle)), cy + (r * Math.sin(angle))]
+      end
+    end
+    private_class_method :flame_points
 
     # The cast iron pan support round some burners: a frame and four fingers towards each burner. `rect` = [x0, x1, y0, y1], `burners` = [[x, y, size], ...].
     def self.pan_support(key, number, rect, burners, z)

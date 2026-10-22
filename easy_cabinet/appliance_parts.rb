@@ -11,7 +11,7 @@ module EasyCabinet
   module AppliancePieces
     # Raised whenever the look of the appliances changes: a cabinet with appliances that was built under an older revision is built again when the panel opens
     # (see CabinetManager.refresh_stale_gola), so models made earlier show the new look.
-    REVISION = 4
+    REVISION = 5
 
     # Does a cabinet with these parameters hold appliances (a sink, a hob, a hood, ovens, a fridge)?
     def self.any?(params)

@@ -624,7 +624,7 @@ module EasyCabinet
       end
     end
 
-    EDGE_REVISION = 3
+    EDGE_REVISION = 4
 
     # The edges of an appliance part: the outline of a big part (a door, a frame, a bowl) shows, the edges of fine detail (knobs, letters, figures, grooves, buttons,
     # flames, the bars of a pan support) are hidden, so the appliance is not covered in heavy lines. Done once for a part drawing.
@@ -642,7 +642,8 @@ module EasyCabinet
     # Is this part fine detail: round (a knob, a burner), a letter, a flame, a thin line (a groove, a seam), a small piece (a figure, a button), a pan support bar?
     def self.appliance_detail?(item)
       return false if %w[deck bowl].include?(item.shape.to_s)
-      return true if item.shape.to_s.start_with?('cyl_') || %w[tube plate_x].include?(item.shape.to_s) # (the flames are round bars)
+      return true if item.shape.to_s.start_with?('cyl_') || %w[tube plate_x].include?(item.shape.to_s)
+      return true if item.role.to_s.include?('_flame') # (the flames have no edge lines at all)
       return true if item.points && !item.points.empty? # (a flame ring)
       return true if item.role.to_s.include?('_grate_')
 
