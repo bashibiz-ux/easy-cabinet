@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.96.0';
+  const APP_VERSION = '1.97.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2454,7 +2454,9 @@ if (details.length) {
       const res = await call(serverAction(action), payload);
       if (res.ok) {
         setStatus('ok', res.message);
-        if (action === 'get_cut_list') renderCutList(res.data || {});
+        if (action === 'get_cut_list') { renderCutList(res.data || {}); state.cutShown = true; }
+        if (action === 'build_room' || action === 'update_room') state.roomBuilt = true;
+        if (action === 'remove_room') state.roomBuilt = false;
         if (action === 'save_to_catalog' || action === 'remove_from_catalog') await catalogsChanged(res.data || {}, action);
         if (action === 'add_material' || action === 'remove_material') materialsChanged(res.data || {}, action);
         if (action === 'add_handle' || action === 'remove_handle') handlesChanged(res.data || {}, action);
@@ -2680,6 +2682,20 @@ if (details.length) {
 
   // The Worktop fields rebuild the worktops that are already there (nothing is
   // created until Apply Worktop is pressed).
+  // The Room fields are live once a room is built: it is drawn again (Build Room) when a field is changed.
+  function scheduleRoom(delay) {
+    clearTimeout(state.roomTimer);
+    state.roomTimer = setTimeout(runRoom, delay);
+  }
+
+  async function runRoom() {
+    if (state.busy) {
+      scheduleRoom(400);
+      return;
+    }
+    await runAction('build_room', { live: true });
+  }
+
   const WORKTOP_IDS = new Set(['wtThickness', 'wtFront', 'wtEnd', 'wtRound', 'wtPiece', 'wtCuts', 'wtSplash', 'wtMaterial', 'wtSplashMaterial']);
 
   function scheduleWorktop(delay = LIVE_TYPING_DELAY_MS) {
@@ -2886,6 +2902,14 @@ function liveEdit(el) {
       if (!unitSizeDirty.has(category)) unitSizeDirty.set(category, new Map());
       unitSizeDirty.get(category).set(key, el.id);
       scheduleUnitSize();
+      return;
+    }
+    if (el.id === 'cutGroup') { // (the cut list that is shown is made again, grouped the other way)
+      if (state.cutShown) runAction('get_cut_list');
+      return;
+    }
+    if (el.closest('#sec-room')) { // the Room fields: a room that is built is drawn again with them
+      if (state.roomBuilt) scheduleRoom(el.tagName === 'SELECT' || el.type === 'checkbox' ? 300 : 800);
       return;
     }
     if (el.closest('#sec-kitchen')) { // the Auto Kitchen answers: the kitchen designed before is built again with them
@@ -3309,6 +3333,7 @@ $('kitchenLayout').addEventListener('change', () => {
       const res = await call('init');
       if (!res.ok) throw new Error(res.message || 'The panel could not start.');
       state.meta = normaliseMeta(res.data);
+      state.roomBuilt = res.data.room_built === true; // (a room that is in the model already: its fields are live)
       $('snapEnabled').checked = res.data.snap_enabled !== false;
       $('liveDimensions').checked = res.data.live_dimensions === true;
       $('liveSidePanels').checked = res.data.live_side_panels !== false;

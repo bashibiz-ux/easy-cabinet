@@ -428,6 +428,12 @@ module EasyCabinet
       end
     end
 
+    # Is there a room in the model (built by Build Room)?
+    def self.built?
+      model = Sketchup.active_model
+      !model.nil? && !parts_in(model).empty?
+    end
+
     def self.parts_in(model)
       model.entities.grep(Sketchup::Group).select { |group| group.get_attribute(DICTIONARY, KEY) }
     end

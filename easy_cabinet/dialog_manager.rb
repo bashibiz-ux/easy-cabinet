@@ -214,6 +214,7 @@ module EasyCabinet
       def init_payload
         {
           'version'         => EXTENSION_VERSION,
+          'room_built'      => RoomShell.built?,
           'snap_enabled'    => SnapManager.enabled?,
           'live_dimensions' => LiveParts.dimensions?,
           'live_side_panels' => LiveParts.side_panels?,
