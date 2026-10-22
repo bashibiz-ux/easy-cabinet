@@ -39,7 +39,7 @@ module EasyCabinet
         { x: origin.x.to_mm, y: origin.y.to_mm, z: origin.z.to_mm, hx: transformation.yaxis.x, hy: transformation.yaxis.y, fx: transformation.xaxis.x, fy: transformation.xaxis.y,
           width: stored['width'].to_f, depth: cabinet.get_attribute(AttributeManager::DICTIONARY, 'envelope_depth').to_f,
           base_z: category == 'wall' ? stored['base_z'].to_f : origin.z.to_mm, top: cabinet.get_attribute(AttributeManager::DICTIONARY, 'envelope_top').to_f + origin.z.to_mm,
-          tall: category == 'tall', island: !cabinet.get_attribute(AttributeManager::DICTIONARY, 'island_seating').nil?,
+          tall: category == 'tall', wall: category == 'wall', island: !cabinet.get_attribute(AttributeManager::DICTIONARY, 'island_seating').nil?,
           overhang: cabinet.get_attribute(AttributeManager::DICTIONARY, 'island_seating').to_f }
       end
     end
