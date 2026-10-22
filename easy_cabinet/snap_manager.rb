@@ -272,7 +272,6 @@ module EasyCabinet
 
     def self.modified(entity)
       return unless snappable?(entity)
-      return if defined?(SupportStatus) && SupportStatus.locked? # (the extension is stopped: nothing is moved or rebuilt)
       return remember(entity) if @busy || SelectionManager.suspended?
 
       id = entity.persistent_id

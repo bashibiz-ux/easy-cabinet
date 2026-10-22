@@ -16,7 +16,7 @@ module EasyCabinet
     response defaults model_script gola_profile attribute_manager legacy_names validation_manager material_manager catalog_manager my_appliances
     cabinet_layout appliance_parts fixtures customizer toe_kick part_layout door_animation drawer_animation handle_manager
     front_design panel_generator cabinet_generator part_generator selection_manager snap_manager
-    naming_manager placement_manager tag_manager custom_door cabinet_manager part_manager worktop_manager wall_bottom_manager kitchen_planner side_exposure dimensioning dimension_manager live_parts island_hood island_back_panel kitchen_manager path_kitchen place_tool feedback_manager layout_scenes room_shell cut_list_manager preset_manager customize_manager cabinet_gallery support_status dialog_manager
+    naming_manager placement_manager tag_manager custom_door cabinet_manager part_manager worktop_manager wall_bottom_manager kitchen_planner side_exposure dimensioning dimension_manager live_parts island_hood island_back_panel kitchen_manager path_kitchen place_tool feedback_manager layout_scenes room_shell cut_list_manager preset_manager customize_manager cabinet_gallery dialog_manager
   ].freeze
 
   def self.load_code
@@ -91,16 +91,15 @@ module EasyCabinet
   end
 
   unless file_loaded?(__FILE__)
-    SupportStatus.start # (the amount this month's support has reached is read in the background)
     LegacyNames.install # (what was made under the old name of the extension is brought over, before anything reads it)
     SelectionManager.install
     SnapManager.install
     RoomShell.install
     menu = UI.menu('Extensions').add_submenu(EXTENSION_NAME)
     menu.add_item('Open Control Panel') { EasyCabinet.open_panel }
-    menu.add_item('Open or Close Room Doors and Windows') { RoomShell.open_or_close if SupportStatus.working? }
-    menu.add_item('Create LayOut Scenes (Plan and Elevations)') { LayoutScenes.create if SupportStatus.working? }
-    snap_item = menu.add_item('Snap Moved Cabinets to Neighbours and Walls') { SnapManager.enabled = !SnapManager.enabled? if SupportStatus.working? }
+    menu.add_item('Open or Close Room Doors and Windows') { RoomShell.open_or_close }
+    menu.add_item('Create LayOut Scenes (Plan and Elevations)') { LayoutScenes.create }
+    snap_item = menu.add_item('Snap Moved Cabinets to Neighbours and Walls') { SnapManager.enabled = !SnapManager.enabled? }
     menu.set_validation_proc(snap_item) { SnapManager.enabled? ? MF_CHECKED : MF_UNCHECKED }
 
     icons = File.join(PLUGIN_DIR, 'icons')

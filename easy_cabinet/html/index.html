@@ -17,11 +17,6 @@
     <div class="topbar-row">
       <label class="check"><input type="checkbox" id="followSelection" checked><span>collapse cabinets and extras when an object selected</span></label>
     </div>
-    <!-- The monthly support goal: how much of this month's target has been reached. -->
-    <div class="support-strip" id="supportStrip" hidden>
-      <div class="support-line"><span id="supportText"></span><button class="support-link" type="button" id="supportStripDonate" title="Donate to keep Easy Cabinet alive">Donate</button></div>
-      <div class="support-bar" aria-hidden="true"><span id="supportFill"></span></div>
-    </div>
   </header>
 
   <main class="scroll" id="scroll">
@@ -1093,18 +1088,6 @@
 <script src="lang/uk.js"></script>
 <script src="lang/vi.js"></script>
 <script src="lang/zh.js"></script>
-<!-- When the month's target has not been reached (after the first days of the month) the extension stops, and this is all that is shown. -->
-<div class="support-lock" id="supportLock" role="alertdialog" aria-modal="true" aria-labelledby="supportTitle" hidden>
-  <div class="support-card">
-    <h2 id="supportTitle">Easy Cabinet needs your support</h2>
-    <p id="supportMessage"></p>
-    <div class="support-bar big" aria-hidden="true"><span id="supportFillBig"></span></div>
-    <p class="support-figures" id="supportFigures"></p>
-    <button class="btn primary" type="button" id="supportDonate">Donate to keep Easy Cabinet alive</button>
-    <button class="btn" type="button" id="supportRefresh">I have donated: check again</button>
-  </div>
-</div>
-
 <script src="gallery.js"></script>
 <script src="app.js"></script>
 </body>

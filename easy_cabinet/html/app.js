@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.95.0';
+  const APP_VERSION = '1.95.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -203,7 +203,6 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
-    if (name === 'support') { renderSupport(data); return; }
     if (followSelection() || name === 'cabinet_cleared') { state.heldKind = null; state.heldData = null; }
     // With the tick off, picking something in the model does not open its settings: the panel stays as it is. A cabinet that is selected is
     // remembered, so that a field edited in the panel changes that cabinet alone (see scheduleHeld).
@@ -313,53 +312,6 @@
     tiles.forEach((tile) => tile.addEventListener('click', () => {
       tiles.forEach((other) => other.classList.toggle('active', other === tile));
     }));
-  }
-
-  // ---- the monthly support goal: the strip under the title while the month's target is being reached, and the page that stops the extension when it is not -------------
-  function renderSupport(info) {
-    const strip = $('supportStrip');
-    const lock = $('supportLock');
-    if (!strip || !lock) return;
-    const shown = info && ['funded', 'grace', 'locked'].includes(info.mode);
-    state.support = shown ? info : null;
-    strip.hidden = !shown;
-    lock.hidden = !(shown && info.locked);
-    if (state.startedLocked && lock.hidden) { state.startedLocked = false; location.reload(); return; } // (it was stopped when the panel opened: the panel starts again now)
-    if (!shown) return;
-    const money = (value) => `${info.currency} ${Number(value) === Math.round(value) ? Math.round(value) : Number(value).toFixed(2)}`;
-    strip.classList.toggle('funded', info.mode === 'funded');
-    $('supportText').textContent = info.mode === 'funded'
-      ? `Monthly target reached: ${money(info.raised)} of ${money(info.target)}. Thank you!`
-      : `Monthly target: ${money(info.raised)} of ${money(info.target)}. Donate to keep Easy Cabinet alive.`;
-    $('supportFill').style.width = `${info.percent}%`;
-    $('supportMessage').textContent = info.message;
-    $('supportFillBig').style.width = `${info.percent}%`;
-    $('supportFigures').textContent = `${info.percent}% of ${money(info.target)}: ${money(info.raised)} reached`;
-  }
-
-  function wireSupport() {
-    const donate = async () => {
-      try {
-        const res = await call('open_donation', {});
-        setStatus(res.ok ? 'ok' : 'error', res.message);
-      } catch (error) {
-        setStatus('error', error.message);
-      }
-    };
-    ['supportDonate', 'supportStripDonate'].forEach((id) => { if ($(id)) $(id).addEventListener('click', donate); });
-    if ($('supportRefresh')) {
-      $('supportRefresh').addEventListener('click', async () => {
-        $('supportRefresh').disabled = true;
-        try {
-          const res = await call('refresh_support', {});
-          if (res.ok && res.data) renderSupport(res.data.support); // (the new figure arrives a moment later by itself when it changed)
-        } catch (error) {
-          setStatus('error', error.message);
-        } finally {
-          setTimeout(() => { $('supportRefresh').disabled = false; }, 4000);
-        }
-      });
-    }
   }
 
   function wireDonate() {    const button = $('openDonate');
@@ -3315,7 +3267,6 @@ $('kitchenLayout').addEventListener('change', () => {
   async function init() {
     wireFeedback();
     wireDonate();
-    wireSupport();
     wireActiveTile();
     wrapCardBodies();
     try {
@@ -3358,8 +3309,6 @@ $('kitchenLayout').addEventListener('change', () => {
       const res = await call('init');
       if (!res.ok) throw new Error(res.message || 'The panel could not start.');
       state.meta = normaliseMeta(res.data);
-      renderSupport(res.data.support);
-      if (state.support && state.support.locked) { state.startedLocked = true; return; } // (stopped: nothing else is built, the page says why)
       $('snapEnabled').checked = res.data.snap_enabled !== false;
       $('liveDimensions').checked = res.data.live_dimensions === true;
       $('liveSidePanels').checked = res.data.live_side_panels !== false;
