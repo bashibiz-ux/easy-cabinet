@@ -386,6 +386,7 @@ module EasyCabinet
         if errors.empty?
           params['cabinet_name'] = NamingManager.for_update(entity, params)
           CabinetGenerator.update(model, entity, params)
+          PartManager.follow_target(model, entity, upright, stored['width'].to_f, params['width'].to_f) if defined?(PartManager) # (its side panels move with the new width)
         end
         model.commit_operation
       rescue StandardError

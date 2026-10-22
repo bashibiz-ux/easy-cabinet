@@ -744,6 +744,7 @@ module EasyCabinet
       # A wall unit hangs by its top: when it gets taller it grows DOWNWARDS (and a
       # shorter one rises), so its top stays level with the tall units beside it.
       placed = root.transformation
+      before = placed # (where it stood: its side panels follow from there)
       loft = root.get_attribute(dictionary, 'cabinet_type').to_s.start_with?('wall_loft') # (a loft keeps its bottom and grows upwards, towards the ceiling)
       if params['cabinet_category'] == 'wall' && root.get_attribute(dictionary, 'cabinet_category') == 'wall' && !loft
         taller = params['height'] - root.get_attribute(dictionary, 'height').to_f
@@ -762,7 +763,7 @@ module EasyCabinet
       end
       same_footprint = loft && (params['width'] - root.get_attribute(dictionary, 'width').to_f).abs < 0.01 && (params['depth'] - root.get_attribute(dictionary, 'depth').to_f).abs < 0.01
       if !same_footprint && PlacementManager.crowds?(root.parent.entities, root, placed, CabinetLayout.envelope(params), old_size, # (a loft that only gets taller has nothing in its way: the ceiling is its limit)
-                                  also: [squeeze && squeeze[:neighbour], *lofts])
+                                  also: [squeeze && squeeze[:neighbour], *lofts, *AttributeManager.end_panels_of(root), *(squeeze ? AttributeManager.end_panels_of(squeeze[:neighbour]) : [])]) # (its side panels go with it, so they are no obstacle)
         return Response.fail('That size would make the cabinet overlap the item next to it. Make it smaller, or move the neighbour first.')
       end
 
@@ -771,6 +772,7 @@ module EasyCabinet
           params['cabinet_name'] = NamingManager.for_update(root, params)
           CabinetGenerator.update(model, root, params)
           root.transformation = placed unless placed.equal?(root.transformation)
+          PartManager.follow_target(model, root, before, params['width'] - growth, params['width']) # (its side panels move with the new width)
           WorktopManager.refresh(model) if params['sink'] || params['hob'] # its opening in the worktop follows
           RowResizer.apply(model, squeeze) if squeeze
           follow_tall(model, root, old_top) if old_top
@@ -1676,7 +1678,7 @@ module EasyCabinet
       return [nil, nil] unless neighbour
       return follow_back(model, neighbour, growth) if growth.negative?
 
-      need = growth - gap
+      need = growth - [gap - panel_gap(root, neighbour), 0.0].max # (the room a side panel between the two takes is not free)
       return [nil, nil] if need <= 0.01
 
       stored = AttributeManager.read(neighbour)
@@ -1702,6 +1704,15 @@ module EasyCabinet
 
       [{ neighbour: neighbour, need: need, width: new_width, params: params }, nil]
     end
+
+    # How much of the gap between `root` and the next item side panels fill: the one against the right end of `root` and the one against the left end of the
+    # neighbour (mm).
+    def self.panel_gap(root, neighbour)
+      right = AttributeManager.end_panels_of(root).select { |panel| AttributeManager.read(panel)['side'] == 'right' }
+      left = AttributeManager.end_panels_of(neighbour).select { |panel| AttributeManager.read(panel)['side'] == 'left' }
+      (right + left).sum { |panel| AttributeManager.read(panel)['thickness'].to_f }
+    end
+    private_class_method :panel_gap
 
     # The cabinet got narrower by `-growth`: the next item follows it back, getting
     # that much wider and starting that much sooner, so its far end stays where it is
@@ -1733,9 +1744,12 @@ module EasyCabinet
         PartManager.resize_filler(model, neighbour, plan[:width], moved)
       else
         params = plan[:params]
+        before = neighbour.transformation
+        old_width = AttributeManager.read(neighbour)['width'].to_f
         params['cabinet_name'] = NamingManager.for_update(neighbour, params)
         CabinetGenerator.update(model, neighbour, params)
         neighbour.transformation = moved
+        PartManager.follow_target(model, neighbour, before, old_width, plan[:width]) # (its side panels go with it)
         PartManager.follow_door(model, neighbour)
       end
     end

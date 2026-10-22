@@ -23,10 +23,11 @@ end
 
 plugin = File.expand_path('../easy_cabinet', __dir__)
 %w[response defaults attribute_manager validation_manager catalog_manager gola_profile cabinet_layout front_design appliance_parts fixtures handle_manager
-   selection_manager placement_manager cabinet_generator cabinet_manager].each { |f| require File.join(plugin, f) }
+   selection_manager placement_manager cabinet_generator cabinet_manager part_layout part_generator part_manager].each { |f| require File.join(plugin, f) }
 
 class Thing < Sketchup::ComponentInstance
-  attr_reader :transformation, :parent, :name
+  attr_accessor :transformation
+  attr_reader :parent, :name
 
   def initialize(attrs, transformation, parent)
     super()
@@ -38,6 +39,7 @@ class Thing < Sketchup::ComponentInstance
 
   def attribute_dictionary(_name, _create = false) = @attrs
   def get_attribute(_dict, key, default = nil) = @attrs.fetch(key, default)
+  def set_attribute(_dict, key, value) = @attrs[key] = value
 end
 
 class Bag
@@ -85,8 +87,68 @@ class RowResizeTest < Minitest::Test
     item
   end
 
+  # A side panel against the `side` end of `target`, `thickness` thick, standing at `y`.
+  def side_panel(target, side, y:, thickness: 18.0)
+    attrs = { 'part_id' => "PART_#{@seq += 1}", 'part_kind' => 'end_panel', 'part_name' => 'SP', 'target_id' => target.get_attribute(nil, 'cabinet_id'),
+              'side' => side, 'thickness' => thickness, 'target_width' => target.get_attribute(nil, 'width') }
+    item = Thing.new(attrs, move(y, x: 5.0, z: 0.0), @holder)
+    @bag.add(item)
+    item
+  end
+
   def plan(root, growth) = RowResizer.plan(nil, root, growth)
 
+  # ---- side panels ------------------------------------------------------------
+
+  def test_the_side_panels_of_a_cabinet_are_found
+    a = cabinet(y: 0.0)
+    b = cabinet(y: 700.0)
+    right = side_panel(a, 'right', y: 600.0)
+    side_panel(b, 'left', y: 682.0)
+    assert_equal [right], AttributeManager.end_panels_of(a)
+  end
+
+  def test_the_room_a_side_panel_takes_between_two_units_is_not_free
+    a = cabinet(y: 0.0)
+    b = cabinet(y: 618.0)
+    side_panel(a, 'right', y: 600.0) # the panel stands between them, against the first unit
+    squeeze, problem = plan(a, 300.0)
+    assert_nil problem
+    assert_in_delta 300.0, squeeze[:need], 1e-6, 'the neighbour gives all of it: the 18 mm of the panel are not free space'
+    assert_same b, squeeze[:neighbour]
+  end
+
+  def test_a_side_panel_against_the_neighbour_is_not_free_room_either
+    a = cabinet(y: 0.0)
+    b = cabinet(y: 650.0)
+    side_panel(b, 'left', y: 632.0)
+    squeeze, = plan(a, 100.0)
+    assert_in_delta 100.0 - 32.0, squeeze[:need], 1e-6, 'only the 32 mm left of the 50 mm gap are free'
+  end
+
+  def test_a_unit_with_a_side_panel_and_nothing_after_it_grows_and_its_panel_slides_with_it
+    oven = cabinet(y: 0.0, width: 600.0)
+    right = side_panel(oven, 'right', y: 600.0)
+    left = side_panel(oven, 'left', y: -18.0)
+    assert_equal [nil, nil], plan(oven, 300.0), 'nothing to squeeze: the panel is not a neighbour'
+    before = oven.transformation
+    PartManager.follow_target(nil, oven, before, 600.0, 900.0)
+    assert_in_delta 900.0, right.transformation.origin.y, 1e-6, 'the right panel stays against the unit'
+    assert_in_delta(-18.0, left.transformation.origin.y, 1e-6, 'the left panel stays where it is')
+    assert_equal 900.0, right.get_attribute(nil, 'target_width'), 'so a later change of the panel puts it at the right place'
+    assert_in_delta 5.0, right.transformation.origin.x, 1e-6, 'it keeps its place from the back'
+  end
+
+  def test_the_panels_of_a_unit_that_moved_and_got_narrower_follow_it
+    b = cabinet(y: 650.0, width: 600.0)
+    right = side_panel(b, 'right', y: 1250.0)
+    left = side_panel(b, 'left', y: 632.0)
+    before = b.transformation
+    b.transformation = move(700.0) # the squeeze: 50 mm further along, 50 mm narrower
+    PartManager.follow_target(nil, b, before, 600.0, 550.0)
+    assert_in_delta 1250.0, right.transformation.origin.y, 1e-6, 'its far end stays where it was'
+    assert_in_delta 682.0, left.transformation.origin.y, 1e-6, 'its start moved along with it'
+  end
   # ---- finding the next item ----------------------------------------------
 
   def test_the_next_item_and_the_free_gap_between_are_found

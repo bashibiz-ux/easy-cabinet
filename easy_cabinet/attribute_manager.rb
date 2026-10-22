@@ -51,8 +51,17 @@ module EasyCabinet
       cabinet?(entity) || custom_model?(entity)
     end
 
-    def self.cabinet_id(entity)
-      return nil unless cabinet?(entity)
+    # The side panels made for a cabinet (their target is it), among the same neighbours. They go where it goes and grow with it (see PartManager.follow_target).
+    def self.end_panels_of(cabinet)
+      id = cabinet_id(cabinet)
+      return [] if id.to_s.empty? || cabinet.parent.nil?
+
+      cabinet.parent.entities.grep(Sketchup::ComponentInstance).select do |part|
+        part_kind(part) == 'end_panel' && part.get_attribute(DICTIONARY, 'target_id') == id
+      end
+    end
+
+    def self.cabinet_id(entity)      return nil unless cabinet?(entity)
 
       entity.get_attribute(DICTIONARY, 'cabinet_id')
     end

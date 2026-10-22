@@ -1666,8 +1666,26 @@ module EasyCabinet
     #                             ("same as door / carcass material" follows)
     #
     # Only the colour changes; nothing is rebuilt. Call inside an operation.
-    def self.follow_door(model, cabinet)
-      cabinet_id = AttributeManager.cabinet_id(cabinet)
+    # A cabinet was moved and/or made wider or narrower (it grows along its own Y axis, from its origin): its side panels go with it. The panel against its
+    # right end (the high Y end) slides by the change of width, so it stays against the cabinet, and the one against its left end stays where it is;
+    # every panel keeps its own place along the cabinet (how far from the back, how high). `old_transformation` is where the cabinet was before.
+    # Call inside an operation.
+    def self.follow_target(model, cabinet, old_transformation, old_width, new_width)
+      panels = AttributeManager.end_panels_of(cabinet)
+      return if panels.empty?
+
+      inverse = old_transformation.inverse
+      change = new_width.to_f - old_width.to_f
+      panels.each do |panel|
+        stored = AttributeManager.read(panel)
+        relative = inverse * panel.transformation
+        slide = stored['side'] == 'right' ? change : 0.0
+        panel.transformation = cabinet.transformation * Geom::Transformation.translation(Geom::Vector3d.new(0, slide.mm, 0)) * relative
+        panel.set_attribute(AttributeManager::DICTIONARY, 'target_width', new_width.to_f)
+      end
+    end
+
+    def self.follow_door(model, cabinet)      cabinet_id = AttributeManager.cabinet_id(cabinet)
       return unless cabinet_id
 
       params = AttributeManager.read(cabinet)
