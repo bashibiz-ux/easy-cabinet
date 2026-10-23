@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.111.0';
+  const APP_VERSION = '1.111.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -422,7 +422,7 @@
     const open = async (kind) => {
       $('communityTitle').textContent = kind === 'news' ? 'News' : 'Forum';
       $('communityHelp').textContent = kind === 'news' ? 'The latest news from Easy Cabinet.' : 'This message board lets you exchange with the other users and the Easy Cabinet team.';
-      $('communityNew').hidden = true;
+      $('communityNew').hidden = true; $('communityButtons').classList.add('single');
       $('communityCard').classList.add('wide'); // (the news and the forum are read like a page)
       showList(true);
       empty('Loading...');
@@ -431,7 +431,7 @@
         const res = await call(kind === 'news' ? 'get_news' : 'get_forum', {});
         if (!res.ok) { empty(res.message); return; }
         const entries = kind === 'news' ? res.data.items : res.data.topics;
-        if (kind === 'forum' && res.data.new_url) { $('communityNew').hidden = false; $('communityNew').dataset.url = res.data.new_url; }
+        if (kind === 'forum' && res.data.new_url) { $('communityNew').hidden = false; $('communityButtons').classList.remove('single'); $('communityNew').dataset.url = res.data.new_url; }
         if (!entries.length) { empty(kind === 'news' ? 'There is no news yet.' : 'There are no conversations yet.'); return; }
         list.replaceChildren(...entries.map((entry) => newsPost(entry, kind)));
       } catch (error) {

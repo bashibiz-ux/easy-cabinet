@@ -474,6 +474,8 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 .btn-row.fb-send .btn, .modal .btn { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn-row.fb-send .btn { padding: 0 2px; font-size: 12px; }
 .btn-row.two-eq { grid-template-columns: 1fr 1fr; margin-top: 12px; }
+.btn-row.two-eq.single { grid-template-columns: minmax(0, 1fr); } /* (one button alone: the whole width, and its own right border) */
+.btn-row.two-eq.single > .btn, .btn-row.two-eq.single > .btn:not(:last-child) { border-right-width: 1px; }
 
 /* the Feedback window */
 .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(20, 28, 40, 0.45); }
