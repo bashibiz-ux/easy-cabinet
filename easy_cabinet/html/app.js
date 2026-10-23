@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.103.0';
+  const APP_VERSION = '1.103.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2526,8 +2526,13 @@ if (details.length) {
       if (action === 'insert_on_path') { payload.flip = $('kitchenPathFlip').checked; payload.wall_units = $('pathWallUnits').checked; } // (the tick of the Auto Kitchen card turns the cabinets round)
       if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
       if (extra) Object.assign(payload, extra);
+      if (action === 'insert') state.noFocusUntil = Date.now() + 600000; // (the Insert button selects the new item in the model: that must not open cards, change lists or scroll the panel)
       const res = await call(serverAction(action), payload);
       state.lastResult = res;
+      if (action === 'insert') {
+        if (res.ok) { state.noFocusUntil = Date.now() + 1500; setTimeout(() => { call('get_selection').catch(() => {}); }, 1700); } // (the late selection events are left alone, then what is selected is read once, as after a placing)
+        else state.noFocusUntil = 0;
+      }
       if (res.ok) {
         setStatus('ok', res.message);
         if (action === 'get_cut_list') { renderCutList(res.data || {}); state.cutShown = true; }
