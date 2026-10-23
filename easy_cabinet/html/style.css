@@ -480,7 +480,7 @@ input[type="checkbox"]:disabled { opacity: 0.5; cursor: default; }
 /* the Feedback window */
 .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(20, 28, 40, 0.45); }
 .modal[hidden] { display: none; }
-.modal-card { width: 100%; max-width: 420px; max-height: 100%; overflow: auto; padding: 16px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
+.modal-card { width: 100%; max-width: 420px; max-height: 100%; overflow: auto; padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid var(--line); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
 .modal-card h2 { margin: 0 0 6px; font-size: 16px; }
 .input.area { height: auto; align-items: stretch; padding: 8px 10px; }
 .modal-card textarea { display: block; width: 100%; min-height: 120px; resize: vertical; box-sizing: border-box; font: inherit; color: inherit; background: transparent; border: 0; outline: 0; padding: 0; line-height: 1.4; }
@@ -596,13 +596,13 @@ body.gallery-dragging * { cursor: grabbing !important; }
    again (a shake at every click). */
 .actions { position: relative; }
 /* The More tile opens a small menu over the bar (Donate, Feedback, Help) */
-.more-menu { position: absolute; right: 6px; bottom: 50px; z-index: 40; /* (over the message of the action bar, z-index 30) */ display: flex; flex-direction: column; min-width: 130px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28); }
+.more-menu { position: absolute; right: 6px; bottom: 50px; z-index: 40; /* (over the message of the action bar, z-index 30) */ display: flex; flex-direction: column; min-width: 130px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: #ffffff; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28); }
 .more-menu[hidden] { display: none; }
 .more-menu .btn.tile { height: 36px; border: 0; border-radius: 7px; justify-content: flex-start; padding: 0 12px; }
 .community-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; }
 .modal-card.wide { box-sizing: border-box; width: calc(100% - 44px); max-width: 760px; max-height: calc(100% - 44px); display: flex; flex-direction: column; } /* (room round it: a click on the dim area closes the window) */
 .modal-card.wide .community-list { flex: 1 1 auto; min-height: 0; max-height: none; }
-.news-post { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.news-post { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff; }
 .news-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
 .news-avatar { flex: none; width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--accent-soft); }
 .news-title { font-size: 16px; font-weight: 600; line-height: 1.25; }
@@ -627,8 +627,8 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .community-note { padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); }
 .card[hidden] { display: none; }
 /* The Support window: the goal for the next version */
-.support-intro { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: 13px; line-height: 1.5; }
-.support-goal { margin: 0 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); overflow: hidden; }
+.support-intro { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff; font-size: 13px; line-height: 1.5; }
+.support-goal { margin: 0 0 12px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff; overflow: hidden; }
 .support-goal[hidden], #supportMessage[hidden] { display: none; }
 .support-goal-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--accent-soft); font-size: 13px; }
 .support-sep { display: inline-block; width: 1px; height: 12px; margin: 0 8px; vertical-align: middle; background: var(--line-strong, var(--line)); }
