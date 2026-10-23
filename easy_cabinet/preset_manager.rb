@@ -27,7 +27,9 @@ module EasyCabinet
       text = Sketchup.read_default(SECTION, KEY, '').to_s
       text = text.unpack1('m').force_encoding('UTF-8') unless text.empty?
       values = text.empty? ? {} : JSON.parse(text)
-      Response.ok('', { 'values' => values.is_a?(Hash) ? clean(values) : {} })
+      values = {} unless values.is_a?(Hash)
+      values = migrate(values) unless text.empty?
+      Response.ok('', { 'values' => clean(values) })
     rescue JSON::ParserError, ArgumentError, ScriptError
       Response.ok('', { 'values' => {} })
     end
@@ -36,13 +38,22 @@ module EasyCabinet
       values = raw.is_a?(Hash) ? (raw['values'] || raw[:values]) : nil
       return Response.fail('There are no settings to save.') unless values.is_a?(Hash)
 
-      Sketchup.write_default(SECTION, KEY, [JSON.generate(clean(values))].pack('m0'))
+      Sketchup.write_default(SECTION, KEY, [JSON.generate(clean(values).merge('presetRev' => REVISION))].pack('m0'))
       Response.ok('')
     end
 
     def self.reset_presets
       Sketchup.write_default(SECTION, KEY, '')
       Response.ok('The saved settings were cleared. The panel starts from the standard values.')
+    end
+
+    # Settings saved by an earlier version have the Front Edge Radius it started with (3 mm): that is not a choice, so the radius starts from 0 now (the
+    # standard value) and is kept from then on as the user sets it. => the values, with the new revision.
+    REVISION = 2
+    def self.migrate(values)
+      return values if values['presetRev'].to_i >= REVISION
+
+      values.reject { |key, _| key == 'frontRadius' }.merge('presetRev' => REVISION)
     end
 
     # Only plain text, numbers and ticks under simple names; nothing else is kept.

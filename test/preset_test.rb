@@ -28,7 +28,16 @@ class PresetTest < Minitest::Test
   def test_what_is_saved_comes_back
     PresetManager.perform('save_presets', 'values' => { 'doorGap' => 2.0, 'topPanel' => 'full', 'toeCover' => true })
     answer = PresetManager.perform('load_presets', {})
-    assert_equal({ 'doorGap' => 2.0, 'topPanel' => 'full', 'toeCover' => true }, answer['data']['values'])
+    assert_equal({ 'doorGap' => 2.0, 'topPanel' => 'full', 'toeCover' => true, 'presetRev' => 2 }, answer['data']['values'])
+  end
+
+  def test_the_front_edge_radius_an_earlier_version_saved_is_dropped_once
+    Sketchup.write_default(PresetManager::SECTION, PresetManager::KEY, [JSON.generate('doorGap' => 2.0, 'frontRadius' => 3.0)].pack('m0'))
+    values = PresetManager.perform('load_presets', {})['data']['values']
+    assert_equal 2.0, values['doorGap']
+    refute values.key?('frontRadius'), 'the radius of an older version starts from the standard value'
+    PresetManager.perform('save_presets', 'values' => { 'doorGap' => 2.0, 'frontRadius' => 4.0 })
+    assert_equal 4.0, PresetManager.perform('load_presets', {})['data']['values']['frontRadius'], 'a radius the user sets is kept'
   end
 
   def test_nothing_saved_gives_an_empty_answer
