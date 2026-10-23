@@ -94,13 +94,30 @@ module EasyCabinet
       [link, nil]
     end
 
-    # The Online Guide button of the Help window: opens the guide in the browser.
+    GUIDE_PATH = File.join(__dir__, 'guide.html') # the guide that goes with the extension (the same page as docs/index.html)
+
+    # The address of the guide on this computer, for the browser: file:///C:/.../guide.html
+    def self.local_guide_url(path = GUIDE_PATH)
+      absolute = File.expand_path(path).tr(File::ALT_SEPARATOR.to_s, '/')
+      absolute = "/#{absolute}" unless absolute.start_with?('/')
+      "file://#{absolute.gsub(' ', '%20')}"
+    end
+
+    # The Online Guide button of the Help window: opens the guide in the browser, the one on the web when help_url is set in config.json, else the one that
+    # comes with the extension.
     def self.open_help
       url, problem = help_url
-      return Response.fail(problem) if problem
+      return Response.fail(problem) if url.nil? && !config['help_url'].to_s.strip.empty?
 
-      UI.openURL(url)
-      Response.ok('The Easy Cabinet guide opened in your browser.')
+      if url
+        UI.openURL(url)
+        Response.ok('The Easy Cabinet guide opened in your browser.')
+      elsif File.exist?(GUIDE_PATH)
+        UI.openURL(local_guide_url)
+        Response.ok('The Easy Cabinet guide opened in your browser.')
+      else
+        Response.fail('The guide could not be found.')
+      end
     end
 
     # `via`: 'mailto' (the mail program), 'gmail', 'outlook' or 'yahoo' (their web pages, opened in the browser) or 'text' (nothing is opened:

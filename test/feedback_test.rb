@@ -62,6 +62,9 @@ class FeedbackTest < Minitest::Test
     assert_equal [nil, 'The donation link must start with https://.'], FM.donation_url('http://example.com')
     assert_equal ['https://paypal.me/someone', nil], FM.donation_url(' https://paypal.me/someone ')
     assert_equal [nil, 'The online guide is not set up yet.'], FM.help_url('')
+    assert_equal 'file:///C:/My%20Folder/guide.html', FM.local_guide_url('C:/My Folder/guide.html')
+    assert File.exist?(FM::GUIDE_PATH), 'the guide is part of the extension'
+    assert_equal File.read(FM::GUIDE_PATH, encoding: 'UTF-8').delete(""), File.read(File.expand_path('../docs/index.html', __dir__), encoding: 'UTF-8').delete(""), 'docs/index.html is the same page'
     assert_equal [nil, 'The guide link must start with https://.'], FM.help_url('http://example.com')
     assert_equal ['https://example.com/guide', nil], FM.help_url(' https://example.com/guide ')
   end

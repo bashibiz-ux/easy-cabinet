@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Easy Cabinet Guide</title>
+<meta name="description" content="How to use Easy Cabinet, the SketchUp extension for kitchen cabinets and wardrobes.">
+<style>
+  :root {
+    --paper: #fbfaf7; --ink: #25282e; --muted: #656b76; --line: #dfdcd3; --accent: #b4561e; --accent-soft: #f6e7db; --card: #ffffff; --code: #efece4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #1c1e22; --ink: #e8e6e0; --muted: #a0a4ac; --line: #35383f; --accent: #e8935a; --accent-soft: #3a2b21; --card: #25272c; --code: #2d3036; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 36px; }
+  header.top { border-bottom: 1px solid var(--line); background: var(--card); }
+  header.top .wrap { display: block; padding: 28px 16px 22px; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; }
+  header.top p { margin: 0; color: var(--muted); }
+  nav { position: sticky; top: 16px; align-self: start; padding: 24px 0; font-size: 14px; }
+  nav a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--muted); text-decoration: none; }
+  nav a:hover { background: var(--accent-soft); color: var(--ink); }
+  main { padding: 24px 0 64px; min-width: 0; }
+  h2 { margin: 40px 0 10px; padding-top: 8px; font-size: 22px; border-top: 1px solid var(--line); }
+  h2:first-child { margin-top: 0; border-top: 0; }
+  h3 { margin: 24px 0 6px; font-size: 17px; }
+  p, ul, ol { margin: 0 0 12px; }
+  li { margin-bottom: 4px; }
+  code, kbd { padding: 1px 6px; border-radius: 5px; background: var(--code); font: 0.9em ui-monospace, Consolas, monospace; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; }
+  .tip { margin: 14px 0; padding: 10px 14px; border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--accent-soft); }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 15px; background: var(--card); border-radius: 8px; overflow: hidden; }
+  th, td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+  th { background: var(--accent-soft); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  footer { border-top: 1px solid var(--line); padding: 20px 16px 40px; color: var(--muted); font-size: 14px; text-align: center; }
+  @media (max-width: 760px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; }
+    nav { position: static; padding: 12px 0 0; display: flex; flex-wrap: wrap; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Easy Cabinet Guide</h1>
+    <p>Kitchen cabinets and wardrobes for SketchUp, from the first click to the cut list.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav aria-label="Contents">
+    <a href="#start">Getting started</a>
+    <a href="#placing">Placing cabinets</a>
+    <a href="#editing">Changing a cabinet</a>
+    <a href="#models">Models and handles</a>
+    <a href="#wardrobes">Wardrobes</a>
+    <a href="#extras">Fillers and panels</a>
+    <a href="#kitchen">Rooms and kitchens</a>
+    <a href="#appliances">Appliances and sinks</a>
+    <a href="#drawings">Dimensions and LayOut</a>
+    <a href="#cutlist">Cut list</a>
+    <a href="#buttons">Buttons</a>
+    <a href="#help">Help and feedback</a>
+  </nav>
+
+  <main>
+    <h2 id="start">Getting started</h2>
+    <p>Install the <code>.rbz</code> file with <strong>Extensions &gt; Extension Manager &gt; Install Extension</strong>. The new version appears at once: you do not have to close SketchUp. Open the panel from <strong>Extensions &gt; Easy Cabinet</strong>. You can dock it beside the model or leave it floating.</p>
+    <p>The panel is a stack of cards: Settings, Models, Auto Kitchen, Handle, My Appliances, Material, Cabinets and Extras, Worktop, Visibility, Rotate, Room and Cut List. Click a card title to open or close it. The buttons at the bottom (Insert, Update, At Point and the others) are always there.</p>
+    <div class="tip">All sizes are in the unit chosen in <strong>Settings</strong> (millimetres, centimetres, inches and so on). Change the unit and every field changes with it.</div>
+
+    <h2 id="placing">Placing cabinets</h2>
+    <h3>From the gallery</h3>
+    <p>Open <strong>Cabinets and Extras</strong>. Choose a <strong>Category</strong> (Base, Wall or Tall), and the gallery below shows every cabinet of that category as a picture, in 3D or 2D, in three sizes. Pictures follow the model you chose: with handles, with a Gola profile, or without handles.</p>
+    <ol>
+      <li>Type in the search field above the gallery to find a cabinet by name.</li>
+      <li>Click a cabinet. It follows your cursor in the model.</li>
+      <li>Click where it goes. On an edge, its back stands against that edge and its front faces you.</li>
+      <li>Use the <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> keys to turn it a quarter, and <kbd>Esc</kbd> to drop it.</li>
+    </ol>
+    <p>A cabinet placed this way stands on its toe kick. Drag inside the gallery, or use the mouse wheel, to scroll it.</p>
+    <h3>With the Insert button</h3>
+    <p>Choose a cabinet in the list, set its fields, and press <strong>Insert</strong>. It is placed next to the last cabinet or at the start of the row. <strong>At Point</strong> works like the gallery click for the cabinet shown in the panel. <strong>On Path</strong> uses the edges you selected as walls and places the cabinet again and again along them.</p>
+
+    <h2 id="editing">Changing a cabinet</h2>
+    <p>Select a cabinet in the model: its settings open in the panel. Edit a field and the cabinet changes at once (the <em>live</em> tick in Settings). Press <strong>Update</strong> to apply all fields in one go.</p>
+    <ul>
+      <li><strong>Size:</strong> width, depth, height and the number of shelves. A resize can move the neighbours and side panels with it.</li>
+      <li><strong>Doors and drawers:</strong> door gap, reveal and distance, front edge radius (0 gives square edges), opening angle.</li>
+      <li><strong>Adjustable heights:</strong> some cabinets have their own fields, such as the lower door height, the top door of a fridge unit, the width of a blind panel or the heights of the drawers.</li>
+      <li><strong>Duplicate</strong> copies the selected cabinet. <strong>Delete</strong> removes it. <strong>Undo</strong> goes back one step.</li>
+      <li><strong>Toggle</strong> opens and closes the doors and drawers.</li>
+    </ul>
+
+    <h2 id="models">Models and handles</h2>
+    <p>The <strong>Models</strong> card chooses the catalog:</p>
+    <div class="scroll"><table>
+      <tr><th>Catalog</th><th>What it gives</th></tr>
+      <tr><td>Kitchen Cabinet - with handle</td><td>Doors and drawers with a handle of your choice.</td></tr>
+      <tr><td>Kitchen Cabinet - Gola handle</td><td>A Gola profile instead of a handle (types B, C, D and E).</td></tr>
+      <tr><td>Kitchen Cabinet - without handle</td><td>A finger gap over the doors and drawers.</td></tr>
+      <tr><td>Wardrobe</td><td>Hinged, sliding, open and corner wardrobes. See below.</td></tr>
+    </table></div>
+    <p>The <strong>Handle</strong> card picks the handle, its length, finish, position and direction. The <strong>Material</strong> card sets the colours and boards of the carcass and the fronts; materials can also come from your own model. <strong>Front Design</strong> gives the fronts a flat, shaker, fluted or other look, and a glass door option is available.</p>
+    <p>Your own cabinets can be saved to a catalog of yours (<em>My cabinets</em>) and used again.</p>
+
+    <h2 id="wardrobes">Wardrobes</h2>
+    <p>Choose the <strong>Wardrobe</strong> catalog and the Tall category. The units are 2400 mm high and 600 mm deep to start with:</p>
+    <div class="scroll"><table>
+      <tr><th>Unit</th><th>Doors</th><th>Starts at</th></tr>
+      <tr><td>Wardrobe - 2 / 3 / 4 hinged doors</td><td>Hinged, full height</td><td>1000 / 1500 / 2000 mm wide</td></tr>
+      <tr><td>Wardrobe - 2 / 3 sliding doors</td><td>Overlapping, on two tracks</td><td>1500 / 2100 mm wide</td></tr>
+      <tr><td>Wardrobe - open, 2 / 3 sections</td><td>None</td><td>1000 / 1800 mm wide</td></tr>
+      <tr><td>Wardrobe - corner L shape</td><td>Two hinged doors</td><td>1000 mm</td></tr>
+    </table></div>
+    <h3>Inside the wardrobe</h3>
+    <ul>
+      <li><strong>Dividers</strong> (0 to 5) split the wardrobe into sections of the same width. Sections narrower than 250 mm are refused.</li>
+      <li><strong>Hanging rail</strong>: when ticked, the 1st, 3rd and so on sections hang clothes, with a round rail under a shelf. The other sections have shelves.</li>
+      <li><strong>Shelves</strong> sets how many shelves each shelf section has.</li>
+    </ul>
+    <p>Sliding doors open and close with <strong>Toggle</strong>: the doors in the front track run along the ones behind. The gallery shows the open wardrobes with garments and folded towels, for the picture only.</p>
+
+    <h2 id="extras">Fillers and panels</h2>
+    <p>Besides cabinets, the Category list has these extras. Each one has its own picture in the gallery; click it to choose it, set its fields, and press Insert.</p>
+    <ul>
+      <li><strong>Filler:</strong> a board beside a cabinet that closes a gap.</li>
+      <li><strong>Side Panel:</strong> covers the side of a cabinet. With the side panels switch on, panels are placed where a side is open, and they move with the cabinet when it is resized.</li>
+      <li><strong>Toe Kick:</strong> the plinth under the base cabinets.</li>
+      <li><strong>Wall Bottom Panel:</strong> a panel under the wall units.</li>
+      <li><strong>Panel:</strong> a plain board of any size.</li>
+      <li><strong>Ceiling Filler:</strong> closes the gap between the tall or wall units and the ceiling.</li>
+    </ul>
+    <p>The <strong>Worktop</strong> card puts a worktop and a back splash over the base cabinets, with the front and end overhang and the edge you choose. <strong>Loft</strong> units sit over the wall and tall units.</p>
+
+    <h2 id="kitchen">Rooms and kitchens</h2>
+    <h3>Room</h3>
+    <p>The <strong>Room</strong> card builds the walls of a room from their lengths, with a door and up to two windows, and can remove or update it later. Each wall, door and window has its own size and position.</p>
+    <h3>Auto Kitchen</h3>
+    <p>The <strong>Auto Kitchen</strong> card designs a kitchen for the room you built (or along the edges you selected): you answer a few questions, such as the layout, the appliances and the units you want, and the cabinets, appliances, worktop and wall units are placed for you. Change an answer and the kitchen is built again. You can mirror the kitchen and turn the units round.</p>
+
+    <h2 id="appliances">Appliances and sinks</h2>
+    <p>Cabinets that hold appliances show them in the model: the oven, microwave, hob, hood, built-in and free-standing fridges, and sinks with a tap. They are drawn from the Teka models listed here, with realistic steel, glass and displays:</p>
+    <div class="scroll"><table>
+      <tr><th>Appliance</th><th>Model</th></tr>
+      <tr><td>Oven</td><td>HSB 6456 SS</td></tr>
+      <tr><td>Microwave</td><td>MWE 255 FI</td></tr>
+      <tr><td>Hob</td><td>EX 90 1 5G</td></tr>
+      <tr><td>Hood</td><td>Integra GFI 67350</td></tr>
+      <tr><td>Fridge</td><td>RBF 3450 SS</td></tr>
+      <tr><td>Sinks</td><td>Diamond RS15 1B 1D 86, Zenit RS15 2B 1D R, Flexlinea RS15 2B 740 and Zenit RS15 1B, each with the Uni 9310 mixer</td></tr>
+    </table></div>
+    <p>The <strong>Visibility</strong> card shows or hides the carcass, doors, toe kicks, worktop, appliances, handles, names and the door direction symbols. The <strong>My Appliances</strong> card adds your own appliance models.</p>
+
+    <h2 id="drawings">Dimensions and LayOut</h2>
+    <ul>
+      <li><strong>Dimensions:</strong> tick it in Settings and the plan (width and depth) and height dimensions are drawn for the cabinets and kept up to date.</li>
+      <li><strong>LayOut scenes:</strong> the Room card can create scenes (plan, elevations and 3D views) ready to send to LayOut. In LayOut, insert the model and choose one scene for each viewport.</li>
+      <li>The <strong>Door direction</strong> symbols on the plan and on the elevations can be shown or hidden in Visibility.</li>
+    </ul>
+
+    <h2 id="cutlist">Cut list</h2>
+    <p>The <strong>Cut List</strong> card lists every part of the cabinets by material and thickness, with its length, width and number. You can group the parts, show names, and export the list to a file for your saw or for a cutting optimiser.</p>
+
+    <h2 id="buttons">The buttons at the bottom</h2>
+    <div class="scroll"><table>
+      <tr><th>Button</th><th>What it does</th></tr>
+      <tr><td>Insert</td><td>Places the cabinet or extra shown in the panel.</td></tr>
+      <tr><td>Update</td><td>Applies the fields to the selected cabinet.</td></tr>
+      <tr><td>At Point</td><td>Places the cabinet where you click, against an edge.</td></tr>
+      <tr><td>On Path</td><td>Places the cabinet along the selected edges (the walls).</td></tr>
+      <tr><td>Duplicate</td><td>Copies the selected cabinet.</td></tr>
+      <tr><td>Toggle</td><td>Opens or closes the doors of the selected cabinet, or all doors if nothing is selected.</td></tr>
+      <tr><td>Undo</td><td>Goes back one step in the model.</td></tr>
+      <tr><td>Delete</td><td>Removes the selected cabinet.</td></tr>
+      <tr><td>More</td><td>Opens a menu: Donate, Feedback and Help.</td></tr>
+    </table></div>
+
+    <h2 id="help">Help and feedback</h2>
+    <p>Press <strong>More</strong> at the bottom of the panel:</p>
+    <ul>
+      <li><strong>Help</strong> shows a short guide and a button to open this page.</li>
+      <li><strong>Feedback</strong> writes a comment, a suggestion or a problem report. It is sent from your own mail program (or Gmail, Outlook or Yahoo in your browser), and you can add the version of Easy Cabinet and SketchUp.</li>
+      <li><strong>Donate</strong> opens the donation page. Easy Cabinet is made by one person, and every donation helps to keep it going.</li>
+    </ul>
+    <p>If something does not work, send a problem report with what you did, the cabinet you used, and the version shown in <strong>Extensions &gt; Extension Manager</strong>.</p>
+  </main>
+</div>
+
+<footer>Easy Cabinet for SketchUp, by Bashi</footer>
+</body>
+</html>
