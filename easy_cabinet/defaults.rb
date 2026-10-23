@@ -156,6 +156,7 @@ module EasyCabinet
 
       'door_opening_direction' => 'left',
       'door_opening_angle'     => 90.0,
+      'symbol_angle'           => 90.0, # the door leaves of the symbol on the floor are drawn open at this angle
       'show_opening_direction' => false, # the plan symbol on the floor (ticked by the user when wanted)
       'corner_style' => '',        # a corner unit's shape: diagonal, l_shape or blind (blank = an ordinary cabinet)
       'door_stacked' => false,        # two doors one above the other (a built-in fridge-freezer); front_zone is the top door's height

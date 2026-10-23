@@ -315,7 +315,7 @@ module EasyCabinet
     # kick, so a change of toe-kick height must not rebuild the lines.
     def self.indicator_signature(doors, angle, base_z)
       shapes = doors.reject { |d| %w[top fold].include?(d.hinge) || d.slide }
-                    .map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2), angle_for(d, angle)] }
+                    .map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2)] }
       shapes.push(angle.to_f).inspect
     end
 
@@ -333,8 +333,7 @@ module EasyCabinet
     def self.plan_indicator(door, angle, base_z)
       return drawer_arrow(door, base_z) if door.hinge == 'center'
 
-      angle = angle_for(door, angle)
-      px, py, = door.pivot
+      px, py, = door.pivot # (the leaves are drawn open at the angle asked, whatever the door itself opens to)
       thickness, width, = door.extent
       z = -base_z # the cabinet's floor (its Z = 0), relative to the container that sits at base Z
       direction = door.hinge == 'left' ? 1.0 : -1.0

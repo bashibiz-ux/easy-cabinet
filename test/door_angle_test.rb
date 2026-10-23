@@ -34,6 +34,23 @@ class DoorAngleTest < Minitest::Test
     assert_equal DoorAnimation::LIFT_MAX_ANGLE, DoorAnimation.angle_for(door('top'), 170.0)
   end
 
+  def test_the_floor_symbol_leaf_opens_at_the_angle_asked_and_the_arc_stops_on_it
+    [45.0, 120.0].each do |angle|
+      lines = DoorAnimation.indicator_segments([door('left', 150.0)], angle, 0.0) # (a door that itself opens at least 150: the symbol ignores that)
+      hinge = lines.first.first
+      leaves = lines.select { |from, _| from == hinge }.reject { |_, to| to[2] != hinge[2] }
+      closed, opened = leaves[0][1], leaves[1][1]
+      turned = Math.atan2(opened[1] - hinge[1], opened[0] - hinge[0]) - Math.atan2(closed[1] - hinge[1], closed[0] - hinge[0])
+      assert_in_delta angle, turned.abs * 180.0 / Math::PI, 0.5, "the leaf is open #{angle} degrees"
+      arc = lines.reject { |from, to| from == hinge || to == hinge || from[2] != to[2] }
+      ends = (arc.map(&:first) + arc.map(&:last)).uniq
+      radius = ->(p) { Math.hypot(p[0] - hinge[0], p[1] - hinge[1]) }
+      assert ends.all? { |p| (radius.call(p) - radius.call(closed)).abs < 0.5 }, 'the arc stays on the circle of the leaf'
+      assert_includes ends, opened, 'the arc ends on the open leaf'
+      assert_includes ends, closed, 'and starts on the closed one'
+    end
+  end
+
   def test_a_lift_up_door_has_no_plan_line_but_a_symbol_on_its_face
     assert_empty DoorAnimation.indicator_segments([door('top')], 90.0, 100.0)
     refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0)

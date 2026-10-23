@@ -28,6 +28,7 @@ module EasyCabinet
       'door_distance'         => { label: 'Door distance', min: 0.0, max: 50.0 },
       'front_radius'          => { label: 'Front edge radius', min: 0.0, max: 9.0 },
       'door_opening_angle'    => { label: 'Opening angle', min: 1.0, max: 170.0, unit: 'degrees' },
+      'symbol_angle'          => { label: 'Floor symbol angle', min: 1.0, max: 170.0, unit: 'degrees' },
       'placement_gap'         => { label: 'Gap between cabinets', min: 0.0, max: 100.0 },
       # A cabinet only needs the toe-kick HEIGHT (how far it stands off the floor);
       # the toe kick itself is a separate entity, see validate_toe_kick.

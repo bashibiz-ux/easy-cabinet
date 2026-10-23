@@ -508,7 +508,8 @@ module EasyCabinet
     # built; the "Door opening direction on the floor" tick only flips its
     # visibility. (The symbol on each door is sync_door_symbol.)
     def self.sync_indicator(model, root, top, params, layout, doors_visible)
-      angle = params['door_opening_angle'].to_f
+      angle = params['symbol_angle'].to_f # (the angle of the field for the symbol, not the one the doors open to)
+      angle = 90.0 unless angle.positive?
 
       moving = layout.doors + layout.drawers # doors swing, drawers slide out: both have a plan symbol
       if moving.empty?

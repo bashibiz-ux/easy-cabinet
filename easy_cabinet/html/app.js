@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.112.0';
+  const APP_VERSION = '1.113.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -46,6 +46,7 @@
     top_panel_style: 'topPanel',
     door_opening_direction: 'direction',
     door_opening_angle: 'angle',
+    symbol_angle: 'symbolAngle',
     cabinet_category: 'category',
     cabinet_type: 'cabinet',
     placement_gap: 'gap',
@@ -113,6 +114,7 @@
     door_height_adjust: 'doorHeightAdjust',
     drawer_height_adjust: 'drawerHeightAdjust',
     door_opening_angle: 'angle',
+    symbol_angle: 'symbolAngle',
     placement_gap: 'gap',
     width: 'width',
     depth: 'depth',
@@ -1285,6 +1287,7 @@ function currentCabinet() {
       top_panel_style: $('topPanel').value,
       door_opening_direction: $('direction').value,
       door_opening_angle: $('angle').value,
+      symbol_angle: $('symbolAngle').value,
       show_opening_direction: $('showDirection').checked,
       show_door_symbol: $('showDoorSymbol').checked,
       show_wall_opening_direction: $('showWallDirection').checked,
@@ -2802,6 +2805,7 @@ if (details.length) {
     doorReveal: ['door_reveal', 'doorReveal'],
     doorDistance: ['door_distance', 'doorDistance'],
     angle: ['door_opening_angle', 'angle'],
+    symbolAngle: ['symbol_angle', 'symbolAngle'],
     direction: ['door_opening_direction', 'direction'],
     glassMaterial: ['glass_material', 'glassMaterial'],
     frontRadius: ['front_radius', 'frontRadius'],
