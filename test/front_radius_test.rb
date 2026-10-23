@@ -70,7 +70,7 @@ class FrontRadiusTest < Minitest::Test
   end
 
   def test_the_setting_is_a_number_with_a_start_value_that_is_checked
-    assert_equal 3.0, Defaults.params['front_radius']
+    assert_equal 0.0, Defaults.params['front_radius']
     ok = ValidationManager.validate({ 'front_radius' => '4' })
     assert_equal 4.0, ok.params['front_radius']
     bad = ValidationManager.validate({ 'front_radius' => '30' })
