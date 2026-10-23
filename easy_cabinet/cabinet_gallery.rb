@@ -41,6 +41,7 @@ module EasyCabinet
       end
       layout.panels.to_a.each { |panel| parts << lifted.call(part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel)) }
       layout.appliances.to_a.each { |item| appliance_parts(item).each { |box| parts << lifted.call(box) } }
+      wardrobe_things(layout, params).each { |box| parts << lifted.call(box) } # (the clothes and towels an open wardrobe shows)
       layout.drawers.to_a.each { |front| parts << part('drawer', front) }
       layout.doors.to_a.each { |door| parts << part('door', door) }
       (layout.drawers.to_a + layout.doors.to_a).each { |front| parts.concat(gola_parts(front)) } if mode == 'gola'
@@ -51,6 +52,37 @@ module EasyCabinet
       end
       { 'w' => params['width'].to_f, 'd' => params['depth'].to_f, 'h' => params['height'].to_f, 'lift' => lift, 'cat' => params['cabinet_category'].to_s, 'mode' => mode, 'parts' => parts }
     end
+
+    # An open wardrobe has no doors to hide what is inside, so its picture shows it lived in: garments on the hanging rails, and stacks of folded towels on the
+    # shelves (every second one). Pictures only: nothing of this is in the model.
+    GARMENT_COLOURS = %w[#7c8aa5 #c9c2b4 #3f4a5c #a35d52 #d9d4c8 #5f7a63 #8b7a99 #2f3b4d #c4a46a #9aa6b2].freeze
+    TOWEL_COLOURS = %w[#e9e4d8 #b9c7d6 #c8b49a #8fa59a #d8b9b3].freeze
+    def self.wardrobe_things(layout, params)
+      return [] unless params['wardrobe'] == true && layout.doors.to_a.empty? && layout.drawers.to_a.empty?
+
+      things = []
+      layout.panels.to_a.each do |panel|
+        role = panel.role.to_s
+        x, y, z = panel.offset
+        dx, dy, dz = panel.extent
+        if role.start_with?('rail_') # (a garment hangs by its shoulders from the rail: it is wide front to back and thin along the rail)
+          count = (dy / 55.0).floor - 1
+          (0...count).each do |i|
+            length = [1150.0, 780.0, 640.0, 1020.0, 520.0][i % 5]
+            things << { 'k' => 'cloth', 'c' => GARMENT_COLOURS[i % GARMENT_COLOURS.length], 'o' => [(x + (dx / 2.0) - 210.0).round(1), (y + 25.0 + (i * 55.0)).round(1), (z + (dz / 2.0) - length + 12.0).round(1)], 'e' => [420.0, 38.0, length] }
+          end
+        elsif role.start_with?('shelf_') && role.split('_').last.to_i.odd? && dz.to_f < 30.0
+          width = [dy - 80.0, 320.0].min
+          next unless width > 120.0
+
+          [150.0, 105.0, 70.0].each_with_index do |_h, n|
+            things << { 'k' => 'cloth', 'c' => TOWEL_COLOURS[(role.hash.abs + n) % TOWEL_COLOURS.length], 'o' => [(x + 40.0).round(1), (y + 40.0).round(1), (z + dz + (n * 45.0)).round(1)], 'e' => [380.0, width.round(1), 45.0] }
+          end
+        end
+      end
+      things
+    end
+    private_class_method :wardrobe_things
 
     MIN_DETAIL_MM = 9.0 # an appliance part smaller than this (a figure of a display, a button, a letter) is left out of a picture
 

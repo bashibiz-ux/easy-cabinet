@@ -132,6 +132,7 @@
     const out = [];
     // the left outer face of the carcass hides what is inside it (the oven, the bowl of a sink): it is drawn after the appliances, which are not seen from the side
     const bodyLeft = Math.min(...(shape.parts || []).filter((part) => part.k === 'body').flatMap((part) => footprint(part).map((p) => p[1])));
+    const bodyTop = Math.max(...(shape.parts || []).filter((part) => part.k === 'body' && !part.p).map((part) => part.o[2] + part.e[2]));
     (shape.parts || []).forEach((part, index) => {
       if (part.tp) return; // (a pipe is drawn as a pipe, see pipes3d)
       prism(part).forEach((face) => {
@@ -143,7 +144,8 @@
         const outerLeft = part.k === 'body' && face.normal[1] < -0.9 && Math.abs(face.points[0][1] - bodyLeft) < 1.5;
         const layer = outerLeft ? 1.5 : (LAYER[part.k] || 0);
         // (what stands on the front of the carcass is ordered by how far forward it is: a wide face has its middle far to one side, which must not decide)
-        const key = layer === 0 ? depth : face.points.reduce((sum, p) => sum + (p[0] * Math.cos(YAW)) - (p[1] * Math.sin(YAW) * 0.15), 0) / face.points.length;
+        const lid = layer === 0 && part.k === 'body' && face.normal[2] > 0.9 && part.o[2] + part.e[2] >= bodyTop - 0.5 ? 100000 : 0; // (the top face of the carcass is over everything inside it)
+        const key = layer === 0 ? depth + lid : face.points.reduce((sum, p) => sum + (p[0] * Math.cos(YAW)) - (p[1] * Math.sin(YAW) * 0.15), 0) / face.points.length;
         out.push({ points: projected, depth, key, layer, order: ORDER[part.k] || 0, index, fill: shade(part.c || COLOURS[part.k] || COLOURS.body, lit), kind: part.k, alpha: part.a, sheen: front && (part.k === 'door' || part.k === 'drawer' || part.s === true), top: part.s === true && face.normal[2] > 0.9 });
       });
     });
