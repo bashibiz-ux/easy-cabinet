@@ -94,6 +94,16 @@ class CommunityTest < Minitest::Test
     assert_equal '', CM.repo('')
   end
 
+  def test_the_support_goal_shows_the_target_what_was_raised_and_what_is_left
+    answer = CM.support('https://example.com/s.json', feed('objective' => 'Version 2.0', 'target' => 1000, 'raised' => 340.5, 'contributors' => 12, 'text' => 'Thank you'))
+    assert answer['ok']
+    assert_equal ['Version 2.0', 1000.0, 340.5, 659.5, 34, 12], answer['data'].values_at('objective', 'target', 'raised', 'remaining', 'percent', 'contributors')
+    over = CM.support('https://example.com/s.json', feed('target' => 500, 'raised' => 900)).fetch('data')
+    assert_equal [0.0, 100], over.values_at('remaining', 'percent'), 'a goal that is passed is full, with nothing left'
+    refute CM.support('https://example.com/s.json', feed('target' => 0, 'raised' => 5))['ok'], 'a goal needs a target'
+    refute CM.support('')['ok']
+  end
+
   def test_only_an_https_link_is_opened
     assert CM.open_link({ 'url' => 'https://example.com/x' })['ok']
     assert_equal 'https://example.com/x', UI.opened

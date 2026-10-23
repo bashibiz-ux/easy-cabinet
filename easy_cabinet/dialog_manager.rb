@@ -92,6 +92,7 @@ module EasyCabinet
         when 'open_help'     then FeedbackManager.open_help
         when 'get_news'      then CommunityManager.news
         when 'get_forum'     then CommunityManager.forum
+        when 'get_support'   then CommunityManager.support
         when 'open_link'     then CommunityManager.open_link(data)
         when 'cancel_place'  then (PlaceTool.cancel; Response.ok('')) # (Esc in the panel: the cabinet that follows the cursor is dropped)
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })

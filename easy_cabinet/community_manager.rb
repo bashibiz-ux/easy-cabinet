@@ -138,6 +138,23 @@ module EasyCabinet
       Response.fail("Unable to load the topic list. #{e.message}")
     end
 
+    # The Support window: the goal for the next version, in US dollars, read from a small JSON file (support_url in config.json):
+    #   { "objective": "Version 2.0", "target": 1000, "raised": 340, "contributors": 12, "text": "..." }
+    # => Response with { objective, target, raised, remaining, percent, contributors, text }.
+    def self.support(url = setting('support_url'), reader = method(:fetch))
+      return Response.fail('The support goal is not set up yet.') if url.to_s.empty?
+
+      data = JSON.parse(reader.call(url))
+      target = data['target'].to_f
+      return Response.fail('The support goal has no target.') unless target.positive?
+
+      raised = [data['raised'].to_f, 0.0].max
+      Response.ok('', { 'objective' => text(data['objective'], 60), 'target' => target.round(2), 'raised' => raised.round(2), 'remaining' => [target - raised, 0.0].max.round(2),
+                        'percent' => [(raised / target * 100.0).floor, 100].min, 'contributors' => data['contributors'].to_i.clamp(0, 999_999), 'text' => text(data['text'], 400) })
+    rescue StandardError => e
+      Response.fail("Unable to load the support goal. #{e.message}")
+    end
+
     # A link of the lists (an article, a topic, a new conversation) opens in the browser.
     def self.open_link(raw)
       url = link(raw['url'])

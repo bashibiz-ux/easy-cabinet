@@ -1054,6 +1054,30 @@
     </div>
   </footer>
 
+  <!-- Support: the goal for the next version in US dollars: the target, what was raised and what is left (see CommunityManager.support) -->
+  <div class="modal" id="supportModal" hidden>
+    <div class="modal-card wide" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
+      <h2 id="supportTitle">Support</h2>
+      <div class="support-intro">Easy Cabinet is made by one person and supported by its users. Support this project by making a financial contribution!</div>
+      <div class="support-goal" id="supportGoal" hidden>
+        <div class="support-goal-head"><span><strong id="supportObjective">Objective</strong><span class="support-sep"></span><span id="supportFunded"></span></span><span class="support-target" id="supportTarget"></span></div>
+        <div class="support-bar"><div class="support-fill" id="supportFill"><span id="supportRaisedLabel"></span></div></div>
+        <div class="support-figures">
+          <div><span class="support-figure-label">Target</span><strong id="supportTarget2"></strong></div>
+          <div><span class="support-figure-label">Achieved</span><strong id="supportRaised"></strong></div>
+          <div><span class="support-figure-label">Remaining</span><strong id="supportRemaining"></strong></div>
+        </div>
+        <div class="support-people" id="supportPeople"></div>
+        <p class="help-text" id="supportText"></p>
+      </div>
+      <p class="help-text" id="supportMessage" hidden></p>
+      <div class="btn-row two-eq">
+        <button class="btn ghost" type="button" id="supportClose">Close</button>
+        <button class="btn tint support-contribute" type="button" id="supportContribute" title="Opens the donation page in your browser">Contribute...</button>
+      </div>
+    </div>
+  </div>
+
   <!-- News and Forum: lists read from the web when the window opens (see CommunityManager) -->
   <div class="modal" id="communityModal" hidden>
     <div class="modal-card" id="communityCard" role="dialog" aria-modal="true" aria-labelledby="communityTitle">

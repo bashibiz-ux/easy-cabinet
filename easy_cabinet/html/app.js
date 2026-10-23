@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.113.0';
+  const APP_VERSION = '1.114.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -455,9 +455,44 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
   }
 
-  function wireDonate() {    const button = $('openDonate');
-    if (!button) return;
+  // The Donate item of the More menu opens the Support window: the goal for the next version in US dollars (the target, what was achieved, what is left),
+  // read from the web when it opens. Contribute... opens the donation page.
+  function wireDonate() {
+    const button = $('openDonate');
+    const modal = $('supportModal');
+    if (!button || !modal) return;
+    const usd = (value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(Number(value)) ? 0 : 2, maximumFractionDigits: 2 })}`;
+    const close = () => { modal.hidden = true; };
     button.addEventListener('click', async () => {
+      $('supportGoal').hidden = true;
+      $('supportMessage').hidden = false;
+      $('supportMessage').textContent = 'Loading...';
+      modal.hidden = false;
+      try {
+        const res = await call('get_support', {});
+        if (!res.ok) { $('supportMessage').textContent = res.message; return; }
+        const goal = res.data;
+        $('supportMessage').hidden = true;
+        $('supportObjective').textContent = goal.objective || 'Objective';
+        $('supportFunded').textContent = `funded at ${goal.percent}%`;
+        $('supportTarget').textContent = usd(goal.target);
+        $('supportTarget2').textContent = usd(goal.target);
+        $('supportRaised').textContent = usd(goal.raised);
+        $('supportRemaining').textContent = usd(goal.remaining);
+        $('supportRaisedLabel').textContent = goal.raised > 0 ? usd(goal.raised) : '';
+        $('supportFill').style.width = `${goal.percent}%`;
+        $('supportPeople').textContent = goal.contributors ? `${goal.contributors} financial ${goal.contributors === 1 ? 'contributor' : 'contributors'}` : '';
+        $('supportText').textContent = goal.text || '';
+        $('supportText').hidden = !goal.text;
+        $('supportGoal').hidden = false;
+      } catch (error) {
+        $('supportMessage').textContent = error.message;
+      }
+    });
+    $('supportClose').addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+    $('supportContribute').addEventListener('click', async () => {
       try {
         const res = await call('open_donation', {});
         setStatus(res.ok ? 'ok' : 'error', res.message);

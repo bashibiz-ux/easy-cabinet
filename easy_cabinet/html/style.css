@@ -626,6 +626,22 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .community-empty { padding: 14px 4px; font-size: 12.5px; color: var(--muted); text-align: center; }
 .community-note { padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); }
 .card[hidden] { display: none; }
+/* The Support window: the goal for the next version */
+.support-intro { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: 13px; line-height: 1.5; }
+.support-goal { margin: 0 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); overflow: hidden; }
+.support-goal[hidden], #supportMessage[hidden] { display: none; }
+.support-goal-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--accent-soft); font-size: 13px; }
+.support-sep { display: inline-block; width: 1px; height: 12px; margin: 0 8px; vertical-align: middle; background: var(--line-strong, var(--line)); }
+.support-target { font-weight: 600; }
+.support-bar { margin: 14px; height: 24px; border-radius: 4px; background: var(--sheet, rgba(120, 130, 150, 0.14)); overflow: hidden; }
+.support-fill { position: relative; min-width: 2px; height: 100%; display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(135deg, #e94f9c 0 10px, #f06eb0 10px 20px); color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+.support-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 14px 12px; text-align: center; }
+.support-figure-label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.support-figures strong { font-size: 17px; }
+.support-people { padding: 0 14px 6px; font-size: 12px; color: var(--muted); text-align: center; }
+.support-goal .help-text { padding: 0 14px; }
+.btn.support-contribute { background: #e94f9c; border-color: #c93d84; color: #fff; }
+.btn.support-contribute:hover:not(:disabled) { background: #f06eb0; }
 /* A group of the Settings that opens and closes (closed to begin with) */
 .group-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; border-left: 0; border-right: 0; border-bottom: 0; background: transparent; text-align: left; cursor: pointer; }
 .group-toggle::after { content: ''; width: 6px; height: 6px; margin-right: 4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform 0.15s var(--ease); }
