@@ -594,3 +594,6 @@ body.gallery-dragging * { cursor: grabbing !important; }
    again (a shake at every click). */
 .actions { position: relative; }
 .actions .status { position: absolute; left: 14px; right: 14px; bottom: calc(100% + 6px); margin: 0; z-index: 30; box-shadow: 0 3px 14px rgba(30, 45, 70, 0.22); }
+
+.gcard .gnote { white-space: normal; line-height: 1.25; }
+.gallery-grid[data-size="small"] .gnote { display: none; }

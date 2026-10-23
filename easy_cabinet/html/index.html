@@ -616,7 +616,7 @@
 
         <!-- The gallery: every cabinet of the Category above, in the order and with the names of the Cabinet list, as pictures (a front view or a 3D view) in three sizes.
              Click one to choose it; drag it out of the panel into the model, then click where it goes. It can be minimised. -->
-        <div class="gallery cabinet-only" id="gallery">
+        <div class="gallery" id="gallery">
           <div class="gallery-bar">
             <button class="gallery-toggle" type="button" id="galleryToggle" aria-expanded="true" title="Show or hide the gallery"><span class="gallery-title">Cabinet Gallery</span><span class="gallery-count" id="galleryCount"></span></button>
           </div>
@@ -629,8 +629,8 @@
                 <button type="button" data-gallery-size="small" title="Small pictures">Small</button><button type="button" data-gallery-size="medium" title="Medium pictures">Medium</button><button type="button" data-gallery-size="big" title="Big pictures">Big</button>
               </div>
             </div>
-            <div class="gallery-search"><input id="gallerySearch" type="search" placeholder="Search the cabinets by name..." autocomplete="off" aria-label="Search the cabinets by name"></div>
-            <p class="gallery-hint">Click a cabinet: it is chosen and follows the cursor; click in the model where it goes. Drag the gallery up or down to scroll.</p>
+            <div class="gallery-search"><input id="gallerySearch" type="search" placeholder="Search by name..." autocomplete="off" aria-label="Search the gallery by name"></div>
+            <p class="gallery-hint" id="galleryHint">Click a cabinet: it is chosen and follows the cursor; click in the model where it goes. Drag the gallery up or down to scroll.</p>
             <div class="gallery-grid scroll" id="galleryGrid" data-size="medium"></div>
           </div>
         </div>

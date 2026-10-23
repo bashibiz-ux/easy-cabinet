@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.101.1';
+  const APP_VERSION = '1.102.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -1501,12 +1501,14 @@ function currentCabinet() {
     const box = $('gallery');
     if (!box || !window.EC_GALLERY) return;
     syncGalleryControls();
+    if (categoryKind() !== 'cabinet') { renderExtras(); return; } // (a filler, a side panel, a toe kick ...: the extras are what the gallery shows)
+    $('galleryHint').textContent = GALLERY_HINT;
     const grid = $('galleryGrid');
     const all = groupCabinets(state.cabinets);
     const words = gallery.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const entries = words.length ? all.filter((entry) => words.every((word) => entry.name.toLowerCase().includes(word))) : all; // (the search: every word is in the name)
     $('galleryCount').textContent = all.length ? (words.length ? `(${entries.length} of ${all.length})` : `(${all.length})`) : '';
-    if (gallery.min || categoryKind() !== 'cabinet') return; // (nothing is drawn while it is minimised: it is drawn when it opens)
+    if (gallery.min) return; // (nothing is drawn while it is minimised: it is drawn when it opens)
     const shapes = await galleryShapes();
     const current = groupCabinets(state.cabinets); // (the list may have changed while the pictures came)
     if (current.length !== all.length || (current[0] && all[0] && current[0].id !== all[0].id)) return;
@@ -1544,7 +1546,57 @@ function currentCabinet() {
   function markGallery() {
     const grid = $('galleryGrid');
     if (!grid) return;
-    grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === $('cabinet').value));
+    const current = categoryKind() === 'cabinet' ? $('cabinet').value : $('category').value;
+    grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === current));
+  }
+
+  const GALLERY_HINT = 'Click a cabinet: it is chosen and follows the cursor; click in the model where it goes. Drag the gallery up or down to scroll.';
+  const EXTRAS_HINT = 'Click one to choose it: its settings open below. Then press Insert (or select the item in the model to change it).';
+
+  // The gallery of the extras: a filler, a side panel, a toe kick, a wall bottom panel, a panel and a ceiling filler, each as a picture. A click chooses it in the Category list.
+  function renderExtras() {
+    const grid = $('galleryGrid');
+    const words = gallery.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const all = [...$('category').options].filter((option) => PART_CATEGORIES.includes(option.value)).map((option) => ({ id: option.value, name: option.text }));
+    const entries = words.length ? all.filter((entry) => words.every((word) => entry.name.toLowerCase().includes(word))) : all;
+    $('galleryCount').textContent = all.length ? (words.length ? `(${entries.length} of ${all.length})` : `(${all.length})`) : '';
+    $('galleryHint').textContent = EXTRAS_HINT;
+    if (gallery.min) return;
+    grid.textContent = '';
+    if (!entries.length) {
+      const none = document.createElement('div');
+      none.className = 'gallery-empty';
+      none.textContent = all.length ? 'Nothing has that name' : 'Choose a model to see its extras';
+      grid.append(none);
+      return;
+    }
+    const draw = gallery.view === '2d' ? window.EC_GALLERY.svg2d : window.EC_GALLERY.svg3d;
+    entries.forEach((entry) => {
+      const shape = window.EC_GALLERY.extraShape(entry.id);
+      const card = document.createElement('div');
+      card.className = 'gcard';
+      card.dataset.id = entry.id;
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      const picture = document.createElement('div');
+      picture.innerHTML = shape ? draw(shape) : '';
+      const name = document.createElement('div');
+      name.className = 'gname';
+      name.textContent = entry.name;
+      const note = document.createElement('div');
+      note.className = 'gsize gnote';
+      note.textContent = window.EC_GALLERY.EXTRA_NOTES[entry.id] || '';
+      card.append(picture.firstChild || document.createElement('span'), name, note);
+      grid.append(card);
+    });
+    markGallery();
+  }
+
+  // A click on an extra: it is chosen in the Category list, as if it was picked there.
+  function chooseExtra(id) {
+    holdPanel();
+    setSelect('category', id);
+    $('category').dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   // Picking a cabinet changes the fields above the gallery (their heights), and the panel may then scroll a selected item into view. Nothing of that must move the
@@ -1583,7 +1635,7 @@ function currentCabinet() {
     });
     $('gallerySearch').addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { $('gallerySearch').value = ''; gallery.query = ''; renderGallery(); }
-      if (e.key === 'Enter') { const first = $('galleryGrid').querySelector('.gcard'); if (first) placeFromGallery(first.dataset.id); } // (the first cabinet found)
+      if (e.key === 'Enter') { const first = $('galleryGrid').querySelector('.gcard'); if (first) { if (categoryKind() === 'cabinet') placeFromGallery(first.dataset.id); else chooseExtra(first.dataset.id); } } // (the first one found)
     });
     $('galleryToggle').addEventListener('click', () => {
       gallery.min = !gallery.min;
@@ -1632,12 +1684,12 @@ function currentCabinet() {
       if (!drag) return;
       const was = drag;
       finish();
-      if (!was.moved && was.id) placeFromGallery(was.id); // a click: the cabinet follows the cursor until it is put down
+      if (!was.moved && was.id) { if (categoryKind() === 'cabinet') placeFromGallery(was.id); else chooseExtra(was.id); } // a click: a cabinet follows the cursor until it is put down; an extra is chosen
     });
     grid.addEventListener('pointercancel', finish);
     grid.addEventListener('keydown', (e) => {
       const card = e.target.closest('.gcard');
-      if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); placeFromGallery(card.dataset.id); }
+      if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (categoryKind() === 'cabinet') placeFromGallery(card.dataset.id); else chooseExtra(card.dataset.id); }
     });
   }
 
@@ -3160,6 +3212,7 @@ function liveEdit(el) {
       applyCatalogFeatures();
       updateCategoryUi();
       await refreshCabinets();
+      if (categoryKind() !== 'cabinet') renderGallery();
     });
     $('category').addEventListener('change', async () => {
       // Choosing a category is for the next Insert: the cabinet selected in the model stays as it is
@@ -3167,6 +3220,7 @@ function liveEdit(el) {
       if (state.selectedKind) { state.liveHold = true; clearTimeout(state.liveTimer); }
       updateCategoryUi();
       await refreshCabinets();
+      if (categoryKind() !== 'cabinet') renderGallery();
     });
     $('applianceSet').addEventListener('change', () => syncApplianceFields(true));
     $('lowerMode').addEventListener('change', syncZoneField);

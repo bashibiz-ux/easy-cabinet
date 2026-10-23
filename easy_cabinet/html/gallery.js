@@ -144,7 +144,7 @@
         const layer = outerLeft ? 1.5 : (LAYER[part.k] || 0);
         // (what stands on the front of the carcass is ordered by how far forward it is: a wide face has its middle far to one side, which must not decide)
         const key = layer === 0 ? depth : face.points.reduce((sum, p) => sum + (p[0] * Math.cos(YAW)) - (p[1] * Math.sin(YAW) * 0.15), 0) / face.points.length;
-        out.push({ points: projected, depth, key, layer, order: ORDER[part.k] || 0, index, fill: shade(part.c || COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer' || part.s === true), top: part.s === true && face.normal[2] > 0.9 });
+        out.push({ points: projected, depth, key, layer, order: ORDER[part.k] || 0, index, fill: shade(part.c || COLOURS[part.k] || COLOURS.body, lit), kind: part.k, alpha: part.a, sheen: front && (part.k === 'door' || part.k === 'drawer' || part.s === true), top: part.s === true && face.normal[2] > 0.9 });
       });
     });
     // the carcass first, then the fronts, then the handles; each layer from far to near
@@ -157,7 +157,7 @@
       .map((part, index) => {
         const base = footprint(part);
         const ys = base.map((p) => p[1]);
-        return { x: Math.min(...ys), y: part.o[2], w: Math.max(...ys) - Math.min(...ys), h: height(part), kind: part.k, colour: part.c, shiny: part.s === true, order: ORDER[part.k] || 0, index, front: Math.max(...base.map((p) => p[0])) };
+        return { x: Math.min(...ys), y: part.o[2], w: Math.max(...ys) - Math.min(...ys), h: height(part), kind: part.k, alpha: part.a, colour: part.c, shiny: part.s === true, order: ORDER[part.k] || 0, index, front: Math.max(...base.map((p) => p[0])) };
       })
       .filter((r) => r.w > 0.01 && r.h > 0.01)
       .sort((a, b) => (LAYER[a.kind] || 0) - (LAYER[b.kind] || 0) || (a.order - b.order) || ((LAYER[a.kind] || 0) ? a.front - b.front : 0) || (a.index - b.index));
@@ -213,9 +213,10 @@
     const body = faces.map((f) => {
       const points = f.points.map((p) => `${round(p.x)},${round(p.y)}`).join(' ');
       const edge = f.kind === 'handle' || f.kind === 'gola' ? 'rgba(50, 54, 60, 0.7)' : (f.kind === 'appl' ? STROKE_APPLIANCE : STROKE);
-      const base = `<polygon points="${points}" fill="${f.fill}" stroke="${edge}" stroke-width="${round(strokeWidth * (f.kind === 'appl' ? 0.75 : 1))}" stroke-linejoin="round"/>`;
-      if (f.sheen) return `${base}<polygon points="${points}" fill="url(#ecSheen)" stroke="none"/>`;
-      return f.top ? `${base}<polygon points="${points}" fill="url(#ecTop)" stroke="none"/>` : base;
+      const fade = f.alpha !== undefined ? ` opacity="${f.alpha}"` : '';
+      const base = `<polygon points="${points}" fill="${f.fill}" stroke="${edge}" stroke-width="${round(strokeWidth * (f.kind === 'appl' ? 0.75 : 1))}" stroke-linejoin="round"${fade}/>`;
+      if (f.sheen) return `${base}<polygon points="${points}" fill="url(#ecSheen)" stroke="none"${fade}/>`;
+      return f.top ? `${base}<polygon points="${points}" fill="url(#ecTop)" stroke="none"${fade}/>` : base;
     }).join('') + pipes.map((p) => pipeSvg(p.points, p.width, p.colour)).join('');
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.01), centreX, spread, hangs(plain))}${body}</svg>`;
   }
@@ -237,13 +238,40 @@
       const fill = shade(r.colour || COLOURS[r.kind] || COLOURS.body, front || r.shiny ? 1.0 : 0.95);
       const edge = r.kind === 'handle' || r.kind === 'gola' ? 'rgba(50, 54, 60, 0.7)' : STROKE;
       const where = `x="${round(r.x)}" y="${round(-(r.y + r.h))}" width="${round(r.w)}" height="${round(r.h)}"`;
-      const base = `<rect ${where} fill="${fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}"/>`;
-      return front || r.shiny ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"/>` : base;
+      const fade = r.alpha !== undefined ? ` opacity="${r.alpha}"` : '';
+      const base = `<rect ${where} fill="${fill}" stroke="${edge}" stroke-width="${round(strokeWidth)}"${fade}/>`;
+      return front || r.shiny ? `${base}<rect ${where} fill="url(#ecSheen)" stroke="none"${fade}/>` : base;
     }).join('') + pipes.map((p) => pipeSvg(p.points, p.width, p.colour)).join('');
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box.viewBox}" preserveAspectRatio="xMidYMid meet" role="img">${DEFS}${shadow(box, floorY + (box.height * 0.012), (left + right) / 2, (right - left) / 2, hangs(plain))}${body}</svg>`;
   }
 
-  const api = { svg2d, svg3d, faces3d, rects2d, footprint, handles, withHandles };
+  // ---- the extras: a filler, a side panel, a toe kick, a wall bottom panel, a panel and a ceiling filler, each drawn at its place (the cabinets round it faded) ----------------
+  const FADE = 0.3;
+  const CONTEXT = '#c6cad0'; // (the cabinets round an extra: grey and faded)
+  const SUBJECT = '#e6bf78'; // (the extra itself: warm wood)
+  // A cabinet (600 wide, 560 deep) for the picture of an extra: a box with its front, at `y` along the row and `z` above the floor.
+  function context(y, z, width, height, depth = 560) {
+    return [{ k: 'body', c: CONTEXT, o: [0, y, z], e: [depth, width, height], a: FADE }, { k: 'door', c: CONTEXT, o: [depth, y + 2, z + 2], e: [18, width - 4, height - 4], a: FADE }];
+  }
+
+  const EXTRAS = {
+    filler: () => ({ cat: 'base', mode: 'none', parts: [...context(0, 100, 600, 780), { k: 'toe', c: CONTEXT, o: [60, 0, 0], e: [470, 700, 100], a: FADE }, { k: 'door', c: SUBJECT, o: [540, 602, 100], e: [18, 100, 780] }] }),
+    end_panel: () => ({ cat: 'base', mode: 'none', parts: [...context(0, 100, 600, 780), { k: 'toe', c: CONTEXT, o: [60, 0, 0], e: [470, 600, 100], a: FADE }, { k: 'door', c: SUBJECT, o: [0, -18, 100], e: [578, 18, 780] }] }),
+    toe_kick: () => ({ cat: 'base', mode: 'none', parts: [...context(0, 100, 600, 780), ...context(600, 100, 600, 780), { k: 'toe', c: '#8a6a3a', o: [490, 0, 0], e: [18, 1200, 100] }] }),
+    wall_bottom: () => ({ cat: 'wall', mode: 'none', parts: [...context(0, 1400, 600, 720, 320), ...context(600, 1400, 600, 720, 320), { k: 'door', c: SUBJECT, o: [0, 0, 1380], e: [320, 1200, 18] }] }),
+    panel: () => ({ cat: 'base', mode: 'none', parts: [{ k: 'door', c: SUBJECT, o: [0, 0, 0], e: [18, 600, 800] }] }),
+    ceiling_filler: () => ({ cat: 'tall', mode: 'none', parts: [...context(0, 0, 600, 2100), { k: 'door', c: SUBJECT, o: [0, 0, 2100], e: [560, 600, 150] }] })
+  };
+
+  const EXTRA_NOTES = { filler: 'A board beside a cabinet', end_panel: 'Covers the side of a cabinet', toe_kick: 'The plinth under the cabinets', wall_bottom: 'A panel under the wall units', panel: 'A plain board', ceiling_filler: 'Closes the gap up to the ceiling' };
+
+  // The shape of an extra by its Category id (filler, end_panel, toe_kick, wall_bottom, panel, ceiling_filler), or null.
+  function extraShape(id) {
+    const make = EXTRAS[id];
+    return make ? make() : null;
+  }
+
+  const api = { svg2d, svg3d, faces3d, rects2d, footprint, handles, withHandles, extraShape, EXTRA_NOTES };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else window.EC_GALLERY = api;
 }());

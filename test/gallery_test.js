@@ -69,3 +69,17 @@ assert.ok(oven.every((i) => i < leftSide[0]), 'the oven is drawn before the left
 assert.ok(gallery.svg3d({ parts: [] }).startsWith('<svg'));
 assert.ok(gallery.svg2d({ parts: [] }).startsWith('<svg'));
 console.log('gallery: all good');
+
+// the extras: a picture for each of the six, at its place with the cabinets round it faded
+const extras = ['filler', 'end_panel', 'toe_kick', 'wall_bottom', 'panel', 'ceiling_filler'];
+extras.forEach((id) => {
+  const shape = gallery.extraShape(id);
+  assert.ok(shape && shape.parts.length >= 1, `a shape for ${id}`);
+  assert.ok(gallery.svg3d(shape).includes('<polygon'), `${id} in 3D`);
+  assert.ok(gallery.svg2d(shape).includes('<rect'), `${id} in 2D`);
+  assert.ok(gallery.EXTRA_NOTES[id], `a note for ${id}`);
+  assert.strictEqual(gallery.handles(shape).length, 0, `${id}: no handles`);
+});
+assert.ok(gallery.svg3d(gallery.extraShape('filler')).includes('opacity="0.3"'), 'the cabinet beside a filler is faded');
+assert.strictEqual(gallery.extraShape('nothing'), null);
+console.log('gallery extras: all good');
