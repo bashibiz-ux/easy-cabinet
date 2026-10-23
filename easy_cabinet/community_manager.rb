@@ -52,7 +52,7 @@ module EasyCabinet
     end
 
     BODY_LIMIT = 3000
-    MAX_REPLIES = 30
+    MAX_REPLIES = 200
     HTML_LIMIT = 20_000
 
     # The text of a post written as HTML (paragraphs, line breaks, lists): plain text with the line breaks kept, for the panel to show.

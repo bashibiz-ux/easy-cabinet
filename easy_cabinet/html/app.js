@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.115.1';
+  const APP_VERSION = '1.115.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -434,6 +434,8 @@
           row.append(main);
           replies.append(row);
         });
+        const missing = (entry.replies || 0) - entry.comments.length;
+        if (missing > 0) { const rest = text('a', 'news-link', `${missing} more ${missing === 1 ? 'reply' : 'replies'} on GitHub`); rest.href = '#'; rest.addEventListener('click', (e) => { e.preventDefault(); ask(entry.url); }); replies.append(rest); }
         post.append(replies);
       }
       if (kind === 'forum' && entry.tags && entry.tags.length) { const tags = text('div', 'news-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); post.append(tags); }

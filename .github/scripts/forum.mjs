@@ -11,10 +11,11 @@ const QUERY = `query($owner: String!, $name: String!) {
         title url createdAt bodyText
         author { login avatarUrl(size: 80) }
         category { name }
-        comments(first: 50) {
+        comments(first: 100) {
+          totalCount
           nodes {
             bodyText createdAt author { login avatarUrl(size: 80) }
-            replies(first: 20) { nodes { bodyText createdAt author { login avatarUrl(size: 80) } } }
+            replies(first: 100) { totalCount nodes { bodyText createdAt author { login avatarUrl(size: 80) } } }
           }
         }
       }
@@ -43,9 +44,12 @@ export function build(repoUrl, discussions) {
     new_url: `${repoUrl}/discussions/new/choose`,
     topics: (discussions || []).map((topic) => {
       const comments = replies(topic.comments && topic.comments.nodes);
+      const nodes = (topic.comments && topic.comments.nodes) || [];
+      // (the total on GitHub, which can be more than what was fetched: the panel then says how many are left)
+      const total = ((topic.comments && topic.comments.totalCount) || 0) + nodes.reduce((sum, comment) => sum + ((comment.replies && comment.replies.totalCount) || 0), 0);
       return {
         title: topic.title, ...person(topic), date: day(topic.createdAt), url: topic.url,
-        tags: topic.category ? [topic.category.name] : [], body: String(topic.bodyText || '').trim(), replies: comments.length, comments
+        tags: topic.category ? [topic.category.name] : [], body: String(topic.bodyText || '').trim(), replies: Math.max(total, comments.length), comments
       };
     })
   };
