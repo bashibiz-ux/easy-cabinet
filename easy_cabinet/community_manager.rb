@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'cgi'
 require 'json'
 require 'net/http'
 require 'uri'
@@ -10,6 +11,7 @@ module EasyCabinet
   #   news_url       the news file:   { "items":  [{ "title", "date", "text", "url" }] }
   #   forum_url      the forum file:  { "topics": [{ "title", "author", "date", "replies", "tags": [], "url" }], "new_url": "https://..." }
   #   forum_new_url  where "Start a conversation" leads (when the forum file does not say)
+  #   github_repo    "owner/repo": the forum is the GitHub Discussions of that repository (its public Atom feed is read, and a new conversation is started on GitHub)
   # A topic, an article or a new conversation is opened in the browser, on the site that hosts it.
   module CommunityManager
     MAX_BYTES = 512 * 1024
@@ -32,7 +34,9 @@ module EasyCabinet
       raise 'The address must start with https://.' unless uri.is_a?(URI::HTTPS)
 
       Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: TIMEOUT, read_timeout: TIMEOUT) do |http|
-        response = http.request(Net::HTTP::Get.new(uri))
+        request = Net::HTTP::Get.new(uri)
+        request['User-Agent'] = 'EasyCabinet'
+        response = http.request(request)
         if response.is_a?(Net::HTTPRedirection) && redirects.positive?
           return fetch(URI.join(url, response['location']).to_s, redirects - 1)
         end
@@ -51,6 +55,23 @@ module EasyCabinet
     def self.link(value)
       url = value.to_s.strip
       url.start_with?('https://') && !url.match?(/\s/) ? url : ''
+    end
+
+    # The GitHub repository of the forum, "owner/repo", or ''.
+    def self.repo(value = setting('github_repo'))
+      value.to_s.strip.match?(%r{\A[\w.-]+/[\w.-]+\z}) ? value.to_s.strip : ''
+    end
+
+    # The topics of a GitHub Discussions Atom feed: [{ title, author, date, url }], newest first.
+    def self.atom_topics(body)
+      body.to_s.scan(%r{<entry>(.*?)</entry>}m).first(MAX_ITEMS).filter_map do |(entry)|
+        title = entry[%r{<title[^>]*>(.*?)</title>}m, 1]
+        next if title.to_s.strip.empty?
+
+        { 'title' => text(CGI.unescapeHTML(title), 160), 'author' => text(CGI.unescapeHTML(entry[%r{<author>.*?<name>(.*?)</name>}m, 1].to_s), 60),
+          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [],
+          'url' => link(CGI.unescapeHTML(entry[%r{<link[^>]*href="([^"]*)"}m, 1].to_s)) }
+      end
     end
 
     def self.news_items(data)
@@ -81,13 +102,21 @@ module EasyCabinet
       Response.fail("Unable to load the news list. #{e.message}")
     end
 
-    # The Forum window: => Response with { 'topics' => [...], 'new_url' => '...' }.
-    def self.forum(url = setting('forum_url'), reader = method(:fetch))
+    # The Forum window: => Response with { 'topics' => [...], 'new_url' => '...' }. Where the topics come from: forum_url when it is set (a JSON file, or an Atom
+    # feed), else the GitHub Discussions of github_repo.
+    def self.forum(url = setting('forum_url'), reader = method(:fetch), repository = repo)
       new_url = link(setting('forum_new_url'))
+      unless repository.empty?
+        url = "https://github.com/#{repository}/discussions.atom" if url.to_s.empty?
+        new_url = "https://github.com/#{repository}/discussions/new/choose" if new_url.empty?
+      end
       return Response.fail('The forum is not set up yet.') if url.to_s.empty? && new_url.empty?
       return Response.ok('', { 'topics' => [], 'new_url' => new_url }) if url.to_s.empty?
 
-      data = JSON.parse(reader.call(url))
+      body = reader.call(url)
+      return Response.ok('', { 'topics' => atom_topics(body), 'new_url' => new_url }) if body.lstrip.start_with?('<')
+
+      data = JSON.parse(body)
       Response.ok('', { 'topics' => forum_topics(data), 'new_url' => new_url.empty? ? link(data['new_url']) : new_url })
     rescue StandardError => e
       Response.fail("Unable to load the topic list. #{e.message}")

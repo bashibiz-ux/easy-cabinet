@@ -52,6 +52,39 @@ class CommunityTest < Minitest::Test
     assert_equal [3, 5], [topic['replies'], topic['tags'].length]
   end
 
+  ATOM = <<~XML
+    <?xml version="1.0" encoding="UTF-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Discussions</title>
+      <entry>
+        <id>tag:github.com,2008:Discussion/1</id>
+        <updated>2026-10-20T10:11:12Z</updated>
+        <link rel="alternate" type="text/html" href="https://github.com/me/easy-cabinet/discussions/1"/>
+        <title>Sliding doors &amp; tracks</title>
+        <author><name>sam</name></author>
+      </entry>
+      <entry><title>Hello</title><link rel="alternate" href="https://github.com/me/easy-cabinet/discussions/2"/><updated>2026-10-21T00:00:00Z</updated></entry>
+    </feed>
+  XML
+
+  def test_the_forum_can_be_the_github_discussions_of_a_repository
+    asked = nil
+    answer = CM.forum('', ->(url) { asked = url; ATOM }, 'me/easy-cabinet')
+    assert answer['ok']
+    assert_equal 'https://github.com/me/easy-cabinet/discussions.atom', asked
+    assert_equal 'https://github.com/me/easy-cabinet/discussions/new/choose', answer['data']['new_url']
+    topics = answer['data']['topics']
+    assert_equal ['Sliding doors & tracks', 'sam', '2026-10-20', 'https://github.com/me/easy-cabinet/discussions/1'], topics[0].values_at('title', 'author', 'date', 'url')
+    assert_equal 'Hello', topics[1]['title']
+  end
+
+  def test_a_repository_name_is_checked
+    assert_equal 'me/easy-cabinet', CM.repo(' me/easy-cabinet ')
+    assert_equal '', CM.repo('me')
+    assert_equal '', CM.repo('https://github.com/me/x')
+    assert_equal '', CM.repo('')
+  end
+
   def test_only_an_https_link_is_opened
     assert CM.open_link({ 'url' => 'https://example.com/x' })['ok']
     assert_equal 'https://example.com/x', UI.opened
