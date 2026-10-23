@@ -1,10 +1,13 @@
 {
   "items": [
     {
-      "title": "Easy Cabinet: wardrobes",
-      "date": "2026-10-23",
-      "text": "New Wardrobe catalog: hinged, sliding, open and corner wardrobes, with dividers, hanging rails and shelves.",
-      "url": ""
+      "title": "Easy Cabinet: Wardrobes",
+      "author": "Bashi",
+      "avatar": "https://avatars.githubusercontent.com/u/335631320?s=80&v=4",
+      "date": "10/23/2026",
+      "text": "New Wardrobe catalog with hinged, sliding, open and corner wardrobes.",
+      "html": "<p>The <strong>Wardrobe</strong> catalog is here. Choose it in <em>Models</em>, then pick a unit in the <em>Tall</em> category.</p><h3>What is new</h3><ul><li>Hinged wardrobes with 2, 3 or 4 doors</li><li>Sliding wardrobes with 2 or 3 doors on two tracks</li><li>Open wardrobes and a corner L wardrobe</li><li><strong>Dividers</strong> and a <strong>hanging rail</strong> you set in the panel</li></ul><p>Read the <a href=\"https://bashibiz-ux.github.io/easy-cabinet/#wardrobes\">guide</a> for the details.</p>",
+      "url": "https://github.com/bashibiz-ux/easy-cabinet/discussions"
     }
   ]
 }

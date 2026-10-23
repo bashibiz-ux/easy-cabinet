@@ -609,6 +609,26 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .community-detail[hidden] { display: none; }
 .community-detail .cd-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
 .community-detail .cd-body { margin: 10px 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.modal-card.wide { max-width: 760px; height: 100%; display: flex; flex-direction: column; }
+.modal-card.wide .community-list { flex: 1 1 auto; max-height: none; }
+.news-post { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.news-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.news-avatar { flex: none; width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: var(--accent-soft); }
+.news-title { font-size: 16px; font-weight: 600; line-height: 1.25; }
+.news-meta { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+.news-meta .news-author { color: var(--accent); font-weight: 600; margin-right: 8px; }
+.news-body { font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+.news-body p { margin: 0 0 10px; }
+.news-body h2, .news-body h3, .news-body h4 { margin: 14px 0 6px; line-height: 1.25; }
+.news-body ul, .news-body ol { margin: 0 0 10px; padding-left: 22px; }
+.news-body img { display: block; max-width: 100%; height: auto; margin: 8px 0; border-radius: 6px; }
+.news-body a, .news-link { color: var(--accent); text-decoration: none; cursor: pointer; }
+.news-body a:hover, .news-link:hover { text-decoration: underline; }
+.news-body blockquote { margin: 0 0 10px; padding: 2px 12px; border-left: 3px solid var(--line-strong); color: var(--muted); }
+.news-body code, .news-body pre { font: 12px ui-monospace, Consolas, monospace; background: var(--code, rgba(120, 130, 150, 0.16)); border-radius: 4px; }
+.news-body code { padding: 1px 4px; }
+.news-body pre { padding: 8px; overflow-x: auto; }
+.news-foot { margin-top: 8px; font-size: 12px; }
 .community-empty { padding: 14px 4px; font-size: 12.5px; color: var(--muted); text-align: center; }
 .community-note { padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); }
 .card[hidden] { display: none; }

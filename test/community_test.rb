@@ -35,6 +35,9 @@ class CommunityTest < Minitest::Test
     assert_equal 600, items[0]['text'].length
     assert_equal 'https://example.com/a', items[0]['url']
     assert_equal '', items[1]['url'], 'only https links are kept'
+    rich = CM.news('https://example.com/n.json', feed('items' => [{ 'title' => 'T', 'author' => 'Boris', 'avatar' => 'http://x/a.png', 'html' => '<p>Hi</p>' + ('x' * 30_000) }])).dig('data', 'items', 0)
+    assert_equal ['Boris', ''], rich.values_at('author', 'avatar'), 'an avatar must be https'
+    assert_equal CM::HTML_LIMIT, rich['html'].length
   end
 
   def test_a_list_that_cannot_be_read_gives_a_message

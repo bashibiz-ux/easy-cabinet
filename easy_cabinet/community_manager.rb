@@ -52,6 +52,7 @@ module EasyCabinet
     end
 
     BODY_LIMIT = 3000
+    HTML_LIMIT = 20_000
 
     # The text of a post written as HTML (paragraphs, line breaks, lists): plain text with the line breaks kept, for the panel to show.
     def self.plain(html, limit = BODY_LIMIT)
@@ -87,7 +88,8 @@ module EasyCabinet
       Array(list).first(MAX_ITEMS).filter_map do |item|
         next unless item.is_a?(Hash) && !text(item['title'], 160).empty?
 
-        { 'title' => text(item['title'], 160), 'date' => text(item['date'], 30), 'text' => text(item['text'], 600), 'url' => link(item['url']) }
+        { 'title' => text(item['title'], 160), 'date' => text(item['date'], 30), 'text' => text(item['text'], 600), 'url' => link(item['url']),
+          'author' => text(item['author'], 60), 'avatar' => link(item['avatar']), 'html' => item['html'].to_s[0, HTML_LIMIT] } # (the html is cleaned by the panel before it is shown)
       end
     end
 

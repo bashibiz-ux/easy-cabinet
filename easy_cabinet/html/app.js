@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.109.0';
+  const APP_VERSION = '1.110.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -353,6 +353,38 @@
 
   // The News and Forum windows of the More menu: a list read from the web when the window opens. A click on an entry (or Start a conversation, or a reply) asks
   // first, as the page is on another site and may need an account, then opens it in the browser.
+  // The post of a news item is written as HTML on the web: only plain formatting is kept (paragraphs, headings, lists, bold, italic, links, pictures from https)
+  // and everything else (scripts, frames, styles, handlers) is dropped. A link opens in the browser through Ruby.
+  const NEWS_TAGS = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'A', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'IMG', 'BLOCKQUOTE', 'CODE', 'PRE', 'HR', 'SPAN', 'DIV']);
+  const NEWS_DROP = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'FORM', 'INPUT', 'BUTTON', 'SVG', 'VIDEO', 'AUDIO', 'TEXTAREA', 'SELECT']);
+  function cleanNews(html, openLink) {
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    const build = (parent, out) => {
+      parent.childNodes.forEach((node) => {
+        if (node.nodeType === 3) { out.append(document.createTextNode(node.textContent)); return; }
+        if (node.nodeType !== 1 || NEWS_DROP.has(node.tagName)) return;
+        if (!NEWS_TAGS.has(node.tagName)) { build(node, out); return; } // (an unknown tag: its content stays, the tag goes)
+        const tag = node.tagName === 'H1' ? 'h2' : node.tagName.toLowerCase();
+        const el = document.createElement(tag);
+        if (tag === 'a') {
+          const href = node.getAttribute('href') || '';
+          if (/^https:\/\//i.test(href)) { el.href = '#'; el.addEventListener('click', (e) => { e.preventDefault(); openLink(href); }); }
+        } else if (tag === 'img') {
+          const src = node.getAttribute('src') || '';
+          if (!/^https:\/\//i.test(src)) return;
+          el.src = src;
+          el.alt = node.getAttribute('alt') || '';
+          el.loading = 'lazy';
+        }
+        build(node, el);
+        out.append(el);
+      });
+    };
+    const box = document.createDocumentFragment();
+    build(doc.body, box);
+    return box;
+  }
+
   function wireCommunity() {
     const modal = $('communityModal');
     if (!modal || !$('openNews')) return;
@@ -372,10 +404,33 @@
     };
     const ask = (url) => { if (!url) return; pending = url; showList(false); };
     const empty = (message) => { list.replaceChildren(text('div', 'community-empty', message)); };
+    const openLink = (url) => call('open_link', { url }).then((r) => { if (!r.ok) setStatus('error', r.message); }).catch(() => {});
+    // A news post: who wrote it and when, then the post itself. The page of the post is one click away.
+    const newsPost = (entry) => {
+      const post = document.createElement('article');
+      post.className = 'news-post';
+      const head = document.createElement('div');
+      head.className = 'news-head';
+      if (entry.avatar) { const pic = document.createElement('img'); pic.className = 'news-avatar'; pic.src = entry.avatar; pic.alt = ''; head.append(pic); }
+      const about = document.createElement('div');
+      about.append(text('div', 'news-title', entry.title));
+      const meta = text('div', 'news-meta', '');
+      if (entry.author) meta.append(text('span', 'news-author', entry.author));
+      if (entry.date) meta.append(document.createTextNode(entry.date));
+      about.append(meta);
+      head.append(about);
+      const body = document.createElement('div');
+      body.className = 'news-body';
+      if (entry.html) body.append(cleanNews(entry.html, openLink)); else if (entry.text) body.append(text('p', '', entry.text));
+      post.append(head, body);
+      if (entry.url) { const more = text('a', 'news-link', 'Comment'); more.href = '#'; more.addEventListener('click', (e) => { e.preventDefault(); openLink(entry.url); }); const foot = text('div', 'news-foot', ''); foot.append(more); post.append(foot); }
+      return post;
+    };
     const open = async (kind) => {
       $('communityTitle').textContent = kind === 'news' ? 'News' : 'Forum';
       $('communityHelp').textContent = kind === 'news' ? 'The latest news from Easy Cabinet.' : 'This message board lets you exchange with the other users and the Easy Cabinet team.';
       $('communityNew').hidden = true;
+      $('communityCard').classList.toggle('wide', kind === 'news'); // (the news are read like a page)
       detailing = false;
       showList(true);
       empty('Loading...');
@@ -386,6 +441,7 @@
         const entries = kind === 'news' ? res.data.items : res.data.topics;
         if (kind === 'forum' && res.data.new_url) { $('communityNew').hidden = false; $('communityNew').dataset.url = res.data.new_url; }
         if (!entries.length) { empty(kind === 'news' ? 'There is no news yet.' : 'There are no conversations yet.'); return; }
+        if (kind === 'news') { list.replaceChildren(...entries.map(newsPost)); return; }
         list.replaceChildren(...entries.map((entry) => {
           const card = document.createElement('button');
           card.type = 'button';
