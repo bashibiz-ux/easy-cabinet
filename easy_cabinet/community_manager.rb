@@ -151,7 +151,8 @@ module EasyCabinet
       return Response.ok('', { 'topics' => [], 'new_url' => new_url }) if url.to_s.empty?
 
       topics, named = begin
-        load_topics(url, reader)
+        found = load_topics(url, reader)
+        found.first.empty? && !feed.empty? && url != feed ? load_topics(feed, reader) : found # (a file with no topic in it, perhaps one not yet written: the feed has them)
       rescue StandardError
         raise if feed.empty? || url == feed
 

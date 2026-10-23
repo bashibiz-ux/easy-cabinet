@@ -113,6 +113,12 @@ class CommunityTest < Minitest::Test
     refute CM.forum('https://example.com/forum.json', reader, '')['ok'], 'with no repository there is no way out'
   end
 
+  def test_an_empty_forum_file_falls_back_to_the_feed
+    reader = ->(url) { url.end_with?('.atom') ? ATOM : '{"topics": []}' }
+    assert_equal 2, CM.forum('https://example.com/forum.json', reader, 'me/easy-cabinet')['data']['topics'].length
+    assert_equal [], CM.forum('https://example.com/forum.json', reader, '')['data']['topics'], 'with no repository an empty file is empty'
+  end
+
   def test_a_repository_name_is_checked
     assert_equal 'me/easy-cabinet', CM.repo(' me/easy-cabinet ')
     assert_equal '', CM.repo('me')
