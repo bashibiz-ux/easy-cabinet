@@ -1,0 +1,36 @@
+# Keeps docs/forum.json up to date: the discussions of this repository with their replies. The Forum window of Easy Cabinet reads it from the Pages site.
+name: Forum feed
+
+on:
+  discussion:
+  discussion_comment:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/scripts/forum.mjs'
+      - '.github/workflows/forum.yml'
+
+permissions:
+  contents: write
+  discussions: read
+
+concurrency:
+  group: forum-feed
+
+jobs:
+  feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write docs/forum.json
+        run: node .github/scripts/forum.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit it
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/forum.json
+          git diff --cached --quiet || (git commit -m "Update the forum file [skip ci]" && git push)

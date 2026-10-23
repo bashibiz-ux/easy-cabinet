@@ -620,6 +620,11 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .news-body code { padding: 1px 4px; }
 .news-body pre { padding: 8px; overflow-x: auto; }
 .news-text { white-space: pre-wrap; }
+.news-replies { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.news-replies-title { margin-bottom: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.news-reply { display: flex; gap: 10px; margin: 0 0 10px 14px; padding-left: 10px; border-left: 2px solid var(--accent-soft); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.news-reply-avatar { flex: none; width: 26px; height: 26px; border-radius: 5px; object-fit: cover; background: var(--accent-soft); }
+.news-reply-main { min-width: 0; flex: 1; }
 .news-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .news-tags span { padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); font-size: 10.5px; }
 .news-foot { margin-top: 8px; font-size: 12px; }

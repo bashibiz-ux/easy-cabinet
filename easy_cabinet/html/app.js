@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.114.4';
+  const APP_VERSION = '1.115.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -417,6 +417,25 @@
       body.className = 'news-body';
       if (entry.html) body.append(cleanNews(entry.html, openLink)); else if (entry.text) body.append(text('p', '', entry.text)); else if (entry.body) body.append(text('p', 'news-text', entry.body));
       post.append(head, body);
+      if (kind === 'forum' && entry.comments && entry.comments.length) { // the replies, oldest first, under the topic
+        const replies = document.createElement('div');
+        replies.className = 'news-replies';
+        replies.append(text('div', 'news-replies-title', `${entry.comments.length} ${entry.comments.length === 1 ? 'reply' : 'replies'}`));
+        entry.comments.forEach((reply) => {
+          const row = document.createElement('div');
+          row.className = 'news-reply';
+          if (reply.avatar) { const pic = document.createElement('img'); pic.className = 'news-reply-avatar'; pic.src = reply.avatar; pic.alt = ''; row.append(pic); }
+          const main = document.createElement('div');
+          main.className = 'news-reply-main';
+          const who = text('div', 'news-meta', '');
+          if (reply.author) who.append(text('span', 'news-author', reply.author));
+          if (reply.date) who.append(document.createTextNode(reply.date));
+          main.append(who, text('div', 'news-text', reply.body));
+          row.append(main);
+          replies.append(row);
+        });
+        post.append(replies);
+      }
       if (kind === 'forum' && entry.tags && entry.tags.length) { const tags = text('div', 'news-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); post.append(tags); }
       if (entry.url) { const more = text('a', 'news-link', kind === 'forum' ? 'Reply' : 'Comment'); more.href = '#'; more.addEventListener('click', (e) => { e.preventDefault(); if (kind === 'forum') ask(entry.url); else openLink(entry.url); }); const foot = text('div', 'news-foot', ''); foot.append(more); post.append(foot); }
       return post;

@@ -87,6 +87,32 @@ class CommunityTest < Minitest::Test
     assert_equal '', topics[1]['avatar']
   end
 
+  def test_a_topic_comes_with_its_replies_oldest_first
+    data = { 'topics' => [{ 'title' => 'T', 'author' => 'a', 'replies' => 0, 'comments' => [
+      { 'author' => 'Sam', 'avatar' => 'https://avatars.githubusercontent.com/u/2', 'date' => '2026-10-24', 'body' => "Yes\n\nit works" },
+      { 'author' => 'Kim', 'avatar' => 'http://bad/x.png', 'body' => 'Thanks' }, { 'author' => 'Empty', 'body' => '  ' }, 'junk'] }] }
+    topic = CM.forum('https://example.com/forum.json', feed(data), '').dig('data', 'topics', 0)
+    assert_equal 2, topic['comments'].length
+    assert_equal 2, topic['replies'], 'the number of replies follows what is shown'
+    assert_equal ['Sam', "Yes\n\nit works"], topic['comments'][0].values_at('author', 'body')
+    assert_equal '', topic['comments'][1]['avatar'], 'only an https picture'
+  end
+
+  def test_the_atom_feed_is_the_way_out_when_the_file_with_the_replies_is_missing
+    asked = []
+    reader = lambda do |url|
+      asked << url
+      raise 'The server answered 404.' unless url.end_with?('.atom')
+
+      ATOM
+    end
+    answer = CM.forum('https://example.com/forum.json', reader, 'me/easy-cabinet')
+    assert answer['ok']
+    assert_equal ['https://example.com/forum.json', 'https://github.com/me/easy-cabinet/discussions.atom'], asked
+    assert_equal 2, answer['data']['topics'].length
+    refute CM.forum('https://example.com/forum.json', reader, '')['ok'], 'with no repository there is no way out'
+  end
+
   def test_a_repository_name_is_checked
     assert_equal 'me/easy-cabinet', CM.repo(' me/easy-cabinet ')
     assert_equal '', CM.repo('me')

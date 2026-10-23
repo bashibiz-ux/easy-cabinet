@@ -52,6 +52,7 @@ module EasyCabinet
     end
 
     BODY_LIMIT = 3000
+    MAX_REPLIES = 30
     HTML_LIMIT = 20_000
 
     # The text of a post written as HTML (paragraphs, line breaks, lists): plain text with the line breaks kept, for the panel to show.
@@ -84,7 +85,7 @@ module EasyCabinet
         next if title.to_s.strip.empty?
 
         { 'title' => text(CGI.unescapeHTML(title), 160), 'author' => text(CGI.unescapeHTML(entry[%r{<author>.*?<name>(.*?)</name>}m, 1].to_s), 60),
-          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [], 'avatar' => avatar_of(entry), 'body' => plain(CGI.unescapeHTML(entry[%r{<content[^>]*>(.*?)</content>}m, 1].to_s)),
+          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'comments' => [], 'tags' => [], 'avatar' => avatar_of(entry), 'body' => plain(CGI.unescapeHTML(entry[%r{<content[^>]*>(.*?)</content>}m, 1].to_s)),
           'url' => link(CGI.unescapeHTML(entry[%r{<link[^>]*href="([^"]*)"}m, 1].to_s)) }
       end
     end
@@ -99,12 +100,23 @@ module EasyCabinet
       end
     end
 
+    # The replies of a topic, oldest first: [{ author, avatar, date, body }].
+    def self.forum_replies(list)
+      Array(list).first(MAX_REPLIES).filter_map do |reply|
+        next unless reply.is_a?(Hash) && !plain(reply['body'] || reply['text'], 1500).empty?
+
+        { 'author' => text(reply['author'], 60), 'avatar' => link(reply['avatar']), 'date' => text(reply['date'], 30), 'body' => plain(reply['body'] || reply['text'], 1500) }
+      end
+    end
+
     def self.forum_topics(data)
       list = data.is_a?(Hash) ? data['topics'] : nil
       Array(list).first(MAX_ITEMS).filter_map do |topic|
         next unless topic.is_a?(Hash) && !text(topic['title'], 160).empty?
 
-        { 'title' => text(topic['title'], 160), 'author' => text(topic['author'], 60), 'date' => text(topic['date'], 30), 'replies' => topic['replies'].to_i.clamp(0, 99_999),
+        comments = forum_replies(topic['comments'])
+        { 'title' => text(topic['title'], 160), 'author' => text(topic['author'], 60), 'date' => text(topic['date'], 30),
+          'replies' => [topic['replies'].to_i, comments.length].max.clamp(0, 99_999), 'comments' => comments,
           'tags' => Array(topic['tags']).first(5).map { |tag| text(tag, 24) }.reject(&:empty?), 'avatar' => link(topic['avatar']), 'body' => plain(topic['body'] || topic['text']), 'url' => link(topic['url']) }
       end
     end
@@ -118,22 +130,34 @@ module EasyCabinet
       Response.fail("Unable to load the news list. #{e.message}")
     end
 
-    # The Forum window: => Response with { 'topics' => [...], 'new_url' => '...' }. Where the topics come from: forum_url when it is set (a JSON file, or an Atom
-    # feed), else the GitHub Discussions of github_repo.
+    # The topics (with their replies) from a web address: a JSON file (see forum_topics; the file made by the GitHub action of the repository has the replies) or
+    # a GitHub Discussions Atom feed (no replies in it). => [topics, the new_url the file names].
+    def self.load_topics(url, reader)
+      body = reader.call(url)
+      return [atom_topics(body), ''] if body.lstrip.start_with?('<')
+
+      data = JSON.parse(body)
+      [forum_topics(data), data.is_a?(Hash) ? link(data['new_url']) : '']
+    end
+
+    # The Forum window: => Response with { 'topics' => [...], 'new_url' => '...' }. The topics come from forum_url when it is set (a JSON file, or an Atom feed),
+    # else from the GitHub Discussions of github_repo; when forum_url cannot be read, from the Atom feed of github_repo.
     def self.forum(url = setting('forum_url'), reader = method(:fetch), repository = repo)
       new_url = link(setting('forum_new_url'))
-      unless repository.empty?
-        url = "https://github.com/#{repository}/discussions.atom" if url.to_s.empty?
-        new_url = "https://github.com/#{repository}/discussions/new/choose" if new_url.empty?
-      end
+      feed = repository.empty? ? '' : "https://github.com/#{repository}/discussions.atom"
+      new_url = "https://github.com/#{repository}/discussions/new/choose" if new_url.empty? && !repository.empty?
+      url = feed if url.to_s.empty?
       return Response.fail('The forum is not set up yet.') if url.to_s.empty? && new_url.empty?
       return Response.ok('', { 'topics' => [], 'new_url' => new_url }) if url.to_s.empty?
 
-      body = reader.call(url)
-      return Response.ok('', { 'topics' => atom_topics(body), 'new_url' => new_url }) if body.lstrip.start_with?('<')
+      topics, named = begin
+        load_topics(url, reader)
+      rescue StandardError
+        raise if feed.empty? || url == feed
 
-      data = JSON.parse(body)
-      Response.ok('', { 'topics' => forum_topics(data), 'new_url' => new_url.empty? ? link(data['new_url']) : new_url })
+        load_topics(feed, reader) # (the file with the replies is not there: the topics alone are better than nothing)
+      end
+      Response.ok('', { 'topics' => topics, 'new_url' => new_url.empty? ? named : new_url })
     rescue StandardError => e
       Response.fail("Unable to load the topic list. #{e.message}")
     end
