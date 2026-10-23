@@ -192,7 +192,6 @@ module EasyCabinet
       length = plan[:length]
       depth = plan[:depth]
       spans = plan[:spans]
-      bw = plan[:bowl_width]
       bv0 = plan[:bowl_v0]
       bd = plan[:bowl_depth]
       deck = flex ? 3.0 : 6.0

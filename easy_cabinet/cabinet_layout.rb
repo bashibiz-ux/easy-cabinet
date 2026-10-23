@@ -853,7 +853,6 @@ module EasyCabinet
     def self.l_panels(params, dims)
       t = dims.thick
       l = l_legs(params, dims)
-      start = dims.interior_start
       [
         panel('right_side', 'Right Side Panel', [l[:da], t, dims.height], [0, l[:la] - t, 0]),
         panel('front_return', 'Front Side Panel', [t, l[:db], dims.height], [l[:lb] - t, 0, 0]),

@@ -307,9 +307,6 @@ module EasyCabinet
     end
     private_class_method :skipped
 
-    # Which sides the last placing left without a panel, and why (one text for each).
-    def self.last_skipped = (@skipped || []).dup
-
     # The front edge radius of a side panel placed by the switch: the one of the cabinet it is on (its doors), so that it follows the Front Edge Radius
     # whenever the panels are placed again; a panel you insert yourself, or one on a filler, has the radius of the panel's own values. nil: no radius known.
     def self.panel_radius(values, target_params)

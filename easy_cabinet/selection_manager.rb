@@ -91,21 +91,6 @@ module EasyCabinet
       found.length == 1 ? found.first : nil
     end
 
-    # What Open / Close / Toggle should act on:
-    #   * one or more selected doors (each door is independently selectable), or
-    #   * every door of the selected cabinet.
-    # Returns { cabinet:, doors:, explicit: } or nil when no cabinet is involved.
-    # What Open / Close / Toggle should act on: the doors AND drawers selected
-    # directly, or every door and drawer of the selected cabinet if none are.
-    def self.selected_doors(model)
-      cabinet = selected_cabinet(model)
-      return nil unless cabinet
-
-      picked = model.selection.select { |entity| openable?(entity) }
-      explicit = !picked.empty?
-      { cabinet: cabinet, doors: explicit ? picked : CabinetGenerator.openables_of(cabinet), explicit: explicit }
-    end
-
     def self.openable?(entity)
       return false unless entity.respond_to?(:get_attribute)
 

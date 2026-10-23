@@ -233,7 +233,7 @@ module EasyCabinet
     def self.window_sashes(cut)
       s = opening_space(cut)
       mk = s[:mk]
-      u0, u1, c0, c1, z0, z1, mid = s.values_at(:u0, :u1, :c0, :c1, :z0, :z1, :mid)
+      u0, u1, z0, z1, mid = s.values_at(:u0, :u1, :z0, :z1, :mid)
       fw = [WINDOW_FRAME, (u1 - u0) / 4.0, (z1 - z0) / 4.0].min
       iu0 = u0 + fw
       iu1 = u1 - fw

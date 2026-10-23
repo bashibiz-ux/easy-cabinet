@@ -476,7 +476,6 @@ points = [[0.0, 0.0], [0.0, width], [a, width], [width, b], [width, 0.0]]
 
     # The side panels in the model, as the worktop needs them to reach over their tops (see Worktop.attach_panels).
     def self.panels_of(model)
-      dictionary = AttributeManager::DICTIONARY
       model.entities.grep(Sketchup::ComponentInstance).filter_map do |part|
         next unless AttributeManager.part_kind(part) == 'end_panel'
 
