@@ -90,6 +90,9 @@ module EasyCabinet
         when 'send_feedback' then FeedbackManager.perform(data)
         when 'open_donation' then FeedbackManager.donate
         when 'open_help'     then FeedbackManager.open_help
+        when 'get_news'      then CommunityManager.news
+        when 'get_forum'     then CommunityManager.forum
+        when 'open_link'     then CommunityManager.open_link(data)
         when 'cancel_place'  then (PlaceTool.cancel; Response.ok('')) # (Esc in the panel: the cabinet that follows the cursor is dropped)
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_cabinet_shapes' then Response.ok('', { 'shapes' => CabinetGallery.shapes(data['catalog_id'], data['cabinet_category']) }) # (the pictures of the gallery)

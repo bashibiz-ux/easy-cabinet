@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.106.3';
+  const APP_VERSION = '1.107.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -349,6 +349,62 @@
       }
     });
     $('helpFeedback').addEventListener('click', () => { closeHelp(); $('openFeedback').click(); });
+  }
+
+  // The News and Forum windows of the More menu: a list read from the web when the window opens. A click on an entry (or Start a conversation, or a reply) asks
+  // first, as the page is on another site and may need an account, then opens it in the browser.
+  function wireCommunity() {
+    const modal = $('communityModal');
+    if (!modal || !$('openNews')) return;
+    const list = $('communityList');
+    let pending = '';
+    const text = (tag, className, value) => { const el = document.createElement(tag); el.className = className; el.textContent = value; return el; };
+    const close = () => { modal.hidden = true; pending = ''; };
+    const showList = (show) => { $('communityNote').hidden = show; $('communityRedirect').hidden = show; $('communityButtons').hidden = !show; list.hidden = !show; };
+    const ask = (url) => { if (!url) return; pending = url; showList(false); };
+    const empty = (message) => { list.replaceChildren(text('div', 'community-empty', message)); };
+    const open = async (kind) => {
+      $('communityTitle').textContent = kind === 'news' ? 'News' : 'Forum';
+      $('communityHelp').textContent = kind === 'news' ? 'The latest news from Easy Cabinet.' : 'This message board lets you exchange with the other users and the Easy Cabinet team.';
+      $('communityNew').hidden = true;
+      showList(true);
+      empty('Loading...');
+      modal.hidden = false;
+      try {
+        const res = await call(kind === 'news' ? 'get_news' : 'get_forum', {});
+        if (!res.ok) { empty(res.message); return; }
+        const entries = kind === 'news' ? res.data.items : res.data.topics;
+        if (kind === 'forum' && res.data.new_url) { $('communityNew').hidden = false; $('communityNew').dataset.url = res.data.new_url; }
+        if (!entries.length) { empty(kind === 'news' ? 'There is no news yet.' : 'There are no conversations yet.'); return; }
+        list.replaceChildren(...entries.map((entry) => {
+          const card = document.createElement('button');
+          card.type = 'button';
+          card.className = 'community-item';
+          card.append(text('div', 'ci-title', entry.title));
+          const meta = kind === 'news' ? entry.date : [entry.author, entry.date, entry.replies ? `${entry.replies} ${entry.replies === 1 ? 'reply' : 'replies'}` : ''].filter(Boolean).join(' · ');
+          if (meta) card.append(text('div', 'ci-meta', meta));
+          if (kind === 'news' && entry.text) card.append(text('div', 'ci-text', entry.text));
+          if (kind === 'forum' && entry.tags.length) { const tags = text('div', 'ci-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); card.append(tags); }
+          card.addEventListener('click', () => (kind === 'news' ? call('open_link', { url: entry.url }).then((r) => setStatus(r.ok ? 'ok' : 'error', r.message)).catch(() => {}) : ask(entry.url)));
+          return card;
+        }));
+      } catch (error) {
+        empty(error.message);
+      }
+    };
+    $('openNews').addEventListener('click', () => open('news'));
+    $('openForum').addEventListener('click', () => open('forum'));
+    $('communityClose').addEventListener('click', close);
+    $('communityNew').addEventListener('click', () => ask($('communityNew').dataset.url));
+    $('communityBack').addEventListener('click', () => { pending = ''; showList(true); });
+    $('communityGo').addEventListener('click', async () => {
+      const url = pending;
+      pending = '';
+      showList(true);
+      try { const res = await call('open_link', { url }); setStatus(res.ok ? 'ok' : 'error', res.message); } catch (error) { setStatus('error', error.message); }
+    });
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
   }
 
   function wireDonate() {    const button = $('openDonate');
@@ -3421,6 +3477,7 @@ $('kitchenLayout').addEventListener('change', () => {
     wireFeedback();
     wireDonate();
     wireMore();
+    wireCommunity();
     wireActiveTile();
     wrapCardBodies();
     try {
