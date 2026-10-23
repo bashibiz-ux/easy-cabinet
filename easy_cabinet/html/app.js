@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.107.3';
+  const APP_VERSION = '1.108.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2542,6 +2542,44 @@ if (details.length) {
     card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
+  /* ---------------------------------------------------------------------- *
+   * The cards the panel shows: Settings has a tick for each card, and what is not ticked is hidden (remembered). Settings itself is always there.
+   * ---------------------------------------------------------------------- */
+
+  const HIDDEN_CARDS_KEY = 'ec.hiddenCards';
+  const cardTitle = (card) => (card.querySelector('.card-head') || {}).textContent.trim();
+
+  function hiddenCards() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(HIDDEN_CARDS_KEY) || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch (_) { return []; }
+  }
+
+  function wireCardPrefs() {
+    const box = $('cardPrefs');
+    if (!box) return;
+    const hidden = new Set(hiddenCards());
+    const cards = cardList().filter((card) => card.id !== 'sec-presets');
+    cards.forEach((card) => {
+      card.hidden = hidden.has(card.id);
+      const label = document.createElement('label');
+      label.className = 'check';
+      const tick = document.createElement('input');
+      tick.type = 'checkbox';
+      tick.checked = !card.hidden;
+      tick.addEventListener('change', () => {
+        card.hidden = !tick.checked;
+        if (tick.checked) hidden.delete(card.id); else hidden.add(card.id);
+        try { localStorage.setItem(HIDDEN_CARDS_KEY, JSON.stringify([...hidden])); } catch (_) { /* not remembered */ }
+      });
+      const name = document.createElement('span');
+      name.textContent = cardTitle(card);
+      label.append(tick, name);
+      box.append(label);
+    });
+  }
+
   function enableCardOrder() {
     const cards = cardList();
     let saved = [];
@@ -3480,6 +3518,7 @@ $('kitchenLayout').addEventListener('change', () => {
     wireCommunity();
     wireActiveTile();
     wrapCardBodies();
+    wireCardPrefs();
     try {
       if (localStorage.getItem('ec.followSelection') === 'off') $('followSelection').checked = false;
     } catch (_) { /* no stored choice: it follows */ }
