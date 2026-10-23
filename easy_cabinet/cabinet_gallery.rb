@@ -150,7 +150,7 @@ module EasyCabinet
               'sink' => entry['sink'] == true, 'sink_bowls' => entry['sink_bowls'], 'sink_tray' => entry['sink_tray'], 'hob' => entry['hob'] == true,
               'hood' => entry['hood'] == true, 'fridge' => !!entry['fridge'], 'freestanding' => entry['freestanding'] == true, 'fridge_height' => entry['fridge'],
               'top_front' => entry['top_front'], 'drawer_pattern' => entry['pattern'].to_s, 'free_housing' => entry['free_housing'] == true,
-              'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true, 'finger_pull' => mode_of(catalog_id) == 'none', 'gola_system' => (mode_of(catalog_id) == 'gola' ? 'b' : ''), 'gola_system_drawer' => (mode_of(catalog_id) == 'gola' ? 'c' : ''), 'dishwasher' => entry['dishwasher'] == true, 'dishwasher_handle' => true,
+              'housing_lift' => entry['lift'], 'pullout' => entry['pullout'] == true, 'wardrobe' => entry['wardrobe'] == true, 'dividers' => entry['dividers'].to_i, 'rail' => entry['rail'] == true, 'sliding' => entry['sliding'] == true, 'finger_pull' => mode_of(catalog_id) == 'none', 'gola_system' => (mode_of(catalog_id) == 'gola' ? 'b' : ''), 'gola_system_drawer' => (mode_of(catalog_id) == 'gola' ? 'c' : ''), 'dishwasher' => entry['dishwasher'] == true, 'dishwasher_handle' => true,
               'lift_door' => entry['lift_door'] == true, 'bifold' => entry['bifold'] == true, 'door_split' => entry['split'] == true, 'lower_mode' => entry['lower'].to_s }
       doors = entry['doors'].to_i
       drawers = entry['drawers'].to_i

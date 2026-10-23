@@ -116,6 +116,10 @@ module EasyCabinet
       out['freestanding'] = truthy?(raw['freestanding'])
       out['free_housing'] = truthy?(raw['free_housing'])
       out['pullout'] = truthy?(raw['pullout'])
+      out['wardrobe'] = truthy?(raw['wardrobe'])
+      out['dividers'] = (to_float(raw['dividers']) || 0).round.clamp(0, 5)
+      out['rail'] = truthy?(raw['rail'])
+      out['sliding'] = truthy?(raw['sliding'])
       out['drawer_handle_id'] = raw['drawer_handle_id'].to_s.strip
       out['gola_system'] = %w[b c d e].include?(raw['gola_system'].to_s) ? raw['gola_system'].to_s : ''
       out['gola_system_drawer'] = %w[b c d e].include?(raw['gola_system_drawer'].to_s) ? raw['gola_system_drawer'].to_s : ''

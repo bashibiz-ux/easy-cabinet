@@ -52,6 +52,8 @@ module EasyCabinet
     # A lift-up door ('top' hinge) turns about the horizontal line along its top edge, so its bottom edge
     # swings up and out; every other door about the vertical hinge line.
     def self.swing(spec, angle, fraction)
+      return Geom::Transformation.translation(Geom::Vector3d.new(0, spec.slide.mm * fraction, 0)) if spec.respond_to?(:slide) && spec.slide # a sliding door runs along its track
+
       angle = angle_for(spec, angle)
       if spec.hinge == 'top'
         return Geom::Transformation.rotation(Geom::Point3d.new(*spec.pivot.map(&:mm)), Geom::Vector3d.new(0, 1, 0),
@@ -302,7 +304,7 @@ module EasyCabinet
     # them showing the movement. (The other symbol, on the door itself, is
     # door_symbol_segments; the two are switched on and off independently.)
     def self.indicator_segments(doors, angle, base_z)
-      shown = doors.reject { |door| %w[top fold].include?(door.hinge) } # a lift-up door has no plan line
+      shown = doors.reject { |door| %w[top fold].include?(door.hinge) || door.slide } # a lift-up door has no plan line, nor has a sliding door
       # one arrow per drawer column (stacked drawers share it)
       shown = shown.reject.with_index { |door, i| door.hinge == 'center' && shown.first(i).any? { |o| o.hinge == 'center' && o.offset[1] == door.offset[1] && o.extent[1] == door.extent[1] } }
       shown.flat_map { |door| plan_indicator(door, angle, base_z) }
@@ -312,7 +314,7 @@ module EasyCabinet
     # Base Z is left out on purpose: the indicator container moves with the toe
     # kick, so a change of toe-kick height must not rebuild the lines.
     def self.indicator_signature(doors, angle, base_z)
-      shapes = doors.reject { |d| %w[top fold].include?(d.hinge) }
+      shapes = doors.reject { |d| %w[top fold].include?(d.hinge) || d.slide }
                     .map { |d| [d.hinge, d.pivot[0], d.pivot[1], d.extent, (d.offset[2] - base_z).round(2), angle_for(d, angle)] }
       shapes.push(angle.to_f).inspect
     end
@@ -363,6 +365,12 @@ module EasyCabinet
     def self.door_symbol_segments(door)
       thickness, width, height = door.extent
       x = thickness + ELEVATION_STANDOFF
+      if door.respond_to?(:slide) && door.slide # a sliding door: an arrow along the way it runs
+        tail = width * (door.slide.negative? ? 0.75 : 0.25)
+        tip = width * (door.slide.negative? ? 0.25 : 0.75)
+        mid = height / 2.0
+        return [[[x, tail, mid], [x, tip, mid]], [[x, tip, mid], [x, tip + ((tail <=> tip) * 40.0), mid + 30.0]], [[x, tip, mid], [x, tip + ((tail <=> tip) * 40.0), mid - 30.0]]]
+      end
       if %w[top fold].include?(door.hinge) # a lift-up door: from the middle of the top edge to the bottom corners
         apex = [x, width / 2.0, height]
         return [[apex, [x, 0.0, 0.0]], [apex, [x, width, 0.0]]]

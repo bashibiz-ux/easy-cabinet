@@ -38,7 +38,7 @@ module EasyCabinet
     # enough to see inside); nil = just the Opening Angle of the panel.
     # `handle` false = this door gets no handle (an L corner has one handle, on its narrower door); `grip` 'top' or
     # 'bottom' puts the handle next to that edge (the two doors of a fridge have theirs next to the gap between them).
-    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, :parent, :bifold, :gola, keyword_init: true)
+    Door   = Struct.new(:role, :name, :extent, :offset, :hinge, :pivot, :rotation, :swing, :handle, :grip, :parent, :bifold, :gola, :slide, keyword_init: true)
     Layout = Struct.new(:base_z, :top_z, :panels, :doors, :drawers, :toe_kick, :drawer_boxes, :appliances, keyword_init: true)
     # `return_depth` is only meaningful for a corner unit: how far its shortened
     # right-side panel and front-return panel extend (see corner geometry
@@ -113,6 +113,8 @@ module EasyCabinet
           corner_shelf_panels(params['shelf_count'].to_i, dims)
         elsif style == 'l_shape'
           l_shelf_panels(params['shelf_count'].to_i, params, dims)
+        elsif params['wardrobe'] == true
+          wardrobe_panels(params, dims)
         else
           shelf_panels(params['shelf_count'].to_i, dims)
         end
@@ -629,6 +631,68 @@ module EasyCabinet
     end
     private_class_method :shelf_panels
 
+    # The inside of a wardrobe: `dividers` vertical partitions split it into sections of equal width. With the rail on, the 1st, 3rd ... sections hang
+    # clothes (a shelf over a round rail) and the others have shelves (the Shelves field says how many); with the rail off every section has shelves.
+    # A door's `slide` (a sliding door): how far it runs along Y when it opens (mm, negative = to the left); nil = a hinged door.
+    WARDROBE_RAIL = 25.0 # mm, the diameter of the hanging rail
+    RAIL_BELOW_SHELF = 90.0 # mm from the underside of the shelf over the clothes down to the middle of the rail
+    HANGING_SHELF_DROP = 330.0 # mm from the top of the carcass to the shelf over the clothes
+    def self.wardrobe_panels(params, dims)
+      dividers = params['dividers'].to_i.clamp(0, 5)
+      sections = dividers + 1
+      width = (dims.inner_w - (dividers * dims.thick)) / sections
+      clear = dims.height - (2 * dims.thick)
+      depth = dims.interior_d - dims.shelf_setback
+      panels = []
+      (1..dividers).each do |k|
+        y = dims.thick + (k * width) + ((k - 1) * dims.thick)
+        panels << panel("divider_#{k}", "Divider #{k}", [dims.interior_d, dims.thick, clear], [dims.interior_start, y, dims.thick])
+      end
+      side = Defaults::SHELF_SIDE_CLEARANCE
+      sections.times do |index|
+        y0 = dims.thick + (index * (width + dims.thick))
+        extent = [depth, width - (2 * side), dims.thick]
+        if params['rail'] == true && index.even?
+          z = dims.height - dims.thick - HANGING_SHELF_DROP
+          panels << panel("hanging_shelf_#{index + 1}", "Shelf over Rail #{index + 1}", extent, [dims.interior_start, y0 + side, z])
+          panels << Panel.new(role: "rail_#{index + 1}", name: "Hanging Rail #{index + 1}", extent: [WARDROBE_RAIL, round2(width), WARDROBE_RAIL].map { |v| round2(v) },
+                              offset: [round2(dims.interior_start + (depth / 2.0) - (WARDROBE_RAIL / 2.0)), round2(y0), round2(z - RAIL_BELOW_SHELF - (WARDROBE_RAIL / 2.0))],
+                              points: nil, shape: 'cyl_y')
+        else
+          count = params['shelf_count'].to_i
+          gap = (clear - (count * dims.thick)) / (count + 1)
+          (1..count).each do |n|
+            z = dims.thick + (gap * n) + (dims.thick * (n - 1))
+            panels << panel("shelf_#{index + 1}_#{n}", sections == 1 ? "Shelf #{n}" : "Shelf #{index + 1}.#{n}", extent, [dims.interior_start, y0 + side, z])
+          end
+        end
+      end
+      panels
+    end
+    private_class_method :wardrobe_panels
+
+    # Sliding doors on two tracks: they overlap by SLIDE_OVERLAP, and those in the front track (every second one) run along the ones behind when the wardrobe
+    # opens. The hinge says which edge the handle is on (the edge where the doors meet).
+    SLIDE_OVERLAP = 40.0
+    SLIDE_TRACK = 4.0 # mm between the two tracks
+    def self.sliding_doors(params, dims, base_z)
+      count = params['door_count'].to_i
+      reveal = params['door_reveal'].to_f
+      door_w = (dims.width - (2 * reveal) + ((count - 1) * SLIDE_OVERLAP)) / count
+      door_h, door_z = door_span(params, dims)
+      (0...count).map do |index|
+        front = index.odd?
+        x = dims.depth + door_distance(params) + (front ? dims.thick + SLIDE_TRACK : 0.0)
+        y = reveal + (index * (door_w - SLIDE_OVERLAP))
+        hinge = index == count - 1 ? 'right' : 'left'
+        Door.new(role: "door_#{index + 1}", name: "Door #{index + 1}", extent: [dims.thick, door_w, door_h].map { |v| round2(v) },
+                 offset: [x, y, base_z + door_z].map { |v| round2(v) }, hinge: hinge,
+                 pivot: [x + dims.thick, hinge == 'left' ? y : y + door_w, base_z].map { |v| round2(v) }, rotation: 0.0,
+                 slide: front ? -round2(door_w - SLIDE_OVERLAP) : nil)
+      end
+    end
+    private_class_method :sliding_doors
+
     # Overlay doors that sit in front of the carcass, side by side across the width.
     # One door: the hinge side follows the opening direction. Two or more doors:
     # the left half hinges on the left, the right half on the right, so pairs
@@ -643,6 +707,7 @@ module EasyCabinet
       return l_doors(params, dims, base_z) if style == 'l_shape'
       return blind_doors(params, dims, base_z) if style == 'blind'
       return bifold_doors(params, dims, base_z) if params['bifold'] == true && count == 2
+      return sliding_doors(params, dims, base_z) if params['sliding'] == true && count >= 2
       return fridge_doors(params, dims, base_z) if params['fridge'] == true
       return oven_doors(params, dims, base_z) if lower_door?(params)
       return split_doors(params, dims, base_z) if params['door_split'] == true

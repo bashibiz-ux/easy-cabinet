@@ -197,6 +197,10 @@ module EasyCabinet
       'bifold' => false,            # a hydraulic bi-fold lift-up: two doors, one above the other, folding together as they lift
       'lift_door' => false,         # the door of the unit is a lift-up door (hinged on its top edge)
       'pullout' => false,           # a pull-out unit: just the front, no box inside it
+      'wardrobe' => false,          # a wardrobe: the inside is dividers, hanging rails and shelves
+      'dividers' => 0,              # a wardrobe: how many vertical partitions
+      'rail' => false,              # a wardrobe: the sections that hang clothes have a rail
+      'sliding' => false,           # a wardrobe: the doors slide on tracks
       'free_housing' => false,      # a housing for a freestanding fridge: two side panels and a lift-up cabinet over the fridge
       'housing_lift' => 0.0,        # the height of that cabinet (0 = the standard)
       'freestanding' => false,      # a freestanding fridge: just the appliance, no carcass

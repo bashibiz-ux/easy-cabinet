@@ -17,9 +17,9 @@ class CatalogTest < Minitest::Test
   include EasyCabinet
   DATA_DIR_FOR_TEST = EasyCabinet::DATA_DIR
 
-  def test_the_models_are_kitchen_cabinet_with_handle_gola_handle_and_without_handle
+  def test_the_models_are_kitchen_cabinet_with_handle_gola_handle_without_handle_and_wardrobe
     catalogs = CatalogManager.catalogs
-    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - Gola handle', 'Kitchen Cabinet - without handle'], catalogs.map { |c| c['name'] }
+    assert_equal ['Kitchen Cabinet - with handle', 'Kitchen Cabinet - Gola handle', 'Kitchen Cabinet - without handle', 'Wardrobe'], catalogs.map { |c| c['name'] }
     assert_empty CatalogManager.warnings
   end
 
@@ -73,7 +73,7 @@ class CatalogTest < Minitest::Test
       refute File.exist?(File.join(DATA_DIR_FOR_TEST, 'catalogs', "#{id}.json")), id
       assert_includes CatalogManager::LEGACY_FILES, "catalogs/#{id}.json"
     end
-    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_gola_profile.json kitchen_cabinets_no_handle.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
+    assert_equal %w[kitchen_cabinets.json kitchen_cabinets_gola_profile.json kitchen_cabinets_no_handle.json wardrobes.json], Dir.children(File.join(DATA_DIR_FOR_TEST, 'catalogs')).sort
   end
   def test_the_loft_cabinets_are_wall_units_that_start_400_tall
     %w[kitchen_cabinets kitchen_cabinets_no_handle].each do |catalog|

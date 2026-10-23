@@ -1,0 +1,208 @@
+{
+  "id": "wardrobes",
+  "name": "Wardrobe",
+  "version": 1,
+  "handle_bundles": [
+    "sample_bar_handles",
+    "d_handles",
+    "t_bar_handles",
+    "edge_pull_handles",
+    "slim_edge_pull_handles",
+    "cup_handles",
+    "shell_handles",
+    "sample_knobs",
+    "cylinder_knobs",
+    "ball_knobs"
+  ],
+  "features": [
+    "tall",
+    "filler",
+    "end_panel",
+    "panel",
+    "toe_kick",
+    "door_gap",
+    "door_reveal",
+    "door_distance",
+    "front_radius",
+    "top_panel",
+    "panel_thickness",
+    "back_thickness",
+    "cabinet_extras",
+    "handle",
+    "materials",
+    "door_opening",
+    "visibility",
+    "rotate"
+  ],
+  "categories": {
+    "tall": [
+      {
+        "id": "wardrobe_2door",
+        "name": "Wardrobe - 2 hinged doors",
+        "code": "WH",
+        "doors": 2,
+        "shelves": 5,
+        "widths": [
+          800,
+          900,
+          1000,
+          1200
+        ],
+        "defaults": {
+          "width": 1000,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "dividers": 1,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_3door",
+        "name": "Wardrobe - 3 hinged doors",
+        "code": "WH",
+        "doors": 3,
+        "shelves": 5,
+        "widths": [
+          1200,
+          1350,
+          1500,
+          1800
+        ],
+        "defaults": {
+          "width": 1500,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "dividers": 2,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_4door",
+        "name": "Wardrobe - 4 hinged doors",
+        "code": "WH",
+        "doors": 4,
+        "shelves": 5,
+        "widths": [
+          1600,
+          1800,
+          2000,
+          2400
+        ],
+        "defaults": {
+          "width": 2000,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "dividers": 3,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_sliding_2door",
+        "name": "Wardrobe - 2 sliding doors",
+        "code": "WS",
+        "doors": 2,
+        "shelves": 5,
+        "widths": [
+          1200,
+          1500,
+          1800,
+          2000
+        ],
+        "defaults": {
+          "width": 1500,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "sliding": true,
+        "dividers": 1,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_sliding_3door",
+        "name": "Wardrobe - 3 sliding doors",
+        "code": "WS",
+        "doors": 3,
+        "shelves": 5,
+        "widths": [
+          1800,
+          2100,
+          2400,
+          2700
+        ],
+        "defaults": {
+          "width": 2100,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "sliding": true,
+        "dividers": 2,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_open_2",
+        "name": "Wardrobe - open, 2 sections",
+        "code": "WO",
+        "doors": 0,
+        "shelves": 5,
+        "widths": [
+          800,
+          1000,
+          1200,
+          1500
+        ],
+        "defaults": {
+          "width": 1000,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "dividers": 1,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_open_3",
+        "name": "Wardrobe - open, 3 sections",
+        "code": "WO",
+        "doors": 0,
+        "shelves": 5,
+        "widths": [
+          1200,
+          1500,
+          1800,
+          2100
+        ],
+        "defaults": {
+          "width": 1800,
+          "depth": 600,
+          "height": 2400
+        },
+        "wardrobe": true,
+        "dividers": 2,
+        "rail": true
+      },
+      {
+        "id": "wardrobe_corner_l",
+        "name": "Wardrobe - corner L shape",
+        "code": "WCL",
+        "doors": 2,
+        "shelves": 4,
+        "widths": [
+          900,
+          1000,
+          1100
+        ],
+        "corner": "l_shape",
+        "defaults": {
+          "width": 1000,
+          "depth": 600,
+          "height": 2400
+        }
+      }
+    ]
+  }
+}
