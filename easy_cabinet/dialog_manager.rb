@@ -89,6 +89,7 @@ module EasyCabinet
         when 'set_snap'      then (SnapManager.enabled = data['enabled'] == true; Response.ok(SnapManager.enabled? ? 'Moved cabinets stick to their neighbours and the walls.' : 'Moved cabinets stay where you put them.'))
         when 'send_feedback' then FeedbackManager.perform(data)
         when 'open_donation' then FeedbackManager.donate
+        when 'open_help'     then FeedbackManager.open_help
         when 'cancel_place'  then (PlaceTool.cancel; Response.ok('')) # (Esc in the panel: the cabinet that follows the cursor is dropped)
         when 'get_cabinets' then Response.ok('', { 'cabinets' => CatalogManager.cabinets(data['catalog_id'], data['cabinet_category']) })
         when 'get_cabinet_shapes' then Response.ok('', { 'shapes' => CabinetGallery.shapes(data['catalog_id'], data['cabinet_category']) }) # (the pictures of the gallery)

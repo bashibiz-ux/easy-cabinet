@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.106.0';
+  const APP_VERSION = '1.106.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -340,6 +340,14 @@
     $('helpClose').addEventListener('click', closeHelp);
     help.addEventListener('click', (e) => { if (e.target === help) closeHelp(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !help.hidden) closeHelp(); });
+    $('helpOnline').addEventListener('click', async () => {
+      try {
+        const res = await call('open_help', {});
+        setStatus(res.ok ? 'ok' : 'error', res.message);
+      } catch (error) {
+        setStatus('error', error.message);
+      }
+    });
     $('helpFeedback').addEventListener('click', () => { closeHelp(); $('openFeedback').click(); });
   }
 

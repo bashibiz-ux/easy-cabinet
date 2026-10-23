@@ -61,13 +61,16 @@ class FeedbackTest < Minitest::Test
     assert_equal [nil, 'The donation page is not set up yet.'], FM.donation_url('  ')
     assert_equal [nil, 'The donation link must start with https://.'], FM.donation_url('http://example.com')
     assert_equal ['https://paypal.me/someone', nil], FM.donation_url(' https://paypal.me/someone ')
+    assert_equal [nil, 'The online guide is not set up yet.'], FM.help_url('')
+    assert_equal [nil, 'The guide link must start with https://.'], FM.help_url('http://example.com')
+    assert_equal ['https://example.com/guide', nil], FM.help_url(' https://example.com/guide ')
   end
   def test_the_address_and_the_donation_page_come_from_config_json
     require 'tmpdir'
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'config.json')
       File.write(path, '{"feedback_email": "  me@example.org ", "donation_url": "https://paypal.me/me"}')
-      assert_equal({ 'feedback_email' => 'me@example.org', 'donation_url' => 'https://paypal.me/me' }, FM.config(path))
+      assert_equal({ 'feedback_email' => 'me@example.org', 'donation_url' => 'https://paypal.me/me', 'help_url' => '' }, FM.config(path))
       File.write(path, '{"feedback_email": "not an address"}')
       assert_equal FM::DEFAULT_EMAIL, FM.config(path)['feedback_email'], 'an address that is none gives the default'
       File.write(path, 'this is not json')

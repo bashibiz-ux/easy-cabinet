@@ -11,7 +11,7 @@ module EasyCabinet
     CONFIG_PATH = File.join(__dir__, 'config.json')
     DEFAULT_EMAIL = 'bashibiz@gmail.com'
 
-    # => { 'feedback_email' =>, 'donation_url' => } as written in config.json (a missing or unreadable file, or an address that is not one, gives the defaults).
+    # => { 'feedback_email' =>, 'donation_url' =>, 'help_url' => } as written in config.json (a missing or unreadable file, or an address that is not one, gives the defaults).
     def self.config(path = CONFIG_PATH)
       stored = begin
         JSON.parse(File.read(path, encoding: 'UTF-8'))
@@ -21,7 +21,7 @@ module EasyCabinet
       stored = {} unless stored.is_a?(Hash)
       email = stored['feedback_email'].to_s.strip
       email = DEFAULT_EMAIL unless email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
-      { 'feedback_email' => email, 'donation_url' => stored['donation_url'].to_s.strip }
+      { 'feedback_email' => email, 'donation_url' => stored['donation_url'].to_s.strip, 'help_url' => stored['help_url'].to_s.strip }
     end
 
     def self.email = config['feedback_email']
@@ -83,6 +83,24 @@ module EasyCabinet
 
       UI.openURL(url)
       Response.ok('The donation page opened in your browser. Thank you for supporting Easy Cabinet!')
+    end
+
+    # The online guide: => [url, nil] or [nil, why there is none].
+    def self.help_url(url = config['help_url'])
+      link = url.to_s.strip
+      return [nil, 'The online guide is not set up yet.'] if link.empty?
+      return [nil, 'The guide link must start with https://.'] unless link.start_with?('https://')
+
+      [link, nil]
+    end
+
+    # The Online Guide button of the Help window: opens the guide in the browser.
+    def self.open_help
+      url, problem = help_url
+      return Response.fail(problem) if problem
+
+      UI.openURL(url)
+      Response.ok('The Easy Cabinet guide opened in your browser.')
     end
 
     # `via`: 'mailto' (the mail program), 'gmail', 'outlook' or 'yahoo' (their web pages, opened in the browser) or 'text' (nothing is opened:
