@@ -648,7 +648,9 @@ body.gallery-dragging * { cursor: grabbing !important; }
 .group-toggle[aria-expanded="true"]::after { transform: rotate(-135deg); }
 .group-toggle:hover { color: var(--ink); }
 .card-prefs[hidden] { display: none; }
-.card-prefs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin: 0 0 10px; }
+.card-prefs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; margin: 6px 0 14px; }
+.card-prefs .check { min-height: 38px; font-size: 14px; }
+.group-toggle { padding-top: 14px; padding-bottom: 6px; font-size: 12.5px; }
 @media (max-width: 400px) { .card-prefs { grid-template-columns: 1fr; } }
 .help-text { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; }
 .actions .status { position: absolute; left: 14px; right: 14px; bottom: calc(100% + 6px); margin: 0; z-index: 30; box-shadow: 0 3px 14px rgba(30, 45, 70, 0.22); }
