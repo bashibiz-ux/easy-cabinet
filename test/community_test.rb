@@ -65,6 +65,7 @@ class CommunityTest < Minitest::Test
         <link rel="alternate" type="text/html" href="https://github.com/me/easy-cabinet/discussions/1"/>
         <title>Sliding doors &amp; tracks</title>
         <author><name>sam</name></author>
+        <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/1?s=30&amp;v=4"/>
         <content type="html">&lt;p dir=&quot;auto&quot;&gt;Do the doors &amp;amp; tracks fit?&lt;/p&gt;&lt;p&gt;Second line&lt;br&gt;third&lt;/p&gt;</content>
       </entry>
       <entry><title>Hello</title><link rel="alternate" href="https://github.com/me/easy-cabinet/discussions/2"/><updated>2026-10-21T00:00:00Z</updated></entry>
@@ -82,6 +83,8 @@ class CommunityTest < Minitest::Test
     assert_equal 'Hello', topics[1]['title']
     assert_equal "Do the doors & tracks fit?\nSecond line\nthird", topics[0]['body'], 'the post is plain text for the panel'
     assert_equal '', topics[1]['body']
+    assert_equal 'https://avatars.githubusercontent.com/u/1?s=80&v=4', topics[0]['avatar'], 'the author picture, larger'
+    assert_equal '', topics[1]['avatar']
   end
 
   def test_a_repository_name_is_checked

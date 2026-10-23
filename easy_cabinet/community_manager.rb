@@ -72,13 +72,19 @@ module EasyCabinet
     end
 
     # The topics of a GitHub Discussions Atom feed: [{ title, author, date, url }], newest first.
+    # The picture of the author in a GitHub feed entry, larger than the thumbnail it carries (https, or '').
+    def self.avatar_of(entry)
+      url = CGI.unescapeHTML(entry[%r{<media:thumbnail[^>]*url="([^"]*)"}m, 1].to_s).sub(/([?&])s=\d+/, '\1s=80')
+      link(url)
+    end
+
     def self.atom_topics(body)
       body.to_s.scan(%r{<entry>(.*?)</entry>}m).first(MAX_ITEMS).filter_map do |(entry)|
         title = entry[%r{<title[^>]*>(.*?)</title>}m, 1]
         next if title.to_s.strip.empty?
 
         { 'title' => text(CGI.unescapeHTML(title), 160), 'author' => text(CGI.unescapeHTML(entry[%r{<author>.*?<name>(.*?)</name>}m, 1].to_s), 60),
-          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [], 'body' => plain(CGI.unescapeHTML(entry[%r{<content[^>]*>(.*?)</content>}m, 1].to_s)),
+          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [], 'avatar' => avatar_of(entry), 'body' => plain(CGI.unescapeHTML(entry[%r{<content[^>]*>(.*?)</content>}m, 1].to_s)),
           'url' => link(CGI.unescapeHTML(entry[%r{<link[^>]*href="([^"]*)"}m, 1].to_s)) }
       end
     end
@@ -99,7 +105,7 @@ module EasyCabinet
         next unless topic.is_a?(Hash) && !text(topic['title'], 160).empty?
 
         { 'title' => text(topic['title'], 160), 'author' => text(topic['author'], 60), 'date' => text(topic['date'], 30), 'replies' => topic['replies'].to_i.clamp(0, 99_999),
-          'tags' => Array(topic['tags']).first(5).map { |tag| text(tag, 24) }.reject(&:empty?), 'body' => plain(topic['body'] || topic['text']), 'url' => link(topic['url']) }
+          'tags' => Array(topic['tags']).first(5).map { |tag| text(tag, 24) }.reject(&:empty?), 'avatar' => link(topic['avatar']), 'body' => plain(topic['body'] || topic['text']), 'url' => link(topic['url']) }
       end
     end
 

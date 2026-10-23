@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.110.0';
+  const APP_VERSION = '1.111.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -392,21 +392,12 @@
     let pending = '';
     const text = (tag, className, value) => { const el = document.createElement(tag); el.className = className; el.textContent = value; return el; };
     const close = () => { modal.hidden = true; pending = ''; };
-    let detailing = false; // (a topic is open in the panel)
-    const showList = (show) => { $('communityNote').hidden = show; $('communityRedirect').hidden = show; $('communityButtons').hidden = !show || detailing; $('communityDetailButtons').hidden = !show || !detailing; list.hidden = !show || detailing; $('communityDetail').hidden = !show || !detailing; };
-    const showTopic = (entry) => {
-      detailing = true;
-      $('cdTitle').textContent = entry.title;
-      $('cdMeta').textContent = [entry.author, entry.date].filter(Boolean).join(' · ');
-      $('cdBody').textContent = entry.body || 'There is no text in this topic.';
-      $('communityReply').dataset.url = entry.url;
-      showList(true);
-    };
+    const showList = (show) => { $('communityNote').hidden = show; $('communityRedirect').hidden = show; $('communityButtons').hidden = !show; list.hidden = !show; };
     const ask = (url) => { if (!url) return; pending = url; showList(false); };
     const empty = (message) => { list.replaceChildren(text('div', 'community-empty', message)); };
     const openLink = (url) => call('open_link', { url }).then((r) => { if (!r.ok) setStatus('error', r.message); }).catch(() => {});
-    // A news post: who wrote it and when, then the post itself. The page of the post is one click away.
-    const newsPost = (entry) => {
+    // A post of the news or of the forum: who wrote it and when, then the post itself, and a link to its page (Comment on the news, Reply in the forum).
+    const newsPost = (entry, kind = 'news') => {
       const post = document.createElement('article');
       post.className = 'news-post';
       const head = document.createElement('div');
@@ -417,21 +408,22 @@
       const meta = text('div', 'news-meta', '');
       if (entry.author) meta.append(text('span', 'news-author', entry.author));
       if (entry.date) meta.append(document.createTextNode(entry.date));
+      if (kind === 'forum' && entry.replies) meta.append(document.createTextNode(` · ${entry.replies} ${entry.replies === 1 ? 'reply' : 'replies'}`));
       about.append(meta);
       head.append(about);
       const body = document.createElement('div');
       body.className = 'news-body';
-      if (entry.html) body.append(cleanNews(entry.html, openLink)); else if (entry.text) body.append(text('p', '', entry.text));
+      if (entry.html) body.append(cleanNews(entry.html, openLink)); else if (entry.text) body.append(text('p', '', entry.text)); else if (entry.body) body.append(text('p', 'news-text', entry.body));
       post.append(head, body);
-      if (entry.url) { const more = text('a', 'news-link', 'Comment'); more.href = '#'; more.addEventListener('click', (e) => { e.preventDefault(); openLink(entry.url); }); const foot = text('div', 'news-foot', ''); foot.append(more); post.append(foot); }
+      if (kind === 'forum' && entry.tags && entry.tags.length) { const tags = text('div', 'news-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); post.append(tags); }
+      if (entry.url) { const more = text('a', 'news-link', kind === 'forum' ? 'Reply' : 'Comment'); more.href = '#'; more.addEventListener('click', (e) => { e.preventDefault(); if (kind === 'forum') ask(entry.url); else openLink(entry.url); }); const foot = text('div', 'news-foot', ''); foot.append(more); post.append(foot); }
       return post;
     };
     const open = async (kind) => {
       $('communityTitle').textContent = kind === 'news' ? 'News' : 'Forum';
       $('communityHelp').textContent = kind === 'news' ? 'The latest news from Easy Cabinet.' : 'This message board lets you exchange with the other users and the Easy Cabinet team.';
       $('communityNew').hidden = true;
-      $('communityCard').classList.toggle('wide', kind === 'news'); // (the news are read like a page)
-      detailing = false;
+      $('communityCard').classList.add('wide'); // (the news and the forum are read like a page)
       showList(true);
       empty('Loading...');
       modal.hidden = false;
@@ -441,19 +433,7 @@
         const entries = kind === 'news' ? res.data.items : res.data.topics;
         if (kind === 'forum' && res.data.new_url) { $('communityNew').hidden = false; $('communityNew').dataset.url = res.data.new_url; }
         if (!entries.length) { empty(kind === 'news' ? 'There is no news yet.' : 'There are no conversations yet.'); return; }
-        if (kind === 'news') { list.replaceChildren(...entries.map(newsPost)); return; }
-        list.replaceChildren(...entries.map((entry) => {
-          const card = document.createElement('button');
-          card.type = 'button';
-          card.className = 'community-item';
-          card.append(text('div', 'ci-title', entry.title));
-          const meta = kind === 'news' ? entry.date : [entry.author, entry.date, entry.replies ? `${entry.replies} ${entry.replies === 1 ? 'reply' : 'replies'}` : ''].filter(Boolean).join(' · ');
-          if (meta) card.append(text('div', 'ci-meta', meta));
-          if (kind === 'news' && entry.text) card.append(text('div', 'ci-text', entry.text));
-          if (kind === 'forum' && entry.tags.length) { const tags = text('div', 'ci-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); card.append(tags); }
-          card.addEventListener('click', () => (kind === 'news' ? call('open_link', { url: entry.url }).then((r) => setStatus(r.ok ? 'ok' : 'error', r.message)).catch(() => {}) : showTopic(entry)));
-          return card;
-        }));
+        list.replaceChildren(...entries.map((entry) => newsPost(entry, kind)));
       } catch (error) {
         empty(error.message);
       }
@@ -463,8 +443,6 @@
     $('communityClose').addEventListener('click', close);
     $('communityNew').addEventListener('click', () => ask($('communityNew').dataset.url));
     $('communityBack').addEventListener('click', () => { pending = ''; showList(true); });
-    $('communityDetailBack').addEventListener('click', () => { detailing = false; showList(true); });
-    $('communityReply').addEventListener('click', () => ask($('communityReply').dataset.url));
     $('communityGo').addEventListener('click', async () => {
       const url = pending;
       pending = '';
