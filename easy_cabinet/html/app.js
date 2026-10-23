@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.103.1';
+  const APP_VERSION = '1.103.2';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -203,9 +203,10 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
+    // The tool sends 'info' (placed) or 'notice' (not placed) right after the click, and place_end when it is put away: whichever comes, the card is not marked any more.
+    if (gallery.picked && (name === 'info' || name === 'notice' || name === 'place_end')) clearPicked();
     if (name === 'place_end') { // the placing is over (the cabinet was put down, or Esc): its card is not marked any more, and
-      gallery.picked = null;
-      markGallery();
+      clearPicked();
       //  the late selection events of the insert are still left alone, then what is selected is read once
       state.noFocusUntil = Date.now() + 1500;
       setTimeout(() => { call('get_selection').catch(() => {}); }, 1700);
@@ -1546,6 +1547,13 @@ function currentCabinet() {
     markGallery();
   }
 
+  // Nothing follows the cursor any more: no card is marked, and the card that was clicked does not keep the keyboard focus (its outline looks marked too).
+  function clearPicked() {
+    gallery.picked = null;
+    if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('gcard')) document.activeElement.blur();
+    markGallery();
+  }
+
   function markGallery() {
     const grid = $('galleryGrid');
     if (!grid) return;
@@ -1634,8 +1642,7 @@ function currentCabinet() {
     // Esc in the panel drops the cabinet that follows the cursor (in the model SketchUp sees Esc itself: the placing tool tells the panel when it ends)
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || !gallery.picked) return;
-      gallery.picked = null;
-      markGallery();
+      clearPicked();
       call('cancel_place').catch(() => {});
     });
     loadGalleryPrefs();
