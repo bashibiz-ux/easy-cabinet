@@ -174,6 +174,10 @@ module EasyCabinet
           value = stored[stored_key].to_f
           entry[catalog_key] = value if entry[label_key] && value.positive?
         end
+        if entry['wardrobe'] # a wardrobe saved with its own partitions and rail
+          entry['dividers'] = stored['dividers'].to_i
+          entry['rail'] = stored['rail'] == true
+        end
         if entry['sink'] && !entry['sink_single']
           entry['sink_bowls'] = stored['sink_bowls'].to_i == 2 ? 2 : 1
           entry['sink_tray'] = stored['sink_tray'] == true

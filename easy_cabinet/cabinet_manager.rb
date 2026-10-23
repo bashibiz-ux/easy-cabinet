@@ -1482,7 +1482,9 @@ module EasyCabinet
                       'freestanding' => !!(cabinet && cabinet['freestanding']),
                       'free_housing' => !!(cabinet && cabinet['free_housing']),
                       'pullout' => !!(cabinet && cabinet['pullout']),
-                      'wardrobe' => !!(cabinet && cabinet['wardrobe']), 'dividers' => cabinet ? cabinet['dividers'].to_i : 0, 'rail' => !!(cabinet && cabinet['rail']), 'sliding' => !!(cabinet && cabinet['sliding']),
+                      'wardrobe' => !!(cabinet && cabinet['wardrobe']), 'dividers' => (raw['dividers'].to_s.strip.empty? ? (cabinet ? cabinet['dividers'].to_i : 0) : raw['dividers']),
+                      'rail' => (raw['rail'].to_s.strip.empty? ? !!(cabinet && cabinet['rail']) : ValidationManager.truthy_value?(raw['rail'])), # (the fields of a wardrobe; empty = as the catalog has it)
+                      'sliding' => !!(cabinet && cabinet['sliding']),
                       'glass_door' => !!(cabinet && cabinet['glass']),
                       'bifold' => !!(cabinet && cabinet['bifold']),
                       'lift_door' => !!(cabinet && (cabinet['lift_door'] || (cabinet['glass'] && ValidationManager.truthy_value?(raw['lift_door'])))), # (a glass door unit can be a lift-up one too)

@@ -573,6 +573,12 @@
           <span class="label" id="blindLabel">Blind Panel Width</span>
           <div class="input"><input id="blindWidth" type="text" inputmode="decimal" autocomplete="off"><em>mm</em></div>
         </label>
+        <!-- A wardrobe: how many partitions split it into sections, and whether the sections that hang clothes have a rail. -->
+        <label class="field narrow" id="dividersField" hidden>
+          <span class="label">Dividers</span>
+          <div class="input"><input id="dividers" type="text" inputmode="numeric" autocomplete="off"><em>pcs</em></div>
+        </label>
+        <label class="check" id="railField" hidden><input type="checkbox" id="wardrobeRail"><span>Hanging rail (1st, 3rd ... section)</span></label>
         <!-- An oven housing's lower part: drawers, a door, or a small drawer over a door. -->
         <label class="field" id="lowerField" hidden>
           <span class="label">Lower Part</span>

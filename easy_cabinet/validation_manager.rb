@@ -567,6 +567,7 @@ module EasyCabinet
     # panels to meet the diagonal without overlapping, and for a sensible door.
     def self.check_corner(out, errors, bad)
       check_blind(out, errors, bad)
+      check_wardrobe(out, errors, bad)
       return unless Defaults.corner?(out)
       return unless (bad & %w[width depth material_thickness]).empty? && out['width'] && out['depth']
 
@@ -628,6 +629,18 @@ module EasyCabinet
       end
     end
     private_class_method :check_blind
+
+    MIN_WARDROBE_SECTION = 250.0 # mm between two partitions (or a partition and a side)
+
+    # A wardrobe: the sections made by the dividers must stay wide enough to use.
+    def self.check_wardrobe(out, errors, bad)
+      return unless out['wardrobe'] && out['dividers'].to_i.positive? && (bad & %w[width material_thickness]).empty? && out['width']
+
+      count = out['dividers'].to_i
+      section = (out['width'] - (out['material_thickness'].to_f * (count + 2))) / (count + 1)
+      errors << error('dividers', "#{count + 1} sections would be only #{fmt(section.round(1))} mm wide (minimum #{fmt(MIN_WARDROBE_SECTION)} mm). Use fewer dividers or a wider wardrobe.") if section < MIN_WARDROBE_SECTION
+    end
+    private_class_method :check_wardrobe
 
     # A corner unit's single door is sized by check_corner (its width is a
     # diagonal, not the cabinet's own Width), so the usual width-based door-fit

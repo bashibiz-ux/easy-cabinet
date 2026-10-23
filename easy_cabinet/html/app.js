@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.104.1';
+  const APP_VERSION = '1.105.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -65,6 +65,7 @@
     top_front: 'topFrontHeight',
     fridge_height: 'fridgeHeight',
     blind_width: 'blindWidth',
+    dividers: 'dividers',
     split_height: 'splitHeight',
     housing_lift: 'liftHeight',
     finger_gap: 'fingerGapGlobal',
@@ -1197,6 +1198,8 @@ function currentCabinet() {
       sink_tray: $('sinkTray').checked,
       sink_mirror: $('sinkMirror').checked,
       blind_width: hasBlindField() ? mmv('blindWidth') : '',
+      dividers: hasWardrobeField() ? $('dividers').value : '',
+      rail: hasWardrobeField() ? $('wardrobeRail').checked : '',
       lower_mode: hasLowerField() ? $('lowerMode').value : '',
       lower_drawers: $('lowerDrawers').value,
       small_drawer: mmv('smallDrawer'),
@@ -1288,6 +1291,7 @@ function currentCabinet() {
       $('sinkMirror').checked = p.sink_mirror === true || Number(p.sink_rotation) === 180;
     }
     if (p.blind_width > 0 && hasBlindField()) setText('blindWidth', p.blind_width);
+    if (p.wardrobe) { setText('dividers', Number(p.dividers) || 0); $('wardrobeRail').checked = p.rail === true; }
     if (hasLowerField()) {
       setSelect('lowerMode', p.lower_mode || 'drawers');
       setText('lowerDrawers', Number(p.lower_drawers) || Number(p.drawer_count) || 2);
@@ -1769,6 +1773,7 @@ function currentCabinet() {
   const hasFridgeField = () => hasCatalogField('fridge_label');
   const hasLowerField = () => hasCatalogField('lower');
   const hasBlindField = () => hasCatalogField('blind_label');
+  const hasWardrobeField = () => hasCatalogField('wardrobe');
   const hasSplitField = () => hasCatalogField('split_label');
   const hasLiftField = () => hasCatalogField('lift_label');
   // The model without handles (a catalog with finger_pull) lets the height the doors of a base unit are reduced by be set.
@@ -1825,6 +1830,8 @@ function currentCabinet() {
     setSoft($('sinkBowlsField'), single);
     setSoft($('sinkTurnField'), single || !$('sinkTray').checked); // a mirror only matters for the side the drainer is on
     setSoft($('blindField'), !hasBlindField());
+    setSoft($('dividersField'), !hasWardrobeField());
+    setSoft($('railField'), !hasWardrobeField());
     if (cabinet && cabinet.blind_label) $('blindLabel').textContent = cabinet.blind_label;
     setSoft($('lowerField'), !hasLowerField());
     setSoft($('lowerDrawersField'), !hasLowerField() || $('lowerMode').value !== 'drawers');
@@ -1883,6 +1890,7 @@ function currentCabinet() {
       $('sinkMirror').checked = false;
     }
     if (cabinet.blind_label) setText('blindWidth', cabinet.blind);
+    if (cabinet.wardrobe) { setText('dividers', cabinet.dividers || 0); $('wardrobeRail').checked = cabinet.rail === true; }
     if (cabinet.lower) {
       setSelect('lowerMode', 'drawers');
       setText('lowerDrawers', cabinet.drawers || 2);
@@ -2587,7 +2595,7 @@ if (details.length) {
   // Which kind of item a field edits, so a change to the Filler fields never
   // rewrites the cabinet that happens to be selected. The toe-kick height is both:
   // it raises cabinets and is the height of a toe kick.
-  const SIZE_IDS = new Set(['widthPreset', 'width', 'depth', 'height', 'leg2Length', 'leg2Depth', 'blindWidth', 'shelves']);
+  const SIZE_IDS = new Set(['widthPreset', 'width', 'depth', 'height', 'leg2Length', 'leg2Depth', 'blindWidth', 'shelves', 'dividers', 'wardrobeRail']);
 
   function fieldKinds(el) {
     if (el.closest('#sub-filler')) return ['filler'];

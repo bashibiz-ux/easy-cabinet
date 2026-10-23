@@ -57,6 +57,20 @@ class WardrobeTest < Minitest::Test
     assert_equal 'cyl_y', layout.panels.find { |p| p.role == 'rail_1' }.shape
   end
 
+  def test_dividers_that_leave_a_section_too_narrow_are_refused
+    raw = { 'width' => '600', 'depth' => '600', 'height' => '2400', 'cabinet_category' => 'tall', 'wardrobe' => true, 'dividers' => '3' }
+    assert ValidationManager.validate(raw).errors.any? { |e| e.to_s.include?('sections would be only') }
+    refute ValidationManager.validate(raw.merge('width' => '2000')).errors.any? { |e| e.to_s.include?('sections would be only') }
+  end
+
+  def test_a_saved_wardrobe_keeps_its_dividers_and_rail
+    base = CatalogManager.cabinet('wardrobes', 'tall', 'wardrobe_3door')
+    stored = { 'door_count' => 3, 'shelf_count' => 5, 'width' => 1500, 'depth' => 600, 'height' => 2400, 'dividers' => 1, 'rail' => false }
+    entry = CatalogManager.entry_from(stored, base, 'Mine')
+    assert_equal 1, entry['dividers']
+    assert_equal false, entry['rail']
+  end
+
   def test_a_sliding_door_moves_along_y_and_has_no_plan_swing
     door = CabinetLayout::Door.new(role: 'door_2', name: 'Door 2', extent: [18.0, 800.0, 2000.0], offset: [0.0, 0.0, 0.0], hinge: 'right',
                                    pivot: [0.0, 0.0, 0.0], rotation: 0.0, slide: -760.0)
