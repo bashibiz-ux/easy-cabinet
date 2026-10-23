@@ -167,8 +167,8 @@
           <div class="input"><input id="carcassRaise" type="text" value="0" inputmode="decimal" autocomplete="off" aria-label="Wall unit carcass bottom raise upward, for every wall unit or the selected one"><em>mm</em></div>
         </label>
         <!-- Which cards the panel shows: a tick for each card (filled in by the panel, see wireCardPrefs). -->
-        <p class="group-title">Cards in the panel</p>
-        <div class="card-prefs" id="cardPrefs"></div>
+        <button class="group-title group-toggle" type="button" id="cardPrefsToggle" aria-expanded="false" aria-controls="cardPrefs">Cards in the panel</button>
+        <div class="card-prefs" id="cardPrefs" hidden></div>
         <div class="btn-row one">
           <button class="btn" type="button" data-action="reset_presets">Reset Saved Settings</button>
         </div>

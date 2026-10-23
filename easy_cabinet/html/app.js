@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.111.1';
+  const APP_VERSION = '1.112.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2605,6 +2605,11 @@ if (details.length) {
   function wireCardPrefs() {
     const box = $('cardPrefs');
     if (!box) return;
+    $('cardPrefsToggle').addEventListener('click', () => { // (the list of cards opens and closes: closed to begin with)
+      const open = box.hidden;
+      box.hidden = !open;
+      $('cardPrefsToggle').setAttribute('aria-expanded', String(open));
+    });
     const hidden = new Set(hiddenCards());
     const cards = cardList().filter((card) => card.id !== 'sec-presets');
     cards.forEach((card) => {
