@@ -51,6 +51,14 @@ module EasyCabinet
       value.to_s.gsub(/[[:cntrl:]]/, ' ').strip[0, limit]
     end
 
+    BODY_LIMIT = 3000
+
+    # The text of a post written as HTML (paragraphs, line breaks, lists): plain text with the line breaks kept, for the panel to show.
+    def self.plain(html, limit = BODY_LIMIT)
+      body = html.to_s.gsub(%r{<br\s*/?>|</p>|</li>|</h\d>|</pre>|</blockquote>}i, "\n").gsub(/<li[^>]*>/i, '- ').gsub(/<[^>]*>/, '')
+      CGI.unescapeHTML(body).gsub(/[^\S\n]+/, ' ').gsub(/ ?\n ?/, "\n").gsub(/\n{3,}/, "\n\n").strip[0, limit]
+    end
+
     # A link that may be opened: https, or ''.
     def self.link(value)
       url = value.to_s.strip
@@ -69,7 +77,7 @@ module EasyCabinet
         next if title.to_s.strip.empty?
 
         { 'title' => text(CGI.unescapeHTML(title), 160), 'author' => text(CGI.unescapeHTML(entry[%r{<author>.*?<name>(.*?)</name>}m, 1].to_s), 60),
-          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [],
+          'date' => text(entry[%r{<updated>(.*?)</updated>}m, 1].to_s[0, 10], 30), 'replies' => 0, 'tags' => [], 'body' => plain(CGI.unescapeHTML(entry[%r{<content[^>]*>(.*?)</content>}m, 1].to_s)),
           'url' => link(CGI.unescapeHTML(entry[%r{<link[^>]*href="([^"]*)"}m, 1].to_s)) }
       end
     end
@@ -89,7 +97,7 @@ module EasyCabinet
         next unless topic.is_a?(Hash) && !text(topic['title'], 160).empty?
 
         { 'title' => text(topic['title'], 160), 'author' => text(topic['author'], 60), 'date' => text(topic['date'], 30), 'replies' => topic['replies'].to_i.clamp(0, 99_999),
-          'tags' => Array(topic['tags']).first(5).map { |tag| text(tag, 24) }.reject(&:empty?), 'url' => link(topic['url']) }
+          'tags' => Array(topic['tags']).first(5).map { |tag| text(tag, 24) }.reject(&:empty?), 'body' => plain(topic['body'] || topic['text']), 'url' => link(topic['url']) }
       end
     end
 

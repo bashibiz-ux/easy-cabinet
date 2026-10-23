@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.108.1';
+  const APP_VERSION = '1.109.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -360,13 +360,23 @@
     let pending = '';
     const text = (tag, className, value) => { const el = document.createElement(tag); el.className = className; el.textContent = value; return el; };
     const close = () => { modal.hidden = true; pending = ''; };
-    const showList = (show) => { $('communityNote').hidden = show; $('communityRedirect').hidden = show; $('communityButtons').hidden = !show; list.hidden = !show; };
+    let detailing = false; // (a topic is open in the panel)
+    const showList = (show) => { $('communityNote').hidden = show; $('communityRedirect').hidden = show; $('communityButtons').hidden = !show || detailing; $('communityDetailButtons').hidden = !show || !detailing; list.hidden = !show || detailing; $('communityDetail').hidden = !show || !detailing; };
+    const showTopic = (entry) => {
+      detailing = true;
+      $('cdTitle').textContent = entry.title;
+      $('cdMeta').textContent = [entry.author, entry.date].filter(Boolean).join(' · ');
+      $('cdBody').textContent = entry.body || 'There is no text in this topic.';
+      $('communityReply').dataset.url = entry.url;
+      showList(true);
+    };
     const ask = (url) => { if (!url) return; pending = url; showList(false); };
     const empty = (message) => { list.replaceChildren(text('div', 'community-empty', message)); };
     const open = async (kind) => {
       $('communityTitle').textContent = kind === 'news' ? 'News' : 'Forum';
       $('communityHelp').textContent = kind === 'news' ? 'The latest news from Easy Cabinet.' : 'This message board lets you exchange with the other users and the Easy Cabinet team.';
       $('communityNew').hidden = true;
+      detailing = false;
       showList(true);
       empty('Loading...');
       modal.hidden = false;
@@ -385,7 +395,7 @@
           if (meta) card.append(text('div', 'ci-meta', meta));
           if (kind === 'news' && entry.text) card.append(text('div', 'ci-text', entry.text));
           if (kind === 'forum' && entry.tags.length) { const tags = text('div', 'ci-tags', ''); entry.tags.forEach((tag) => tags.append(text('span', '', tag))); card.append(tags); }
-          card.addEventListener('click', () => (kind === 'news' ? call('open_link', { url: entry.url }).then((r) => setStatus(r.ok ? 'ok' : 'error', r.message)).catch(() => {}) : ask(entry.url)));
+          card.addEventListener('click', () => (kind === 'news' ? call('open_link', { url: entry.url }).then((r) => setStatus(r.ok ? 'ok' : 'error', r.message)).catch(() => {}) : showTopic(entry)));
           return card;
         }));
       } catch (error) {
@@ -397,6 +407,8 @@
     $('communityClose').addEventListener('click', close);
     $('communityNew').addEventListener('click', () => ask($('communityNew').dataset.url));
     $('communityBack').addEventListener('click', () => { pending = ''; showList(true); });
+    $('communityDetailBack').addEventListener('click', () => { detailing = false; showList(true); });
+    $('communityReply').addEventListener('click', () => ask($('communityReply').dataset.url));
     $('communityGo').addEventListener('click', async () => {
       const url = pending;
       pending = '';
