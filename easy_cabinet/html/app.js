@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.103.2';
+  const APP_VERSION = '1.103.3';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -2517,6 +2517,9 @@ if (details.length) {
 
   // `live` is an Update the panel sends by itself while the user edits a field.
   // It leaves the buttons alone and never steals the cursor.
+  // The buttons that make something and select it (Insert of every kind, Duplicate, the fillers and panels, the worktop, the kitchen designs).
+  const QUIET_SELECT = /^(insert(_filler|_end_panel|_panel|_exposed_side_panels|_toe_kick)?|duplicate|apply_ceiling_fillers|apply_wall_bottom|apply_worktop|design_kitchen|design_path_kitchen|insert_on_path)$/;
+
   async function runAction(action, { live = false, replace = false, extra = null } = {}) {
     if (state.busy) return;
     if (action === 'undo') clearTimeout(state.liveTimer); // a pending live edit would redo what is being undone
@@ -2533,10 +2536,11 @@ if (details.length) {
       if (action === 'insert_on_path') { payload.flip = $('kitchenPathFlip').checked; payload.wall_units = $('pathWallUnits').checked; } // (the tick of the Auto Kitchen card turns the cabinets round)
       if (replace) payload.replace = true; // a live update of the kitchen: the one designed before is built again
       if (extra) Object.assign(payload, extra);
-      if (action === 'insert') state.noFocusUntil = Date.now() + 600000; // (the Insert button selects the new item in the model: that must not open cards, change lists or scroll the panel)
+      const quietly = QUIET_SELECT.test(serverAction(action)); // (this button selects what it made in the model: that must not open cards, change lists or scroll the panel)
+      if (quietly) state.noFocusUntil = Date.now() + 600000;
       const res = await call(serverAction(action), payload);
       state.lastResult = res;
-      if (action === 'insert') {
+      if (quietly) {
         if (res.ok) { state.noFocusUntil = Date.now() + 1500; setTimeout(() => { call('get_selection').catch(() => {}); }, 1700); } // (the late selection events are left alone, then what is selected is read once, as after a placing)
         else state.noFocusUntil = 0;
       }
