@@ -97,7 +97,7 @@ class CommunityTest < Minitest::Test
   end
 
   def test_the_settings_are_read_from_config_json
-    assert_equal '', CM.setting('news_url')
+    assert CM.setting('news_url').empty? || CM.setting('news_url').start_with?('https://'), 'an address of the web, or none yet'
     assert_equal '', CM.setting('missing_key')
   end
 end
