@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.114.0';
+  const APP_VERSION = '1.114.1';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -3261,7 +3261,8 @@ function liveEdit(el) {
     // nothing is selected. With a cabinet selected the change is only that cabinet's (it goes through the live update below); with
     // anything else selected nothing else changes.
     // (with a filler, side panel, toe kick or worktop selected they are still the whole job's: a cabinet is the only item that takes them alone)
-    if (GLOBAL_FIELDS[el.id] && (!state.selectedKind || state.selectedKind !== 'cabinet')) {
+    // (the angle of the floor symbol is for every cabinet whatever is selected: it is how the symbols are drawn, not one cabinet's size)
+    if (GLOBAL_FIELDS[el.id] && (el.id === 'symbolAngle' || !state.selectedKind || state.selectedKind !== 'cabinet')) {
       const [key, elementId] = GLOBAL_FIELDS[el.id];
       globalDirty.set(key, elementId);
       if (el.id === 'fingerGapGlobal') globalDirty.set('finger_gap_drawer', elementId); // doors and drawers alike
@@ -3270,7 +3271,7 @@ function liveEdit(el) {
       if (el.id === 'handle') {
         Object.entries(GLOBAL_FIELDS).filter(([id]) => id.startsWith('handle')).forEach(([, [k, e]]) => globalDirty.set(k, e));
       }
-      scheduleGlobal(el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
+      scheduleGlobal(el.id === 'symbolAngle' ? 250 : el.tagName === 'SELECT' ? LIVE_PICK_DELAY_MS : LIVE_TYPING_DELAY_MS);
       return;
     }
     if (NO_LIVE_IDS.has(el.id) || !state.selectedKind || state.liveHold) return;

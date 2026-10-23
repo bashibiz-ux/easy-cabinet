@@ -51,6 +51,10 @@ class DoorAngleTest < Minitest::Test
     end
   end
 
+  def test_the_floor_symbol_starts_at_30_degrees
+    assert_equal 30.0, Defaults.params['symbol_angle']
+  end
+
   def test_a_lift_up_door_has_no_plan_line_but_a_symbol_on_its_face
     assert_empty DoorAnimation.indicator_segments([door('top')], 90.0, 100.0)
     refute_empty DoorAnimation.indicator_segments([door('left')], 90.0, 100.0)
