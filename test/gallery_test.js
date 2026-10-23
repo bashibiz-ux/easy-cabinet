@@ -54,6 +54,17 @@ assert.ok(gallery.svg3d(corner).includes('<polygon'));
 const turned = gallery.rects2d(corner).find((r) => r.kind === 'door');
 assert.ok(turned.w > 0 && turned.h === 700, 'a turned door is as wide as its footprint along Y');
 
+// what is inside the carcass (an oven) is not seen through its left side: the outer face of the left side is drawn after it
+const housed = { cat: 'tall', parts: [
+  { k: 'body', o: [0, 0, 100], e: [560, 18, 2000] }, { k: 'body', o: [0, 582, 100], e: [560, 18, 2000] }, { k: 'body', o: [0, 18, 100], e: [18, 564, 2000] },
+  { k: 'appl', c: '#30343a', o: [60, 20, 700], e: [500, 560, 600] }
+] };
+const housedFaces = gallery.faces3d(housed);
+const oven = housedFaces.map((f, i) => [f, i]).filter(([f]) => f.kind === 'appl').map(([, i]) => i);
+const leftSide = housedFaces.map((f, i) => [f, i]).filter(([f]) => f.kind === 'body' && f.layer === 1.5).map(([, i]) => i);
+assert.ok(leftSide.length === 1, 'one outer left face');
+assert.ok(oven.every((i) => i < leftSide[0]), 'the oven is drawn before the left side that hides it');
+
 // nothing to draw gives an empty picture, not an error
 assert.ok(gallery.svg3d({ parts: [] }).startsWith('<svg'));
 assert.ok(gallery.svg2d({ parts: [] }).startsWith('<svg'));

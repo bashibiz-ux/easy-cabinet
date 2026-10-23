@@ -41,9 +41,6 @@ module EasyCabinet
       end
       layout.panels.to_a.each { |panel| parts << lifted.call(part(panel.front || panel.role.to_s.include?('dishwasher_front') ? 'door' : 'body', panel)) }
       layout.appliances.to_a.each { |item| appliance_parts(item).each { |box| parts << lifted.call(box) } }
-      if params['dishwasher'] == true # (the dishwasher stands behind its front: a steel box in the space)
-        parts << { 'k' => 'appl', 'c' => '#a3abb4', 's' => true, 'o' => [10.0, 7.0, lift], 'e' => [[params['depth'].to_f - 40.0, 100.0].max, params['width'].to_f - 14.0, params['height'].to_f - 40.0] }
-      end
       layout.drawers.to_a.each { |front| parts << part('drawer', front) }
       layout.doors.to_a.each { |door| parts << part('door', door) }
       (layout.drawers.to_a + layout.doors.to_a).each { |front| parts.concat(gola_parts(front)) } if mode == 'gola'

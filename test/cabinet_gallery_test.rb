@@ -139,8 +139,8 @@ class GalleryAppliancesTest < Minitest::Test
     assert fridge.any?
   end
 
-  def test_the_dishwasher_stands_behind_its_front
+  def test_nothing_of_a_dishwasher_is_seen_from_the_side
     parts = shapes('base')['base_dishwasher']['parts']
-    assert parts.any? { |p| p['k'] == 'appl' && p['s'] }
+    assert parts.none? { |p| p['k'] == 'appl' }, 'only its front: the sides of the space are open, so a box behind it would show'
   end
 end

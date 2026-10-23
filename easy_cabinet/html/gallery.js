@@ -130,6 +130,8 @@
   // The visible faces of every part, far ones first: [{ points: [{x, y}], fill, kind, sheen }]. `shape` is drawn as it is (see withHandles).
   function faces3d(shape) {
     const out = [];
+    // the left outer face of the carcass hides what is inside it (the oven, the bowl of a sink): it is drawn after the appliances, which are not seen from the side
+    const bodyLeft = Math.min(...(shape.parts || []).filter((part) => part.k === 'body').flatMap((part) => footprint(part).map((p) => p[1])));
     (shape.parts || []).forEach((part, index) => {
       if (part.tp) return; // (a pipe is drawn as a pipe, see pipes3d)
       prism(part).forEach((face) => {
@@ -138,7 +140,8 @@
         const depth = projected.reduce((sum, p) => sum + p.depth, 0) / projected.length;
         const lit = 0.66 + (0.34 * Math.max(0, dot(face.normal, LIGHT)));
         const front = face.normal[2] === 0 && dot(face.normal, [1, 0, 0]) > 0.9; // a face looking to the front
-        const layer = LAYER[part.k] || 0;
+        const outerLeft = part.k === 'body' && face.normal[1] < -0.9 && Math.abs(face.points[0][1] - bodyLeft) < 1.5;
+        const layer = outerLeft ? 1.5 : (LAYER[part.k] || 0);
         // (what stands on the front of the carcass is ordered by how far forward it is: a wide face has its middle far to one side, which must not decide)
         const key = layer === 0 ? depth : face.points.reduce((sum, p) => sum + (p[0] * Math.cos(YAW)) - (p[1] * Math.sin(YAW) * 0.15), 0) / face.points.length;
         out.push({ points: projected, depth, key, layer, order: ORDER[part.k] || 0, index, fill: shade(part.c || COLOURS[part.k] || COLOURS.body, lit), kind: part.k, sheen: front && (part.k === 'door' || part.k === 'drawer' || part.s === true), top: part.s === true && face.normal[2] > 0.9 });
