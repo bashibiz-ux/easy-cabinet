@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.105.2';
+  const APP_VERSION = '1.106.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -318,10 +318,29 @@
   // The Donate button opens the donation page (see FeedbackManager).
   // The button of the action bar that was pressed last stays orange (the others are dark brown).
   function wireActiveTile() {
-    const tiles = [...document.querySelectorAll('.actions .btn.tile')];
+    const tiles = [...document.querySelectorAll('.actions .btn.tile')].filter((tile) => tile.id !== 'openMore' && !tile.closest('.more-menu'));
     tiles.forEach((tile) => tile.addEventListener('click', () => {
       tiles.forEach((other) => other.classList.toggle('active', other === tile));
     }));
+  }
+
+  // The More tile: a small menu with Donate, Feedback and Help. It closes when something is chosen, on a click elsewhere, and with Esc.
+  function wireMore() {
+    const button = $('openMore');
+    const menu = $('moreMenu');
+    if (!button || !menu) return;
+    const set = (open) => { menu.hidden = !open; button.setAttribute('aria-expanded', String(open)); button.classList.toggle('active', open); };
+    button.addEventListener('click', (e) => { e.stopPropagation(); set(menu.hidden); });
+    menu.addEventListener('click', () => set(false));
+    document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) set(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) set(false); });
+    const help = $('helpModal');
+    const closeHelp = () => { help.hidden = true; };
+    $('openHelp').addEventListener('click', () => { help.hidden = false; });
+    $('helpClose').addEventListener('click', closeHelp);
+    help.addEventListener('click', (e) => { if (e.target === help) closeHelp(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !help.hidden) closeHelp(); });
+    $('helpFeedback').addEventListener('click', () => { closeHelp(); $('openFeedback').click(); });
   }
 
   function wireDonate() {    const button = $('openDonate');
@@ -3393,6 +3412,7 @@ $('kitchenLayout').addEventListener('change', () => {
   async function init() {
     wireFeedback();
     wireDonate();
+    wireMore();
     wireActiveTile();
     wrapCardBodies();
     try {

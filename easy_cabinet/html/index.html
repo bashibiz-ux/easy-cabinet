@@ -1036,10 +1036,33 @@
       <button class="btn tile" type="button" data-action="toggle" title="Open or close the selected cabinet's doors; with nothing selected, every door in the model"><span>Toggle</span></button>
       <button class="btn tile" type="button" data-action="undo" title="Undo the last change in the model (same as Edit &gt; Undo)"><span>Undo</span></button>
       <button class="btn tile" type="button" data-action="delete"><span>Delete</span></button>
-      <button class="btn tile" type="button" id="openFeedback" title="Send a comment, a suggestion or a problem about this extension"><span>Feedback</span></button>
-      <button class="btn tile" type="button" id="openDonate" title="Support the development of this extension with a donation: opens the donation page in your browser"><span>Donate</span></button>
+      <button class="btn tile" type="button" id="openMore" aria-haspopup="true" aria-expanded="false" title="Donate, send feedback, or read the help"><span>More</span></button>
+    </div>
+    <div class="more-menu" id="moreMenu" role="menu" hidden>
+      <button class="btn tile" type="button" role="menuitem" id="openDonate" title="Support the development of this extension with a donation: opens the donation page in your browser"><span>Donate</span></button>
+      <button class="btn tile" type="button" role="menuitem" id="openFeedback" title="Send a comment, a suggestion or a problem about this extension"><span>Feedback</span></button>
+      <button class="btn tile" type="button" role="menuitem" id="openHelp" title="How to use Easy Cabinet"><span>Help</span></button>
     </div>
   </footer>
+
+  <!-- Help: the short guide of the More menu -->
+  <div class="modal" id="helpModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <h2 id="helpTitle">Help</h2>
+      <p class="group-title">Placing cabinets</p>
+      <p class="help-text">Choose a catalog and a category, then click a cabinet in the gallery: it follows the cursor, click in the model where it goes. Left and Right arrow keys turn it, Esc drops it. Insert puts the cabinet of the panel at the origin, At Point and Along Walls place it for you.</p>
+      <p class="group-title">Changing a cabinet</p>
+      <p class="help-text">Select a cabinet in the model and its settings open in the panel: edit a field and it changes at once (the live tick in Presets). Update applies everything, Duplicate copies, Toggle opens and closes the doors, Undo goes back one step.</p>
+      <p class="group-title">Extras and rooms</p>
+      <p class="help-text">Fillers, side panels, toe kicks, wall bottom panels, panels and ceiling fillers are in the Category list. The Room card builds walls, a door and windows; Auto Kitchen designs a kitchen for them.</p>
+      <p class="group-title">Cut list and drawings</p>
+      <p class="help-text">The Cut List card lists every part by material and exports it. Layout Scenes makes the scenes for LayOut, and the Dimensions tick in Presets draws the plan and height dimensions.</p>
+      <div class="btn-row two-eq">
+        <button class="btn ghost" type="button" id="helpClose">Close</button>
+        <button class="btn soft" type="button" id="helpFeedback" title="Ask a question or report a problem">Send feedback</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Feedback: a comment, a suggestion or a problem, sent from the user's own mail program -->
   <div class="modal" id="feedbackModal" hidden>
