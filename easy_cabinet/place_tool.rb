@@ -25,6 +25,18 @@ module EasyCabinet
       out
     end
 
+    class << self
+      attr_accessor :current # (the tool that is waiting for a click now, if any)
+    end
+
+    # Puts the tool away without placing anything (the Esc key pressed in the panel, where SketchUp does not see it). => whether there was one.
+    def self.cancel
+      return false unless current
+
+      Sketchup.active_model.select_tool(nil)
+      true
+    end
+
     def self.start(raw, params = nil)
       model = Sketchup.active_model
       model.select_tool(new(raw, params))
@@ -39,6 +51,7 @@ module EasyCabinet
     end
 
     def activate
+      self.class.current = self
       Sketchup.status_text = 'Click where the cabinet goes (on an edge: its back stands against it). Left / Right arrow: turn. Esc: cancel.'
       # The cabinet is on view at once, in the middle of the view, and follows the cursor from its first move.
       view = Sketchup.active_model.active_view
@@ -49,6 +62,7 @@ module EasyCabinet
     end
 
     def deactivate(view)
+      self.class.current = nil if self.class.current.equal?(self)
       view.invalidate
       DialogManager.push('place_end', {}) # (the panel was told to leave its cards alone while the cabinet is put down: it has been now)
     end

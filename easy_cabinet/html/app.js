@@ -14,7 +14,7 @@
   // Must match EXTENSION_VERSION in easy_cabinet.rb. If SketchUp is still
   // running older Ruby files than this panel (an update without a restart), the
   // panel says so instead of failing on data the old Ruby never sends.
-  const APP_VERSION = '1.102.0';
+  const APP_VERSION = '1.103.0';
 
   const list = (value) => (Array.isArray(value) ? value : []);
 
@@ -203,7 +203,10 @@
   // What the user has selected in the model decides which form Update reads and
   // what Update / Delete act on: a cabinet, a filler, an side panel or a toe kick.
   function handleEvent(name, data) {
-    if (name === 'place_end') { // the placing is over: the late selection events of the insert are still left alone, then what is selected is read once
+    if (name === 'place_end') { // the placing is over (the cabinet was put down, or Esc): its card is not marked any more, and
+      gallery.picked = null;
+      markGallery();
+      //  the late selection events of the insert are still left alone, then what is selected is read once
       state.noFocusUntil = Date.now() + 1500;
       setTimeout(() => { call('get_selection').catch(() => {}); }, 1700);
       return;
@@ -1459,7 +1462,7 @@ function currentCabinet() {
 
   // ---- the cabinet gallery (see gallery.js): every cabinet of the category as a picture, in the order and with the names of the Cabinet list ----------------------------
   const GALLERY_KEY = 'ec.gallery';
-  const gallery = { view: '3d', size: 'medium', min: false, shapes: {}, loading: '', query: '' };
+  const gallery = { view: '3d', size: 'medium', min: false, shapes: {}, loading: '', query: '', picked: null }; // (picked: the cabinet that is on its way to the model)
 
   function loadGalleryPrefs() {
     try {
@@ -1546,7 +1549,7 @@ function currentCabinet() {
   function markGallery() {
     const grid = $('galleryGrid');
     if (!grid) return;
-    const current = categoryKind() === 'cabinet' ? $('cabinet').value : $('category').value;
+    const current = categoryKind() === 'cabinet' ? gallery.picked : $('category').value; // (a cabinet is marked while it follows the cursor; an extra while it is the Category)
     grid.querySelectorAll('.gcard').forEach((card) => card.classList.toggle('on', card.dataset.id === current));
   }
 
@@ -1620,12 +1623,21 @@ function currentCabinet() {
     // not follow that with its cards and lists (they would jump up and down), so it leaves them alone until the placing is over (the event place_end).
     state.noFocusUntil = Date.now() + 600000;
     state.lastResult = null;
+    gallery.picked = id;
+    markGallery();
     await runAction('insert_at_point', { extra: { place_toe_kick: { ...collectToeKick(), toe_kick_piece_length: mmv('width'), toe_kick_pieces: '1', toe_kick_cover_row: false } } }); // (the cabinet is put down with a toe kick as long as it is wide)
-    if (!state.lastResult || !state.lastResult.ok) state.noFocusUntil = 0; // (the placing did not start: nothing is to be left alone)
+    if (!state.lastResult || !state.lastResult.ok) { state.noFocusUntil = 0; gallery.picked = null; markGallery(); } // (the placing did not start: nothing is to be left alone)
   }
 
   function wireGallery() {
     if (!$('gallery')) return;
+    // Esc in the panel drops the cabinet that follows the cursor (in the model SketchUp sees Esc itself: the placing tool tells the panel when it ends)
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || !gallery.picked) return;
+      gallery.picked = null;
+      markGallery();
+      call('cancel_place').catch(() => {});
+    });
     loadGalleryPrefs();
     syncGalleryControls();
     let searchTimer = null;
