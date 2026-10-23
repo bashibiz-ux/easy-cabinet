@@ -594,7 +594,7 @@ body.gallery-dragging * { cursor: grabbing !important; }
    again (a shake at every click). */
 .actions { position: relative; }
 /* The More tile opens a small menu over the bar (Donate, Feedback, Help) */
-.more-menu { position: absolute; right: 6px; bottom: 50px; z-index: 20; display: flex; flex-direction: column; min-width: 130px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28); }
+.more-menu { position: absolute; right: 6px; bottom: 50px; z-index: 40; /* (over the message of the action bar, z-index 30) */ display: flex; flex-direction: column; min-width: 130px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28); }
 .more-menu[hidden] { display: none; }
 .more-menu .btn.tile { height: 36px; border: 0; border-radius: 7px; justify-content: flex-start; padding: 0 12px; }
 .help-text { margin: 0 0 8px; font-size: 12.5px; line-height: 1.45; }
