@@ -1,8 +1,8 @@
 {
   "feedback_email": "bashibiz@gmail.com",
   "donation_url": "",
-  "help_url": "",
-  "news_url": "",
+  "help_url": "https://bashibiz-ux.github.io/easy-cabinet/",
+  "news_url": "https://bashibiz-ux.github.io/easy-cabinet/news.json",
   "forum_url": "",
   "forum_new_url": "",
   "github_repo": "bashibiz-ux/easy-cabinet"
